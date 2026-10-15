@@ -35,4 +35,11 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'A4-davet-kabul', yol: '/?senaryo=davetli' },
   { ad: 'A5-davet-yok', yol: '/?senaryo=davetsiz&kayit=kapali' },
   { ad: 'A5-alan-ac', yol: '/?senaryo=davetsiz' }, // açık kayıt (tasarımda PNG yok)
+  // B · Günlük
+  { ad: 'B3-galaksi', yol: '/akis/RTD5?senaryo=berkin' },
+  { ad: 'B6-filtre', yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Berkin yolu/ }).click(); } },
+  // S · Zaman sürgüsü
+  { ad: 'S1-zaman-erken', yol: '/akis/RTD5?senaryo=berkin&an=2026-10-13T09:00' },
+  { ad: 'S2-zaman-oynatiliyor', yol: '/akis/RTD5?senaryo=berkin&an=2026-10-17T12:00', once: async (p) => { await p.clock.install(); }, hazirla: async (p) => { await p.getByRole('button', { name: 'Oynat' }).click(); } },
+  { ad: 'S3-zaman-ileri', yol: '/akis/RTD5?senaryo=berkin&an=2026-10-22T09:00' },
 ];

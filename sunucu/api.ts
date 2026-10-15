@@ -24,7 +24,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   const ef = m.pl.EF.get(s.no);
   const grup = altAdimi(akis, s.no);
   const v: any = {
-    no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
+    no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
     aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
     karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
     son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
@@ -65,14 +65,14 @@ function akisOzeti(akis: any, steps: any[], m: any, now: number): Parca[] {
 function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx) {
   const m = metrics(akis, steps, events, now);
   const vis = steps.filter((s: any) => stepInScope(ctx, s));
-  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no) })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
+  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no) })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
   const parca = akisOzeti(akis, isDis(ctx) ? vis : steps, m, now);
   const son = events.length ? events[events.length - 1].created_at : akis.created_at;
   return {
-    kod: akis.kisa_kod, baslik: akis.baslik, durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
+    kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akis.baglam?.kisa_ad || null, durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
     en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay), risk: m.pay != null && m.pay < 0,
     ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length, suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
-    sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip })),
+    sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip })),
     kritik_bekleme_saat: saat(m.kritikBekleme), toplam_bekleme_saat: saat(m.bekleme),
     ust: akis.baglam?.ust_akis ? { akis: akis.baglam.ust_kod, kalem: akis.baglam.kalem } : null,
     tekrar: altGruplar(akis).map((g) => ({ grup: g.id, kalem_turu: g.kalem_turu, kalem_sayisi: g.kalemler.length, adimlar: g.adimlar, ilerleme: steps.find((s: any) => g.adimlar.includes(s.no) && !DONE(s))?.ilerleme || null })),

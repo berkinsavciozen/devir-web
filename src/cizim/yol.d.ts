@@ -1,0 +1,21 @@
+// yol.js için tür bildirimleri (çizim parçaları SVG dizgesi döner).
+import type { Galaksi } from '../geometri/galaksi-geometri';
+type O = Record<string, any>;
+export interface Model { F: { kod: string; baslik: string; kapandi: number | null; steps: { no: number; ad: string; sahip: string; tip?: string; durum: string; dep: number[]; karar: boolean }[] }; AK: any; sahip?: string; detay: any }
+export interface YolSonuc { svg: string; G: Galaksi; P: Record<number, [number, number]>; radOf: (no: number) => number; stOf: (no: number) => string; clusters?: number[][]; secim?: string; RENK: Record<string, string> }
+export const GUN: number;
+export function tl(ms: number): Date;
+export function gunAy(ms: number): string;
+export function gunAyHafta(ms: number): string;
+export function saat(ms: number): string;
+export function sans(x: number, y: number, t: string, o?: O): string;
+export function kart(x: number, y: number, w: number, h: number, o?: O): string;
+export function akisModeli(detay: any, o?: { sahip?: string; haric?: number[] }): Model;
+export function uyeRenkleri(G: Galaksi, sahip?: string): Record<string, string>;
+export function kisaAd(ad: string): string;
+export function yolD(pts: number[][]): string;
+export function clusterBadge(x: number, y: number, members: number[], radOf: (no: number) => number, stOf: (no: number) => [string, O], ps?: number): string;
+export function uydular(x: number, y: number, r: number, kalemler: { ad: string; durum: string }[], ps?: number, o?: O): string;
+export function yolCiz(M: Model, o?: O): YolSonuc;
+export function seritler(M: Model, Y: YolSonuc, b: { x: number; y: number; w: number; h: number }, o?: O): { svg: string; xOf: (t: number) => number; yOf: (i: number) => number; eksenY: number; X0: number; XW: number; us: any[]; kopyalar: { no: number; x: number; y: number; r: number; uye: string }[]; lw: number; satir: number };
+export function zamanCubugu(x: number, y: number, w: number, G: Galaksi, X: number, o?: O): { svg: string; xOf: (t: number) => number; tOf: (px: number) => number; x0: number; x1: number; t0: number; t1: number };

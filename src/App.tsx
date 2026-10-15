@@ -13,7 +13,8 @@ import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
 import { GirisDonus } from './ekranlar/giris/GirisDonus';
 import { Iskelet } from './ekranlar/Iskelet';
-import { git, useYol } from './yonlendirme';
+import { Galaksi } from './ekranlar/akis/Galaksi';
+import { eslestir, git, useYol } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
 function Sirada({ baslik }: { baslik: string }) {
@@ -53,6 +54,8 @@ function Uygulama({ yol }: { yol: string }) {
   if (b.kayit_gerekli) return b.bekleyen_davetler?.length ? <DavetKabul ben={b} /> : <DavetYok ben={b} yenile={() => void ben.refetch()} yenileniyor={ben.isFetching} />;
   if (yol === '/bagla') return <ClaudeaBagla ben={b} />;
   if (yol === '/' || yol === '') return <Evren ben={b} />;
+  const ak = eslestir('/akis/:kod', yol);
+  if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Sirada baslik="Akışlar" />;
   if (yol === '/yeni') return <Sirada baslik="Yeni iş" />;
   return <Sirada baslik="Devir" />;
