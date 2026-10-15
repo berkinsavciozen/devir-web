@@ -60,11 +60,12 @@ export function sahteDb(saat: () => number) {
   };
 }
 
-export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: string } = {}) {
+export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: string; acikKayit?: boolean } = {}) {
   let saat = SAHTE_SIMDI;
   const db = sahteDb(() => saat);
   const T = db.T;
-  T.ayar = [{ anahtar: 'web_adresi', deger: o.webAdresi ?? location.origin }];
+  // kayıt varsayılan açık (herkese açık sürüm); ?kayit=kapali ile davetle açılan sunucu
+  T.ayar = [{ anahtar: 'web_adresi', deger: o.webAdresi ?? location.origin }, { anahtar: 'acik_kayit', deger: o.acikKayit === false ? 'hayir' : 'evet' }];
   T.uye = []; T.davet = []; T.dosya = [];
   // Berkin'in anahtarı (dökümde token_hash yok)
   const berkinAnahtar = T.anahtar.find((k) => k.kullanici_id === BERKIN_ALAN && k.kisi === 'Berkin')!;

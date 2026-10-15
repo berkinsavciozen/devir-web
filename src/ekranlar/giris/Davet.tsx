@@ -112,8 +112,50 @@ const A5_CIZIM =
   `<ellipse cx="195" cy="270" rx="96" ry="38" fill="none" stroke="#8E80D6" stroke-width="1.4" stroke-dasharray="3 6" transform="rotate(-14 195 270)"/>` +
   planet(195, 270, 26, 'dark', { life: false }) + ship(108, 300, -20, 'dis', '', '#F2B8D8', .95);
 
-/** A5 · Bekleyen davet yok (kayıt kapalı). */
+const yerelAd = (e?: string) => { const x = (e || '').split('@')[0].split(/[._-]/)[0]; return x ? x[0].toLocaleUpperCase('tr') + x.slice(1) : ''; };
+
+/** A5 (açık kayıt): davetsiz kişi kendi çalışma alanını açar. POST /kayit {alan_adi, kisi} → acildi → boş evren. */
+function AlanAc({ ben }: { ben: Ben }) {
+  const [ad, setAd] = useState(() => yerelAd(ben.eposta));
+  const [alan, setAlan] = useState('');
+  const [mesgul, setMesgul] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const ac = async (e: FormEvent) => {
+    e.preventDefault();
+    const kisi = ad.trim(), alanAdi = alan.trim() || `${kisi || yerelAd(ben.eposta)} · çalışma alanı`;
+    if (!kisi) { setHata('Adını yaz.'); return; }
+    setMesgul(true); setHata(null);
+    try {
+      const r = await api.post<{ acildi: { alan_id: string } }>('/kayit', { alan_adi: alanAdi, kisi });
+      alanSecimi.koy(r.acildi.alan_id);
+      await qc.invalidateQueries();
+      git('/', { yerine: true });
+    } catch (er) {
+      setHata(er instanceof ApiHatasi ? er.hata : 'Şu an bağlanılamadı. Yeniden dene.');
+    } finally { setMesgul(false); }
+  };
+  return (
+    <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A5_CIZIM} etiket="Çalışma alanını aç" ortala>
+      <UstSatir eposta={ben.eposta} />
+      <Metin y={400} fs={28} lh={34} serif agirlik={700} hiza="orta" as="h1">Çalışma alanını aç</Metin>
+      <Metin y={436} fs={17} lh={23} serif renk="ink2" hiza="orta">Adını ve alanın adını yaz;<br />ilk akışın burada başlar.</Metin>
+      <form onSubmit={ac} noValidate>
+        <Metin y={492} x={22} fs={12} agirlik={600} renk="ink3" as="label" style={{ right: 'auto' }}><span id="ad-etiket">Adın</span></Metin>
+        {hata && <Metin y={492} x={368} fs={12} agirlik={600} renk="mercan" hiza="sag" style={{ left: 'auto' }}><span role="alert">{hata}</span></Metin>}
+        <Kutu y={500}><input className="alan" aria-labelledby="ad-etiket" autoComplete="given-name" value={ad} onChange={(e) => setAd(e.target.value)} /></Kutu>
+        <Metin y={572} x={22} fs={12} agirlik={600} renk="ink3" as="label" style={{ right: 'auto' }}><span id="alan-etiket">Çalışma alanı</span></Metin>
+        <Kutu y={580}><input className="alan" aria-labelledby="alan-etiket" placeholder={`${ad.trim() || 'Adın'} · çalışma alanı`} value={alan} onChange={(e) => setAlan(e.target.value)} /></Kutu>
+        <Dugme type="submit" mesgul={mesgul} style={{ top: 650 }}>Alanı aç</Dugme>
+      </form>
+      <Kutu y={716} h={44} as="button" className="metin-dugme" onClick={cikisYap}>Başka e-postayla gir</Kutu>
+    </Sahne>
+  );
+}
+
+/** A5 · Bekleyen davet yok. Kayıt açıksa kişi kendi alanını açar; kapalıysa davet ister. */
 export function DavetYok({ ben, yenile, yenileniyor }: { ben: Ben; yenile: () => void; yenileniyor: boolean }) {
+  if (ben.acik_kayit) return <AlanAc ben={ben} />;
   return (
     <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A5_CIZIM} etiket="Davet yok" ortala>
       <UstSatir eposta={ben.eposta} />

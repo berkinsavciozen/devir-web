@@ -12,3 +12,4 @@ Spesifikasyon kazanır; burada not edilir.
 | 6 | A1 hata hali (geçersiz e-posta) PNG'de yok | Metin alanın altına sığmıyor (düğmeyle arası 16 px) | Hata cümlesi etiket satırında, sağda, mercan |
 | 7 | "Anahtarla gir" giriş sayfası PNG'de yok | — | Alt sayfa: dv_ alanı + "Gir"; GET /ben ile doğrulanır, 401 cümlesi gösterilir |
 | 8 | A3 "Bağlandı" alt cümlesi tanımlı değil | — | "Claude artık bu alana yazıyor." |
+| 9 | Kayıt herkese açık (Berkin, 15 Eki): spesifikasyonda kayıt varsayılan kapalı, A5'te açık kayıt için yalnız "Yeni çalışma alanı aç" alanı var | Yeni karar kazanır | Giriş bağlantısı yeni e-postaya da gider (`shouldCreateUser: true`). Kayıt açıksa A5 yerine "Çalışma alanını aç" (Adın, Çalışma alanı, "Alanı aç") gelir; A5 kapalı sunucu için kalır. Sunucu 0.10.0: `/ben.acik_kayit`, kimliksiz `GET /api/v1/durum` |

@@ -2,7 +2,9 @@ import { callTool, INSTRUCTIONS, TOOLS, type DB } from "./core.ts";
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
-import { oturumCtx, oturumYonlendir, ekipYonlendir, type KimlikFn, type Posta } from "./hesap.ts";
+import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
+
+export const SURUM = "0.10.0";
 import type { Depo } from "./dosya.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -45,6 +47,8 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
       throw new ApiHata(405, "Yöntem desteklenmiyor.");
     }
     if (yol[1] !== "v1") throw new ApiHata(404, "Uçlar /api/v1/ altında.");
+    // kimliksiz: giriş ekranı kaydın açık olup olmadığını bilir (§9-19)
+    if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, acik_kayit: await acikKayit(db) });
     const webAdres = (await db.one("ayar", { anahtar: "web_adresi" }).catch(() => null))?.deger;
     const web = webAdres ? String(webAdres).replace(/\/$/, "") : null;
     taban.link = web || taban.fn;
@@ -90,7 +94,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   if (yol[0] === "api" || yol[0] === "l") return web(req, url, yol, db, now, ek);
   if (req.method === "GET") {
     if ((req.headers.get("accept") || "").includes("text/event-stream")) return new Response(null, { status: 405, headers: CORS });
-    return json({ ad: "Devir MCP", surum: "0.9.0", durum: "çalışıyor", kullanim: "MCP istemcisine bu adresi anahtarınla ekle. Arayüz uçları: /api/v1/ (Authorization: Bearer dv_… ya da e-postayla giriş oturumu), dış katılımcı: /l/<bağlantı>." });
+    return json({ ad: "Devir MCP", surum: SURUM, durum: "çalışıyor", kullanim: "MCP istemcisine bu adresi anahtarınla ekle. Arayüz uçları: /api/v1/ (Authorization: Bearer dv_… ya da e-postayla giriş oturumu), dış katılımcı: /l/<bağlantı>." });
   }
   if (req.method !== "POST") return new Response(null, { status: 405, headers: CORS });
 
@@ -113,7 +117,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
     switch (m.method) {
       case "initialize": {
         const pv = m.params?.protocolVersion;
-        ok({ protocolVersion: PROTOS.includes(pv) ? pv : PROTOS[0], capabilities: { tools: { listChanged: false } }, serverInfo: { name: "devir", title: "Devir", version: "0.9.0" }, instructions: INSTRUCTIONS });
+        ok({ protocolVersion: PROTOS.includes(pv) ? pv : PROTOS[0], capabilities: { tools: { listChanged: false } }, serverInfo: { name: "devir", title: "Devir", version: SURUM }, instructions: INSTRUCTIONS });
         break;
       }
       case "ping": ok({}); break;

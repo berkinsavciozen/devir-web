@@ -30,6 +30,12 @@ export async function oturumCtx(db: DB, ot: Oturum, secim: string | null, now: n
   return { ctx, uyelikler };
 }
 
+// Açık kayıt: ayar.acik_kayit = evet ise davetsiz kişi kendi çalışma alanını açabilir (§9-19).
+export async function acikKayit(db: DB): Promise<boolean> {
+  const acik = String((await db.one("ayar", { anahtar: "acik_kayit" }).catch(() => null))?.deger ?? "").toLowerCase();
+  return ["evet", "true", "1", "acik"].includes(acik);
+}
+
 async function bekleyenDavetler(db: DB, eposta: string) {
   return db.many("davet", { eposta, durum: "bekliyor" }, "created_at");
 }
@@ -44,7 +50,7 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
     const davetler = [];
     for (const d of await bekleyenDavetler(db, ot.eposta)) if (!uyelikler.some((u: any) => u.kullanici_id === d.kullanici_id)) davetler.push(davetV(d, await db.one("kullanici", { id: d.kullanici_id })));
     return {
-      eposta: ot.eposta, uyelikler: alanlar, bekleyen_davetler: davetler,
+      eposta: ot.eposta, uyelikler: alanlar, bekleyen_davetler: davetler, acik_kayit: await acikKayit(db),
       ...(ctx ? { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { id: ctx.ws.id, ad: ctx.ws.ad } } : { kayit_gerekli: true }),
     };
   }
@@ -79,8 +85,7 @@ async function kayit(db: DB, ot: Oturum, uyelikler: any[], b: any, now: number) 
   }
   const alanAdi = String(b.alan_adi || "").trim().slice(0, 120);
   if (!alanAdi) throw new HesapHata(400, uyelikler.length ? "Zaten bir çalışma alanına üyesin. Yeni bir alan açmak için alan_adi ver." : "Bekleyen davetin yok. Yeni bir çalışma alanı açmak için alan_adi ver ya da bir ekipten davet iste.");
-  const acik = String((await db.one("ayar", { anahtar: "acik_kayit" }).catch(() => null))?.deger ?? "").toLowerCase();
-  if (!["evet", "true", "1", "acik"].includes(acik)) throw new HesapHata(403, "Devir şimdilik davetle açılıyor. Bir çalışma alanı sahibinden davet iste.");
+  if (!(await acikKayit(db))) throw new HesapHata(403, "Devir şimdilik davetle açılıyor. Bir çalışma alanı sahibinden davet iste.");
   const [ws] = await db.insert("kullanici", [{ ad: alanAdi }]);
   const [u] = await db.insert("uye", [{ auth_id: ot.auth_id, kullanici_id: ws.id, eposta: ot.eposta, kisi: kisiAd || yerelAd(ot.eposta), rol: "sahip", kapsam: null, son_giris: at }]);
   return { acildi: uyeV(u, ws) };

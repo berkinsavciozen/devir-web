@@ -28,7 +28,7 @@ describe('sahte API (canlı sunucu kodu + örnek veri)', () => {
     expect(k.j.katildi.rol).toBe('dis');
   });
   it('davetsiz: yeni alan açamaz (kayıt kapalı)', async () => {
-    const s = await sahteSunucu('davetsiz', { webAdresi: 'http://yerel' });
+    const s = await sahteSunucu('davetsiz', { webAdresi: 'http://yerel', acikKayit: false });
     const r = await iste(s, '/api/v1/kayit', 'sahte:sahte-davetsiz:emre.k@ornek.com', { alan_adi: 'Ali' });
     expect(r.st).toBe(403);
     expect(r.j.hata).toMatch(/davetle/);
@@ -37,5 +37,15 @@ describe('sahte API (canlı sunucu kodu + örnek veri)', () => {
     const s = await sahteSunucu('bos', { webAdresi: 'http://yerel' });
     const r = await iste(s, '/api/v1/ozet', 'sahte:sahte-berkin-yeni:berkin@ornek.com');
     expect(r.j.akislar).toHaveLength(0);
+  });
+  it('açık kayıt: davetsiz kişi kendi alanını açar', async () => {
+    const s = await sahteSunucu('davetsiz', { webAdresi: 'http://yerel' });
+    const b = 'sahte:sahte-davetsiz:emre.k@ornek.com';
+    const ben = await iste(s, '/api/v1/ben', b);
+    expect(ben.j.acik_kayit).toBe(true);
+    const r = await iste(s, '/api/v1/kayit', b, { alan_adi: 'Emre · çalışma alanı', kisi: 'Emre' });
+    expect(r.j.acildi.rol).toBe('sahip');
+    const d = await s.istek(new Request('https://sahte.devir/functions/v1/devir-mcp/api/v1/durum'));
+    expect((await d.json()).acik_kayit).toBe(true);
   });
 });

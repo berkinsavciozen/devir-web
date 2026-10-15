@@ -40,8 +40,8 @@ function gercekKimlik(): Kimlik {
       return !error && !!data.session;
     },
     async girisBaglantisi(eposta) {
-      // shouldCreateUser: false → davetsiz kişiye bağlantı gitmez; hata dönse de ekran ilerler (e-posta varlığı sızmasın)
-      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: `${location.origin}/giris`, shouldCreateUser: false } }).catch(() => undefined);
+      // Kayıt herkese açık (15 Eki kararı): yeni e-postaya da bağlantı gider; hata dönse de ekran ilerler (e-posta varlığı sızmasın)
+      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: `${location.origin}/giris`, shouldCreateUser: true } }).catch(() => undefined);
     },
     async kodDegistir(kod) {
       const { data, error } = await (await al()).auth.exchangeCodeForSession(kod);

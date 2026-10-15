@@ -24,7 +24,7 @@ function tasimaAl(): Promise<Tasima> {
   if (tasima) return tasima;
   if (SAHTE) {
     tasima = import('./sahte/sahte').then(async (m) => {
-      const s = await m.sahteSunucu(senaryo() as any);
+      const s = await m.sahteSunucu(senaryo() as any, { acikKayit: new URLSearchParams(location.search).get('kayit') !== 'kapali' });
       (window as any).__devirSahte = s;
       return (req: Request) => s.istek(req);
     });

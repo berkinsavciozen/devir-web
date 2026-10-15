@@ -33,5 +33,6 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'A2-bos-evren', yol: '/?senaryo=bos' },
   { ad: 'A3-claudea-bagla', yol: '/bagla?senaryo=berkin', hazirla: async (p) => { await p.getByText('dv_', { exact: false }).first().waitFor(); } },
   { ad: 'A4-davet-kabul', yol: '/?senaryo=davetli' },
-  { ad: 'A5-davet-yok', yol: '/?senaryo=davetsiz' },
+  { ad: 'A5-davet-yok', yol: '/?senaryo=davetsiz&kayit=kapali' },
+  { ad: 'A5-alan-ac', yol: '/?senaryo=davetsiz' }, // açık kayıt (tasarımda PNG yok)
 ];
