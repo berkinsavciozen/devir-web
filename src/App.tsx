@@ -9,6 +9,7 @@ import { Kutu, Metin, Sahne } from './bilesen/Sahne';
 import { SvgTanimlar } from './bilesen/Svg';
 import { Evren } from './ekranlar/evren/Evren';
 import { Akislar } from './ekranlar/evren/Akislar';
+import { Arsiv } from './ekranlar/evren/Arsiv';
 import { ClaudeaBagla } from './ekranlar/evren/ClaudeaBagla';
 import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
@@ -66,10 +67,13 @@ function Uygulama({ yol }: { yol: string }) {
   const kr = eslestir('/akis/:kod/karar/:no', yol);
   if (kr) return <Karar key={kr.kod + kr.no} kod={kr.kod} no={Number(kr.no)} ben={b.kisi || ''} />;
   const ad = eslestir('/akis/:kod/adim/:no', yol);
+  // tablet yatay ve masaüstünde adım haritanın yanındaki panelde açılır; ?tam=1 tam ayrıntı (geçmiş, çıktılar)
+  if (ad && innerWidth >= 1024 && innerHeight >= 600 && !new URLSearchParams(location.search).has('tam')) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
   if (ad) return <Adim key={ad.kod + ad.no} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;
+  if (yol === '/akislar/arsiv') return <Arsiv ben={b} />;
   if (yol === '/yeni') return <YeniIs />;
   const ty = eslestir('/yeni/:kod', yol);
   if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;

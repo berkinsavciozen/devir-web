@@ -3,7 +3,9 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
 import { Baslik } from '../../bilesen/Baslik';
-import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
+import { GenisSahne, Kutu, Metin, Sahne } from '../../bilesen/Sahne';
+import { useBoyut } from '../../bilesen/Gok';
+import { genisDuzen, GenisKart, kartCizimi, panelZemini, useAdimOlaylari, varsayilanSecim } from './Genis';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, sayiIyelik, tarihDi } from '../../metin/turkce';
@@ -13,6 +15,7 @@ import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
 import { KapaliGalaksi } from './Kapali';
 import { useBen } from '../../api/sorgular';
+import { haritaGelisi } from '../../cizim/yakinlas';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -98,8 +101,13 @@ function gezegenEtiketi(a: any, kritik: boolean) {
   return [`${a.no}. adım, ${a.ad}. ${a.sahip} (${tur}). ${a.durum_etiket || a.durum}${a.engel ? ': ' + a.engel.replace(/[.\s]+$/, '') : ''}.`, tarih && tarih + '.', kritik ? 'Kritik yolda.' : '', a.karar_adimi ? 'Karar adımı.' : ''].filter(Boolean).join(' ');
 }
 
-export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
+export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; secim?: number }) {
   const q = useAkis(kod);
+  // tablet yatay ve masaüstü: solda harita, sağda şeritler + seçili adım kartı (§5 M1, T1)
+  const boy = useBoyut();
+  const GD = useMemo(() => genisDuzen(boy.w, boy.h), [boy.w, boy.h]);
+  const [sel, setSel] = useState<number | null>(secim ?? null);
+  const [gelis] = useState(haritaGelisi);
   const ben = useBen();
   const NOW = simdi();
   // ?an=2026-10-17T12:00 → sürgü o anda açılır (paylaşılan bağlantı, ekran testleri)
@@ -124,7 +132,10 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const d = q.data;
   const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
   // kalabalık akış (> 6 kişi): ps .82, şerit satırı 27 (§4.14)
-  const geo = useMemo(() => ({ ...HARITA, ps: d && new Set(d.adimlar.map((a: any) => a.sahip)).size > 6 ? .82 : HARITA.ps }), [d]);
+  const geo = useMemo(() => (GD ? GD.harita : { ...HARITA, ps: d && new Set(d.adimlar.map((a: any) => a.sahip)).size > 6 ? .82 : HARITA.ps }), [d, GD]);
+  const SU = GD ? GD.surgu : SURGU, SR = GD ? GD.serit : SERIT;
+  const selNo = GD && d ? sel ?? varsayilanSecim(d) : null;
+  const secOlay = useAdimOlaylari(kod, selNo);
 
   // ilk çizim: geometri (etiket konumları için gezegen yerleri)
   const temel = useMemo(() => (M ? yolCiz(M, { ...geo, now: NOW, x: NOW }) : null), [M, NOW, geo]);
@@ -135,21 +146,24 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     // tekrar grubu sürüyorsa: uydular ve aşama etiketi (D1)
     const A = tekrarAsamasi(d), sats = uydular(d);
     const soruVar = !odak && Math.abs(X - NOW) < 36e5 && !!soruCumlesi(d);
-    const labels = soruVar ? [] : X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
+    let labels = soruVar ? [] : X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
+    if (GD) labels = labels.map((l: any[]) => [l[0], l[1], l[2] * GD.etiket.dx, l[3] * GD.etiket.dy, l[4], l[5]]);
     const gecti = gecenGun(d, NOW) > 0; // I2: hedef geçince şerit sıkışır (tasarım 11 px/gün)
     const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = temel.G.uyeler.length > 6 ? 27 : uzun || temel.G.uyeler.length > 4 ? 38 : 42;
-    const Y = yolCiz(M, { ...geo, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
-    const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
-    const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma });
+    const Y = yolCiz(M, { ...geo, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null && !GD ? [] : labels, sats, sel: selNo ?? undefined });
+    const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ...(GD ? { ps: GD.surgu.ps } : {}) });
+    const S = GD
+      ? seritler(M, Y, GD.serit, { x: X, now: NOW, pxGun: uzun ? GD.serit.pxGun * .3 : GD.serit.pxGun, satir: GD.serit.satir, lw: GD.serit.lw, ps: GD.serit.ps, tBas: Y.G.T0 - GUN * .3, herGun: !uzun, focus: odak || undefined, kayma, sel: selNo ?? undefined })
+      : seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geo, now: NOW }) : { svg: '', hedefler: [] };
     let ust = '';
     // I2: hedef geçti; kulenin üstünde mercan hap
     const gec = gecenGun(d, NOW), kule = Y.G.kule;
     if (gec > 0 && kule && !odak) ust += pill(kule.x, kule.y - 34, `${gec} gün geçti`, { fs: 11.5, fw: 750, bg: '#FF8A78', bgo: 1, col: '#2A1D4F' });
-    if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
+    if (tarihNo != null && Y.G.gezegen[tarihNo] && !GD) ust = tarihKarti(d, Y, Z, S, tarihNo);
     return { svg: Y.svg + SK.svg + Z.svg + S.svg + ust, Y, Z, S, SK };
-  }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo, geo]);
+  }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo, geo, GD, selNo]);
 
   // oynat: 1 gün / sn (§4.10); sona gelince durur
   useEffect(() => {
@@ -196,15 +210,10 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const kritik = new Set<number>(d.kritik_yol || []);
   const byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const tekrarNo = new Set<number>((d.tekrar || []).flatMap((g: any) => (g.kalemler?.length ? g.adimlar : [])));
-  const ac = (no: number) => git(`/akis/${encodeURIComponent(kod)}/${tekrarNo.has(no) ? 'tekrar' : 'adim'}/${no}`);
+  const ac = (no: number) => (GD && !tekrarNo.has(no) ? setSel(no) : git(`/akis/${encodeURIComponent(kod)}/${tekrarNo.has(no) ? 'tekrar' : 'adim'}/${no}`));
 
-  return (
-    <Sahne gok={{ tohum: 33, yildiz: 280 }} cizim={cizim.svg} etiket={ad}>
-      <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
-      {cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
-      </div>
-
+  const kontroller = (
+    <>
       {/* sarmal: gezegenler (dokun → adım) */}
       <div role="list" aria-label="Harita" className="harita-katman">
         {Object.values(Y.G.gezegen).map((g) => {
@@ -218,28 +227,58 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
       </div>
 
       {/* zaman sürgüsü */}
-      <button className="surgu-oynat" style={{ left: SURGU.x, top: SURGU.y - 22 }} aria-label={oynuyor ? 'Durdur' : 'Oynat'} onClick={() => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); }} />
+      <button className="surgu-oynat" style={{ left: SU.x, top: SU.y - 22 }} aria-label={oynuyor ? 'Durdur' : 'Oynat'} onClick={() => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); }} />
       <div className="surgu-ray" role="slider" tabIndex={0} aria-label="Zaman" aria-valuemin={Z.t0} aria-valuemax={Z.t1} aria-valuenow={Math.round(X)}
         aria-valuetext={`${surguEtiket}. ${gunAyUzun(Z.t0)} ile ${gunAyUzun(Y.G.hedef)} arası.`}
-        style={{ left: Z.x0 - 22, top: SURGU.y - 22, width: Z.x1 - Z.x0 + 44 }}
+        style={{ left: Z.x0 - 22, top: SU.y - 22, width: Z.x1 - Z.x0 + 44 }}
         onKeyDown={surguTus}
         onPointerDown={(e) => { setOynuyor(false); e.currentTarget.setPointerCapture(e.pointerId); surguTasi(e); }}
         onPointerMove={(e) => { if (e.buttons) surguTasi(e); }}
         onPointerUp={() => setBirakildi(X)} />
-      <button className="surgu-hap" style={{ left: Math.min(Math.max(Z.xOf(X), Z.x0 + 40), Z.x1 - 40) - 48, top: SURGU.y - 22 - 13 - 22 }} aria-label="Bugüne dön" onClick={() => { setOynuyor(false); setX(NOW); setBirakildi(NOW); }} />
+      <button className="surgu-hap" style={{ left: Math.min(Math.max(Z.xOf(X), Z.x0 + 40), Z.x1 - 40) - 48, top: SU.y - 22 - 13 - 22 }} aria-label="Bugüne dön" onClick={() => { setOynuyor(false); setX(NOW); setBirakildi(NOW); }} />
 
       {/* şeritler: etiket → kişi odağı; yatay kaydırma */}
-      <div className="serit-kaydir" style={{ left: S.X0 - 8, top: SERIT.y, width: S.XW + 8, height: SERIT.h }} aria-hidden
+      <div className="serit-kaydir" style={{ left: S.X0 - 8, top: SR.y, width: S.XW + 8, height: SR.h }} aria-hidden
         onPointerDown={(e) => { const x0 = e.clientX, k0 = kayma; const m = (ev: PointerEvent) => setKayma(Math.max(0, Math.min(2000, k0 - (ev.clientX - x0)))); const u = () => { removeEventListener('pointermove', m); removeEventListener('pointerup', u); }; addEventListener('pointermove', m); addEventListener('pointerup', u); }} />
-      <button className="serit-ok" style={{ left: SERIT.x + SERIT.w - 40, top: SERIT.y + SERIT.h / 2 - 28 }} aria-label="Sonraki günler" onClick={() => setKayma((k) => k + 120)} />
+      <button className="serit-ok" style={{ left: SR.x + SR.w - 40, top: SR.y + SR.h / 2 - 28 }} aria-label="Sonraki günler" onClick={() => setKayma((k) => k + 120)} />
       <div role="list" aria-label="Şeritler">
         {S.us.map((u: any, i: number) => {
           const n = u.ziyaret.length, k = u.ziyaret.filter((no: number) => BITTI(byNo.get(no)?.durum)).length;
-          return <button key={u.ad} role="listitem" className="serit-etiket" aria-pressed={odak === u.ad} style={{ left: SERIT.x + 4, top: S.yOf(i) - 21, width: S.lw + 4, height: 42 }}
+          return <button key={u.ad} role="listitem" className="serit-etiket" aria-pressed={odak === u.ad} style={{ left: SR.x + 4, top: S.yOf(i) - 21, width: S.lw + 4, height: 42 }}
             aria-label={`${u.ad} yolu: ${n} adım, ${k} tamam. Başlangıç ${gunAy(u.t0)}.`} onClick={() => { if (u.tip === 'dis') { setOdak(u.ad); setGonder(u.ad); } else setOdak(odak === u.ad ? null : u.ad); }} />;
         })}
       </div>
       {gonder && <><BaglantiGonder kod={kod} kisi={gonder} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
+    </>
+  );
+
+  if (GD) {
+    const U = GD.ust, a = selNo != null ? byNo.get(selNo) : null;
+    const tam = a ? { ...a, ...(secOlay.data?.adim || {}) } : null;
+    const cumleG = ham && ham.filter(Boolean).length ? (U.tekSatir ? [ham.filter(Boolean).join(' ')] : ikiSatir(ham.filter(Boolean).join(' '), Math.min(340, GD.PX - 64), `${U.cumleFs}px Caladea`)) : null;
+    const cG = soruC ? [soruC] : gecC ? [gecC] : cumleG;
+    return (
+      <GenisSahne gok={{ tohum: 101, yildiz: 280, parilti: 10 }} w={GD.W} h={GD.H} etiket={ad} sinif={gelis ? 'harita-gelis' : ''}
+        cizim={panelZemini(GD) + cizim.svg + (tam ? kartCizimi(GD.kart, tam, secOlay.data?.adim?.olaylar || null) : '')}>
+        <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (history.length > 1 ? history.back() : git('/'))} />
+        <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
+        {cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+        <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
+        {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
+        {kontroller}
+        {tam && <GenisKart K={GD.kart} d={d} a={tam} kod={kod} ben={sahip} />}
+      </GenisSahne>
+    );
+  }
+
+  return (
+    <Sahne gok={{ tohum: 33, yildiz: 280 }} cizim={cizim.svg} etiket={ad} sinif={gelis ? 'harita-gelis' : ''}>
+      <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
+      {cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+      </div>
+
+      {kontroller}
     </Sahne>
   );
 }

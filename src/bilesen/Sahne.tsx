@@ -9,11 +9,11 @@ import { Gok } from './Gok';
  */
 export interface GokAyar { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]> }
 
-export function Sahne({ gok, cizim, ortala, children, etiket, yukseklik }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string; yukseklik?: number }) {
+export function Sahne({ gok, cizim, ortala, children, etiket, yukseklik, sinif = '' }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string; yukseklik?: number; sinif?: string }) {
   return (
     <>
       <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} />
-      <main className={`sahne ${ortala ? 'sahne-ortala' : ''}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
+      <main className={`sahne ${ortala ? 'sahne-ortala' : ''} ${sinif}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
         {cizim && <svg className="sahne-cizim" aria-hidden width="390" height="844" viewBox="0 0 390 844" dangerouslySetInnerHTML={{ __html: cizim }} />}
         {children}
       </main>
@@ -65,4 +65,17 @@ export function Metin({ y, x = 20, fs, lh, serif, agirlik, renk = 'ink', hiza = 
 export function Kutu({ x = 20, y, w, h, children, className = '', style, as: Etiket = 'div', ...p }: { x?: number; y: number; w?: number; h?: number; children?: ReactNode; className?: string; style?: CSSProperties; as?: ElementType } & Record<string, unknown>) {
   const st: CSSProperties = { top: y, left: x, height: h, ...(w ? { width: w } : { right: 20 }), ...style };
   return <Etiket className={`sahne-kutu ${className}`} style={st} {...p}>{children}</Etiket>;
+}
+
+/** Geniş sahne (tablet yatay ≥ 1024, masaüstü ≥ 1280): pencere boyunda tek çizim katmanı; koordinatlar pencereye göre. */
+export function GenisSahne({ gok, cizim, w, h, children, etiket, sinif = '' }: { gok: GokAyar; cizim: string; w: number; h: number; children?: ReactNode; etiket?: string; sinif?: string }) {
+  return (
+    <>
+      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} />
+      <main className={`sahne-genis ${sinif}`} aria-label={etiket} style={{ width: w, height: h }}>
+        <svg className="sahne-genis-cizim" aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`} dangerouslySetInnerHTML={{ __html: cizim }} />
+        {children}
+      </main>
+    </>
+  );
 }

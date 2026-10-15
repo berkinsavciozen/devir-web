@@ -70,7 +70,7 @@ export function isPayi(olaylar: any[]) {
 }
 
 /** Geçişli bekleyenler */
-function tuttuklari(adimlar: any[], no: number): number[] {
+export function tuttuklari(adimlar: any[], no: number): number[] {
   const g: number[] = [], q = [no];
   while (q.length) { const x = q.shift()!; for (const b of adimlar) if ((b.bagimli || []).includes(x) && !g.includes(b.no) && !BITTI(b.durum)) { g.push(b.no); q.push(b.no); } }
   return g;

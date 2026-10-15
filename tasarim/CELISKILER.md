@@ -48,3 +48,8 @@ Spesifikasyon kazanır; burada not edilir.
 | 42 | K2c giriş adresi `‹web adresi›/giris` | Spesifikasyon §5 K2c | Adres uygulamanın kendi kökünden; Paylaş `navigator.share`, yoksa WhatsApp bağlantısı |
 | 43 | K2e "anahtarını da iptal et": sunucuda üye ile anahtar arasında bağ yok | Mevcut API | Çıkarınca aynı kişi adındaki etkin anahtarlar `/anahtar/:id/iptal` ile kapatılır |
 | 44 | K2b dış katılımcıda "Adımlardaki adı" boş bırakılırsa | Sunucu kuralı (kapsam = kişi adı) | Alan boşsa ad gönderilir; akışlardaki sahip adları öneri listesinde |
+| 45 | M1/T1 şerit sırası tasarımda Berkin, Claude, İçerik; mobil B3 ile aynı model İçerik'i ikinci sıraya koyar | Tek geometri kaynağı (§7.1) | Geniş düzende de mobildeki sıra |
+| 46 | M1/T1 seçili adım kartında yalnız "Claude’da aç"; geçmiş, çıktılar ve "Bitti" yolu yok | İşlev kaybı olmasın | Başlık ayrıntıya götürür (`?tam=1`, geniş ekranda sağ panel); kendi adımında "Bitti olarak işaretle" ya da "Kararı ver"; Claude bağlantısı yoksa "Ayrıntılar" |
+| 47 | Duyarlı kırılımda 768–1023 dikey tablet "tam genişlik mobil düzen" (R = genişlik × .4) | Kapsam | Şimdilik mobil sütun ortalanır; 1024'ten itibaren T1, 1280'den itibaren M1/M2 (harita alanı pencereyle orantılı) |
+| 48 | Z1 dört karelik bir anlatım; §7.1 900 ms | §7.1 | Halka (0–150), kamera yakınlaşması + hız çizgileri (150–600), haritada katmanlar 80 ms arayla belirir. Geri dönüş animasyonsuz |
+| 49 | Arşiv ekranı tasarımda yok (B2 "Arşiv", J1 "N kapandı" bağlantısı) | — | /akislar/arsiv: K satır kartlarıyla kapanan akışlar (en yeni önce), sonra arşivdekiler |

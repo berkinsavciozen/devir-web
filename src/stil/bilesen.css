@@ -441,3 +441,25 @@ button.satir-kart { cursor: pointer; }
 .onay-metin b { position: absolute; left: 46px; top: 8.9px; font-size: 14px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); }
 .onay-metin small { position: absolute; left: 46px; top: 29.3px; font-size: 11.5px; line-height: 15px; font-weight: 500; color: var(--renk-metin-ink3); }
 .geri-al button { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--renk-metin-altin); cursor: pointer; text-decoration: underline; }
+
+/* ---------- Geniş düzen (T1 ≥ 1024, M1/M2 ≥ 1280) ---------- */
+.sahne-genis { position: relative; overflow: hidden; }
+.sahne-genis-cizim { position: absolute; left: 0; top: 0; pointer-events: none; }
+.sahne-genis .dugme { position: absolute; }
+.genis-geri { position: absolute; width: 44px; height: 44px; border-radius: 22px; border: 0; background: none; cursor: pointer; }
+.genis-baslik { position: absolute; margin: 0; font-family: var(--font-serif); font-weight: 700; color: var(--renk-metin-ink); white-space: nowrap; }
+button.genis-baslik { border: 0; background: none; padding: 0; text-align: left; cursor: pointer; }
+.genis-bolum { position: absolute; margin: 0; font-size: 12px; line-height: 15px; font-weight: 700; letter-spacing: .6px; color: var(--renk-metin-ink3); }
+.genis-kart-eylem { position: absolute; display: flex; gap: 10px; }
+.genis-kart-eylem .dugme { position: relative; left: auto; right: auto; flex: 1; }
+/* Z1 · yakınlaşma (§7.1) */
+.yakinlas-katman { position: fixed; inset: 0; z-index: 300; pointer-events: none; }
+.harita-gelis .sahne-cizim, .harita-gelis .sahne-genis-cizim { animation: gelis-cizim 300ms var(--egri-standart) both; }
+.harita-gelis > :not(svg) { animation: gelis-ic 240ms var(--egri-standart) both; }
+.harita-gelis > :nth-child(3n+1):not(svg) { animation-delay: 80ms; }
+.harita-gelis > :nth-child(3n+2):not(svg) { animation-delay: 160ms; }
+.harita-gelis > :nth-child(3n):not(svg) { animation-delay: 240ms; }
+.harita-gelis .sahne-cizim { transform-origin: 195px 322px; }
+@keyframes gelis-cizim { from { opacity: 0; transform: scale(.86); } }
+@keyframes gelis-ic { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .harita-gelis .sahne-cizim, .harita-gelis .sahne-genis-cizim, .harita-gelis > * { animation: none; } }
