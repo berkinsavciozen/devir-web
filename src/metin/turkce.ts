@@ -90,3 +90,17 @@ export function ikiSatir(metin: string, en = 350, font = '17px Caladea'): string
   for (const { i } of aday) { const a = metin.slice(0, i), b = metin.slice(i + 1); if (genislik(a, font) <= en && genislik(b, font) <= en) return [a, b]; }
   return [metin];
 }
+
+/** Açgözlü iki satır: ilk satıra sığan en çok kelime, ikinci satırda en az 4 kelime (B1 cümleleri tasarımda böyle kırılır). */
+export function doluSatir(metin: string, en: number, font = '17.5px Caladea', enAzSon = 4): string[] {
+  const w = metin.split(' ');
+  if (genislik(metin, font) <= en) return [metin];
+  // ikinci satır en az enAzSon kelime taşır (kısa kuyruk kalmaz)
+  for (let i = Math.min(w.length - 1, Math.max(1, w.length - enAzSon)); i > 0; i--) { const a = w.slice(0, i).join(' '); if (genislik(a, font) <= en) return [a, w.slice(i).join(' ')]; }
+  return [metin];
+}
+
+/** Yazı tipleri yüklenince yeniden ölçmek için: yüklenene dek canvas yedek yazı tipini ölçer. */
+export function yaziTipleriHazir(): Promise<unknown> {
+  return typeof document !== 'undefined' && document.fonts ? Promise.all([document.fonts.load('17px Caladea'), document.fonts.load('italic 17px Caladea').catch(() => null), document.fonts.ready]) : Promise.resolve();
+}

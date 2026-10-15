@@ -32,7 +32,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     kritik: !DONE(s) && m.pl.chain.includes(s.no),
     bagimli: s.bagimli, bekleyenler: steps.filter((x: any) => x.bagimli.includes(s.no)).map((x: any) => x.no),
     bekleme_saat: saat(r.simdi), toplam_bekleme_saat: saat(r.bekleme + r.engel), aktif_saat: saat(r.aktif),
-    engel: s.engel || null, ilerleme: s.ilerleme || null, durum_at: s.durum_at,
+    engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null, ilerleme: s.ilerleme || null, durum_at: s.durum_at,
     kosul: s.kosul || null, cevap_soru: s.cevap_soru || null, capa_soru: s.capa_soru || null, tarih_sabit: !!s.tarih_sabit, capa_tarih: s.capa_tarih || null,
     kaynak: s.kaynak, tur_kod: s.tur_kod || null, cikti_sayisi: (s.ciktilar || []).length,
     tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
@@ -62,10 +62,17 @@ function akisOzeti(akis: any, steps: any[], m: any, now: number): Parca[] {
   return p;
 }
 
+/** Bu adımı geçişli olarak bekleyen açık adım sayısı (§9-5). */
+function tuttugu(steps: any[], no: number): number {
+  const g = new Set<number>(), q = [no];
+  while (q.length) { const x = q.pop()!; for (const b of steps) if (b.bagimli.includes(x) && !g.has(b.no) && !DONE(b)) { g.add(b.no); q.push(b.no); } }
+  return g.size;
+}
+
 function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx) {
   const m = metrics(akis, steps, events, now);
   const vis = steps.filter((s: any) => stepInScope(ctx, s));
-  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no) })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
+  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no), engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
   const parca = akisOzeti(akis, isDis(ctx) ? vis : steps, m, now);
   const son = events.length ? events[events.length - 1].created_at : akis.created_at;
   return {

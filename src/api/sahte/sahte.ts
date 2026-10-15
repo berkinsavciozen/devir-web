@@ -81,7 +81,11 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   // adım kısa adları (`baglam.kisa_adlar`; harita etiketleri ve cümleler)
   const KISA_ADIM: Record<string, Record<string, string>> = {
     RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
+    U422: { 15: 'Sızma testi raporu' },
   };
+  // engelin kısa adı (0.10.0: devir_adim_guncelle engel_kisa → `baglam.engel_kisa`)
+  const ENGEL_KISA: Record<string, Record<string, string>> = { RTD5: { 6: 'kapak fotoğraflarını' } };
+  for (const a of T.akis) if (ENGEL_KISA[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), engel_kisa: ENGEL_KISA[a.kisa_kod] };
   for (const a of T.akis) if (KISA_ADIM[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_adlar: KISA_ADIM[a.kisa_kod] };
   for (const a of T.akis) if (KISA[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_ad: KISA[a.kisa_kod] };
   // Hasat postu 6. adım (B8): Berkin'in eklediği iki fotoğraf + Claude'un bağlantı çıktısı

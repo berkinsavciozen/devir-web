@@ -476,6 +476,7 @@ export const TOOLS = [
         not: { type: "string", description: "Olay kaydına düşülecek açıklama; atlama için neden." },
         atlama_nedeni: { type: "string", enum: ["gerek_kalmadi", "mukerrer", "varsayim_yanlis"], description: "durum=atlandi ise: gerek_kalmadi (iş artık gerekmiyor), mukerrer (aynı iş başka adımda yapılıyor), varsayim_yanlis (adım yanlış bir varsayım yüzünden kurulmuştu; Devir bunu öğrenir)." },
         engel: { type: "string", description: "durum=engelli ise ne ya da kim bekleniyor." },
+        engel_kisa: { type: "string", description: "durum=engelli ise beklenen şeyin 1-3 kelimelik kısa adı, belirtme hâlinde (ör. 'kapak fotoğraflarını'); ana ekranın cümlesinde kullanılır." },
         cikti: {
           description: "Bu adımda üretilen iş. Nesne ver: { ad, ozet (1-3 satır, her zaman), icerik (metin çıktısının tamamı, markdown: mesaj, teklif, brif…), url ve kaynak (Confluence, Google Docs, Instagram… dış bir araçtaysa), durum (taslak|onaylandi|yayinda), paylasim (ekip|dis: dış katılımcı görebilsin mi) }. Aynı ad tekrar yazılırsa yeni sürüm olur. Liste de verebilirsin.",
           anyOf: [
@@ -1259,6 +1260,9 @@ async function adimGuncelle(a: any, ctx: Ctx) {
     if (to === "tamam" && !cikti.length && !s.ciktilar.length && !a.not && !a.ilerleme) warn.push(`Kriter "${s.kriter}" — tamamlandığına dair çıktı ya da not eklenmedi.`);
     const ozet = to === "tamam" ? `Adım ${s.no} tamamlandı${a.not ? `: ${a.not}` : ""}` : to === "suruyor" ? `Adım ${s.no} başladı${a.zorla && pending.length ? ` (bağımlılıklar bitmeden: ${a.not || "neden yazılmadı"})` : ""}` : to === "engelli" ? `Adım ${s.no} engelli: ${a.engel}` : to === "atlandi" ? `Adım ${s.no} atlandı${a.atlama_nedeni ? ` (${a.atlama_nedeni === "mukerrer" ? "mükerrer" : a.atlama_nedeni === "gerek_kalmadi" ? "gerek kalmadı" : "varsayım yanlıştı"})` : ""}: ${a.not}` : to === "ertelendi" ? `Adım ${s.no} ertelendi (açık iş): ${a.not}` : `Adım ${s.no} geri alındı`;
     await setDurum(ctx, akis, s, to, act, ozet, patch);
+    // ekran cümlesi için engelin kısa adı (şema değişmez: akis.baglam.engel_kisa[no])
+    const ek0 = akis.baglam?.engel_kisa?.[String(s.no)] || null, ek1 = to === "engelli" && a.engel_kisa ? String(a.engel_kisa).trim().slice(0, 40) : null;
+    if (ek0 !== ek1) { const ekler = { ...(akis.baglam?.engel_kisa || {}) }; if (ek1) ekler[String(s.no)] = ek1; else delete ekler[String(s.no)]; akis.baglam = { ...(akis.baglam || {}), engel_kisa: ekler }; await ctx.db.update("akis", { id: akis.id }, { baglam: akis.baglam }); }
     if (to === "tamam" && isKarar && act.kim_tip === "insan" && akis.baglam?.musteri && !akis.baglam?.ust_akis && (s.karar_kriteri || /karar/i.test(s.ad))) { // imza/ödeme/onay insanda kalır ama varlık kararı sayılmaz
       const c0: any = cikti[0];
       const metin = String((c0 && (c0.ozet || c0.ad)) || a.not || s.ad).trim();

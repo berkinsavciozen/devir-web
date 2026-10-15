@@ -7,7 +7,7 @@ import { Baslik } from './bilesen/Baslik';
 import { Gok, Gren } from './bilesen/Gok';
 import { Kutu, Metin, Sahne } from './bilesen/Sahne';
 import { SvgTanimlar } from './bilesen/Svg';
-import { BosEvren } from './ekranlar/evren/BosEvren';
+import { Evren } from './ekranlar/evren/Evren';
 import { ClaudeaBagla } from './ekranlar/evren/ClaudeaBagla';
 import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
@@ -29,14 +29,6 @@ function Sirada({ baslik }: { baslik: string }) {
 
 /** Yüklenirken gök hemen çizilir; beyaz boş ekran yok (§3.21). */
 const Yukleniyor = () => <Gok tohum={21} yildiz={330} />;
-
-function Evren({ ben }: { ben: Ben }) {
-  const ozet = useOzet();
-  if (ozet.isPending) return <Yukleniyor />;
-  const bos = ozet.data && !ozet.data.akislar?.length && !ozet.data.taslaklar?.length;
-  if (bos) return <BosEvren ad={ben.kisi || ''} />;
-  return <Sirada baslik="Evren" />;
-}
 
 function Uygulama({ yol }: { yol: string }) {
   const ben = useBen();
