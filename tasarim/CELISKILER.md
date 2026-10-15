@@ -43,3 +43,8 @@ Spesifikasyon kazanır; burada not edilir.
 | 37 | J1 etiketleri: görüntüde 4 (adı verilmiş kopyalar) | §4.14 kuralı | Etiket en çok 6: işaretli, karar bekleyen, hedefi en yakın 3. 10'dan çok aktif akışta evren bu düzene geçer |
 | 38 | J2 görüntüsünde ps .6, şerit 6 px/gün; §4.14 ps .82 | Spesifikasyon kazanır | 6'dan çok kişide ps .82, şerit satırı 27 |
 | 39 | J2 cümlesi spesifikasyonda yok; görüntü "30 adımdan 5’i tamam; 8 kişinin hepsinde sırası gelmiş iş var." | Görüntü kazanır | Bağımlılıksız akışta kritik yol cümlesi yerine bu cümle |
+| 40 | K1 "bu cihaz" satırı: web oturumu anahtarla değil e-postayla açılır, sunucunun `ben` bayrağı yalnız o anahtarla girilince doğar | Güvenlik kazanır | "bu cihaz" yalnız `ben` anahtarında; kendi adındaki öteki anahtarlar başa dizilir, İptal düğmesi kalır (sızan sahip anahtarı kapatılabilmeli) |
+| 41 | K2 davet kartı "e-posta gitmedi": `/uyeler` davet bazında gönderim durumu taşımaz | Sunucu 0.10.0 `posta` alanı | Posta kapalıysa her davette; açıksa yalnız bu cihazda gönderimi başarısız olan davette uyarı |
+| 42 | K2c giriş adresi `‹web adresi›/giris` | Spesifikasyon §5 K2c | Adres uygulamanın kendi kökünden; Paylaş `navigator.share`, yoksa WhatsApp bağlantısı |
+| 43 | K2e "anahtarını da iptal et": sunucuda üye ile anahtar arasında bağ yok | Mevcut API | Çıkarınca aynı kişi adındaki etkin anahtarlar `/anahtar/:id/iptal` ile kapatılır |
+| 44 | K2b dış katılımcıda "Adımlardaki adı" boş bırakılırsa | Sunucu kuralı (kapsam = kişi adı) | Alan boşsa ad gönderilir; akışlardaki sahip adları öneri listesinde |

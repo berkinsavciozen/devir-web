@@ -137,6 +137,14 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     T.kullanici.push({ id: 'bos-alan', ad: 'Berkin · çalışma alanı', created_at: '2026-10-14T06:55:00Z' });
     uye('sahte-berkin-yeni', 'berkin@ornek.com', 'bos-alan', 'Berkin', 'sahip', null, '2026-10-14T06:55:00Z');
   }
+  // K1–K3 · ekip hali (§10): Selin katıldı, Emre'nin daveti bekliyor; Berkin'in ikinci alanı (Kapsama testi, gerçek) ve Misafir daveti (kurgu)
+  if (o.hal === 'ekip' && senaryo === 'berkin') {
+    uye('sahte-selin', 'selin@ornek.com', BERKIN_ALAN, 'Selin', 'ekip', null, '2026-10-12T15:10:00Z');
+    T.uye[T.uye.length - 1].son_giris = '2026-10-13T16:20:00Z';
+    T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
+    uye('sahte-berkin', 'berkin@ornek.com', '0a95cfe3-5281-4332-bd01-a90156398867', 'Berkin', 'sahip', null, '2026-10-13T13:40:48Z');
+    T.davet.push({ id: crypto.randomUUID(), kullanici_id: '42bfd48c-a3af-4ca7-bc87-07acdb14f045', eposta: 'berkin@ornek.com', kisi: 'Berkin', rol: 'ekip', kapsam: null, davet_eden: 'Misafir', durum: 'bekliyor', created_at: '2026-10-13T20:00:00Z' });
+  }
   if (senaryo === 'davetli') T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
 
   // E1 · Karadeniz 3. adımın tarihi mali müşavirin dönüşüne bağlı (§10: veride capa_soru yok, kurgu)

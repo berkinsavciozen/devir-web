@@ -9,11 +9,11 @@ import { Gok } from './Gok';
  */
 export interface GokAyar { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]> }
 
-export function Sahne({ gok, cizim, ortala, children, etiket }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string }) {
+export function Sahne({ gok, cizim, ortala, children, etiket, yukseklik }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string; yukseklik?: number }) {
   return (
     <>
       <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} />
-      <main className={`sahne ${ortala ? 'sahne-ortala' : ''}`} aria-label={etiket}>
+      <main className={`sahne ${ortala ? 'sahne-ortala' : ''}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
         {cizim && <svg className="sahne-cizim" aria-hidden width="390" height="844" viewBox="0 0 390 844" dangerouslySetInnerHTML={{ __html: cizim }} />}
         {children}
       </main>

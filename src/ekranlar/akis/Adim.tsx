@@ -250,7 +250,7 @@ function DosyaSilOnay({ dosya, kapat, bitti }: { dosya: any | null; kapat: () =>
 export function Segment({ secenekler, aktif, sec }: { secenekler: string[]; aktif: number; sec: (i: number) => void }) {
   return (
     <div className="segment" role="tablist">
-      {secenekler.map((s, i) => <button key={s} role="tab" aria-selected={i === aktif} className={i === aktif ? 'secili' : ''} onClick={() => sec(i)}>{s}</button>)}
+      {secenekler.map((s, i) => <button key={s} type="button" role="tab" aria-selected={i === aktif} className={i === aktif ? 'secili' : ''} onClick={() => sec(i)}>{s}</button>)}
     </div>
   );
 }

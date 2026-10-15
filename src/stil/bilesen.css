@@ -394,3 +394,50 @@
 .taslak-liste button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; border-radius: 18px; background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); text-align: left; }
 .taslak-liste b { font-size: 15px; font-weight: 650; color: var(--renk-metin-ink); }
 .taslak-liste small { font-size: 12px; font-weight: 600; color: var(--renk-metin-ink3); }
+
+/* ---------- Hesap, ayarlar, ekip (K1–K3) ---------- */
+.bolum-baslik { position: absolute; left: 20px; margin: 0; font-size: 12px; line-height: 15px; font-weight: 700; letter-spacing: .6px; color: var(--renk-metin-ink3); }
+.satir-kart { position: absolute; display: block; padding: 0; border: 0; border-radius: var(--yaricap-satir); text-align: left; font: inherit; color: inherit; }
+button.satir-kart { cursor: pointer; }
+.satir-kart.secili { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 80%, transparent); }
+.satir-metin { position: absolute; inset: 0 70px 0 58px; }
+.satir-metin b, .satir-metin small { position: absolute; left: 0; right: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.satir-metin b { top: calc(50% - 17.3px); font-size: 14.5px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); }
+.satir-metin small { top: calc(50% + 3.6px); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--renk-metin-ink3); }
+.satir-kart > .satir-ok { position: absolute; right: 18px; top: calc(50% - 8px); }
+.satir-kart > .satir-tik { position: absolute; right: 16px; top: calc(50% - 10px); }
+.satir-not { position: absolute; right: 18px; top: calc(50% - 3.4px); font-size: 12px; line-height: 16px; font-weight: 650; color: var(--renk-metin-ink3); }
+.satir-eylem { position: absolute; right: 12px; top: calc(50% - 22px); height: 44px; border: 0; border-radius: 14px; background: none; font: inherit; font-size: 13.5px; cursor: pointer; }
+.satir-eylem.altin { width: 76px; font-weight: 700; color: var(--renk-metin-altin); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 75%, transparent); }
+.satir-eylem.mercan { width: 68px; font-weight: 650; color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 70%, transparent); }
+.satir-eylem:disabled { opacity: .5; }
+.rol-dugme { position: absolute; right: 12px; top: calc(50% - 22px); width: 96px; height: 44px; display: flex; align-items: center; padding: 0; border: 0; border-radius: 14px; font: inherit; font-size: 13.5px; font-weight: 650; color: var(--renk-metin-ink); cursor: pointer;
+  background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 85%, var(--renk-vurgu-lila)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 60%, transparent); }
+.rol-dugme > span { width: 72px; text-align: center; }
+.rol-dugme > svg { margin-left: 2px; }
+.hesap-ad { position: absolute; left: 76px; right: 20px; font-size: 17px; line-height: 18px; font-weight: 750; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hesap-eposta { position: absolute; left: 76px; right: 20px; font-size: 12.5px; line-height: 15px; font-weight: 500; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hesap-cizgi { position: absolute; left: 20px; right: 20px; height: 0; margin: 0; border: 0; border-top: 1px solid var(--renk-vurgu-cizgi-koyu); }
+.hesap-satir { position: absolute; left: 20px; right: 20px; height: 44px; display: flex; align-items: center; gap: 12px; padding: 0 0 0 8px; border: 0; border-radius: 14px; background: none; font: inherit; font-size: 15px; font-weight: 650; color: var(--renk-metin-ink); cursor: pointer; }
+.hesap-satir > .satir-ok { margin-left: auto; margin-right: 12px; }
+.hesap-satir.cikis { color: var(--renk-metin-mercan); }
+.davet-kart { position: absolute; left: 20px; width: 350px; height: 124px; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 40%, transparent); }
+.davet-kart:not(.hata) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); }
+.davet-ad { position: absolute; left: 56px; top: 15.5px; font-size: 15px; line-height: 18px; font-weight: 700; color: var(--renk-metin-ink); }
+.davet-alt { position: absolute; left: 56px; right: 18px; top: 36.6px; font-size: 12px; line-height: 16px; font-weight: 500; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.davet-kart:has(.davet-uyari) .davet-ad { right: 130px; }
+.davet-uyari { position: absolute; right: 18px; top: 27.8px; display: flex; align-items: center; gap: 6px; font-size: 11.5px; line-height: 16px; font-weight: 650; color: var(--renk-metin-mercan); }
+.davet-kart .dugme.davet-paylas { top: 66px; left: 16px; right: auto; width: 214px; }
+.davet-kart .dugme.davet-iptal { top: 66px; left: 242px; right: auto; width: 92px; }
+.bilgi-satir { position: absolute; left: 24px; right: 16px; margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; line-height: 20px; font-weight: 500; color: var(--renk-metin-ink3); }
+.bilgi-satir svg { flex: none; }
+.onay-kutu { position: absolute; left: 20px; right: 20px; height: 52px; border-radius: 16px; cursor: pointer; background: color-mix(in srgb, var(--renk-metin-ink) 3%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-koyu); }
+.onay-kutu.secili { background: color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 80%, transparent); }
+.onay-kutu input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.onay-isaret { position: absolute; left: 14px; top: 16px; width: 20px; height: 20px; border-radius: 6px; box-sizing: border-box; border: 1.6px solid var(--renk-vurgu-lila); }
+.onay-kutu.secili .onay-isaret { background: var(--renk-vurgu-altin); border-color: var(--renk-vurgu-altin); }
+.onay-kutu.secili .onay-isaret::after { content: ''; position: absolute; left: 5.4px; top: 1.6px; width: 5px; height: 10px; border: solid var(--renk-metin-koyu-uzerine); border-width: 0 2.2px 2.2px 0; transform: rotate(42deg); }
+.onay-kutu input:focus-visible + .onay-isaret { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 3px; }
+.onay-metin b { position: absolute; left: 46px; top: 8.9px; font-size: 14px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); }
+.onay-metin small { position: absolute; left: 46px; top: 29.3px; font-size: 11.5px; line-height: 15px; font-weight: 500; color: var(--renk-metin-ink3); }
+.geri-al button { border: 0; background: none; padding: 0; font: inherit; font-weight: 700; color: var(--renk-metin-altin); cursor: pointer; text-decoration: underline; }

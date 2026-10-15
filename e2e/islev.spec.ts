@@ -68,4 +68,23 @@ test.describe('işlev', () => {
     await expect(page).toHaveURL(/\/akis\/[A-Z0-9]{4}/);
     await expect(page.getByRole('main', { name: /Hasat/ })).toBeVisible();
   });
+  test('ekip: davet → paylaşım sayfası; Selin çıkarılır, anahtarı iptal edilir; alan değişir', async ({ page }) => {
+    await page.goto('/ayarlar/ekip?senaryo=berkin&hal=ekip');
+    await page.getByRole('button', { name: 'Kişi davet et' }).click();
+    await page.getByLabel('E-posta').fill('ayse@ornek.com');
+    await page.getByLabel('Adı', { exact: true }).fill('Ayşe');
+    await page.getByRole('button', { name: 'Davet et', exact: true }).click();
+    await expect(page.getByRole('dialog', { name: 'Davet kaydedildi' })).toBeVisible();
+    await page.getByRole('button', { name: 'Tamam' }).click();
+    await expect(page.getByRole('region', { name: 'Ayşe daveti' })).toContainText('e-posta gitmedi');
+    await page.getByRole('button', { name: /^Selin: rol/ }).click();
+    await page.getByRole('button', { name: 'Alandan çıkar' }).click();
+    await page.getByRole('button', { name: 'Çıkar', exact: true }).click();
+    await expect(page.getByRole('button', { name: /^Selin: rol/ })).toHaveCount(0);
+    await page.goto('/ayarlar?senaryo=berkin&hal=ekip');
+    await expect(page.getByRole('button', { name: 'Selin anahtarını iptal et' })).toHaveCount(0);
+    await page.goto('/hesap?senaryo=berkin&hal=ekip');
+    await page.getByRole('button', { name: /Kapsama testi.* alanına geç/ }).click();
+    await expect(page).toHaveURL(/\/(\?|$)/);
+  });
 });

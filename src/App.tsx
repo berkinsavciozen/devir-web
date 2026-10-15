@@ -21,6 +21,9 @@ import { Kalemler } from './ekranlar/akis/Kalemler';
 import { Cevapla } from './ekranlar/akis/Cevapla';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
+import { HesapSayfasi } from './ekranlar/hesap/Hesap';
+import { Ayarlar } from './ekranlar/hesap/Ayarlar';
+import { Ekip } from './ekranlar/hesap/Ekip';
 import { eslestir, git, useYol } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
@@ -53,6 +56,9 @@ function Uygulama({ yol }: { yol: string }) {
   if (b.kayit_gerekli) return b.bekleyen_davetler?.length ? <DavetKabul ben={b} /> : <DavetYok ben={b} yenile={() => void ben.refetch()} yenileniyor={ben.isFetching} />;
   if (yol === '/bagla') return <ClaudeaBagla ben={b} />;
   if (yol === '/' || yol === '') return <Evren ben={b} />;
+  if (yol === '/hesap') return <><Evren ben={b} /><HesapSayfasi kapat={() => git('/', { yerine: true })} /></>;
+  if (yol === '/ayarlar') return <Ayarlar />;
+  if (yol === '/ayarlar/ekip') return <Ekip />;
   const sr = eslestir('/akis/:kod/soru/:soru', yol);
   if (sr) return <Cevapla key={sr.kod + sr.soru} kod={sr.kod} soru={sr.soru} ben={b.kisi || ''} />;
   const tk = eslestir('/akis/:kod/tekrar/:no', yol);

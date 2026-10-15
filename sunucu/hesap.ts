@@ -100,7 +100,7 @@ export async function ekipYonlendir(ctx: Ctx, method: string, yol: string[], bod
   if (method === "GET" && r0 === "uyeler" && !r1) {
     const uyeler = await ctx.db.many("uye", { kullanici_id: ctx.ws.id }, "created_at");
     const davetler = await ctx.db.many("davet", { kullanici_id: ctx.ws.id, durum: "bekliyor" }, "created_at");
-    return { uyeler: uyeler.map((u: any) => ({ ...uyeV(u), ben: u.id === ctx.key.uye_id })), davetler: davetler.map((d: any) => davetV(d)) };
+    return { uyeler: uyeler.map((u: any) => ({ ...uyeV(u), ben: u.id === ctx.key.uye_id })), davetler: davetler.map((d: any) => davetV(d)), posta: !!posta };
   }
   if (method !== "POST") throw new HesapHata(404, "Böyle bir uç yok.");
   if (r0 === "davet" && !r1) {
