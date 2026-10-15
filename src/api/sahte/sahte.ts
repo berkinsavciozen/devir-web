@@ -178,6 +178,12 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     ilerlet(ms = 60_000) { saat += ms; },
     async istek(req: Request): Promise<Response> {
       if (req.method !== 'GET') saat += 1000;
+      // taslak motoru LLM ister; sahte kipte örnek veride açık duran Karadeniz taslağı döner (kredi harcanmaz)
+      if (req.method === 'POST' && new URL(req.url).pathname.endsWith('/api/v1/tasla')) {
+        await new Promise((r) => setTimeout(r, 1200));
+        const t = await handle(new Request(TABAN + '/api/v1/taslak/TEURX', { headers: req.headers }), db as any, saat, { taban: TABAN, kimlik, depo });
+        return new Response(JSON.stringify({ mesaj: 'Taslak TEURX hazır.', taslak: await t.json() }), { headers: { 'content-type': 'application/json' } });
+      }
       return handle(req, db as any, saat, { taban: TABAN, kimlik, depo });
     },
   };

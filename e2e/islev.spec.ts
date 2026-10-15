@@ -45,4 +45,27 @@ test.describe('işlev', () => {
     await page.goto('/l/gecersizbaglanti0000?senaryo=berkin');
     await expect(page.getByText('Bu bağlantı artık açılmıyor.')).toBeVisible();
   });
+  test('yeni iş: cümle → taslak → üç soru → akış kurulur', async ({ page }) => {
+    await page.goto('/yeni?senaryo=berkin');
+    await page.getByLabel('İş cümlesi').fill('Hasat için Aralık sonuna kadar Karadeniz’den 5 çiftçi daha kazandırmam lazım.');
+    await page.getByRole('button', { name: 'Taslak çıkar' }).click();
+    await expect(page).toHaveURL(/\/yeni\/TEURX/);
+    const kur = page.getByRole('button', { name: 'Akışı kur' });
+    await expect(kur).toBeDisabled();
+    const soru = page.getByRole('heading', { level: 2 });
+    await page.getByRole('button', { name: 'Hayır', exact: true }).click();
+    await expect(soru).toContainText('vergi kaydı');
+    await page.getByRole('button', { name: 'Evet', exact: true }).click();
+    await expect(soru).toContainText('lojistik');
+    await page.getByRole('button', { name: 'Hayır', exact: true }).click();
+    await expect(kur).toBeEnabled();
+    // varsayım rozeti: yanlış dersen soru olur, kur yeniden kilitlenir
+    await page.getByRole('button', { name: /Varsayım: Elinde Karadeniz/ }).click();
+    await page.getByRole('button', { name: 'Bu yanlış, sor' }).click();
+    await expect(kur).toBeDisabled();
+    await page.getByRole('button', { name: 'Var', exact: true }).click();
+    await kur.click();
+    await expect(page).toHaveURL(/\/akis\/[A-Z0-9]{4}/);
+    await expect(page.getByRole('main', { name: /Hasat/ })).toBeVisible();
+  });
 });

@@ -35,3 +35,7 @@ Spesifikasyon kazanır; burada not edilir.
 | 29 | I2 şeritte 11 px/gün; §4.11 mobilde 30 px/gün | Görüntü kazanır (hedef geçince bugün görünür kalsın) | Hedef geçmişse şerit 11 px/gün, gün etiketleri seyrek |
 | 30 | I2 "en erken 7 Kasım": örnek veride App Store adımı hazır, süre tahmini 5 gün | Hal örneği sahte veride kurgulanır | `hal=gecikme`: App Store adımı 31 Eki'de başlamış yazılır; en erken 7 Kas |
 | 31 | I3 boyutlar "0,4 MB" (B2'de 1 MB altı KB yazılır) | Görüntü kazanır | Güçlü onay listesinde boyut hep MB, bir ondalık |
+| 32 | H1 soru "Kazanacağın çiftçiler…" ve "7 varsayım": örnek taslakta ilk soru saha ziyareti, varsayım 6 metin + 2 soru | Örnek veri kazanır (okuma kuralı) | Sorular ve rozetler taslaktan; sayı veriden (Karadeniz taslağında 8) |
+| 33 | H1 metin varsayımları API'de yok (`varsayimlar` yalnız soru varsayımları) | Rozetler metni gösterir | Sunucu 0.10.0: taslakta `varsayim_metinleri` (boyut, metin), soru varsayımlarına `boyut`, `secenekler` |
+| 34 | H1'e giden cümle ekranı tasarımda yok | §5 H1 API'si `POST /tasla {cumle}` | /yeni: cümle alanı, "Taslak çıkar", yarım kalan taslaklar; beklerken koza nabız atar. Sahte kipte taslak motoru çağrılmaz, örnek taslak döner |
+| 35 | Varsayım "yanlış" (§5 H1) metin varsayımında soruya dönüşemez | Yalnız soru varsayımları soruya eklenir | Metin varsayımı alt sayfada yalnız okunur |

@@ -111,6 +111,13 @@ export function doluSatir(metin: string, en: number, font = '17.5px Caladea', en
   return [metin];
 }
 
+/** Açgözlü çok satır: her satıra sığan en çok kelime. */
+export function sarSatir(metin: string, en: number, font = '17px Caladea'): string[] {
+  const L: string[] = [];
+  for (const w of metin.split(' ')) { const s = L.length ? `${L[L.length - 1]} ${w}` : w; if (L.length && genislik(s, font) <= en) L[L.length - 1] = s; else L.push(w); }
+  return L;
+}
+
 /** Yazı tipleri yüklenince yeniden ölçmek için: yüklenene dek canvas yedek yazı tipini ölçer. */
 export function yaziTipleriHazir(): Promise<unknown> {
   return typeof document !== 'undefined' && document.fonts ? Promise.all([document.fonts.load('17px Caladea'), document.fonts.load('italic 17px Caladea').catch(() => null), document.fonts.ready]) : Promise.resolve();

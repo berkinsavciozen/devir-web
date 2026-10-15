@@ -266,7 +266,9 @@ async function taslakV(ctx: Ctx, kod: string) {
     hedef_tarih: tt.hedef_tarih || null, is_turu: t.is_turu_ad || t.is_turu || null, olusturuldu: t.created_at,
     sorular: (t.sorular?.secilen || []).map((q: any) => ({ kod: q.kod, soru: q.soru, neden: q.neden || null, gerekce: q.gerekce || null, tip: q.tip, secenekler: q.secenekler || null, varsayilan: q.varsayilan ?? null })),
     sonra_sorulacak: (t.sorular?.sonra || []).map((q: any) => ({ kod: q.kod, soru: q.soru, tip: q.tip })),
-    varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null })),
+    varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null, boyut: q.boyut || null, tip: q.tip || null, secenekler: q.secenekler || null })),
+    // 0.10.0: taslağın metin varsayımları (H1 yörünge rozetleri)
+    varsayim_metinleri: (Array.isArray(t.varsayimlar) ? t.varsayimlar : tt.varsayimlar || []).map((v: any) => ({ boyut: v.boyut || null, metin: v.metin })),
     adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null })),
     roller: tt.roller || [], hatirlananlar: tt._hatira?.satirlar || [],
   };

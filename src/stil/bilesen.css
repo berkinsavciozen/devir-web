@@ -373,3 +373,24 @@
 .ders-liste li p { margin: 0 0 6px; font: 16px/21px var(--font-serif); color: var(--renk-metin-ink2); }
 .ders-liste li small { font-size: 12px; font-weight: 600; color: var(--renk-metin-ink3); }
 .ders-bos { margin: 0; font: 16px/21px var(--font-serif); color: var(--renk-metin-ink3); }
+
+/* ---------- H · Yeni iş, taslak soruları ---------- */
+.taslak-cumle { font-style: italic; white-space: nowrap; }
+.koza-nabiz { transform-origin: 195px 318px; animation: koza 1.6s var(--egri-standart) infinite alternate; }
+@keyframes koza { from { opacity: .55; transform: scale(.96); } to { opacity: 1; transform: scale(1.02); } }
+@media (prefers-reduced-motion: reduce) { .koza-nabiz { animation: none; } }
+.varsayim-rozet { position: absolute; width: 44px; height: 44px; border-radius: 22px; background: none; }
+.varsayim-rozet:focus-visible { box-shadow: 0 0 0 2px var(--renk-vurgu-altin); }
+.varsayim-cevap { font-family: var(--font-sans); font-size: 15px; font-weight: 700; color: var(--renk-metin-altin); white-space: nowrap; }
+.taslak-noktalar { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 0; height: 22px; }
+.taslak-noktalar button { width: 22px; height: 22px; display: grid; place-items: center; background: none; }
+.taslak-noktalar i { width: 8px; height: 8px; border-radius: 50%; background: var(--renk-vurgu-cizgi-koyu); box-shadow: inset 0 0 0 1px #9C8BE0; }
+.taslak-noktalar .dolu i { background: var(--renk-vurgu-cizgi-lila); }
+.taslak-noktalar .secili i { width: 12px; height: 12px; background: var(--renk-vurgu-altin); box-shadow: none; }
+.taslak-secenek.secili { background: color-mix(in srgb, var(--renk-vurgu-altin) 16%, transparent); }
+.taslak-girdi { position: absolute; left: 36px; right: 36px; width: auto; height: 50px; color-scheme: dark; }
+.taslak-alan { min-height: 120px; padding-top: 14px; resize: none; font: 18px/24px var(--font-serif); font-style: italic; }
+.taslak-liste { position: absolute; left: 20px; right: 20px; margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.taslak-liste button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px 16px; border-radius: 18px; background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); text-align: left; }
+.taslak-liste b { font-size: 15px; font-weight: 650; color: var(--renk-metin-ink); }
+.taslak-liste small { font-size: 12px; font-weight: 600; color: var(--renk-metin-ink3); }

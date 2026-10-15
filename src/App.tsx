@@ -20,6 +20,7 @@ import { Karar } from './ekranlar/akis/Karar';
 import { Kalemler } from './ekranlar/akis/Kalemler';
 import { Cevapla } from './ekranlar/akis/Cevapla';
 import { Baglanti } from './ekranlar/dis/Baglanti';
+import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { eslestir, git, useYol } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
@@ -63,7 +64,9 @@ function Uygulama({ yol }: { yol: string }) {
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;
-  if (yol === '/yeni') return <Sirada baslik="Yeni iş" />;
+  if (yol === '/yeni') return <YeniIs />;
+  const ty = eslestir('/yeni/:kod', yol);
+  if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;
   return <Sirada baslik="Devir" />;
 }
 
