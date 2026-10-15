@@ -69,7 +69,7 @@ const depo = {
   async sil(yollar: string[]) { for (const y of yollar) sahteDepo.delete(y); },
 };
 
-export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: string; acikKayit?: boolean } = {}) {
+export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: string; acikKayit?: boolean; hal?: string | null } = {}) {
   let saat = SAHTE_SIMDI;
   const db = sahteDb(() => saat);
   const T = db.T;
@@ -82,6 +82,8 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   const KISA_ADIM: Record<string, Record<string, string>> = {
     RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
     U422: { 15: 'Sızma testi raporu' },
+    XPVZ: { 9: 'Çiftçi kabul kararı' },
+    GKX8: { 7: 'Çiftçi kabul kararı' },
   };
   // engelin kısa adı (0.10.0: devir_adim_guncelle engel_kisa → `baglam.engel_kisa`)
   const ENGEL_KISA: Record<string, Record<string, string>> = { RTD5: { 6: 'kapak fotoğraflarını' } };
@@ -99,6 +101,23 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
       T.cikti.push({ id: 9002 + i, ws_id: BERKIN_ALAN, akis_id: rtd.id, adim_no: 6, ad, ozet: 'Kapak fotoğrafı', url: 'dosya:' + id, kaynak: 'Devir dosya', surum: 1, durum: 'taslak', paylasim: 'ekip', kim: 'Berkin', arac: null, created_at: '2026-10-14T06:12:00Z' });
     });
   }
+  // geçerli kararların kısa adları (C2 takımyıldızı; `karar.kisa` sütunu yok, §9 notu)
+  const KARAR_KISA: [RegExp, string][] = [[/komisyon/i, 'Komisyon %12'], [/fatura/i, 'Faturalı satış'], [/organik/i, 'Organik ibaresi yok'], [/hayvansal/i, 'Hayvansal yok']];
+  for (const k of T.karar) { const m = KARAR_KISA.find(([r]) => r.test(k.karar)); if (m) k.kisa = m[1]; }
+  // Karadeniz 9. adımın karar kriteri (tasarımdaki kısa hali)
+  const xpvz = T.akis.find((x) => x.kisa_kod === 'XPVZ'), gkx8 = T.akis.find((x) => x.kisa_kod === 'GKX8');
+  const x9 = xpvz && T.adim.find((x) => x.akis_id === xpvz.id && x.no === 9);
+  if (x9) x9.karar_kriteri = '5 çiftçi, en az 3’ü fatura kesebilir';
+  // Ege 7. adım (C2): yapılandırılmış karar (§9-6) — Claude önerdi, Berkin hepsini kabul etti
+  const g7 = gkx8 && T.adim.find((x) => x.akis_id === gkx8.id && x.no === 7);
+  if (gkx8 && g7) {
+    const ege = [['Ödemiş Kooperatifi', 'İzmir/Ödemiş · patates'], ['Tire Bahçe', 'İzmir/Tire · sebze'], ['Bergama Zeytin', 'İzmir/Bergama · zeytinyağı'], ['Kemalpaşa Kiraz', 'İzmir/Kemalpaşa · kiraz'], ['Torbalı Sebze', 'İzmir/Torbalı · sebze']];
+    gkx8.baglam = { ...(gkx8.baglam || {}), kararlar: { 7: {
+      tur: 'çiftçi', secenekler: ege.map(([ad, alt]) => ({ ad, alt, etiket: 'faturalı', uyari: false })),
+      oneri: { kim: 'Claude', secim: ege.map(([ad]) => ad), ozet: '5’ini de kabul et', gerekce: 'Beşi de faturalı', at: g7.durum_at },
+      secim: { secim: ege.map(([ad]) => ad), kim: 'Berkin', at: g7.durum_at },
+    } } };
+  }
   // Berkin'in anahtarı (dökümde token_hash yok)
   const berkinAnahtar = T.anahtar.find((k) => k.kullanici_id === BERKIN_ALAN && k.kisi === 'Berkin')!;
   berkinAnahtar.token_hash = await sha256(BERKIN_ANAHTAR);
@@ -113,6 +132,10 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   }
   if (senaryo === 'davetli') T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
 
+  // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
+  if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
+  if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
+
   const kimlik = async (jwt: string) => {
     const m = /^sahte:([^:]+):(.+)$/.exec(jwt);
     return m ? { id: m[1], email: m[2] } : null;
@@ -126,4 +149,36 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
       return handle(req, db as any, saat, { taban: TABAN, kimlik, depo });
     },
   };
+}
+
+const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
+type Yaz = (an: string, yol: string, govde: unknown) => Promise<void>;
+const AJAN = { kim: 'Hazırlık agent\'ı', kim_tip: 'agent', arac: 'Claude' };
+
+/** C1 · 7 Kas: Karadeniz'de çiftçi kabul kararının sırası geldi; Claude 5 çiftçi önerdi. */
+async function halKarar(yaz: Yaz) {
+  const a = (no: number) => `/api/v1/akis/XPVZ/adim/${no}`;
+  await yaz('2026-10-15T11:00:00+03:00', a(1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme' } });
+  await yaz('2026-10-16T15:00:00+03:00', a(16), { durum: 'tamam', not: 'Kargo: Rize ve Trabzon toplama noktası' });
+  await yaz('2026-10-17T10:00:00+03:00', a(4), { durum: 'suruyor' });
+  await yaz('2026-10-21T17:00:00+03:00', a(4), { durum: 'tamam', not: '4 kooperatif yönetimiyle görüşüldü' });
+  await yaz('2026-10-22T10:00:00+03:00', a(3), { durum: 'tamam', kim: 'Mali müşavir', not: 'Belge modeli netleşti' });
+  await yaz('2026-10-23T10:00:00+03:00', a(5), { durum: 'suruyor' });
+  await yaz('2026-10-29T18:00:00+03:00', a(5), { durum: 'tamam', not: '6 adayla görüşüldü' });
+  await yaz('2026-11-03T12:00:00+03:00', a(7), { durum: 'tamam', kim: 'Çiftçi', not: 'Belgeler geldi; Çayeli vergi kaydı bekleniyor' });
+  await yaz('2026-11-05T16:00:00+03:00', a(8), { durum: 'tamam', ...AJAN, not: 'Özçay organik sertifikası geçerli' });
+  await yaz('2026-11-06T18:30:00+03:00', a(9), {
+    kim: 'Claude', kim_tip: 'agent', arac: 'Claude',
+    karar: {
+      tur: 'çiftçi',
+      secenekler: [
+        { ad: 'Özçay Kooperatifi', alt: 'Trabzon/Of · organik çay', etiket: 'faturalı' },
+        { ad: 'Hopa Çay', alt: 'Artvin/Hopa · çay', etiket: 'faturalı' },
+        { ad: 'Hemşin Koop', alt: 'Rize/Hemşin · çay', etiket: 'faturalı' },
+        { ad: 'Çayeli Kadın Girişimi', alt: 'Rize/Çayeli · teyit bekliyor', etiket: 'faturasız?', uyari: true },
+        { ad: 'Ortakbahçe Koop', alt: 'Ordu · fındık', etiket: 'faturalı' },
+      ],
+      oneri: { secim: ['Özçay Kooperatifi', 'Hopa Çay', 'Hemşin Koop', 'Çayeli Kadın Girişimi', 'Ortakbahçe Koop'], ozet: '5’ini de kabul et', gerekce: '4’ü faturalı; Çayeli’nin vergi kaydı teyit bekliyor' },
+    },
+  });
 }

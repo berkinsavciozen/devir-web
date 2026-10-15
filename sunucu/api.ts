@@ -32,6 +32,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     kritik: !DONE(s) && m.pl.chain.includes(s.no),
     bagimli: s.bagimli, bekleyenler: steps.filter((x: any) => x.bagimli.includes(s.no)).map((x: any) => x.no),
     bekleme_saat: saat(r.simdi), toplam_bekleme_saat: saat(r.bekleme + r.engel), aktif_saat: saat(r.aktif),
+    karar: akis.baglam?.kararlar?.[String(s.no)] || null,
     engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null, ilerleme: s.ilerleme || null, durum_at: s.durum_at,
     kosul: s.kosul || null, cevap_soru: s.cevap_soru || null, capa_soru: s.capa_soru || null, tarih_sabit: !!s.tarih_sabit, capa_tarih: s.capa_tarih || null,
     kaynak: s.kaynak, tur_kod: s.tur_kod || null, cikti_sayisi: (s.ciktilar || []).length,
@@ -204,7 +205,7 @@ async function tekrarV(ctx: Ctx, akis: any, steps: any[]) {
   return out;
 }
 
-const kararV = (k: any) => ({ id: k.id, varlik: k.varlik, karar: k.karar, kapsam: k.kapsam || null, istisna: k.istisna || null, kim: k.kim || null, konu: k.konu || null, tarih: k.created_at, durum: k.durum });
+const kararV = (k: any) => ({ id: k.id, varlik: k.varlik, karar: k.karar, kisa: k.kisa || null, kapsam: k.kapsam || null, istisna: k.istisna || null, kim: k.kim || null, konu: k.konu || null, tarih: k.created_at, durum: k.durum });
 const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac || null, tip: e.veri?.tur || e.tip, adim_no: e.adim_no, ozet: e.ozet, ...(e.veri?.to ? { durum: e.veri.to } : {}) });
 const katilimciV = (k: any, base: string | null) => ({ id: k.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k) : {}) });
 function linkV(base: string, k: any) {

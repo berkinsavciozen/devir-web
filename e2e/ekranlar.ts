@@ -51,6 +51,8 @@ export const EKRANLAR: EkranTanim[] = [
       await p.getByText('%6', { exact: false }).waitFor();
     },
   },
+  { ad: 'C1-karar-bekleyen', yol: '/akis/XPVZ/adim/9?senaryo=berkin&hal=karar', hazirla: async (p) => { await p.getByText('Kararı ver').waitFor(); await p.waitForTimeout(500); } },
+  { ad: 'C2-karar-verildi', yol: '/akis/GKX8/adim/7?senaryo=berkin', hazirla: async (p) => { await p.getByText('Verildi', { exact: false }).waitFor(); await p.waitForTimeout(500); } },
   {
     ad: 'B9-dosya-sil', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',
     hazirla: async (p) => { await p.waitForTimeout(300); await p.getByRole('button', { name: 'Sil: tarif-kapak-2.jpg' }).click(); await p.getByText('Bu dosya silinsin mi?').first().waitFor(); await p.waitForTimeout(400); },

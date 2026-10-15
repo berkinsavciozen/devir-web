@@ -57,7 +57,7 @@ export function Evren({ ben }: { ben: Ben }) {
     const U = usturlap({
       simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0,
       akislar: [
-        ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam })),
+        ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: !!detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor')), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam })),
         ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
       ],
       kucuk: (kod, x, y, r, pr) => kucukGalaksi(detay[kod], kisi, x, y, r, pr, NOW),

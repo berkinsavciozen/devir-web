@@ -112,7 +112,7 @@ const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl'
 /** pill genişliği (ortak.js pill ile aynı kural) */
 export const hapEni = (t: string, fs = 11) => Math.round(t.length * fs * .56 + 14);
 
-export interface UAkis { kod: string; ad: string; hedef: number; kapandi?: number | null; isaret?: 'engel' | 'bekleme'; bitti?: boolean }
+export interface UAkis { kod: string; ad: string; hedef: number; kapandi?: number | null; isaret?: 'engel' | 'bekleme'; bitti?: boolean; karar?: boolean }
 export interface UYer { kod: string; x: number; y: number; rr: number; a: number; etiket: { x: number; y: number; w: number } }
 
 /**
@@ -186,6 +186,7 @@ export function usturlap(o: {
     const [tx, ty] = pol(q.a, R - 12), tam = !!F.bitti;
     s += `<line x1="${f(q.x)}" y1="${f(q.y)}" x2="${f(tx)}" y2="${f(ty)}" stroke="${tam ? '#FFD27A' : '#8E80D6'}" stroke-width=".8" stroke-dasharray="1.5 3" opacity=".7"/><circle cx="${f(tx)}" cy="${f(ty)}" r="3.2" fill="${tam ? '#FFE29A' : '#B9A6F2'}"/>`;
     s += o.kucuk(F.kod, q.x, q.y, q.rr, 3);
+    if (F.karar) s += bayrak(q.x + q.rr * .9, q.y - q.rr * .9, .8);
   }
   // kapananlar: dış halka, kapanış açısında; bugün hapına çarpmasın
   const RO = R + 26;
@@ -208,3 +209,8 @@ export function usturlap(o: {
   s += `<circle cx="${cx}" cy="${cy}" r="9" fill="url(#brass)"/><circle cx="${cx}" cy="${cy}" r="3.4" fill="#2A1D4F"/>`;
   return { svg: s, yer, taslak: o.taslak ? { x: dx + 8, y: dy + 32 } : null, hap: { x: hx + 4, y: hy - 4 }, ang, pol };
 }
+
+/** Karar bekleyen bayrak rozeti (son-ortak.js bayrak). */
+export const bayrak = (x: number, y: number, sc = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${sc})"><circle r="11" fill="#150E33" stroke="#FFD27A" stroke-width="1.4"/><rect x="-3.6" y="-6.5" width="1.4" height="13" fill="#FFF1E0"/><path d="M-2.2,-6.5 L6,-3.6 L-2.2,-.8Z" fill="#FFD27A"/></g>`;
+/** Fatura işareti (son-ortak.js makbuz): dolu = var, boş ve çizik = yok/teyitsiz. */
+export const makbuz = (x: number, y: number, var_ = true) => `<g transform="translate(${x},${y})"><path d="M-6,-8 L6,-8 L6,8 L3,6 L0,8 L-3,6 L-6,8Z" fill="${var_ ? '#FFD27A' : 'none'}" stroke="${var_ ? '#FFD27A' : '#9C8BE0'}" stroke-width="1.3"/>${var_ ? '<path d="M-3,-3 L3,-3 M-3,1 L2,1" stroke="#2A1D4F" stroke-width="1.3"/>' : '<path d="M-6,-8 L6,8" stroke="#9C8BE0" stroke-width="1.3"/>'}</g>`;

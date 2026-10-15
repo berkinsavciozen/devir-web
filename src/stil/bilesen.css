@@ -288,3 +288,23 @@
 .liste-alt { position: absolute; background: none; border: 0; border-radius: 22px; padding: 0; cursor: pointer; }
 .liste-alt span { position: absolute; font: 650 14px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; }
 .liste-alt.arsiv span { font-weight: 600; color: var(--renk-metin-ink3); }
+
+/* C1, C2 · karar */
+.karar-panel { position: relative; width: 390px; max-width: 100%; margin: 0 auto; }
+.karar-panel .sahne-metin { position: absolute; }
+.karar-cizim { position: absolute; left: 0; top: 0; pointer-events: none; }
+.tek-satir { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karar-secenekler { border: 0; margin: 0; padding: 0; min-width: 0; }
+.karar-satir { position: absolute; left: 20px; width: 350px; height: 52px; border-radius: 16px; cursor: pointer; }
+.karar-satir input { position: absolute; left: 12px; top: 14px; width: 24px; height: 24px; margin: 0; opacity: 0; cursor: pointer; }
+.karar-satir:has(input:focus-visible) { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.karar-satir b { position: absolute; left: 46px; top: 7px; right: 96px; font: 650 14px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karar-satir small { position: absolute; left: 46px; top: 27px; right: 96px; font: 500 11.5px/15px var(--font-sans); color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.karar-satir em { position: absolute; right: 40px; top: 17px; font: normal 600 11px/14px var(--font-sans); color: var(--renk-metin-altin); white-space: nowrap; }
+.karar-satir em.uyari { color: var(--renk-metin-ink3); }
+.karar-secenekler:disabled .karar-satir { cursor: default; }
+.karar-metin { position: absolute; left: 20px; right: 20px; }
+.karar-metin textarea { width: 100%; box-sizing: border-box; border-radius: 16px; border: 1px solid var(--renk-vurgu-cizgi-lila); background: rgba(255, 255, 255, .05); color: var(--renk-metin-ink); font: 500 15px/21px var(--font-sans); padding: 12px 14px; resize: none; }
+.karar-yildizlar { list-style: none; margin: 0; padding: 0; }
+.karar-yildizlar li { position: absolute; width: 140px; text-align: center; font: 600 11px/14px var(--font-sans); color: var(--renk-metin-ink2); white-space: nowrap; }
+.karar-panel .dugme { position: absolute; left: 20px; right: 20px; width: auto; }

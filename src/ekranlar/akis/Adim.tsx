@@ -15,6 +15,7 @@ import { akisModeli, gunAy, gunAyHafta, saat, uyeRenkleri, yolCiz, kisaAd } from
 import { adimAdi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { haritaCumlesi, useAkis } from './Galaksi';
+import { Karar } from './Karar';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const ajanMi = (ad: string, tip?: string) => tip === 'agent' || /agent|Claude/i.test(ad);
@@ -112,6 +113,8 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
     bak(); kap.addEventListener('scroll', bak, { passive: true });
     return () => kap.removeEventListener('scroll', bak);
   }, [a, sekme]);
+  // karar adımı: verildiyse ya da seçenekleri yazıldıysa karar ekranı (C1, C2)
+  if (a?.karar_adimi && (a.durum === 'tamam' || (a.karar?.secenekler?.length && !BITTI(a.durum)))) return <Karar kod={kod} no={no} ben={ben} />;
   const y = sekme === 'gecmis' || yuksek ? 150 : 330;
   return (
     <>

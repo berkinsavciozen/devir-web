@@ -5,7 +5,7 @@
  * - 401 → oturum bir kez yenilenir, yine 401 ise `devir:giris-gerekli` olayı yayımlanır.
  */
 import { kimlik } from './kimlik';
-import { API_TABAN, SAHTE } from './ortam';
+import { API_TABAN, SAHTE, hal } from './ortam';
 
 export class ApiHatasi extends Error {
   constructor(public durum: number, public hata: string) { super(hata); }
@@ -24,7 +24,7 @@ function tasimaAl(): Promise<Tasima> {
   if (tasima) return tasima;
   if (SAHTE) {
     tasima = import('./sahte/sahte').then(async (m) => {
-      const s = await m.sahteSunucu(senaryo() as any, { acikKayit: new URLSearchParams(location.search).get('kayit') !== 'kapali' });
+      const s = await m.sahteSunucu(senaryo() as any, { acikKayit: new URLSearchParams(location.search).get('kayit') !== 'kapali', hal: hal() });
       (window as any).__devirSahte = s;
       return (req: Request) => s.istek(req);
     });

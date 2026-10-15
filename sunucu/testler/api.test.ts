@@ -88,6 +88,16 @@ async function mcp(name: string, args: any) {
   ok(x.st === 200 && x.j.tekrar[0].kalemler.length === 2, "tekrar uçu: 2 kalem");
   x = await api("GET", "/api/v1/akislar");
   ok(x.j.akislar.length === 1 && x.j.akislar[0].tekrar[0].kalem_sayisi === 2, "alt akışlar listede üst akışın altında");
+  // karar seçenekleri ve öneri (§9-6), engel_kisa (§9-14)
+  let m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar: { secenekler: [{ ad: "%10", etiket: "önerilen" }, { ad: "%12" }], oneri: { secim: ["%10"], ozet: "%10 öner" } }, kim_tip: "agent", arac: "Claude" });
+  x = await api("GET", `/api/v1/akis/${kod}/adim/3`);
+  ok(x.j.adim.karar?.secenekler?.length === 2 && x.j.adim.karar.oneri.kim === "Claude" && x.j.adim.karar.oneri.secim[0] === "%10", "karar seçenekleri ve öneri adımda");
+  x = await api("POST", `/api/v1/akis/${kod}/adim/3`, { karar_secimi: ["%12"] });
+  ok(x.st === 200, "karar seçimi yazıldı");
+  x = await api("GET", `/api/v1/akis/${kod}/adim/3`);
+  ok(x.j.adim.karar.secim?.secim[0] === "%12" && x.j.adim.karar.secim.kim === "Berkin", "karar seçimi adımda");
+  m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar_secimi: ["%10"], kim_tip: "agent" });
+  ok(/yalnızca insan/.test(m), "agent karar seçemez");
   x = await api("GET", "/api/v1/yok");
   ok(x.st === 404, "bilinmeyen uç 404");
   x = await api("GET", "/api/v1/ozet", undefined, "dv_yanlis");
