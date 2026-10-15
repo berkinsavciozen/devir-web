@@ -82,7 +82,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   const KISA_ADIM: Record<string, Record<string, string>> = {
     RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
     U422: { 15: 'Sızma testi raporu' },
-    XPVZ: { 5: 'Görüşme', 7: 'Belgeler', 9: 'Çiftçi kabul kararı', 11: 'Ürünler', 12: 'Profil' },
+    XPVZ: { 3: 'Belge modeli', 6: 'Yetki belgesi', 17: 'Vergi levhası', 5: 'Görüşme', 7: 'Belgeler', 9: 'Çiftçi kabul kararı', 11: 'Ürünler', 12: 'Profil' },
     GKX8: { 7: 'Çiftçi kabul kararı' },
   };
   // engelin kısa adı (0.10.0: devir_adim_guncelle engel_kisa → `baglam.engel_kisa`)
@@ -131,6 +131,25 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     uye('sahte-berkin-yeni', 'berkin@ornek.com', 'bos-alan', 'Berkin', 'sahip', null, '2026-10-14T06:55:00Z');
   }
   if (senaryo === 'davetli') T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
+
+  // E1 · Karadeniz 3. adımın tarihi mali müşavirin dönüşüne bağlı (§10: veride capa_soru yok, kurgu)
+  if (o.hal === 'tarih' && xpvz) {
+    const x3 = T.adim.find((x) => x.akis_id === xpvz.id && x.no === 3);
+    if (x3) Object.assign(x3, { capa_soru: 'mali_donus', son_tarih: null, tarih_sabit: false });
+    xpvz.baglam = { ...(xpvz.baglam || {}), bekleyen: { ...(xpvz.baglam?.bekleyen || {}), mali_donus: { soru: 'Mali müşavir hangi gün dönüş yapacak?', kisa: 'mali müşavir dönüş günü verince', tip: 'tarih', adim_no: null, kaynak: 'sonra' } } };
+  }
+  // E2, E3 · faturayı kim kesecek: 6. adım (kooperatif keserse) ile yeni 17. adım (her çiftçi keserse) koşullu dal
+  if (o.hal === 'dal' && xpvz) {
+    const x6 = T.adim.find((x) => x.akis_id === xpvz.id && x.no === 6);
+    if (x6) {
+      x6.kosul = { soru: 'fatura', deger: 'kooperatif' };
+      T.adim.push({ ...x6, id: crypto.randomUUID(), no: 17, ad: 'Çiftçilerden vergi levhası iste', sahip: 'Çiftçi', kosul: { soru: 'fatura', deger: 'ciftci' }, kaynak: 'plan' });
+      xpvz.baglam = { ...(xpvz.baglam || {}), bekleyen: { ...(xpvz.baglam?.bekleyen || {}), fatura: {
+        soru: 'Kooperatif üyesi çiftçiler için faturayı kim kesecek?', kisa: 'Faturayı kimin keseceği', tip: 'secim', adim_no: null, kaynak: 'sonra',
+        secenekler: [{ deger: 'kooperatif', etiket: 'Kooperatif adına toplu fatura', kisa: 'Kooperatif keserse', sonuc: 'Yetki belgesi adımı kalır' }, { deger: 'ciftci', etiket: 'Her çiftçi kendi adına', kisa: 'Her çiftçi keserse', sonuc: 'Çiftçilerden vergi levhası istenir' }],
+      } } };
+    }
+  }
 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });

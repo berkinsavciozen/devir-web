@@ -6,9 +6,10 @@ import { Baslik } from '../../bilesen/Baslik';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
-import { adimAdi, adimEtiketi, akisAdi, ek, gunAyUzun, ikiSatir, paySure } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
+import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -97,7 +98,7 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   };
   const [birakildi, setBirakildi] = useState(an0);
   const d = q.data;
-  const M = useMemo(() => (d ? akisModeli(d, { sahip }) : null), [d, sahip]);
+  const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
 
   // ilk çizim: geometri (etiket konumları için gezegen yerleri)
   const temel = useMemo(() => (M ? yolCiz(M, { ...HARITA, now: NOW, x: NOW }) : null), [M, NOW]);
@@ -107,14 +108,17 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     const acik = (no: number) => !['lit', 'tahmin', 'ghost'].includes(temel.G.durumAn(no, X) || '');
     // tekrar grubu sürüyorsa: uydular ve aşama etiketi (D1)
     const A = tekrarAsamasi(d), sats = uydular(d);
-    const labels = X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
-    const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = temel.G.uyeler.length > 4 ? 38 : 42;
+    const soruVar = !odak && Math.abs(X - NOW) < 36e5 && !!soruCumlesi(d);
+    const labels = soruVar ? [] : X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
+    const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = uzun || temel.G.uyeler.length > 4 ? 38 : 42;
     const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
     const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
     const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun, focus: odak || undefined, kayma });
+    // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
+    const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...HARITA, now: NOW }) : { svg: '', hedefler: [] };
     let ust = '';
     if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
-    return { svg: Y.svg + Z.svg + S.svg + ust, Y, Z, S };
+    return { svg: Y.svg + SK.svg + Z.svg + S.svg + ust, Y, Z, S, SK };
   }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo]);
 
   // oynat: 1 gün / sn (§4.10); sona gelince durur
@@ -136,10 +140,11 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   if (q.isPending) return <HaritaYukleniyor />;
   if (q.isError || !d || !cizim || !M) return <HaritaHata hata={(q.error as Error)?.message} yeniden={() => void q.refetch()} />;
 
-  const { Y, Z, S } = cizim;
+  const { Y, Z, S, SK } = cizim;
   const ad = akisAdi(d.akis);
-  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : haritaCumlesi(d)) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
-  const cumle = ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
+  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (soruCumlesi(d) ? [soruCumlesi(d)!] : tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : haritaCumlesi(d)) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
+  const soruC = !odak && Math.abs(birakildi - NOW) < 36e5 ? soruCumlesi(d) : null;
+  const cumle = soruC ? doluSatir(soruC, 330, '17px Caladea', 5) : ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
   const surguEtiket = Math.abs(X - NOW) < 36e5 ? `Bugün, ${gunAyUzun(X)}` : `${gunAyHafta(X)}${X > NOW ? ', tahmin' : ''}`;
 
   // sürgü: sürükle / dokun; hapa dokunmak bugüne döner
@@ -177,6 +182,7 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
             onPointerDown={() => basiliBasla(g.no)} onPointerUp={basiliBirak} onPointerLeave={() => clearTimeout(bas.current.zm)}
             onContextMenu={(e) => { e.preventDefault(); setTarihNo(g.no); bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000); }} />;
         })}
+        {SK.hedefler.map((h, i) => <button key={'soru' + i} role="listitem" className="gezegen-hedef" style={{ left: h.x - h.r, top: h.y - h.r, width: h.r * 2, height: h.r * 2 }} aria-label={h.etiket} onClick={() => git(`/akis/${encodeURIComponent(kod)}/soru/${encodeURIComponent(h.soru)}`)} />)}
       </div>
 
       {/* zaman sürgüsü */}

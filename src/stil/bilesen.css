@@ -324,3 +324,7 @@
 .kalem-satir small { position: absolute; left: 116px; top: 38px; font: 600 12px/16px var(--font-sans); color: var(--renk-metin-ink3); white-space: nowrap; }
 .kalem-satir.engelli small { color: var(--renk-metin-mercan); }
 .kalem-ok { position: absolute; right: 14px; top: 24px; }
+/* E3 · cevapla */
+.soru-secenek { position: absolute; left: 20px; width: 350px; height: 66px; }
+.soru-tarih { position: absolute; left: 20px; right: 20px; display: block; }
+.soru-tarih .alan { height: 54px; color-scheme: dark; }

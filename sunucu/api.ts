@@ -169,7 +169,7 @@ async function akisV(ctx: Ctx, kod: string) {
     kritik_yol: dis ? [] : m.pl.chain,
     adimlar: vis.map((s: any) => adimV(akis, s, m, steps, { dis })),
     sahipler: [...sahipler.values()],
-    acik_sorular: dis ? [] : Object.entries<any>(akis.baglam?.bekleyen || {}).map(([k, b]) => ({ kod: k, soru: b.soru, tip: b.tip, secenekler: b.secenekler || null, adim_no: b.adim_no || null })),
+    acik_sorular: dis ? [] : Object.entries<any>(akis.baglam?.bekleyen || {}).map(([k, b]) => ({ kod: k, soru: b.soru, kisa: b.kisa || null, tip: b.tip, secenekler: b.secenekler || null, adim_no: b.adim_no || null })),
     gizli_adim_sayisi: steps.length - vis.length,
   };
   if (!dis) {
