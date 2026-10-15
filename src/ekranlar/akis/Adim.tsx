@@ -58,7 +58,7 @@ export function adimCumlesi(a: any, ben: string): string {
 }
 
 /** Kişi bazında yazan olay sayısı (§3.4): durum, guncelleme, not, adim_eklendi; aktör agent ise araç. */
-function isPayi(olaylar: any[]) {
+export function isPayi(olaylar: any[]) {
   const p = new Map<string, number>();
   for (const e of olaylar || []) {
     if (!['durum', 'guncelleme', 'not', 'adim_eklendi'].includes(e.tip) || e.kim_tip === 'sistem') continue;

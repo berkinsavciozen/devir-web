@@ -278,3 +278,13 @@
 .onay-cumle { margin: 14px 0 16px; font: 400 16.5px/21px var(--font-serif); color: var(--renk-metin-ink2); }
 
 .alt-sayfa-kok.guclu .alt-sayfa-perde { opacity: .6; }
+
+/* B2 · akış listesi */
+.akis-liste { list-style: none; margin: 0; padding: 0; }
+.akis-satir { position: absolute; inset: 0; width: 100%; background: none; border: 0; border-radius: 20px; padding: 0; cursor: pointer; text-align: left; }
+.akis-satir:focus-visible, .liste-alt:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.akis-satir-ad { position: absolute; left: 94px; font: 700 15px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; }
+.akis-satir-kalem { position: absolute; left: 248px; font: 650 12px/16px var(--font-sans); color: var(--renk-metin-ink2); white-space: nowrap; }
+.liste-alt { position: absolute; background: none; border: 0; border-radius: 22px; padding: 0; cursor: pointer; }
+.liste-alt span { position: absolute; font: 650 14px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; }
+.liste-alt.arsiv span { font-weight: 600; color: var(--renk-metin-ink3); }

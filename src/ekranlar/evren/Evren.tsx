@@ -52,7 +52,8 @@ export function Evren({ ben }: { ben: Ben }) {
     const isaret: Record<string, 'engel' | 'bekleme'> = {};
     for (const c of cumleler) if (c.kod && (c.tur === 'engel' || c.tur === 'bekleme') && !isaret[c.kod]) isaret[c.kod] = c.tur;
     const tum = [...kartlar, ...kapanan];
-    const tamam = tum.reduce((a, k) => a + (k.ilerleme?.tamam || 0), 0), toplam = tum.reduce((a, k) => a + (k.ilerleme?.toplam || 0), 0);
+    const say = (k: any) => detay[k.kod]?.adimlar ? [detay[k.kod].adimlar.filter((a: any) => ['tamam', 'atlandi', 'ertelendi'].includes(a.durum)).length, detay[k.kod].adimlar.length] : [k.ilerleme?.tamam || 0, k.ilerleme?.toplam || 0];
+    const tamam = tum.reduce((a, k) => a + say(k)[0], 0), toplam = tum.reduce((a, k) => a + say(k)[1], 0);
     const U = usturlap({
       simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0,
       akislar: [

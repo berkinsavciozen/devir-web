@@ -8,6 +8,7 @@ import { Gok, Gren } from './bilesen/Gok';
 import { Kutu, Metin, Sahne } from './bilesen/Sahne';
 import { SvgTanimlar } from './bilesen/Svg';
 import { Evren } from './ekranlar/evren/Evren';
+import { Akislar } from './ekranlar/evren/Akislar';
 import { ClaudeaBagla } from './ekranlar/evren/ClaudeaBagla';
 import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
@@ -51,7 +52,7 @@ function Uygulama({ yol }: { yol: string }) {
   if (ad) return <Adim key={ad.kod + ad.no} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
-  if (yol === '/akislar') return <Sirada baslik="Akışlar" />;
+  if (yol === '/akislar') return <Akislar ben={b} />;
   if (yol === '/yeni') return <Sirada baslik="Yeni iş" />;
   return <Sirada baslik="Devir" />;
 }
