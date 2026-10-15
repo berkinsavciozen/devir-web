@@ -39,6 +39,20 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'B3-galaksi', yol: '/akis/RTD5?senaryo=berkin' },
   { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.getByText('tutuyor').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'B5-adim-gecmis', yol: '/akis/RTD5/adim/6?senaryo=berkin&sekme=gecmis', hazirla: async (p) => { await p.getByText('GEÇMİŞ').waitFor(); await p.waitForTimeout(400); } },
+  {
+    ad: 'B8-adim-dosya', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',
+    once: async (p) => { await p.clock.install(); },
+    hazirla: async (p) => {
+      await p.getByText('tarif-kapak-2.jpg').waitFor();
+      await p.locator('input[type=file]').setInputFiles({ name: 'tarif-kapak-3.jpg', mimeType: 'image/jpeg', buffer: Buffer.alloc(2_500_000) });
+      await p.clock.runFor(1_350);
+      await p.getByText('%6', { exact: false }).waitFor();
+    },
+  },
+  {
+    ad: 'B9-dosya-sil', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',
+    hazirla: async (p) => { await p.waitForTimeout(300); await p.getByRole('button', { name: 'Sil: tarif-kapak-2.jpg' }).click(); await p.getByText('Bu dosya silinsin mi?').first().waitFor(); await p.waitForTimeout(400); },
+  },
   { ad: 'B6-filtre', yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Berkin yolu/ }).click(); } },
   {
     ad: 'B7-tarih-basili-tut', yol: '/akis/RTD5?senaryo=berkin',

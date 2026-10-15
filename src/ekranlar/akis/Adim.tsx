@@ -1,4 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { boyutYaz, dosyaDenetle, dosyaIndir, dosyaSil, dosyaYukle, KABUL_UZANTI, turOf } from '../../api/dosya';
+import { BaglantiIkon, CarpiIkon, CopIkon, DisAcIkon, DosyaSatiri, IndirIkon, YukleIkon } from '../../bilesen/DosyaSatiri';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
@@ -98,17 +100,146 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
   const [sekme, setSekme] = useState<'durum' | 'gecmis'>(() => (new URLSearchParams(location.search).get('sekme') === 'gecmis' ? 'gecmis' : 'durum'));
   const kapat = () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true });
   const d = akis.data, a = q.data?.adim;
+  // ?bolum=ciktilar → sayfa yüksek açılır, çıktılar görünür (B8; bildirimden gelinen yer)
+  const ciktilaraGit = useMemo(() => new URLSearchParams(location.search).get('bolum') === 'ciktilar', []);
+  const [yuksek, setYuksek] = useState(ciktilaraGit);
+  const durumBasligi = useRef<HTMLDivElement>(null);
+  const [kucukBaslik, setKucukBaslik] = useState(ciktilaraGit);
+  // durum bloğunun başlığı yukarı kayınca küçük başlık satırı yapışkan alana gelir
+  useEffect(() => {
+    const el = durumBasligi.current, kap = el?.closest('.alt-sayfa-icerik') as HTMLElement | null; if (!el || !kap) return;
+    const bak = () => setKucukBaslik(kap.scrollTop > 200);
+    bak(); kap.addEventListener('scroll', bak, { passive: true });
+    return () => kap.removeEventListener('scroll', bak);
+  }, [a, sekme]);
+  const y = sekme === 'gecmis' || yuksek ? 150 : 330;
   return (
     <>
-      <AdimArka d={d} no={no} sheetY={SEKME_Y[sekme]} sahip={ben} />
-      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Adım'} yukseklik={SEKME_Y[sekme]} duraklar={['orta', 'yuksek']} perdesiz>
+      <AdimArka d={d} no={no} sheetY={y} sahip={ben} />
+      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Adım'} yukseklik={y} duraklar={['orta', 'yuksek']} perdesiz>
         <div className="adim-panel">
-          <Segment secenekler={['Durum', 'Geçmiş']} aktif={sekme === 'durum' ? 0 : 1} sec={(i) => setSekme(i ? 'gecmis' : 'durum')} />
+          <div className="adim-yapiskan">
+            <Segment secenekler={['Durum', 'Geçmiş']} aktif={sekme === 'durum' ? 0 : 1} sec={(i) => setSekme(i ? 'gecmis' : 'durum')} />
+            {a && (sekme === 'gecmis' || kucukBaslik) && <KucukBaslik a={a} />}
+          </div>
           {!a || !d ? <div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div>
-            : sekme === 'durum' ? <AdimDurum a={a} d={d} ben={ben} kod={kod} /> : <AdimGecmis a={a} d={d} ben={ben} />}
+            : sekme === 'durum' ? <>
+              <div ref={durumBasligi}><AdimDurum a={a} d={d} ben={ben} kod={kod} /></div>
+              <Ciktilar a={a} kod={kod} acilista={ciktilaraGit} yuksel={() => setYuksek(true)} />
+            </> : <AdimGecmis a={a} d={d} ben={ben} />}
         </div>
       </AltSayfa>
     </>
+  );
+}
+
+/** Başlık satırı: küçük gezegen + ad + "Claude · engelli · son 28 Eki" (B5, B8). */
+function KucukBaslik({ a }: { a: any }) {
+  const durumGor = BITTI(a.durum) ? 'lit' : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark';
+  return (
+    <div className="gecmis-baslik">
+      <svg aria-hidden width="40" height="40" viewBox="-20 -20 40 40" dangerouslySetInnerHTML={{ __html: planet(0, 0, 13, durumGor, { cloudGap: 3, life: false }) }} />
+      <div><h2>{adimAdi(a)}</h2><small>{kisaAd(a.sahip)} · {a.durum_etiket || a.durum}{a.son_tarih ? ` · son ${gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00'))}` : ''}</small></div>
+    </div>
+  );
+}
+
+interface YerelYukleme { anahtar: string; ad: string; tur: string; boyut: number; yuzde: number; hata?: string; iptal?: () => void }
+
+/** ÇIKTILAR (§5 B8): kayıtlı dosyalar (İndir, Sil), yüklenenler (%, İptal), bağlantılar (Aç), "Dosya ekle". */
+function Ciktilar({ a, kod, acilista, yuksel }: { a: any; kod: string; acilista: boolean; yuksel: () => void }) {
+  const dosyalar = useQuery({ queryKey: ['dosyalar', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/dosyalar`) });
+  const [yerel, setYerel] = useState<YerelYukleme[]>([]);
+  const [silinecek, setSilinecek] = useState<any | null>(null);
+  const [hata, setHata] = useState<string | null>(null);
+  const girdi = useRef<HTMLInputElement>(null);
+  const kok = useRef<HTMLElement>(null);
+  const byId = new Map<string, any>((dosyalar.data?.dosyalar || []).map((x: any) => [x.id, x]));
+  useEffect(() => {
+    if (!acilista || !kok.current) return;
+    const k = kok.current, kap = k.closest('.alt-sayfa-icerik') as HTMLElement | null;
+    const t = setTimeout(() => { if (!kap) return; k.style.minHeight = `${kap.clientHeight - 131}px`; kap.scrollTop = k.offsetTop - 131; }, 50);
+    return () => clearTimeout(t);
+  }, [acilista, dosyalar.isSuccess]);
+  const tazele = () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['adim', kod, a.no] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['dosyalar', kod] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['akis', kod] }); };
+  const guncelle = (k: string, p: Partial<YerelYukleme>) => setYerel((L) => L.map((x) => (x.anahtar === k ? { ...x, ...p } : x)));
+  const sec = (fs: FileList | null) => {
+    if (!fs) return;
+    yuksel();
+    for (const f of Array.from(fs)) {
+      const anahtar = `${f.name}-${f.size}-${Math.random()}`;
+      const h = dosyaDenetle(f);
+      setYerel((L) => [...L, { anahtar, ad: f.name, tur: turOf(f), boyut: f.size, yuzde: 0, hata: h || undefined }]);
+      if (h) continue;
+      sira.ekle(() => {
+        const y = dosyaYukle({
+          yol: `/akis/${encodeURIComponent(kod)}/adim/${a.no}/dosya`, dosya: f, ilerle: (p) => guncelle(anahtar, { yuzde: p }),
+          teslim: (id) => api.post(`/akis/${encodeURIComponent(kod)}/adim/${a.no}`, { cikti: { dosya: id, ozet: f.name } }),
+        });
+        guncelle(anahtar, { iptal: y.iptal });
+        return y.bitti.then(() => { setYerel((L) => L.filter((x) => x.anahtar !== anahtar)); tazele(); })
+          .catch((e: Error) => { if (e.message === 'iptal') setYerel((L) => L.filter((x) => x.anahtar !== anahtar)); else guncelle(anahtar, { hata: e.message }); });
+      });
+    }
+  };
+  const saatOf = (t: string) => saat(Date.parse(t));
+  const claude = a.linkler?.claude;
+  // dosyalar önce (yeniden eskiye), sonra bağlantı ve metin çıktıları
+  const ciktilar = ((a.ciktilar || []) as any[]).slice().sort((x, y) => Number(!!y.dosya_id) - Number(!!x.dosya_id) || Date.parse(y.tarih) - Date.parse(x.tarih));
+  return (
+    <section ref={kok} className="ciktilar" aria-label="Çıktılar">
+      <h3 className="bolum">ÇIKTILAR</h3>
+      <ul className="dosya-listesi">
+        {[...ciktilar.filter((c) => c.dosya_id), null, ...ciktilar.filter((c) => !c.dosya_id)].map((c) => {
+          if (c === null) return yerel.map((y) => y.hata
+            ? <DosyaSatiri key={y.anahtar} ad={y.ad} tur={y.tur} hal="hata" alt={y.hata} eylemler={[{ ad: `Kaldır: ${y.ad}`, ikon: <CarpiIkon />, tikla: () => setYerel((L) => L.filter((x) => x.anahtar !== y.anahtar)) }]} />
+            : <DosyaSatiri key={y.anahtar} ad={y.ad} tur={y.tur} hal="yukleniyor" yuzde={y.yuzde} alt={`%${Math.round(y.yuzde * 100)} · ${boyutYaz(y.boyut * y.yuzde).replace(' MB', '')} / ${boyutYaz(y.boyut)}`} eylemler={[{ ad: `İptal: ${y.ad}`, ikon: <CarpiIkon />, tikla: () => y.iptal?.() }]} />);
+          const d = c.dosya_id ? byId.get(c.dosya_id) : null;
+          if (c.dosya_id) return (
+            <DosyaSatiri key={c.id} ad={c.ad} tur={d?.tur} alt={[d?.tur_ad || 'dosya', d ? boyutYaz(d.boyut) : null, c.kim, saatOf(c.tarih)].filter(Boolean).join(' · ')}
+              eylemler={[{ ad: `İndir: ${c.ad}`, ikon: <IndirIkon />, tikla: () => void dosyaIndir(c.dosya_id).catch((e) => setHata(e.message)) }, { ad: `Sil: ${c.ad}`, ikon: <CopIkon />, ton: 'mercan', tikla: () => setSilinecek({ ...c, d }) }]} />
+          );
+          if (/silindi/.test(c.kaynak || '')) return <DosyaSatiri key={c.id} ad={c.ad} hal="silindi" alt={`Dosya silindi · ${gunAy(Date.parse(c.tarih))}`} />;
+          if (c.url) return (
+            <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} alt={['bağlantı', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
+              eylemler={[{ ad: `Aç: ${c.ad}`, ikon: <DisAcIkon />, tikla: () => window.open(c.url, '_blank', 'noopener') }]} />
+          );
+          return <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} alt={['metin', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')} />;
+        })}
+      </ul>
+      {hata && <p className="canli-hata-satir" role="alert">{hata}</p>}
+      <p className="bilgi-satiri"><svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16"><circle r="7" fill="none" stroke="currentColor" strokeWidth="1.4" /><rect x="-.8" y="-1" width="1.6" height="4.6" fill="currentColor" /><circle cy="-3.4" r=".9" fill="currentColor" /></svg>En çok 20 MB: PDF, görsel, Office, CSV, metin.</p>
+      <input ref={girdi} type="file" multiple accept={KABUL_UZANTI} hidden onChange={(e) => { sec(e.target.files); e.target.value = ''; }} aria-label="Dosya seç" />
+      <Dugme className="statik" ikon={<YukleIkon />} ikonX={130} kayma={12} onClick={() => girdi.current?.click()}>Dosya ekle</Dugme>
+      {claude && <Dugme className="statik" tur="ikincil" ton="lila" yukseklik={48} fs={15} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
+      <DosyaSilOnay dosya={silinecek} kapat={() => setSilinecek(null)} bitti={() => { setSilinecek(null); tazele(); }} />
+    </section>
+  );
+}
+
+/** En çok 3 eşzamanlı yükleme. */
+const sira = (() => {
+  let calisan = 0; const bekleyen: Array<() => Promise<unknown>> = [];
+  const dene = () => { while (calisan < 3 && bekleyen.length) { const is = bekleyen.shift()!; calisan++; void is().finally(() => { calisan--; dene(); }); } };
+  return { ekle: (is: () => Promise<unknown>) => { bekleyen.push(is); dene(); } };
+})();
+
+/** B9 · güçlü onay: tek dosya silme. */
+function DosyaSilOnay({ dosya, kapat, bitti }: { dosya: any | null; kapat: () => void; bitti: () => void }) {
+  const sil = useMutation({ mutationFn: () => dosyaSil(dosya.dosya_id), onSuccess: bitti });
+  return (
+    <AltSayfa acik={!!dosya} kapat={kapat} guclu baslik="Bu dosya silinsin mi?" yukseklik={482}>
+      {dosya && (
+        <div className="onay-sayfa" role="alertdialog" aria-labelledby="dosya-sil-baslik">
+          <h2 id="dosya-sil-baslik">Bu dosya silinsin mi?</h2>
+          <ul className="dosya-listesi"><DosyaSatiri ad={dosya.ad} tur={dosya.d?.tur} alt={[dosya.d?.tur_ad || 'dosya', dosya.d ? boyutYaz(dosya.d.boyut) : null, dosya.kim].filter(Boolean).join(' · ')} /></ul>
+          <p className="onay-cumle">Dosya kalıcı olarak silinir; çıktı kaydı kalır.</p>
+          {sil.isError && <p className="canli-hata-satir" role="alert">{(sil.error as Error).message}</p>}
+          <Dugme className="statik" tur="tehlike" ikon={<CopIkon />} kayma={10} mesgul={sil.isPending} onClick={() => sil.mutate()}>Sil</Dugme>
+          <Dugme className="statik" tur="ikincil" ton="lila" yukseklik={48} fs={15} autoFocus onClick={() => history.back()}>Vazgeç</Dugme>
+        </div>
+      )}
+    </AltSayfa>
   );
 }
 
@@ -238,7 +369,6 @@ const IKON = {
 
 function AdimGecmis({ a, d, ben }: { a: any; d: any; ben: string }) {
   const by = new Map<number, any>(d.adimlar.map((x: any) => [x.no, x]));
-  const durumGor = BITTI(a.durum) ? 'lit' : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark';
   const ist = a.durum === 'engelli' && a.engel ? istekBul(a.engel, ben) : null;
   const sonraki = (a.bekleyen_adimlar || []).map((b: any) => by.get(b.no)).filter(Boolean)[0];
   const sirada: ReactNode[] = [];
@@ -255,10 +385,6 @@ function AdimGecmis({ a, d, ben }: { a: any; d: any; ben: string }) {
   const sistemHazir = (e: any) => { const h = (a.bekledigi || []).filter((b: any) => b.durum === 'tamam').map((b: any) => adimAdi(by.get(b.no) || b)); return h.length ? `Sırası geldi; ${h.map((x: string, i: number) => (i || true) && /^[A-ZÇĞİÖŞÜ][^A-ZÇĞİÖŞÜ]*$/.test(x.split(' ')[0]) ? x[0].toLocaleLowerCase('tr') + x.slice(1) : x).join(', ').replace(/, ([^,]+)$/, ' ve $1')} hazır` : olayBasligi(e); };
   return (
     <div className="adim-gecmis">
-      <div className="gecmis-baslik">
-        <svg aria-hidden width="40" height="40" viewBox="-20 -20 40 40" dangerouslySetInnerHTML={{ __html: planet(0, 0, 13, durumGor, { cloudGap: 3, life: false }) }} />
-        <div><h2>{adimAdi(a)}</h2><small>{kisaAd(a.sahip)} · {a.durum_etiket || a.durum}{a.son_tarih ? ` · son ${gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00'))}` : ''}</small></div>
-      </div>
       {sirada.length > 0 && <><h3 className="bolum">SIRADA</h3><ol className="gecmis-liste gelecek">{sirada}</ol></>}
       <h3 className="bolum">GEÇMİŞ</h3>
       <ol className="gecmis-liste">

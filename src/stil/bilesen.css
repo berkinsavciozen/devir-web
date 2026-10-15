@@ -246,3 +246,35 @@
 .cikti-hapi { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 5px 12px 5px 10px; border-radius: 14px; font-style: normal; font-size: 12px; font-weight: 600; color: var(--renk-metin-ink); background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 70%, var(--renk-vurgu-lila) 10%); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 60%, transparent); }
 .cikti-hapi svg { color: var(--renk-dosya-turu-diger); flex: none; }
 .gecmis-not { font-size: 12px; color: var(--renk-metin-ink3); }
+
+/* ---------- Çıktılar ve dosya satırı (B8, B9, F2) ---------- */
+.adim-yapiskan { position: sticky; top: 0; z-index: 2; background: var(--renk-zemin-sayfa-ust); padding-bottom: 2px; }
+.adim-yapiskan .gecmis-baslik { margin: 14px 0 0 24px; }
+.ciktilar { padding: 0 20px 40px; }
+.ciktilar .bolum, .adim-gecmis .bolum { margin: 22px 0 10px; font-size: 12px; font-weight: 700; letter-spacing: .6px; color: var(--renk-metin-ink3); }
+.dosya-listesi { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dosya-satiri { position: relative; display: flex; align-items: center; gap: 12px; height: 62px; padding: 0 8px 0 16px; border-radius: 18px; background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); }
+.dosya-satiri.hal-hazir { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 55%, transparent); }
+.dosya-satiri.hal-hata { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 70%, transparent); }
+.dosya-satiri-glif { flex: none; width: 28px; display: grid; place-items: center; }
+.dosya-satiri-glif svg { overflow: visible; }
+.dosya-satiri-metin { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.dosya-satiri-metin b { font-size: 14px; line-height: 17px; font-weight: 650; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dosya-satiri-metin small { font-size: 12px; line-height: 15px; font-weight: 500; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: flex; align-items: center; gap: 4px; }
+.hal-yukleniyor .dosya-satiri-metin small { font-size: 11px; font-weight: 600; }
+.hal-hata .dosya-satiri-metin small { color: var(--renk-metin-mercan); font-weight: 600; white-space: normal; }
+.hal-silindi .dosya-satiri-metin b { color: var(--renk-metin-ink3); }
+.ilerleme { display: block; height: 6px; border-radius: 3px; background: var(--renk-zemin-alan); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-cizgi-lila) 40%, transparent); overflow: hidden; }
+.ilerleme i { display: block; height: 100%; border-radius: 3px; background: var(--degrade-pirinc); transition: width var(--sure-anlik) linear; }
+.dosya-satiri-eylem { flex: none; display: flex; gap: 6px; }
+.eylem-dugme { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 85%, var(--renk-vurgu-lila)); color: var(--renk-dosya-turu-diger); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 50%, transparent); }
+.eylem-dugme.ton-mercan { color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 50%, transparent); }
+.bilgi-satiri { display: flex; align-items: center; gap: 7px; margin: 18px 0 14px 5px; font-size: 12px; font-weight: 500; color: var(--renk-metin-ink3); }
+.bilgi-satiri svg { color: var(--renk-vurgu-lila); flex: none; }
+.dugme.statik { position: relative; left: auto; right: auto; width: 100%; margin-bottom: 12px; }
+.canli-hata-satir { margin: 8px 0 0; font-size: 12.5px; color: var(--renk-metin-mercan); }
+.onay-sayfa { padding: 6px 20px 24px; }
+.onay-sayfa h2 { margin: 0 0 14px; font: 700 23px/28px var(--font-serif); color: var(--renk-metin-ink); }
+.onay-cumle { margin: 14px 0 16px; font: 400 16.5px/21px var(--font-serif); color: var(--renk-metin-ink2); }
+
+.alt-sayfa-kok.guclu .alt-sayfa-perde { opacity: .6; }

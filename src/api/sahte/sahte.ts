@@ -60,6 +60,15 @@ export function sahteDb(saat: () => number) {
   };
 }
 
+/** Sahte dosya deposu (Supabase Storage yerine): yol → boyut, tür. Yükleme istemcide taklit edilir (src/api/dosya.ts). */
+export const sahteDepo = new Map<string, { boyut: number; tur: string }>();
+const depo = {
+  async yuklemeAdresi(yol: string) { return { url: 'sahte-depo:' + yol, token: 'sahte' }; },
+  async indirmeAdresi(yol: string) { return 'data:text/plain;charset=utf-8,' + encodeURIComponent('Sahte dosya: ' + yol); },
+  async bilgi(yol: string) { return sahteDepo.get(yol) || null; },
+  async sil(yollar: string[]) { for (const y of yollar) sahteDepo.delete(y); },
+};
+
 export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: string; acikKayit?: boolean } = {}) {
   let saat = SAHTE_SIMDI;
   const db = sahteDb(() => saat);
@@ -75,6 +84,17 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   };
   for (const a of T.akis) if (KISA_ADIM[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_adlar: KISA_ADIM[a.kisa_kod] };
   for (const a of T.akis) if (KISA[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_ad: KISA[a.kisa_kod] };
+  // Hasat postu 6. adım (B8): Berkin'in eklediği iki fotoğraf + Claude'un bağlantı çıktısı
+  const rtd = T.akis.find((x) => x.kisa_kod === 'RTD5');
+  if (rtd) {
+    T.cikti.push({ id: 9001, ws_id: BERKIN_ALAN, akis_id: rtd.id, adim_no: 6, ad: 'Carousel taslağı', ozet: '6 slaytlık carousel; 3 fotoğraf yeri boş.', url: 'https://claude.ai/artifact/D4h558LfBgr9pyBK3aM8y9', kaynak: 'Design canvas', surum: 1, durum: 'taslak', paylasim: 'ekip', kim: 'Berkin', arac: 'Claude', created_at: '2026-10-12T17:50:47Z' });
+    [['tarif-kapak-1.jpg', 2_400_000], ['tarif-kapak-2.jpg', 2_300_000]].forEach(([ad, boyut], i) => {
+      const id = `0000000${i + 1}-6a6a-4b4b-8c8c-d0d0d0d0d0d0`, yol = `${BERKIN_ALAN}/${rtd.id}/6/${id}/${ad}`;
+      sahteDepo.set(yol, { boyut: boyut as number, tur: 'image/jpeg' });
+      T.dosya.push({ id, ws_id: BERKIN_ALAN, akis_id: rtd.id, adim_no: 6, yol, ad, tur: 'image/jpeg', boyut, kim: 'Berkin', kim_tip: 'insan', durum: 'yuklendi', created_at: '2026-10-14T06:12:00Z' });
+      T.cikti.push({ id: 9002 + i, ws_id: BERKIN_ALAN, akis_id: rtd.id, adim_no: 6, ad, ozet: 'Kapak fotoğrafı', url: 'dosya:' + id, kaynak: 'Devir dosya', surum: 1, durum: 'taslak', paylasim: 'ekip', kim: 'Berkin', arac: null, created_at: '2026-10-14T06:12:00Z' });
+    });
+  }
   // Berkin'in anahtarı (dökümde token_hash yok)
   const berkinAnahtar = T.anahtar.find((k) => k.kullanici_id === BERKIN_ALAN && k.kisi === 'Berkin')!;
   berkinAnahtar.token_hash = await sha256(BERKIN_ANAHTAR);
@@ -99,7 +119,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     ilerlet(ms = 60_000) { saat += ms; },
     async istek(req: Request): Promise<Response> {
       if (req.method !== 'GET') saat += 1000;
-      return handle(req, db as any, saat, { taban: TABAN, kimlik });
+      return handle(req, db as any, saat, { taban: TABAN, kimlik, depo });
     },
   };
 }

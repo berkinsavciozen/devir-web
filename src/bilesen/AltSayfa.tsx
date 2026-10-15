@@ -96,7 +96,7 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
 
   if (!acik) return null;
   return createPortal(
-    <div className="alt-sayfa-kok">
+    <div className={`alt-sayfa-kok ${guclu ? 'guclu' : ''}`}>
       <div className={`alt-sayfa-perde ${perdesiz ? 'saydam' : ''}`} onClick={guclu ? undefined : kapanis} aria-hidden />
       <div
         ref={kutu}
