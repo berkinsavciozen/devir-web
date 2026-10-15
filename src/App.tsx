@@ -19,6 +19,7 @@ import { Adim } from './ekranlar/akis/Adim';
 import { Karar } from './ekranlar/akis/Karar';
 import { Kalemler } from './ekranlar/akis/Kalemler';
 import { Cevapla } from './ekranlar/akis/Cevapla';
+import { Baglanti } from './ekranlar/dis/Baglanti';
 import { eslestir, git, useYol } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
@@ -71,6 +72,7 @@ export function App() {
   let ekran;
   if (yol === '/_iskelet') ekran = <><Gok tohum={21} yildiz={330} /><Iskelet /></>;
   else if (yol === '/giris') ekran = <GirisDonus />;
+  else if (eslestir('/l/:token', yol)) ekran = <Baglanti token={eslestir('/l/:token', yol)!.token} />;
   else ekran = <Uygulama yol={yol} />;
   return (
     <QueryClientProvider client={sorguIstemcisi}>

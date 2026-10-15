@@ -58,6 +58,8 @@ async function mcp(name: string, args: any) {
   let l = await api("GET", `/l/${link}`, undefined, "");
   ok(l.st === 200 && l.j.adimlar.length === 1 && l.j.adimlar[0].eylemler.includes("basladim"), "bağlantı: yalnızca kendi adımı ve eylemler");
   console.log("  bağlantı özeti:", l.j.ozet);
+  { const h = l.j.harita, kendi = l.j.adimlar[0]; const yaban = h.adimlar.filter((x: any) => x.no !== kendi.no);
+    ok(h && h.adimlar.length > 1 && yaban.every((x: any) => /^yol-\d+$/.test(x.sahip) && !("ad" in x)) && h.adimlar.find((x: any) => x.no === kendi.no).sahip === kendi.sahip, "bağlantı: sisli harita adsız, kendi yolu adıyla"); }
   l = await api("POST", `/l/${link}`, { no: 4, eylem: "basladim" }, "");
   ok(l.st === 403 || l.st === 400, `bağlantı: başkasının adımı reddedildi (${l.st})`);
   l = await api("POST", `/l/${link}`, { no: 2, eylem: "tamam", metin: "Belge modeli uygun", cikti: { ad: "Belge modeli", url: "https://drive/x", ozet: "3 belge" } }, "");

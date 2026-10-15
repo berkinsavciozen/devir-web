@@ -29,6 +29,9 @@ export function ek(ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i'): string {
 /** Özel ad + ek, kesme işaretiyle: "Berkin’de", "Emre’nin". */
 export const ozelEk = (ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i') => ad + '’' + ek(ad, tur).slice(ad.length).replace(/^’/, '');
 
+/** Tarih + ek, kesme işaretiyle; ek son kelimeye göre: "12 Eki’de", "9 Kasım’a", "12 Ekim’den". */
+export const tarihEk = (t: string, tur: 'den' | 'de' | 'e' | 'in') => { const w = t.trim().split(' ').pop() || t; return t.trim() + '’' + ek(w, tur).slice(w.length).replace(/^’/, ''); };
+
 /** Akışın ekran adı: kisa_ad; yoksa başlığın ilk 18 karakteri, kelime sınırında (§ ad tutarsızlığı). */
 export function akisAdi(akis: { kisa_ad?: string | null; baslik?: string | null }): string {
   if (akis.kisa_ad) return akis.kisa_ad;

@@ -191,7 +191,7 @@ export function yolCiz(M, o = {}) {
   };
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
   for (const no of vis) if (!inCl.has(no)) L[sahipGrubu(no)] += pl(no);
-  for (const c of cl) { const g = G.gezegen[c[0]]; L[byNo[c[0]].sahip] += clusterBadge(g.x, g.y, c, radOf, (n) => [stOf(n) === 'tahmin' ? 'lit' : stOf(n), ex(n)], ps * .9); }
+  for (const c of cl) { const g = G.gezegen[c[0]]; L[o.focus && c.some((n) => G.gezegen[n].uyeler.includes(o.focus)) ? o.focus : byNo[c[0]].sahip] += clusterBadge(g.x, g.y, c, radOf, (n) => [stOf(n) === 'tahmin' ? 'lit' : stOf(n), ex(n)], ps * .9); }
   if (o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
     if (u.hayalet || (o.sis && o.focus !== u.ad)) continue;
     const acik = u.ziyaret.some((no) => !BIT(byNo[no].durum)) || X < u.tSon;

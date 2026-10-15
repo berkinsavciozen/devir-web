@@ -28,4 +28,21 @@ test.describe('işlev', () => {
     await page.getByRole('button', { name: 'Cevapla' }).click();
     await expect(page.getByText('belli olur', { exact: false })).toHaveCount(0);
   });
+  test('dış katılımcı: başladım, bağlantıyla teslim, teşekkür', async ({ page }) => {
+    await page.goto('/l/k7Q2emreTestBank00wP9?senaryo=berkin');
+    await page.getByRole('button', { name: 'Başladım' }).click();
+    await expect(page.getByRole('button', { name: 'Başladım' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Tamam' }).click();
+    await page.getByRole('tab', { name: 'Bağlantı' }).click();
+    await page.locator('input[type=url]').fill('drive.google.com/x');
+    await expect(page.getByText('http ya da https', { exact: false })).toBeVisible();
+    await page.locator('input[type=url]').fill('https://drive.google.com/x');
+    await page.getByRole('button', { name: /Teslim et ve bitir/ }).click();
+    await expect(page.getByText('Teşekkürler Emre.')).toBeVisible();
+    await expect(page.getByText('Berkin’in ekranında görünüyor.')).toBeVisible();
+  });
+  test('dış katılımcı: geçersiz bağlantı', async ({ page }) => {
+    await page.goto('/l/gecersizbaglanti0000?senaryo=berkin');
+    await expect(page.getByText('Bu bağlantı artık açılmıyor.')).toBeVisible();
+  });
 });

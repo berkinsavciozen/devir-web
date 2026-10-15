@@ -81,5 +81,7 @@ export const api = {
   baglanti: {
     get: <T = any>(token: string) => istek<T>('GET', `/l/${encodeURIComponent(token)}`, undefined, { kimliksiz: true }),
     post: <T = any>(token: string, govde: unknown) => istek<T>('POST', `/l/${encodeURIComponent(token)}`, govde, { kimliksiz: true }),
+    /** yükleme adresi (F2b): yalnız kişinin kendi adımı */
+    dosya: <T = any>(token: string, govde: unknown) => istek<T>('POST', `/l/${encodeURIComponent(token)}/dosya`, govde, { kimliksiz: true }),
   },
 };

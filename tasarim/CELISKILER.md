@@ -25,3 +25,8 @@ Spesifikasyon kazanır; burada not edilir.
 | 19 | E2 hap etiketleri ("A · Kooperatif keserse") ve E3 sonuç satırları ("B · Çiftçilerden vergi levhası istenir") API'de yok | Seçeneklerin `kisa` ve `sonuc` alanları isteğe bağlı (bekleyen sorunun `secenekler`inde serbest alan; şema değişmez) | Yoksa hapta seçenek etiketi, sonuçta "{adım} adımı kalır" yazılır. Sahte veride `?hal=tarih` ve `?hal=dal` tasarımdaki kurgu soruları yazar |
 | 20 | E1'de sarmal görüntüdekinden farklı duruyor | Aynı veriyle E2 görüntüsü birebir tutuyor; E1 görüntüsü başka bir yerleşimle çizilmiş | Geometri değiştirilmedi (E2 ile tutarlı kalır) |
 | 21 | E1/E3 geçiş canlandırmaları (900 ms süzülme, 560 ms sönme) | Cevaptan sonra harita yeniden kurulur | Şimdilik yeni geometri doğrudan çizilir; canlandırma sonraki adımda |
+| 22 | F1 sisli galaksi: dış kişinin görünümünde öteki adımlar yok | Sunucu 0.10.0: `GET /l/:token` `harita` döner (adsız adımlar; öteki sahipler "yol-1, yol-2…") | Harita yoksa (0.9.0) yalnız kart ve cümle görünür |
+| 23 | F3 "Berkin’in ekranında görünüyor": dış görünümde akış sahibi yok | Sunucu 0.10.0: `akis.sahip` (alan sahibinin adı) | Yoksa "ekibin ekranında görünüyor." |
+| 24 | F4 "Berkin yeni bir bağlantı gönderdi…": geçersiz bağlantıda kim olduğu bilinmez | 404'te akış ve kişi okunmaz | "Gönderen kişi yeni bir bağlantı gönderdi ya da bunu kapattı; yenisini ondan iste." |
+| 25 | G1 "Açılmadı · 12 Eki’de üretildi" ve "‹web adresi›" | Açılma kaydı yok (§9-9); adres gerçek alan adıyla kısaltılır | "12 Eki’de üretildi"; adres "alan/l/k7Q2…wP9" |
+| 26 | F2 "Çıktısız bitir" (§5 F2) görüntüde yok | Spesifikasyon kazanır | Dosya sekmesinde, "Vazgeç"in altında metin düğmesi |

@@ -81,7 +81,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   // adım kısa adları (`baglam.kisa_adlar`; harita etiketleri ve cümleler)
   const KISA_ADIM: Record<string, Record<string, string>> = {
     RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
-    U422: { 15: 'Sızma testi raporu' },
+    U422: { 15: 'Sızma testi raporu', 14: 'IP izin listesi', 2: 'Güvenlik değerlendirmesi' },
     XPVZ: { 3: 'Belge modeli', 6: 'Yetki belgesi', 17: 'Vergi levhası', 5: 'Görüşme', 7: 'Belgeler', 9: 'Çiftçi kabul kararı', 11: 'Ürünler', 12: 'Profil' },
     GKX8: { 7: 'Çiftçi kabul kararı' },
   };
@@ -151,6 +151,10 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     }
   }
 
+  // F1–F3 · Test Bank'ta Emre'nin kişisel bağlantısı (G1: 12 Eki'de üretildi; örnek veride katılımcı yok, kurgu)
+  const u422 = T.akis.find((x) => x.kisa_kod === 'U422');
+  if (u422) T.katilimci.push({ id: crypto.randomUUID(), akis_id: u422.id, ad: 'Emre (Test Bank)', rol: 'Test Bank BT', iletisim: null, link_token: EMRE_BAGLANTI, created_at: '2026-10-12T15:02:00Z' });
+
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
   if (o.hal === 'uydu') await halUydu(async (an, yol, govde) => { saat = Date.parse(an); const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); return r.json(); });
@@ -171,6 +175,8 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   };
 }
 
+/** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
+export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
 const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim: 'Hazırlık agent\'ı', kim_tip: 'agent', arac: 'Claude' };

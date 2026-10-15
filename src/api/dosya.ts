@@ -67,11 +67,12 @@ function koy(url: string, f: File, tur: string, ilerle: (p: number) => void): { 
  * Ekip yolu: /akis/:kod/adim/:no/dosya → PUT → /akis/:kod/adim/:no {cikti:{dosya, ozet}}.
  * taban: dış katılımcı için '/l/:token' (F2) — o zaman teslim ayrı yapılır (teslimEt=false).
  */
-export function dosyaYukle(o: { yol: string; dosya: File; ilerle: (p: number) => void; teslim?: (dosyaId: string) => Promise<unknown> }): Yukleme {
+export function dosyaYukle(o: { yol: string; dosya: File; ilerle: (p: number) => void; teslim?: (dosyaId: string) => Promise<unknown>; iste?: (govde: unknown) => Promise<any> }): Yukleme {
   let ic: { iptal: () => void } | null = null, iptalEdildi = false;
   const bitti = (async () => {
     const tur = turOf(o.dosya);
-    const r = await api.post<any>(o.yol, { ad: o.dosya.name, tur, boyut: o.dosya.size });
+    const g = { ad: o.dosya.name, tur, boyut: o.dosya.size };
+    const r = await (o.iste ? o.iste(g) : api.post<any>(o.yol, g));
     if (iptalEdildi) throw new Error('iptal');
     const k = koy(r.yukleme.url, o.dosya, tur, o.ilerle);
     ic = k;

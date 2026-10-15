@@ -414,9 +414,21 @@ export async function baglantiV(db: DB, token: string, now: number, ua: string) 
   else if (adimlar.length) A("Sana düşen adımların hepsi bitti, teşekkürler.");
   else A("Bu bağlantıda sana atanmış bir adım görünmüyor.");
   await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
+  const sahipUye = await db.one("uye", { kullanici_id: akis.sahip_id, rol: "sahip" }).catch(() => null);
   return {
-    kisi: k.ad, akis: { baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length } },
+    kisi: k.ad, akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length } },
     ozet: yaz(p), ozet_parcalar: p, adimlar,
+    // sisli harita (0.10.0): öteki adımlar adsız; sahipler yalnız rol harfiyle (yol geometrisi için)
+    harita: haritaDis(ctx, akis, steps, m),
+  };
+}
+
+function haritaDis(ctx: Ctx, akis: any, steps: any[], m: any) {
+  const takma = new Map<string, string>();
+  const ad = (s: any) => { if (stepInScope(ctx, s)) return s.sahip; if (!takma.has(s.sahip)) takma.set(s.sahip, `yol-${takma.size + 1}`); return takma.get(s.sahip)!; };
+  return {
+    olusturuldu: akis.created_at, hedef_tarih: akis.hedef_tarih || null, kapandi_at: akis.kapandi_at || null, kritik_yol: m.pl.chain,
+    adimlar: steps.map((s: any) => ({ no: s.no, sahip: ad(s), sahip_tip: stepInScope(ctx, s) ? s.sahip_tip : s.sahip_tip === "agent" ? "agent" : "insan", durum: s.durum, bagimli: s.bagimli, durum_at: s.durum_at, en_erken_bitis: DONE(s) ? null : iso(m.pl.EF.get(s.no)), sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null })),
   };
 }
 

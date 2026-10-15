@@ -40,7 +40,7 @@ export function DosyaSatiri({ ad, tur, alt, hal = 'kayitli', yuzde, eylemler = [
         <small>{hal === 'hata' && <UyariIkon />}{alt}</small>
       </span>
       <span className="dosya-satiri-eylem">
-        {hal === 'hazir' && !eylemler.length && <TikIkon />}
+        {hal === 'hazir' && <TikIkon />}
         {eylemler.map((e) => <button key={e.ad} className={`eylem-dugme ton-${e.ton || 'lila'}`} aria-label={e.ad} onClick={e.tikla}>{e.ikon}</button>)}
       </span>
     </li>

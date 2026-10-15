@@ -10,6 +10,7 @@ import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, payS
 import { git } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
+import { BaglantiGonder } from './BaglantiGonder';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -84,6 +85,7 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const [X, setX] = useState(an0);
   const [oynuyor, setOynuyor] = useState(false);
   const [odak, setOdak] = useState<string | null>(null);
+  const [gonder, setGonder] = useState<string | null>(null);
   const [kayma, setKayma] = useState(0);
   // B7: basılı tut (450 ms) → tarih kartı; bırakınca 2 sn kalır
   const [tarihNo, setTarihNo] = useState<number | null>(null);
@@ -204,9 +206,10 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
         {S.us.map((u: any, i: number) => {
           const n = u.ziyaret.length, k = u.ziyaret.filter((no: number) => BITTI(byNo.get(no)?.durum)).length;
           return <button key={u.ad} role="listitem" className="serit-etiket" aria-pressed={odak === u.ad} style={{ left: SERIT.x + 4, top: S.yOf(i) - 21, width: S.lw + 4, height: 42 }}
-            aria-label={`${u.ad} yolu: ${n} adım, ${k} tamam. Başlangıç ${gunAy(u.t0)}.`} onClick={() => setOdak(odak === u.ad ? null : u.ad)} />;
+            aria-label={`${u.ad} yolu: ${n} adım, ${k} tamam. Başlangıç ${gunAy(u.t0)}.`} onClick={() => { if (u.tip === 'dis') { setOdak(u.ad); setGonder(u.ad); } else setOdak(odak === u.ad ? null : u.ad); }} />;
         })}
       </div>
+      {gonder && <><BaglantiGonder kod={kod} kisi={gonder} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
     </Sahne>
   );
 }
