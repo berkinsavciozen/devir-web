@@ -6,11 +6,13 @@ import { Baslik } from '../../bilesen/Baslik';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
-import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, tarihDi } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
+import { KapaliGalaksi } from './Kapali';
+import { useBen } from '../../api/sorgular';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -31,6 +33,19 @@ export function haritaCumlesi(d: any): string[] | null {
   if (tarih) return [`En erken ${tarih} biter;`, `${pay}.`];
   return null;
 }
+
+/** I2 cümlesi: "Hedef 1 Kasım’dı; 3 gün geçti. App Store onayı bekleniyor; en erken 7 Kasım." Hedef geçmediyse null. */
+export function gecikmeCumlesi(d: any, now: number): string | null {
+  const k = d.akis;
+  if (k.kapandi_at || !k.hedef_tarih) return null;
+  const gecen = Math.floor((now - Date.parse(k.hedef_tarih + 'T00:00:00+03:00')) / GUN);
+  if (gecen < 1) return null;
+  const by = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
+  const ilk = (d.kritik_yol || []).map((no: number) => by.get(no)).find((a: any) => a && !BITTI(a.durum));
+  const ikinci = ilk && k.en_erken_bitis ? ` ${adimAdi(ilk)[0].toLocaleUpperCase('tr')}${adimAdi(ilk).slice(1)} ${ilk.durum === 'engelli' ? 'takıldı' : 'bekleniyor'}; en erken ${gunAyUzun(k.en_erken_bitis)}.` : '';
+  return `Hedef ${tarihDi(gunAyUzun(k.hedef_tarih))}; ${gecen} gün geçti.${ikinci}`;
+}
+export const gecenGun = (d: any, now: number) => (d.akis.hedef_tarih && !d.akis.kapandi_at ? Math.floor((now - Date.parse(d.akis.hedef_tarih + 'T00:00:00+03:00')) / GUN) : 0);
 
 /** Haritada en çok 2 adım etiketi: engelli ve kritik yolun ilk açık adımı. */
 function etiketler(d: any, M: Model, P: Record<number, [number, number]>, acik: (no: number) => boolean, odak: string | null) {
@@ -79,6 +94,7 @@ function gezegenEtiketi(a: any, kritik: boolean) {
 
 export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const q = useAkis(kod);
+  const ben = useBen();
   const NOW = simdi();
   // ?an=2026-10-17T12:00 → sürgü o anda açılır (paylaşılan bağlantı, ekran testleri)
   const an0 = useMemo(() => { const v = new URLSearchParams(location.search).get('an'); const t = v ? Date.parse(v.length <= 16 ? v + ':00+03:00' : v) : NaN; return Number.isFinite(t) ? t : NOW; }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -112,13 +128,17 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     const A = tekrarAsamasi(d), sats = uydular(d);
     const soruVar = !odak && Math.abs(X - NOW) < 36e5 && !!soruCumlesi(d);
     const labels = soruVar ? [] : X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
+    const gecti = gecenGun(d, NOW) > 0; // I2: hedef geçince şerit sıkışır (tasarım 11 px/gün)
     const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = uzun || temel.G.uyeler.length > 4 ? 38 : 42;
     const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
     const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
-    const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun, focus: odak || undefined, kayma });
+    const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...HARITA, now: NOW }) : { svg: '', hedefler: [] };
     let ust = '';
+    // I2: hedef geçti; kulenin üstünde mercan hap
+    const gec = gecenGun(d, NOW), kule = Y.G.kule;
+    if (gec > 0 && kule && !odak) ust += pill(kule.x, kule.y - 34, `${gec} gün geçti`, { fs: 11.5, fw: 750, bg: '#FF8A78', bgo: 1, col: '#2A1D4F' });
     if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
     return { svg: Y.svg + SK.svg + Z.svg + S.svg + ust, Y, Z, S, SK };
   }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo]);
@@ -142,11 +162,13 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   if (q.isPending) return <HaritaYukleniyor />;
   if (q.isError || !d || !cizim || !M) return <HaritaHata hata={(q.error as Error)?.message} yeniden={() => void q.refetch()} />;
 
+  if (d.akis.kapandi_at) return <KapaliGalaksi d={d} kod={kod} sahipMi={ben.data?.rol === 'sahip'} sahip={sahip} />;
   const { Y, Z, S, SK } = cizim;
   const ad = akisAdi(d.akis);
   const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (soruCumlesi(d) ? [soruCumlesi(d)!] : tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : haritaCumlesi(d)) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
   const soruC = !odak && Math.abs(birakildi - NOW) < 36e5 ? soruCumlesi(d) : null;
-  const cumle = soruC ? doluSatir(soruC, 330, '17px Caladea', 5) : ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
+  const gecC = !odak && !soruC && Math.abs(birakildi - NOW) < 36e5 ? gecikmeCumlesi(d, NOW) : null;
+  const cumle = soruC ? doluSatir(soruC, 330, '17px Caladea', 5) : gecC ? doluSatir(gecC, 300, '17px Caladea', 5) : ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
   const surguEtiket = Math.abs(X - NOW) < 36e5 ? `Bugün, ${gunAyUzun(X)}` : `${gunAyHafta(X)}${X > NOW ? ', tahmin' : ''}`;
 
   // sürgü: sürükle / dokun; hapa dokunmak bugüne döner

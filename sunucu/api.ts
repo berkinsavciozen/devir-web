@@ -177,7 +177,13 @@ async function akisV(ctx: Ctx, kod: string) {
     out.acik_isler = akis.baglam?.musteri ? (await acikIsler(ctx, akis.baglam.musteri)).filter((x: any) => x.akis_id !== akis.id).map((x: any) => ({ akis: x.akis_kod, no: x.no, ad: x.ad })) : [];
     out.katilimcilar = (await ctx.db.many("katilimci", { akis_id: akis.id }, "created_at")).map((k: any) => katilimciV(k, null));
     out.tekrar = await tekrarV(ctx, akis, steps);
+    // kapanış (0.10.0, §9-10): değerlendirme olay verisinden; devredilen = ertelenen açık işler
+    const kap = [...ev].reverse().find((e: any) => e.tip === "akis_kapandi");
+    out.kapanis = kap ? { degerlendirme: kap.veri?.degerlendirme || null, kim: kap.kim, kim_tip: kap.kim_tip, arac: kap.arac || null, zaman: kap.created_at, devredilen: steps.filter((s: any) => s.durum === "ertelendi").length } : null;
     out.olaylar = ev.slice(-60).reverse().map(olayV);
+    // 0.10.0: adım başına ilk okuma (galakside üyenin yola çıkış anı, §4 t0)
+    const ilk = new Map<number, any>(); for (const e of events) if (e.tip === "okuma" && e.adim_no != null && !ilk.has(e.adim_no)) ilk.set(e.adim_no, e);
+    out.ilk_okumalar = [...ilk.values()].map((e: any) => ({ adim_no: e.adim_no, zaman: e.created_at, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac || null }));
     const ht = akis.taslak_id ? await ctx.db.one("taslak", { id: akis.taslak_id }) : null;
     out.hatirlananlar = ht?.taslak?._hatira?.satirlar?.slice(0, 8) || [];
   } else out.olaylar = ev.filter((e: any) => e.adim_no != null && vis.some((s: any) => s.no === e.adim_no)).slice(-30).reverse().map(olayV);

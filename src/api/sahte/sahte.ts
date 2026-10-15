@@ -101,6 +101,13 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
       T.cikti.push({ id: 9002 + i, ws_id: BERKIN_ALAN, akis_id: rtd.id, adim_no: 6, ad, ozet: 'Kapak fotoğrafı', url: 'dosya:' + id, kaynak: 'Devir dosya', surum: 1, durum: 'taslak', paylasim: 'ekip', kim: 'Berkin', arac: null, created_at: '2026-10-14T06:12:00Z' });
     });
   }
+  // I3 · Ege'de 6 dosya (§10: dosya adları ve boyutları kurgu)
+  const ege = T.akis.find((x) => x.kisa_kod === 'GKX8');
+  if (ege) ([['sozlesme-ozcay-imzali.pdf', 2.1, 'application/pdf'], ['urun-listesi-ege.xlsx', .4, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'], ['vitrin-fotograflari-1.jpg', 3.8, 'image/jpeg'], ['vitrin-fotograflari-2.jpg', 4.1, 'image/jpeg'], ['vitrin-fotograflari-3.jpg', 3.9, 'image/jpeg'], ['sozlesme-tire-imzali.pdf', 4.1, 'application/pdf']] as [string, number, string][]).forEach(([ad, mb, tur], i) => {
+    const id = `0000001${i}-7a7a-4c4c-8d8d-e0e0e0e0e0e0`, yol = `${BERKIN_ALAN}/${ege.id}/${i < 2 ? 9 : 11}/${id}/${ad}`, boyut = Math.round(mb * 1e6);
+    sahteDepo.set(yol, { boyut, tur });
+    T.dosya.push({ id, ws_id: BERKIN_ALAN, akis_id: ege.id, adim_no: i < 2 ? 9 : 11, yol, ad, tur, boyut, kim: 'Berkin', kim_tip: 'insan', durum: 'yuklendi', created_at: `2026-10-12T18:${String(20 + i).padStart(2, '0')}:00Z` });
+  });
   // geçerli kararların kısa adları (C2 takımyıldızı; `karar.kisa` sütunu yok, §9 notu)
   const KARAR_KISA: [RegExp, string][] = [[/komisyon/i, 'Komisyon %12'], [/fatura/i, 'Faturalı satış'], [/organik/i, 'Organik ibaresi yok'], [/hayvansal/i, 'Hayvansal yok']];
   for (const k of T.karar) { const m = KARAR_KISA.find(([r]) => r.test(k.karar)); if (m) k.kisa = m[1]; }
@@ -158,6 +165,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
   if (o.hal === 'uydu') await halUydu(async (an, yol, govde) => { saat = Date.parse(an); const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); return r.json(); });
+  if (o.hal === 'gecikme') await halGecikme(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   const kimlik = async (jwt: string) => {
@@ -207,6 +215,16 @@ async function halKarar(yaz: Yaz) {
       oneri: { secim: ['Özçay Kooperatifi', 'Hopa Çay', 'Hemşin Koop', 'Çayeli Kadın Girişimi', 'Ortakbahçe Koop'], ozet: '5’ini de kabul et', gerekce: '4’ü faturalı; Çayeli’nin vergi kaydı teyit bekliyor' },
     },
   });
+}
+
+/** I2 · 4 Kas: Hasat postunda TestFlight, görsel ve onay bitti; App Store onayı bekleniyor, hedef 3 gün geçti. */
+async function halGecikme(yaz: Yaz) {
+  const a = (no: number) => `/api/v1/akis/RTD5/adim/${no}`;
+  await yaz('2026-10-17T12:00:00+03:00', a(3), { durum: 'tamam', not: 'TestFlight bağlantısı gönderildi' });
+  await yaz('2026-10-21T15:00:00+03:00', a(6), { durum: 'tamam', kim: 'Claude', kim_tip: 'agent', arac: 'Claude', cikti: { ad: 'Post görseli', ozet: 'Kapak ve 3 tarif slaytı' } });
+  await yaz('2026-10-23T11:00:00+03:00', a(7), { durum: 'tamam', not: 'Görsel onaylandı' });
+  // App Store incelemesi 31 Eki'de başladı (tasarım: en erken 7 Kas)
+  await yaz('2026-10-31T10:00:00+03:00', a(4), { durum: 'suruyor', not: 'İncelemeye gönderildi' });
 }
 
 /** D1, D2 · 4 Kas: Karadeniz'de görüşme, belgeler, ürünler ve profil 5 çiftçi için alt akışlarda yürüyor. */

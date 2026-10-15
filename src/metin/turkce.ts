@@ -32,6 +32,13 @@ export const ozelEk = (ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i') => ad +
 /** Tarih + ek, kesme işaretiyle; ek son kelimeye göre: "12 Eki’de", "9 Kasım’a", "12 Ekim’den". */
 export const tarihEk = (t: string, tur: 'den' | 'de' | 'e' | 'in') => { const w = t.trim().split(' ').pop() || t; return t.trim() + '’' + ek(w, tur).slice(w.length).replace(/^’/, ''); };
 
+/** Tarih + ek-fiil (geçmiş), kesme işaretiyle: "1 Kasım’dı", "9 Eylül’dü", "3 Ağustos’tu". */
+export const tarihDi = (t: string) => {
+  const w = t.trim().split(' ').pop() || t, son = w.slice(-1).toLocaleLowerCase('tr'), v = sonSesli(w);
+  const i = 'ıa'.includes(v) ? 'ı' : 'ei'.includes(v) ? 'i' : 'ou'.includes(v) ? 'u' : 'ü';
+  return t.trim() + '’' + (SESLI.includes(son) ? 'y' : '') + (!SESLI.includes(son) && SERT.includes(son) ? 't' : 'd') + i;
+};
+
 /** Akışın ekran adı: kisa_ad; yoksa başlığın ilk 18 karakteri, kelime sınırında (§ ad tutarsızlığı). */
 export function akisAdi(akis: { kisa_ad?: string | null; baslik?: string | null }): string {
   if (akis.kisa_ad) return akis.kisa_ad;

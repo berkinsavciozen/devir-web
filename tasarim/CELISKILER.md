@@ -30,3 +30,8 @@ Spesifikasyon kazanır; burada not edilir.
 | 24 | F4 "Berkin yeni bir bağlantı gönderdi…": geçersiz bağlantıda kim olduğu bilinmez | 404'te akış ve kişi okunmaz | "Gönderen kişi yeni bir bağlantı gönderdi ya da bunu kapattı; yenisini ondan iste." |
 | 25 | G1 "Açılmadı · 12 Eki’de üretildi" ve "‹web adresi›" | Açılma kaydı yok (§9-9); adres gerçek alan adıyla kısaltılır | "12 Eki’de üretildi"; adres "alan/l/k7Q2…wP9" |
 | 26 | F2 "Çıktısız bitir" (§5 F2) görüntüde yok | Spesifikasyon kazanır | Dosya sekmesinde, "Vazgeç"in altında metin düğmesi |
+| 27 | I1 değerlendirme metni ve "1 açık iş … devredildi · Claude" | Kapanış olayı detayda yok | Sunucu 0.10.0: detayda `kapanis` (değerlendirme, kim, araç, zaman, devredilen = ertelenen adım sayısı) |
+| 28 | Galaksi kollarının çıkış anı (§4 t0: ilk sistem dışı olay) tasarımda okuma olaylarını da sayar; API okuma olaylarını göndermez | Tasarım geometrisi kazanır | Sunucu 0.10.0: detayda `ilk_okumalar` (adım başına ilk okuma); biten adımın planlanan başlangıcı = gerçek bitiş − süre tahmini |
+| 29 | I2 şeritte 11 px/gün; §4.11 mobilde 30 px/gün | Görüntü kazanır (hedef geçince bugün görünür kalsın) | Hedef geçmişse şerit 11 px/gün, gün etiketleri seyrek |
+| 30 | I2 "en erken 7 Kasım": örnek veride App Store adımı hazır, süre tahmini 5 gün | Hal örneği sahte veride kurgulanır | `hal=gecikme`: App Store adımı 31 Eki'de başlamış yazılır; en erken 7 Kas |
+| 31 | I3 boyutlar "0,4 MB" (B2'de 1 MB altı KB yazılır) | Görüntü kazanır | Güçlü onay listesinde boyut hep MB, bir ondalık |
