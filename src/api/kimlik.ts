@@ -58,11 +58,20 @@ function gercekKimlik(): Kimlik {
   };
 }
 
-/** Sahte oturum: "sahte:<auth_id>:<eposta>" belirteci; sahte sunucunun kimlik işlevi bunu çözer. */
+/**
+ * Sahte oturum: "sahte:<auth_id>:<eposta>" belirteci; sahte sunucunun kimlik işlevi bunu çözer.
+ * Senaryonun kişisi kendiliğinden oturum açmış sayılır; `?oturum=yok` ya da "Çıkış" giriş ekranını açar.
+ */
+const SAHTE_KISI: Record<string, string> = {
+  berkin: 'sahte-berkin:berkin@ornek.com', 'iki-alan': 'sahte-berkin:berkin@ornek.com', bos: 'sahte-berkin-yeni:berkin@ornek.com',
+  davetli: 'sahte-emre:emre@ornek.com', davetsiz: 'sahte-davetsiz:emre.k@ornek.com',
+};
 function sahteKimlik(): Kimlik {
-  const OTURUM = 'devir:sahte-oturum';
-  const okuL = () => { try { return localStorage.getItem(OTURUM); } catch { return null; } };
-  const yazL = (v: string | null) => { try { if (v == null) localStorage.removeItem(OTURUM); else localStorage.setItem(OTURUM, v); } catch { /* yok */ } };
+  const OTURUM = 'devir:sahte-oturum', CIKTI = 'devir:sahte-cikti';
+  const q = new URLSearchParams(location.search);
+  if (q.get('oturum') === 'yok') yaz(CIKTI, '1');
+  const senaryoKisi = () => SAHTE_KISI[q.get('senaryo') || oku('devir:senaryo') || 'berkin'] || SAHTE_KISI.berkin;
+  const okuL = () => oku(OTURUM) || (oku(CIKTI) ? null : `sahte:${senaryoKisi()}`);
   return {
     async belirtec() { return oku(ANAHTAR_YERI) || okuL(); },
     async yenile() { return false; },
@@ -70,13 +79,14 @@ function sahteKimlik(): Kimlik {
     async kodDegistir(kod) {
       // sahte bağlantı: /giris?code=<auth_id>:<eposta>
       const [id, eposta] = kod.split(':');
+      await new Promise((r) => setTimeout(r, 600)); // ağ gecikmesi (A1c görünsün)
       if (!id || !eposta) throw new Error('Giriş bağlantısı açılamadı.');
-      yazL(`sahte:${id}:${eposta}`);
+      yaz(OTURUM, `sahte:${id}:${eposta}`); yaz(CIKTI, null);
       return { eposta };
     },
     async eposta() { return okuL()?.split(':')[2] ?? null; },
-    anahtarlaGir(anahtar) { yaz(ANAHTAR_YERI, anahtar.trim()); },
-    async cikis() { yaz(ANAHTAR_YERI, null); yazL(null); },
+    anahtarlaGir(anahtar) { yaz(ANAHTAR_YERI, anahtar.trim()); yaz(CIKTI, null); },
+    async cikis() { yaz(ANAHTAR_YERI, null); yaz(OTURUM, null); yaz(CIKTI, '1'); },
   };
 }
 

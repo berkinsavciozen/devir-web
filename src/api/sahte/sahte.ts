@@ -18,9 +18,9 @@ export interface SahteKimlik { auth_id: string; eposta: string }
 export const SENARYO_KIMLIK: Record<Senaryo, SahteKimlik> = {
   berkin: { auth_id: 'sahte-berkin', eposta: 'berkin@ornek.com' },
   'iki-alan': { auth_id: 'sahte-berkin', eposta: 'berkin@ornek.com' },
-  bos: { auth_id: 'sahte-yeni-sahip', eposta: 'deniz@ornek.com' },
+  bos: { auth_id: 'sahte-berkin-yeni', eposta: 'berkin@ornek.com' },
   davetli: { auth_id: 'sahte-emre', eposta: 'emre@ornek.com' },
-  davetsiz: { auth_id: 'sahte-davetsiz', eposta: 'ali@ornek.com' },
+  davetsiz: { auth_id: 'sahte-davetsiz', eposta: 'emre.k@ornek.com' },
 };
 
 type Satir = Record<string, any>;
@@ -74,10 +74,11 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (senaryo === 'berkin' || senaryo === 'iki-alan') uye('sahte-berkin', 'berkin@ornek.com', BERKIN_ALAN, 'Berkin', 'sahip');
   if (senaryo === 'iki-alan') uye('sahte-berkin', 'berkin@ornek.com', '42bfd48c-a3af-4ca7-bc87-07acdb14f045', 'Berkin', 'ekip', null, '2026-10-13T09:00:00Z');
   if (senaryo === 'bos') {
-    T.kullanici.push({ id: 'bos-alan', ad: 'Deniz · çalışma alanı', created_at: '2026-10-14T06:55:00Z' });
-    uye('sahte-yeni-sahip', 'deniz@ornek.com', 'bos-alan', 'Deniz', 'sahip', null, '2026-10-14T06:55:00Z');
+    // yeni sahip: ilk girişte boş çalışma alanı (A2 · 5 dakikada ilk akış)
+    T.kullanici.push({ id: 'bos-alan', ad: 'Berkin · çalışma alanı', created_at: '2026-10-14T06:55:00Z' });
+    uye('sahte-berkin-yeni', 'berkin@ornek.com', 'bos-alan', 'Berkin', 'sahip', null, '2026-10-14T06:55:00Z');
   }
-  if (senaryo === 'davetli') T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre (Test Bank)', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
+  if (senaryo === 'davetli') T.davet.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, eposta: 'emre@ornek.com', kisi: 'Emre', rol: 'dis', kapsam: 'Emre (Test Bank)', davet_eden: 'Berkin', durum: 'bekliyor', created_at: '2026-10-14T06:40:00Z' });
 
   const kimlik = async (jwt: string) => {
     const m = /^sahte:([^:]+):(.+)$/.exec(jwt);

@@ -29,13 +29,13 @@ describe('sahte API (canlı sunucu kodu + örnek veri)', () => {
   });
   it('davetsiz: yeni alan açamaz (kayıt kapalı)', async () => {
     const s = await sahteSunucu('davetsiz', { webAdresi: 'http://yerel' });
-    const r = await iste(s, '/api/v1/kayit', 'sahte:sahte-davetsiz:ali@ornek.com', { alan_adi: 'Ali' });
+    const r = await iste(s, '/api/v1/kayit', 'sahte:sahte-davetsiz:emre.k@ornek.com', { alan_adi: 'Ali' });
     expect(r.st).toBe(403);
     expect(r.j.hata).toMatch(/davetle/);
   });
   it('boş alan: /ozet boş', async () => {
     const s = await sahteSunucu('bos', { webAdresi: 'http://yerel' });
-    const r = await iste(s, '/api/v1/ozet', 'sahte:sahte-yeni-sahip:deniz@ornek.com');
+    const r = await iste(s, '/api/v1/ozet', 'sahte:sahte-berkin-yeni:berkin@ornek.com');
     expect(r.j.akislar).toHaveLength(0);
   });
 });
