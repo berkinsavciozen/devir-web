@@ -40,6 +40,10 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.getByText('tutuyor').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'B5-adim-gecmis', yol: '/akis/RTD5/adim/6?senaryo=berkin&sekme=gecmis', hazirla: async (p) => { await p.getByText('GEÇMİŞ').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'B6-filtre', yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Berkin yolu/ }).click(); } },
+  {
+    ad: 'B7-tarih-basili-tut', yol: '/akis/RTD5?senaryo=berkin',
+    hazirla: async (p) => { const b = await p.getByRole('listitem', { name: /^6\. adım/ }).boundingBox(); await p.mouse.move(b!.x + b!.width / 2, b!.y + b!.height / 2); await p.mouse.down(); await p.waitForTimeout(600); },
+  },
   // S · Zaman sürgüsü
   { ad: 'S1-zaman-erken', yol: '/akis/RTD5?senaryo=berkin&an=2026-10-13T09:00' },
   { ad: 'S2-zaman-oynatiliyor', yol: '/akis/RTD5?senaryo=berkin&an=2026-10-17T12:00', once: async (p) => { await p.clock.install(); }, hazirla: async (p) => { await p.getByRole('button', { name: 'Oynat' }).click(); } },

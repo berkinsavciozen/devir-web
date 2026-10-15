@@ -4,7 +4,8 @@ import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
 import { Baslik } from '../../bilesen/Baslik';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { akisModeli, gunAy, gunAyHafta, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
+import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
+import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, ek, gunAyUzun, ikiSatir, paySure } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { odakCumlesi, zamanCumlesi } from './cumleler';
@@ -42,6 +43,31 @@ function etiketler(d: any, M: Model, P: Record<number, [number, number]>, acik: 
   return L;
 }
 
+/** B7 · tarih kartı: harita %42 kararır; gezegenden sürgüdeki gününe kılavuz; şeritteki kopyalar halkalı; gezegenin üstünde kart. */
+function tarihKarti(d: any, Y: any, Z: any, S: any, no: number): string {
+  const a = d.adimlar.find((x: any) => x.no === no); if (!a) return '';
+  const g = Y.G.gezegen[no], px = g.x, py = g.y;
+  const ef = BITTI(a.durum) ? Date.parse(a.durum_at) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : g.t;
+  let s = `<rect width="390" height="844" fill="#07051A" opacity=".42"/>`;
+  const tx = Z.xOf(ef), ty = 512;
+  s += `<path d="M${f(px)},${f(py + g.r + 4)} L${f(tx)},${ty - 8}" stroke="#FFD27A" stroke-width="1.3" stroke-dasharray="3 4" opacity=".9"/>`;
+  s += `<circle cx="${f(tx)}" cy="${ty}" r="10" fill="url(#glowGold)"/><circle cx="${f(tx)}" cy="${ty}" r="5" fill="#FFD27A" stroke="#2A1D4F" stroke-width="1.2"/>`;
+  s += pill(tx, ty + 26, gunAy(ef), { fs: 11.5, fw: 750, bg: '#FFD27A', bgo: 1, col: '#2A1D4F' });
+  for (const k of S.kopyalar.filter((c: any) => c.no === no)) s += `<circle cx="${f(k.x)}" cy="${f(k.y)}" r="13" fill="none" stroke="#FFF3E8" stroke-width="1.6"/>`;
+  s += `<circle cx="${f(px)}" cy="${f(py)}" r="40" fill="#FFF3E8" opacity=".08"/><circle cx="${f(px)}" cy="${f(py)}" r="30" fill="none" stroke="#FFF3E8" stroke-width="2" opacity=".45"/>`;
+  s += planet(px, py, g.r, Y.stOf(no) === 'tahmin' ? 'lit' : Y.stOf(no), { cloudGap: 4 });
+  const cxk = Math.min(Math.max(px, 124), 266), ust = py - 96 > 60, cyk = ust ? py - 96 : py + 96;
+  const satirlar: [string, number, number, string][] = [[adimAdi(a), 14, 700, C.ink]];
+  satirlar.push([BITTI(a.durum) ? `Bitti ${gunAyHafta(ef)} ${saat(ef)}` : `En erken ${gunAyHafta(ef)} ${saat(ef)}`, 12.5, 600, '#FFE6B0']);
+  if (a.son_tarih) { const st = Date.parse(a.son_tarih + 'T23:59:00+03:00'), p = Math.floor((st - ef) / GUN); satirlar.push([`Son tarih ${gunAy(st)} · ${p >= 0 ? p + ' gün pay' : -p + ' gün geç'}`, 12, 500, C.ink3]); }
+  if (a.gec_risk) satirlar.push(['Geç kalabilir', 12, 600, '#FFC2B8']);
+  const h = 30 + satirlar.length * 19;
+  s += `<rect x="${f(cxk - 112)}" y="${f(cyk - 34)}" width="224" height="${h}" rx="20" fill="#1A1238" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  s += ust ? `<path d="M${f(px - 8)},${f(cyk - 34 + h)} L${f(px)},${f(cyk - 24 + h)} L${f(px + 8)},${f(cyk - 34 + h)}Z" fill="#1A1238" stroke="#FFD27A" stroke-opacity=".6"/>` : `<path d="M${f(px - 8)},${f(cyk - 34)} L${f(px)},${f(cyk - 44)} L${f(px + 8)},${f(cyk - 34)}Z" fill="#1A1238" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  satirlar.forEach(([t, fs, fw, col], i) => { s += sans(cxk - 96, cyk - 10 + i * 19.5, t, { fs, fw, col }); });
+  return s;
+}
+
 /** Ekran okuyucu: gezegen etiketi (§8.2). */
 function gezegenEtiketi(a: any, kritik: boolean) {
   const tur = a.sahip_tip === 'agent' || /agent|Claude/i.test(a.sahip) ? 'agent' : a.sahip_tip === 'dis' ? 'dış katılımcı' : 'insan';
@@ -58,6 +84,17 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const [oynuyor, setOynuyor] = useState(false);
   const [odak, setOdak] = useState<string | null>(null);
   const [kayma, setKayma] = useState(0);
+  // B7: basılı tut (450 ms) → tarih kartı; bırakınca 2 sn kalır
+  const [tarihNo, setTarihNo] = useState<number | null>(null);
+  const bas = useRef<{ zm: number; gizle: number; acildi: boolean }>({ zm: 0, gizle: 0, acildi: false });
+  const basiliBasla = (no: number) => {
+    clearTimeout(bas.current.zm); clearTimeout(bas.current.gizle); bas.current.acildi = false;
+    bas.current.zm = window.setTimeout(() => { bas.current.acildi = true; setTarihNo(no); navigator.vibrate?.(10); }, 450);
+  };
+  const basiliBirak = () => {
+    clearTimeout(bas.current.zm);
+    if (bas.current.acildi) bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000);
+  };
   const [birakildi, setBirakildi] = useState(an0);
   const d = q.data;
   const M = useMemo(() => (d ? akisModeli(d, { sahip }) : null), [d, sahip]);
@@ -69,11 +106,13 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     // etiket: yalnız bugün ve ileride, x anında hâlâ açık olan adımlar (yanık/tahmin olanlar etiketsiz)
     const acik = (no: number) => !['lit', 'tahmin', 'ghost'].includes(temel.G.durumAn(no, X) || '');
     const labels = X >= NOW - 36e5 ? etiketler(d, M, temel.P, acik, odak) : [];
-    const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels });
+    const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels });
     const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
     const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: 30, satir: 42, tBas: Y.G.T0 - GUN * .4, herGun: true, focus: odak || undefined, kayma });
-    return { svg: Y.svg + Z.svg + S.svg, Y, Z, S };
-  }, [M, temel, d, X, NOW, odak, oynuyor, kayma]);
+    let ust = '';
+    if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
+    return { svg: Y.svg + Z.svg + S.svg + ust, Y, Z, S };
+  }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo]);
 
   // oynat: 1 gün / sn (§4.10); sona gelince durur
   useEffect(() => {
@@ -120,15 +159,19 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
 
   return (
     <Sahne gok={{ tohum: 33, yildiz: 280 }} cizim={cizim.svg} etiket={ad}>
+      <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
       {cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+      </div>
 
       {/* sarmal: gezegenler (dokun → adım) */}
       <div role="list" aria-label="Harita" className="harita-katman">
         {Object.values(Y.G.gezegen).map((g) => {
           const a = byNo.get(g.no); if (!a) return null;
           const r = Math.max(22, Y.radOf(g.no) + 6);
-          return <button key={g.no} role="listitem" className="gezegen-hedef" style={{ left: g.x - r, top: g.y - r, width: r * 2, height: r * 2 }} aria-label={gezegenEtiketi(a, kritik.has(g.no))} onClick={() => ac(g.no)} />;
+          return <button key={g.no} role="listitem" className="gezegen-hedef" style={{ left: g.x - r, top: g.y - r, width: r * 2, height: r * 2 }} aria-label={gezegenEtiketi(a, kritik.has(g.no))} onClick={() => { if (bas.current.acildi) { bas.current.acildi = false; return; } ac(g.no); }}
+            onPointerDown={() => basiliBasla(g.no)} onPointerUp={basiliBirak} onPointerLeave={() => clearTimeout(bas.current.zm)}
+            onContextMenu={(e) => { e.preventDefault(); setTarihNo(g.no); bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000); }} />;
         })}
       </div>
 
