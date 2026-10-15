@@ -1,7 +1,7 @@
 // Haritanın zaman sürgüsü cümleleri (S1–S3): sürgü bırakılınca x anına göre kurulur; en fazla 2 cümle.
 import type { Galaksi } from '../../geometri/galaksi-geometri';
 import type { Model } from '../../cizim/yol.js';
-import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, paySure } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, paySure, sayiIyelik } from '../../metin/turkce';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const SAYI = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on'];
@@ -60,4 +60,32 @@ export function odakCumlesi(d: any, kisi: string): string | null {
   if (kr) { const m = tutar(kr.no); return `${bas}; ${adimAdi(kr)} kritik yolda${m ? ` ve ${m} adımı tutuyor` : ''}.`; }
   const acik = benim.filter((a: any) => !BITTI(a.durum)).length;
   return `${bas}; ${acik} açık adımı var.`;
+}
+
+/** Tekrar grubunda en ileri başlamış aşama (D1): üst adım no, kalem durumları, tamam sayısı. */
+export function tekrarAsamasi(d: any): { no: number; ad: string; n: number; k: number; tur: string; kalemler: any[] } | null {
+  for (const g of d.tekrar || []) {
+    const ks: any[] = g.kalemler || []; if (!ks.length) continue;
+    const durum = (k: any, no: number) => k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada';
+    const basladi = [...g.adimlar].reverse().find((no: number) => ks.some((k) => durum(k, no) !== 'sirada'));
+    if (basladi == null) continue;
+    const ust = d.adimlar.find((a: any) => a.no === basladi);
+    return { no: basladi, ad: ust ? adimAdi(ust) : `Adım ${basladi}`, n: ks.length, k: ks.filter((k) => BITTI(durum(k, basladi))).length, tur: g.kalem_turu || 'kalem', kalemler: ks.map((k) => ({ ...k, durumAn: durum(k, basladi) })) };
+  }
+  return null;
+}
+/** Uydular: tekrarlanan her üst adım için kalem durumları. */
+export function uydular(d: any): Record<number, { ad: string; durum: string }[]> {
+  const out: Record<number, { ad: string; durum: string }[]> = {};
+  for (const g of d.tekrar || []) for (const no of g.adimlar || []) out[no] = (g.kalemler || []).map((k: any) => ({ ad: k.ad, durum: k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada' }));
+  return out;
+}
+/** D1: "5 çiftçiden 2’si belgeleri tamamladı; Hemşin Koop’ta IBAN eksik." */
+export function tekrarCumlesi(d: any): string | null {
+  const A = tekrarAsamasi(d); if (!A) return null;
+  const asama = ek(A.ad[0].toLocaleLowerCase('tr') + A.ad.slice(1), 'i');
+  const bas = `${A.n} ${ek(A.tur, 'den')} ${A.k ? `${sayiIyelik(A.k)} ${asama} tamamladı` : `hiçbiri ${asama} tamamlamadı`}`;
+  const eng = A.kalemler.find((k) => k.asama?.durum === 'engelli' && k.asama.engel);
+  const engel = eng ? eng.asama.engel.split(/(?<=[.;])\s/)[0].replace(/[.;]$/, '') : null;
+  return engel ? `${bas}; ${ozelEk(eng.ad, 'de')} ${engel}.` : `${bas}.`;
 }

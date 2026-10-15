@@ -51,6 +51,8 @@ export const EKRANLAR: EkranTanim[] = [
       await p.getByText('%6', { exact: false }).waitFor();
     },
   },
+  { ad: 'D1-galaksi-uydular', yol: '/akis/XPVZ?senaryo=berkin&hal=uydu', hazirla: async (p) => { await p.getByText('tamamladı', { exact: false }).waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'D2-kalem-listesi', yol: '/akis/XPVZ/tekrar/7?senaryo=berkin&hal=uydu', hazirla: async (p) => { await p.getByText('Hemşin Koop').waitFor(); await p.waitForTimeout(500); } },
   { ad: 'C1-karar-bekleyen', yol: '/akis/XPVZ/adim/9?senaryo=berkin&hal=karar', hazirla: async (p) => { await p.getByText('Kararı ver').waitFor(); await p.waitForTimeout(500); } },
   { ad: 'C2-karar-verildi', yol: '/akis/GKX8/adim/7?senaryo=berkin', hazirla: async (p) => { await p.getByText('Verildi', { exact: false }).waitFor(); await p.waitForTimeout(500); } },
   {

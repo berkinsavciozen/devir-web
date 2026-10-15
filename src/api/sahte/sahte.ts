@@ -82,7 +82,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   const KISA_ADIM: Record<string, Record<string, string>> = {
     RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
     U422: { 15: 'Sızma testi raporu' },
-    XPVZ: { 9: 'Çiftçi kabul kararı' },
+    XPVZ: { 5: 'Görüşme', 7: 'Belgeler', 9: 'Çiftçi kabul kararı', 11: 'Ürünler', 12: 'Profil' },
     GKX8: { 7: 'Çiftçi kabul kararı' },
   };
   // engelin kısa adı (0.10.0: devir_adim_guncelle engel_kisa → `baglam.engel_kisa`)
@@ -134,6 +134,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
+  if (o.hal === 'uydu') await halUydu(async (an, yol, govde) => { saat = Date.parse(an); const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); return r.json(); });
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   const kimlik = async (jwt: string) => {
@@ -152,7 +153,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
 }
 
 const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
-type Yaz = (an: string, yol: string, govde: unknown) => Promise<void>;
+type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim: 'Hazırlık agent\'ı', kim_tip: 'agent', arac: 'Claude' };
 
 /** C1 · 7 Kas: Karadeniz'de çiftçi kabul kararının sırası geldi; Claude 5 çiftçi önerdi. */
@@ -181,4 +182,25 @@ async function halKarar(yaz: Yaz) {
       oneri: { secim: ['Özçay Kooperatifi', 'Hopa Çay', 'Hemşin Koop', 'Çayeli Kadın Girişimi', 'Ortakbahçe Koop'], ozet: '5’ini de kabul et', gerekce: '4’ü faturalı; Çayeli’nin vergi kaydı teyit bekliyor' },
     },
   });
+}
+
+/** D1, D2 · 4 Kas: Karadeniz'de görüşme, belgeler, ürünler ve profil 5 çiftçi için alt akışlarda yürüyor. */
+async function halUydu(yaz: Yaz) {
+  const a = (k: string, no: number) => `/api/v1/akis/${k}/adim/${no}`;
+  await yaz('2026-10-15T11:00:00+03:00', a('XPVZ', 1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme' } });
+  await yaz('2026-10-17T10:00:00+03:00', a('XPVZ', 4), { durum: 'suruyor' });
+  await yaz('2026-10-19T17:00:00+03:00', a('XPVZ', 4), { durum: 'tamam', not: '4 kooperatif yönetimiyle görüşüldü' });
+  await yaz('2026-10-19T17:30:00+03:00', a('XPVZ', 3), { durum: 'suruyor', kim: 'Mali müşavir' });
+  const r = await yaz('2026-10-20T10:00:00+03:00', '/api/v1/akis/XPVZ/tekrar', { adimlar: [5, 7, 11, 12], kalemler: ['Özçay Kooperatifi', 'Hopa Çay', 'Hemşin Koop', 'Çayeli Kadın Girişimi', 'Ortakbahçe Koop'], kalem_turu: 'çiftçi', kalem_sahibi_adimlar: [7, 11] });
+  const kod = (ad: string) => r.tekrar?.[0]?.kalemler?.find((k: any) => k.ad === ad)?.akis as string;
+  const no = async (k: string, ustNo: number) => { const d = (r.tekrar[0].kalemler.find((x: any) => x.akis === k)?.adimlar || []).find((x: any) => x.ust_no === ustNo); return d?.no as number; };
+  const ilerlet = async (ad: string, ustNo: number, an: string, govde: any) => { const k = kod(ad); if (!k) return; await yaz(an, a(k, await no(k, ustNo)), govde); };
+  for (const [ad, g0] of [['Özçay Kooperatifi', 21], ['Hopa Çay', 22], ['Hemşin Koop', 23], ['Çayeli Kadın Girişimi', 27]] as [string, number][]) {
+    await ilerlet(ad, 5, `2026-10-${g0}T11:00:00+03:00`, { durum: 'tamam', not: 'Görüşüldü; ilgili' });
+  }
+  await ilerlet('Ortakbahçe Koop', 5, '2026-11-02T10:00:00+03:00', { durum: 'suruyor' });
+  await ilerlet('Özçay Kooperatifi', 7, '2026-10-29T15:00:00+03:00', { durum: 'tamam', kim: 'Çiftçi', not: 'Kimlik, vergi levhası, IBAN' });
+  await ilerlet('Hopa Çay', 7, '2026-11-01T12:00:00+03:00', { durum: 'tamam', kim: 'Çiftçi', not: 'Kimlik, vergi levhası, IBAN' });
+  await ilerlet('Hemşin Koop', 7, '2026-11-02T16:00:00+03:00', { durum: 'engelli', engel: 'IBAN eksik', engel_kisa: 'IBAN', kim: 'Çiftçi' });
+  await ilerlet('Çayeli Kadın Girişimi', 7, '2026-11-03T10:00:00+03:00', { durum: 'suruyor', kim: 'Çiftçi' });
 }

@@ -8,7 +8,7 @@ import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubug
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, ek, gunAyUzun, ikiSatir, paySure } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
-import { odakCumlesi, zamanCumlesi } from './cumleler';
+import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -105,10 +105,13 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     if (!M || !temel || !d) return null;
     // etiket: yalnız bugün ve ileride, x anında hâlâ açık olan adımlar (yanık/tahmin olanlar etiketsiz)
     const acik = (no: number) => !['lit', 'tahmin', 'ghost'].includes(temel.G.durumAn(no, X) || '');
-    const labels = X >= NOW - 36e5 ? etiketler(d, M, temel.P, acik, odak) : [];
-    const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels });
+    // tekrar grubu sürüyorsa: uydular ve aşama etiketi (D1)
+    const A = tekrarAsamasi(d), sats = uydular(d);
+    const labels = X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
+    const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = temel.G.uyeler.length > 4 ? 38 : 42;
+    const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
     const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
-    const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: 30, satir: 42, tBas: Y.G.T0 - GUN * .4, herGun: true, focus: odak || undefined, kayma });
+    const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun, focus: odak || undefined, kayma });
     let ust = '';
     if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
     return { svg: Y.svg + Z.svg + S.svg + ust, Y, Z, S };
@@ -135,7 +138,7 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
 
   const { Y, Z, S } = cizim;
   const ad = akisAdi(d.akis);
-  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? haritaCumlesi(d) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
+  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : haritaCumlesi(d)) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
   const cumle = ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
   const surguEtiket = Math.abs(X - NOW) < 36e5 ? `Bugün, ${gunAyUzun(X)}` : `${gunAyHafta(X)}${X > NOW ? ', tahmin' : ''}`;
 
@@ -155,7 +158,8 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   };
   const kritik = new Set<number>(d.kritik_yol || []);
   const byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
-  const ac = (no: number) => git(`/akis/${encodeURIComponent(kod)}/adim/${no}`);
+  const tekrarNo = new Set<number>((d.tekrar || []).flatMap((g: any) => (g.kalemler?.length ? g.adimlar : [])));
+  const ac = (no: number) => git(`/akis/${encodeURIComponent(kod)}/${tekrarNo.has(no) ? 'tekrar' : 'adim'}/${no}`);
 
   return (
     <Sahne gok={{ tohum: 33, yildiz: 280 }} cizim={cizim.svg} etiket={ad}>

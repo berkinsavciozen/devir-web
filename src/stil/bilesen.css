@@ -308,3 +308,19 @@
 .karar-yildizlar { list-style: none; margin: 0; padding: 0; }
 .karar-yildizlar li { position: absolute; width: 140px; text-align: center; font: 600 11px/14px var(--font-sans); color: var(--renk-metin-ink2); white-space: nowrap; }
 .karar-panel .dugme { position: absolute; left: 20px; right: 20px; width: auto; }
+
+/* D2 · kalem listesi */
+.kalem-hap { position: absolute; right: 20px; height: 28px; padding: 0 10px; border-radius: 14px; box-shadow: inset 0 0 0 1px var(--renk-vurgu-altin); background: color-mix(in srgb, var(--renk-zemin-hap) 88%, transparent); font: 750 12px/28px var(--font-sans); color: var(--renk-metin-altin); white-space: nowrap; }
+.kalem-ara { position: absolute; left: 20px; right: 20px; height: 44px; display: block; }
+.kalem-ara .alan { height: 44px; padding-right: 44px; }
+.kalem-ara .alan::-webkit-search-cancel-button { display: none; }
+.kalem-ara svg { position: absolute; right: 13px; top: 11px; color: var(--renk-metin-yer-tutucu); pointer-events: none; }
+.kalem-liste { position: absolute; left: 20px; right: 20px; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.kalem-satir { position: relative; display: block; width: 100%; height: 64px; border-radius: 18px; border: 0; padding: 0; cursor: pointer; text-align: left; background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-koyu); }
+.kalem-satir.engelli { background: rgba(255, 255, 255, .07); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 70%, transparent); }
+.kalem-satir:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.kalem-satir b { position: absolute; left: 16px; top: 12px; right: 44px; font: 650 14.5px/19px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kalem-iz { position: absolute; left: 0; top: 36px; overflow: visible; }
+.kalem-satir small { position: absolute; left: 116px; top: 38px; font: 600 12px/16px var(--font-sans); color: var(--renk-metin-ink3); white-space: nowrap; }
+.kalem-satir.engelli small { color: var(--renk-metin-mercan); }
+.kalem-ok { position: absolute; right: 14px; top: 24px; }

@@ -10,7 +10,7 @@ const sonSesli = (s: string) => { for (let i = s.length - 1; i >= 0; i--) if (SE
  * tur: 'den' (ayrılma), 'de' (bulunma), 'e' (yönelme), 'in' (ilgi).
  * "App Store onayı" + den → "App Store onayından"; "Görsel" + den → "Görselden"; "Rapor" + in → "Raporun".
  */
-export function ek(ad: string, tur: 'den' | 'de' | 'e' | 'in'): string {
+export function ek(ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i'): string {
   const s = ad.trim(), son = s.slice(-1).toLocaleLowerCase('tr'), v = sonSesli(s), kalin = KALIN.includes(v);
   const sesliyle = SESLI.includes(son);
   // iyelik ekiyle biten çok kelimeli ad ("… onayı", "… raporu"): kaynaştırma n
@@ -20,13 +20,14 @@ export function ek(ad: string, tur: 'den' | 'de' | 'e' | 'in'): string {
     const d = !sesliyle && SERT.includes(son) ? 't' : 'd', e = kalin ? 'a' : 'e';
     return s + tirnak + (iyelik ? 'n' : '') + d + e + (tur === 'den' ? 'n' : '');
   }
+  if (tur === 'i') { const i = 'ıa'.includes(v) ? 'ı' : 'ei'.includes(v) ? 'i' : 'ou'.includes(v) ? 'u' : 'ü'; return s + tirnak + (iyelik ? 'n' + i : sesliyle ? 'y' + i : i); }
   if (tur === 'e') { const e = kalin ? 'a' : 'e'; return s + tirnak + (iyelik ? 'n' + e : sesliyle ? 'y' + e : e); }
   const i = 'ıa'.includes(v) ? 'ı' : 'ei'.includes(v) ? 'i' : 'ou'.includes(v) ? 'u' : 'ü';
   return s + tirnak + (sesliyle ? 'n' : '') + i + 'n';
 }
 
 /** Özel ad + ek, kesme işaretiyle: "Berkin’de", "Emre’nin". */
-export const ozelEk = (ad: string, tur: 'den' | 'de' | 'e' | 'in') => ad + '’' + ek(ad, tur).slice(ad.length).replace(/^’/, '');
+export const ozelEk = (ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i') => ad + '’' + ek(ad, tur).slice(ad.length).replace(/^’/, '');
 
 /** Akışın ekran adı: kisa_ad; yoksa başlığın ilk 18 karakteri, kelime sınırında (§ ad tutarsızlığı). */
 export function akisAdi(akis: { kisa_ad?: string | null; baslik?: string | null }): string {
@@ -103,4 +104,12 @@ export function doluSatir(metin: string, en: number, font = '17.5px Caladea', en
 /** Yazı tipleri yüklenince yeniden ölçmek için: yüklenene dek canvas yedek yazı tipini ölçer. */
 export function yaziTipleriHazir(): Promise<unknown> {
   return typeof document !== 'undefined' && document.fonts ? Promise.all([document.fonts.load('17px Caladea'), document.fonts.load('italic 17px Caladea').catch(() => null), document.fonts.ready]) : Promise.resolve();
+}
+
+/** Sayı + iyelik: 2 → "2’si", 3 → "3’ü", 5 → "5’i", 10 → "10’u" (okunuşa göre). */
+export function sayiIyelik(n: number): string {
+  const BIR: Record<number, string> = { 1: 'i', 2: 'si', 3: 'ü', 4: 'ü', 5: 'i', 6: 'sı', 7: 'si', 8: 'i', 9: 'u' };
+  const ON: Record<number, string> = { 1: 'u', 2: 'si', 3: 'u', 4: 'ı', 5: 'si', 6: 'ı', 7: 'i', 8: 'i', 9: 'ı' };
+  const e = n % 10 ? BIR[n % 10] : n % 100 ? ON[(n % 100) / 10] : n % 1000 ? 'ü' : 'i';
+  return `${n}’${e}`;
 }
