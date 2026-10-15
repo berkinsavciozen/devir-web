@@ -6,7 +6,7 @@ import { Baslik } from '../../bilesen/Baslik';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
-import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, tarihDi } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, sayiIyelik, tarihDi } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
@@ -27,6 +27,12 @@ export function haritaCumlesi(d: any): string[] | null {
   const k = d.akis, by = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const ilk = (d.kritik_yol || []).map((no: number) => by.get(no)).find((a: any) => a && !BITTI(a.durum));
   if (k.kapandi_at) return null;
+  // bağımlılıksız akış: kritik yol anlamsız; kaç adım bitti, kaç kişide iş var (J2)
+  if (d.adimlar.length > 1 && d.adimlar.every((a: any) => !(a.bagimli || []).length)) {
+    const tm = d.adimlar.filter((a: any) => BITTI(a.durum)).length, kisi = new Set(d.adimlar.map((a: any) => a.sahip)).size;
+    const hz = new Set(d.adimlar.filter((a: any) => ['hazir', 'engelli', 'suruyor'].includes(a.durum)).map((a: any) => a.sahip)).size;
+    return [`${d.adimlar.length} adımdan ${tm ? `${sayiIyelik(tm)} tamam` : 'hiçbiri bitmedi'};`, hz ? `${hz === kisi ? `${kisi} kişinin hepsinde` : `${hz} kişide`} sırası gelmiş iş var.` : 'sırası gelmiş iş yok.'];
+  }
   const tarih = k.en_erken_bitis ? gunAyUzun(k.en_erken_bitis) : null;
   const pay = k.pay_saat == null ? '' : k.pay_saat >= 0 ? `hedefe ${paySure(k.pay_saat)} pay` : `hedef ${paySure(k.pay_saat)} geçiyor`;
   if (ilk && tarih) return [`Kritik yol ${ek(adimAdi(ilk), 'den')} geçiyor;`, `en erken ${tarih}${pay ? ', ' + pay : ''}.`];
@@ -117,9 +123,11 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
   const [birakildi, setBirakildi] = useState(an0);
   const d = q.data;
   const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
+  // kalabalık akış (> 6 kişi): ps .82, şerit satırı 27 (§4.14)
+  const geo = useMemo(() => ({ ...HARITA, ps: d && new Set(d.adimlar.map((a: any) => a.sahip)).size > 6 ? .82 : HARITA.ps }), [d]);
 
   // ilk çizim: geometri (etiket konumları için gezegen yerleri)
-  const temel = useMemo(() => (M ? yolCiz(M, { ...HARITA, now: NOW, x: NOW }) : null), [M, NOW]);
+  const temel = useMemo(() => (M ? yolCiz(M, { ...geo, now: NOW, x: NOW }) : null), [M, NOW, geo]);
   const cizim = useMemo(() => {
     if (!M || !temel || !d) return null;
     // etiket: yalnız bugün ve ileride, x anında hâlâ açık olan adımlar (yanık/tahmin olanlar etiketsiz)
@@ -129,19 +137,19 @@ export function Galaksi({ kod, sahip }: { kod: string; sahip: string }) {
     const soruVar = !odak && Math.abs(X - NOW) < 36e5 && !!soruCumlesi(d);
     const labels = soruVar ? [] : X >= NOW - 36e5 ? (A && !odak ? [[A.no, `${A.ad} · ${A.k}/${A.n}`, 0, 34, '#FFE6B0', '#FFD27A']] : etiketler(d, M, temel.P, acik, odak)) : [];
     const gecti = gecenGun(d, NOW) > 0; // I2: hedef geçince şerit sıkışır (tasarım 11 px/gün)
-    const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = uzun || temel.G.uyeler.length > 4 ? 38 : 42;
-    const Y = yolCiz(M, { ...HARITA, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
+    const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = temel.G.uyeler.length > 6 ? 27 : uzun || temel.G.uyeler.length > 4 ? 38 : 42;
+    const Y = yolCiz(M, { ...geo, now: NOW, x: X, focus: odak || undefined, labels: tarihNo != null ? [] : labels, sats });
     const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: NOW, oynuyor });
     const S = seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
-    const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...HARITA, now: NOW }) : { svg: '', hedefler: [] };
+    const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geo, now: NOW }) : { svg: '', hedefler: [] };
     let ust = '';
     // I2: hedef geçti; kulenin üstünde mercan hap
     const gec = gecenGun(d, NOW), kule = Y.G.kule;
     if (gec > 0 && kule && !odak) ust += pill(kule.x, kule.y - 34, `${gec} gün geçti`, { fs: 11.5, fw: 750, bg: '#FF8A78', bgo: 1, col: '#2A1D4F' });
     if (tarihNo != null && Y.G.gezegen[tarihNo]) ust = tarihKarti(d, Y, Z, S, tarihNo);
     return { svg: Y.svg + SK.svg + Z.svg + S.svg + ust, Y, Z, S, SK };
-  }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo]);
+  }, [M, temel, d, X, NOW, odak, oynuyor, kayma, tarihNo, geo]);
 
   // oynat: 1 gün / sn (§4.10); sona gelince durur
   useEffect(() => {

@@ -64,6 +64,8 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'F4-gecersiz-baglanti', yol: '/l/gecersizbaglanti0000?senaryo=berkin', hazirla: async (p) => { await p.getByText('artık açılmıyor', { exact: false }).waitFor(); await p.waitForTimeout(300); } },
   { ad: 'G1-baglanti-gonder', yol: '/akis/U422?senaryo=berkin', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Emre \(Test Bank\) yolu/ }).click(); await p.getByText('WhatsApp’ta gönder').waitFor(); await p.waitForTimeout(600); } },
   { ad: 'H1-taslak-sorulari', yol: '/yeni/TEURX?senaryo=berkin', hazirla: async (p) => { await p.getByText('Akışı kur').waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'J1-evren-20-akis', yol: '/?senaryo=berkin&hal=olcek', hazirla: async (p) => { await p.getByText('akış sürüyor', { exact: false }).waitFor(); await p.waitForTimeout(1200); } },
+  { ad: 'J2-galaksi-30-adim', yol: '/akis/OLC8?senaryo=berkin&hal=olcek30', hazirla: async (p) => { await p.waitForTimeout(900); } },
   { ad: 'I1-akis-kapandi', yol: '/akis/GKX8?senaryo=berkin', hazirla: async (p) => { await p.getByText('Dersleri gör').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'I2-hedef-gecti', yol: '/akis/RTD5?senaryo=berkin&hal=gecikme', hazirla: async (p) => { await p.waitForTimeout(800); } },
   { ad: 'I3-dosyalari-sil', yol: '/akis/GKX8?senaryo=berkin', hazirla: async (p) => { await p.getByRole('button', { name: 'Akış menüsü' }).click(); await p.getByRole('button', { name: 'Bütün dosyaları sil' }).click(); await p.getByRole('textbox').fill('Ege'); await p.waitForTimeout(700); } },

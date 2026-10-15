@@ -162,6 +162,11 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   const u422 = T.akis.find((x) => x.kisa_kod === 'U422');
   if (u422) T.katilimci.push({ id: crypto.randomUUID(), akis_id: u422.id, ad: 'Emre (Test Bank)', rol: 'Test Bank BT', iletisim: null, link_token: EMRE_BAGLANTI, created_at: '2026-10-12T15:02:00Z' });
 
+  // J1 · ölçek (sentetik): 16 aktif + 4 kapanan akış; gerçek akışların zamanı kaydırılmış kopyaları
+  if (o.hal === 'olcek') halOlcek(T);
+  // J2 · ölçek (sentetik): 30 adım, 8 kişi
+  if (o.hal === 'olcek30') halOtuz(T);
+
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
   if (o.hal === 'uydu') await halUydu(async (an, yol, govde) => { saat = Date.parse(an); const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); return r.json(); });
@@ -194,6 +199,50 @@ export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
 const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim: 'Hazırlık agent\'ı', kim_tip: 'agent', arac: 'Claude' };
+
+const GUNMS = 864e5;
+const kayIso = (t: string | null | undefined, d: number) => (t ? new Date(Date.parse(t) + d).toISOString() : t);
+const kayGun = (t: string | null | undefined, d: number) => (t ? new Date(Date.parse(t + 'T12:00:00+03:00') + d).toISOString().slice(0, 10) : t);
+let klonNo = 0;
+/** Akışın zamanı kaydırılmış kopyası (tasarım son-ortak.js kaydir): akış, adımlar ve olaylar birlikte kayar. */
+function klonla(T: Record<string, any[]>, kod: string, gun: number, o: { ad?: string; kapandi?: string; karar?: boolean } = {}) {
+  const A = T.akis.find((x) => x.kisa_kod === kod); if (!A) return;
+  const d = gun * GUNMS, id = crypto.randomUUID(), kk = `K${String(++klonNo).padStart(3, '0')}`;
+  const ad = o.ad || A.baglam?.kisa_ad || kod;
+  T.akis.push({ ...JSON.parse(JSON.stringify(A)), id, kisa_kod: kk, created_at: kayIso(A.created_at, d), hedef_tarih: kayGun(A.hedef_tarih, d), durum: o.kapandi ? 'kapandi' : 'aktif', kapandi_at: o.kapandi || null, baglam: { ...(A.baglam || {}), kisa_ad: ad }, kurallar: { ...(A.kurallar || {}), karar_insanda: !!o.karar } });
+  const adimlar = T.adim.filter((x) => x.akis_id === A.id).map((x) => ({ ...JSON.parse(JSON.stringify(x)), id: crypto.randomUUID(), akis_id: id, created_at: kayIso(x.created_at, d), durum_at: kayIso(x.durum_at, d), son_tarih: kayGun(x.son_tarih, d), ...(o.kapandi && x.durum !== 'atlandi' ? { durum: 'tamam' } : {}) }));
+  if (o.karar) { const h = adimlar.find((x) => x.durum === 'hazir'); if (h) h.karar_kriteri = 'Seçim kullanıcıda'; }
+  T.adim.push(...adimlar);
+  T.olay.push(...T.olay.filter((x) => x.akis_id === A.id && x.tip !== 'akis_kapandi').map((x) => ({ ...JSON.parse(JSON.stringify(x)), id: 900000 + T.olay.length, akis_id: id, created_at: kayIso(x.created_at, d) })));
+  if (o.kapandi) T.olay.push({ id: 900000 + T.olay.length, akis_id: id, adim_no: null, kim: 'Berkin', kim_tip: 'insan', arac: null, tip: 'akis_kapandi', ozet: 'Akış kapandı', veri: {}, created_at: o.kapandi });
+}
+function halOlcek(T: Record<string, any[]>) {
+  const kl: [string, number, string, boolean][] = [['RTD5', 18, '', false], ['4BZC', 30, 'Eğitim', true], ['NESR', -4, '', false], ['U422', -14, 'Ankara', false], ['XPVZ', -40, '', false], ['RTD5', 34, '', false], ['4BZC', 44, '', true], ['NESR', -20, '', false], ['RTD5', 8, '', false], ['U422', 12, '', false], ['4BZC', 10, '', false]];
+  const adlar: Record<string, number> = {};
+  for (const [k, g, ad, karar] of kl) { const temel = T.akis.find((x) => x.kisa_kod === k)?.baglam?.kisa_ad || k; adlar[temel] = (adlar[temel] || 1) + 1; klonla(T, k, g, { ad: ad || `${temel} ${adlar[temel]}`, karar }); }
+  klonla(T, 'RTD5', -9, { kapandi: '2026-10-04T09:00:00Z', ad: 'Hasat ekim' });
+  klonla(T, 'NESR', -60, { kapandi: '2026-10-08T09:00:00Z', ad: 'İzmir yaz' });
+  klonla(T, '4BZC', -30, { kapandi: '2026-10-10T15:00:00Z', ad: 'Offsite eylül' });
+}
+/** J2 · 30 adım, 8 kişi; bağımlılık yok (tasarım son-ekranlar-3.js sentetik30). */
+function halOtuz(T: Record<string, any[]>) {
+  const NOW = Date.parse('2026-10-14T10:00:00+03:00'), t0 = NOW - 10 * GUNMS, id = crypto.randomUUID();
+  const kisiler: [string, string][] = [['Berkin', 'insan'], ['Claude', 'agent'], ['Selin', 'insan'], ['Ayşe', 'dis'], ['Emre', 'dis'], ['Mali müşavir', 'dis'], ['Hazırlık agent’ı', 'agent'], ['Kooperatif', 'dis']];
+  let sd = 30 >>> 0; const rr = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const A = T.akis.find((x) => x.kisa_kod === 'RTD5')!;
+  const st: any[] = [];
+  for (let i = 1; i <= 30; i++) {
+    const [sahip, tip] = kisiler[(i * 3 + (i > 20 ? 1 : 0)) % 8];
+    const gun = Math.round(-9 + (i / 30) * 52 + (rr() - .5) * 6), ef = t0 + 10 * GUNMS + gun * GUNMS + (i % 3 === 0 ? 0 : 3 * 36e5);
+    st.push({ id: crypto.randomUUID(), akis_id: id, no: i, ad: `Adım ${i}`, sahip, sahip_tip: tip, durum: ef < NOW ? 'tamam' : 'sirada', durum_at: new Date(ef < NOW ? ef : t0).toISOString(), son_tarih: new Date(ef + 3 * 36e5).toISOString().slice(0, 10), sure_tahmin_gun: ef < NOW ? 1 : Math.max(.5, (ef - NOW) / GUNMS), bagimli: [], ciktilar: [], kaynak: 'sablon', created_at: new Date(t0).toISOString(), ...(i % 9 === 0 ? { karar_kriteri: 'Seçim kullanıcıda' } : {}) });
+  }
+  const gor = new Set<string>();
+  for (const x of st.slice().sort((a, b) => a.son_tarih.localeCompare(b.son_tarih))) if (x.durum === 'sirada' && !gor.has(x.sahip)) { gor.add(x.sahip); x.durum = 'hazir'; x.durum_at = new Date(NOW - 36e5).toISOString(); }
+  const e = st.find((x) => x.durum === 'hazir' && x.sahip === 'Ayşe'); if (e) { e.durum = 'engelli'; e.engel = 'Belge eksik'; }
+  T.akis.push({ ...JSON.parse(JSON.stringify(A)), id, kisa_kod: 'OLC8', baslik: 'Ölçek sınaması', created_at: new Date(t0).toISOString(), hedef_tarih: new Date(t0 + 62 * GUNMS + 3 * 36e5).toISOString().slice(0, 10), durum: 'aktif', kapandi_at: null, taslak_id: null, baglam: { kisa_ad: 'Ölçek sınaması' } });
+  T.adim.push(...st);
+  T.olay.push({ id: 990000, akis_id: id, adim_no: null, kim: 'Berkin', kim_tip: 'insan', arac: null, tip: 'akis_olustu', ozet: 'Akış kuruldu', veri: {}, created_at: new Date(t0).toISOString() });
+}
 
 /** C1 · 7 Kas: Karadeniz'de çiftçi kabul kararının sırası geldi; Claude 5 çiftçi önerdi. */
 async function halKarar(yaz: Yaz) {

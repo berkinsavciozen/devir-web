@@ -39,3 +39,7 @@ Spesifikasyon kazanır; burada not edilir.
 | 33 | H1 metin varsayımları API'de yok (`varsayimlar` yalnız soru varsayımları) | Rozetler metni gösterir | Sunucu 0.10.0: taslakta `varsayim_metinleri` (boyut, metin), soru varsayımlarına `boyut`, `secenekler` |
 | 34 | H1'e giden cümle ekranı tasarımda yok | §5 H1 API'si `POST /tasla {cumle}` | /yeni: cümle alanı, "Taslak çıkar", yarım kalan taslaklar; beklerken koza nabız atar. Sahte kipte taslak motoru çağrılmaz, örnek taslak döner |
 | 35 | Varsayım "yanlış" (§5 H1) metin varsayımında soruya dönüşemez | Yalnız soru varsayımları soruya eklenir | Metin varsayımı alt sayfada yalnız okunur |
+| 36 | J1 "3 karar", "En dar pay Test Bank’te: 6 gün": tasarım kopyaları sabit pay taşır; sunucu kaydırılmış kopyada açık adımı bugünden önce bitiremez | Sunucu hesabı kazanır | Cümle veriden: en dar pay (negatifse "hedef N gün geçiyor"); karar sayısı karar adımı hazır olan akışlardan |
+| 37 | J1 etiketleri: görüntüde 4 (adı verilmiş kopyalar) | §4.14 kuralı | Etiket en çok 6: işaretli, karar bekleyen, hedefi en yakın 3. 10'dan çok aktif akışta evren bu düzene geçer |
+| 38 | J2 görüntüsünde ps .6, şerit 6 px/gün; §4.14 ps .82 | Spesifikasyon kazanır | 6'dan çok kişide ps .82, şerit satırı 27 |
+| 39 | J2 cümlesi spesifikasyonda yok; görüntü "30 adımdan 5’i tamam; 8 kişinin hepsinde sırası gelmiş iş var." | Görüntü kazanır | Bağımlılıksız akışta kritik yol cümlesi yerine bu cümle |

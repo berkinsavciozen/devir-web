@@ -6,15 +6,17 @@ import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { Metin, Sahne } from '../../bilesen/Sahne';
-import { iconCloud, iconRings, usturlap } from '../../cizim/ekran';
+import { evrenOlcek, iconCloud, iconRings, usturlap } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { brackets, C, pill } from '../../cizim/ortak.js';
-import { akisAdi, doluSatir, yaziTipleriHazir } from '../../metin/turkce';
+import { akisAdi, doluSatir, ozelEk, paySure, yaziTipleriHazir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { AvatarAd, BosEvren } from './BosEvren';
 import { evrenCumleleri } from './cumleler';
 
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
+/** Bu sayıdan çok aktif akışta evren ölçek düzenine geçer (J1). */
+const OLCEK = 10;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
 /** Kapanan akışlar (dış halka). */
@@ -54,10 +56,26 @@ export function Evren({ ben }: { ben: Ben }) {
     const tum = [...kartlar, ...kapanan];
     const say = (k: any) => detay[k.kod]?.adimlar ? [detay[k.kod].adimlar.filter((a: any) => ['tamam', 'atlandi', 'ertelendi'].includes(a.durum)).length, detay[k.kod].adimlar.length] : [k.ilerleme?.tamam || 0, k.ilerleme?.toplam || 0];
     const tamam = tum.reduce((a, k) => a + say(k)[0], 0), toplam = tum.reduce((a, k) => a + say(k)[1], 0);
+    const kararli = (k: any) => !!detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor'));
+    // J1: çok akışta ölçek düzeni (§4.14)
+    if (kartlar.length > OLCEK) {
+      const O = evrenOlcek({
+        simdi: NOW,
+        akislar: [
+          ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k) })),
+          ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
+        ],
+        kucuk: (kod, x, y, r, pr) => kucukGalaksi(detay[kod], kisi, x, y, r, pr, NOW),
+      });
+      let s = O.svg;
+      for (const e of O.etiketler) { const k = tum.find((x) => x.kod === e.kod); if (k) s += pill(e.etiket.x, e.etiket.y, akisAdi(k), { fs: 10.5, fw: 650 }); }
+      if (O.kapanan) s += pill(O.kapananHap.x, O.kapananHap.y, `${O.kapanan} kapandı`, { fs: 11, fw: 650, stroke: '#FFD27A', col: '#FFE6B0' });
+      return { svg: s, U: { yer: O.yer, taslak: null }, olcek: O };
+    }
     const U = usturlap({
       simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0,
       akislar: [
-        ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: !!detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor')), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam })),
+        ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam })),
         ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
       ],
       kucuk: (kod, x, y, r, pr) => kucukGalaksi(detay[kod], kisi, x, y, r, pr, NOW),
@@ -73,7 +91,7 @@ export function Evren({ ben }: { ben: Ben }) {
       const w = y.rr * 2.8, h = y.rr * 2.32;
       s += tur === 'engel' ? brackets(y.x - w / 2, y.y - y.rr * .87, w, h, '#FF8A78', gCloud) : brackets(y.x - w / 2, y.y - y.rr * .87, w, h, '#FFD27A', gRings, true);
     }
-    return { svg: s, U };
+    return { svg: s, U, olcek: null };
   }, [ozet.data, kap.data, detay, cumleler, NOW]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 21, yildiz: 330 }} etiket="Evren"><AvatarAd ad={kisi} /></Sahne>;
@@ -82,6 +100,7 @@ export function Evren({ ben }: { ben: Ben }) {
   if (bos) return <BosEvren ad={kisi} avatar={avatar} />;
   if (!cizim) return null;
 
+  if (cizim.olcek) return <EvrenOlcek kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} />;
   // cümleler: glif + en çok iki satır (Caladea 17.5/22, x 56)
   let y = 113;
   const satirlar = cumleler.slice(0, 2).map((c) => {
@@ -106,6 +125,36 @@ export function Evren({ ben }: { ben: Ben }) {
           return <button key={g.kod} role="listitem" className="gezegen-hedef" style={{ left: g.x - r, top: g.y - r, width: r * 2, height: r * 2 }} aria-label={etiket} onClick={() => git(`/akis/${encodeURIComponent(g.kod)}`)} />;
         })}
         {cizim.U.taslak && <button className="gezegen-hedef" style={{ left: cizim.U.taslak.x - 52, top: cizim.U.taslak.y - 58, width: 104, height: 72 }} aria-label={`${ozet.data.taslaklar.length} taslak`} onClick={() => git('/yeni')} />}
+      </div>
+      <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
+    </Sahne>
+  );
+}
+
+/** J1 cümlesi: "16 akış sürüyor; 3 karar seni bekliyor. En dar pay Test Bank’te: 6 gün." */
+export function olcekCumlesi(kartlar: any[], detay: Record<string, any>): string {
+  const karar = kartlar.filter((k) => detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor'))).length;
+  const dar = kartlar.filter((k) => k.pay_saat != null).sort((a, b) => a.pay_saat - b.pay_saat)[0];
+  const bir = `${kartlar.length} akış sürüyor${karar ? `; ${karar} karar seni bekliyor` : ''}.`;
+  if (!dar) return bir;
+  return `${bir} ${dar.pay_saat >= 0 ? `En dar pay ${ozelEk(akisAdi(dar), 'de')}: ${paySure(dar.pay_saat)}.` : `${ozelEk(akisAdi(dar), 'de')} hedef ${paySure(dar.pay_saat)} geçiyor.`}`;
+}
+
+function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any> }) {
+  const tum = [...kartlar, ...kapanan];
+  const cumle = doluSatir(olcekCumlesi(kartlar, detay), 340, '17.5px Caladea', 3);
+  const O = cizim.olcek;
+  return (
+    <Sahne gok={{ tohum: 21, yildiz: 330 }} cizim={cizim.svg} etiket="Evren">
+      <AvatarAd ad={kisi} ac={avatar} />
+      <Metin y={112} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+      <div role="list" aria-label="Akışlar" className="harita-katman">
+        {O.yer.map((g: any) => {
+          const k = tum.find((x) => x.kod === g.kod), r = Math.max(16, g.rr);
+          const etiket = k ? `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı.' : `${k.ilerleme?.tamam ?? 0}/${k.ilerleme?.toplam ?? 0} adım tamam. Hedef ${gunAy(tarihMs(k.hedef_tarih))}.`}` : g.kod;
+          return <button key={g.kod} role="listitem" className="gezegen-hedef" style={{ left: g.x - r, top: g.y - r, width: r * 2, height: r * 2 }} aria-label={etiket} onClick={() => git(`/akis/${encodeURIComponent(g.kod)}`)} />;
+        })}
+        {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
       </div>
       <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
     </Sahne>

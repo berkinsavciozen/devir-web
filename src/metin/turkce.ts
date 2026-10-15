@@ -10,11 +10,27 @@ const sonSesli = (s: string) => { for (let i = s.length - 1; i >= 0; i--) if (SE
  * tur: 'den' (ayrılma), 'de' (bulunma), 'e' (yönelme), 'in' (ilgi).
  * "App Store onayı" + den → "App Store onayından"; "Görsel" + den → "Görselden"; "Rapor" + in → "Raporun".
  */
+const RAKAM = ['sıfır', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz'];
+const ONLAR = ['', 'on', 'yirmi', 'otuz', 'kırk', 'elli', 'altmış', 'yetmiş', 'seksen', 'doksan'];
+/** Sayının okunuşunun son kelimesi (ek uyumu için): 4 → dört, 30 → otuz, 100 → yüz. */
+function sayiOkunus(n: string): string {
+  const k = Number(n);
+  if (k % 1000 === 0 && k) return 'bin';
+  if (k % 100 === 0 && k) return 'yüz';
+  if (k % 10 === 0 && k) return ONLAR[(k % 100) / 10];
+  return RAKAM[k % 10];
+}
+
+/** Yabancı kelimelerin okunuşu (ek uyumu): "Test Bank’te", "App Store’dan". */
+const OKUNUS: Record<string, string> = { bank: 'benk', store: 'stor', claude: 'klod', drive: 'drayv', slack: 'slek', app: 'ep' };
+
 export function ek(ad: string, tur: 'den' | 'de' | 'e' | 'in' | 'i'): string {
-  const s = ad.trim(), son = s.slice(-1).toLocaleLowerCase('tr'), v = sonSesli(s), kalin = KALIN.includes(v);
+  const s = ad.trim(), sayi = /(\d+)$/.exec(s)?.[1], sonK = s.split(' ').pop()!.toLocaleLowerCase('tr');
+  const oku = sayi ? sayiOkunus(sayi) : OKUNUS[sonK] ?? s;
+  const son = oku.slice(-1).toLocaleLowerCase('tr'), v = sonSesli(oku), kalin = KALIN.includes(v);
   const sesliyle = SESLI.includes(son);
   // iyelik ekiyle biten çok kelimeli ad ("… onayı", "… raporu"): kaynaştırma n
-  const iyelik = sesliyle && 'ıiuü'.includes(son) && s.includes(' ') && !SESLI.includes(s.slice(-2, -1).toLocaleLowerCase('tr'));
+  const iyelik = !sayi && sesliyle && 'ıiuü'.includes(son) && s.includes(' ') && !SESLI.includes(s.slice(-2, -1).toLocaleLowerCase('tr'));
   const tirnak = /[A-ZÇĞİÖŞÜ]{2,}$|\d$/.test(s) ? '’' : '';
   if (tur === 'den' || tur === 'de') {
     const d = !sesliyle && SERT.includes(son) ? 't' : 'd', e = kalin ? 'a' : 'e';
