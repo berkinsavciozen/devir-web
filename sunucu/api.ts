@@ -1,0 +1,440 @@
+// Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
+// Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
+import {
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, isDis, stepInScope, flowInScope, metrics, getAkis, loadFlow,
+  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
+} from "./core.ts";
+import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
+import type { LlmFn } from "./llm.ts";
+import type { GomFn } from "./bellek.ts";
+
+type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string } };
+type Parca = { tur: "metin" | "kisi" | "adim" | "akis" | "sure" | "tarih" | "uyari"; metin: string; ref?: Record<string, unknown> };
+
+export class ApiHata extends Error { constructor(public durum: number, m: string) { super(m); } }
+const saat = (ms: number | null | undefined) => (ms == null ? null : Math.round((ms / HOUR) * 10) / 10);
+const iso = (ms: number | null | undefined) => (ms == null || !isFinite(ms) ? null : new Date(ms).toISOString());
+const gunOf = (ms: number | null | undefined) => (ms == null || !isFinite(ms) ? null : todayIst(ms));
+const durKisa = (ms: number) => { const h = ms / HOUR; if (h < 1) return `${Math.max(1, Math.round(ms / 6e4))} dk`; if (h < 24) return `${Math.round(h)} sa`; const d = Math.round(h / 24); return `${d} gün`; };
+const yaz = (p: Parca[]) => p.map((x) => x.metin).join("");
+
+// ---------- görünümler ----------
+function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } = {}) {
+  const r = m.tl.get(s.no) || { bekleme: 0, aktif: 0, engel: 0, simdi: 0 };
+  const ef = m.pl.EF.get(s.no);
+  const grup = altAdimi(akis, s.no);
+  const v: any = {
+    no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
+    aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
+    karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
+    son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
+    en_erken_bitis: DONE(s) ? null : iso(ef), gec_risk: !DONE(s) && !!s.son_tarih && ef != null && ef > eod(s.son_tarih),
+    kritik: !DONE(s) && m.pl.chain.includes(s.no),
+    bagimli: s.bagimli, bekleyenler: steps.filter((x: any) => x.bagimli.includes(s.no)).map((x: any) => x.no),
+    bekleme_saat: saat(r.simdi), toplam_bekleme_saat: saat(r.bekleme + r.engel), aktif_saat: saat(r.aktif),
+    engel: s.engel || null, ilerleme: s.ilerleme || null, durum_at: s.durum_at,
+    kosul: s.kosul || null, cevap_soru: s.cevap_soru || null, capa_soru: s.capa_soru || null, tarih_sabit: !!s.tarih_sabit, capa_tarih: s.capa_tarih || null,
+    kaynak: s.kaynak, tur_kod: s.tur_kod || null, cikti_sayisi: (s.ciktilar || []).length,
+    tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
+  };
+  if (!DONE(s) && !opts.dis) v.linkler = chatLinks(akis, s);
+  return v;
+}
+
+function akisOzeti(akis: any, steps: any[], m: any, now: number): Parca[] {
+  const p: Parca[] = [];
+  const A = (metin: string, tur: Parca["tur"] = "metin", ref?: any) => p.push({ tur, metin, ...(ref ? { ref } : {}) });
+  if (akis.durum !== "aktif") { A(`${fmtMs(Date.parse(akis.kapandi_at || akis.created_at))} tarihinde kapandı; `, "tarih"); A(`${durKisa(m.sure)} sürdü.`, "sure"); return p; }
+  const tamam = steps.filter(DONE).length;
+  A(`${steps.length} adımdan ${tamam} tamam. `);
+  const engelli = steps.filter((s: any) => s.durum === "engelli").sort((a: any, b: any) => m.tl.get(b.no).simdi - m.tl.get(a.no).simdi)[0];
+  const bekleyen = steps.filter((s: any) => s.durum === "hazir").sort((a: any, b: any) => (m.pl.chain.includes(b.no) ? 1 : 0) - (m.pl.chain.includes(a.no) ? 1 : 0) || m.tl.get(b.no).simdi - m.tl.get(a.no).simdi)[0];
+  const suren = steps.find((s: any) => s.durum === "suruyor");
+  if (engelli) { A(`${engelli.no}. ${engelli.ad}`, "adim", { no: engelli.no }); A(` engelli`); if (engelli.engel) A(`: ${engelli.engel}`); A(". "); }
+  if (bekleyen) { A("Sırası gelen: "); A(`${bekleyen.no}. ${bekleyen.ad}`, "adim", { no: bekleyen.no }); A(" ("); A(bekleyen.sahip, "kisi", { tip: bekleyen.sahip_tip }); A(")"); const w = m.tl.get(bekleyen.no).simdi; if (w > HOUR) { A(", "); A(durKisa(w), "sure"); A(" bekliyor"); } A(". "); }
+  else if (suren && !engelli) { A("Şu an "); A(`${suren.no}. ${suren.ad}`, "adim", { no: suren.no }); A(" sürüyor ("); A(suren.sahip, "kisi", { tip: suren.sahip_tip }); A("). "); }
+  if (akis.hedef_tarih && m.pay != null) {
+    A("Hedef "); A(fmtD(akis.hedef_tarih), "tarih", { tarih: akis.hedef_tarih });
+    if (m.pay >= 0) { A(", "); A(durKisa(m.pay), "sure"); A(" pay var."); }
+    else { A("; bu gidişle "); A(`${durKisa(-m.pay)} gecikme riski`, "uyari"); A("."); }
+  }
+  if (p.length && p[p.length - 1].metin.endsWith(" ")) p[p.length - 1].metin = p[p.length - 1].metin.trimEnd();
+  return p;
+}
+
+function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx) {
+  const m = metrics(akis, steps, events, now);
+  const vis = steps.filter((s: any) => stepInScope(ctx, s));
+  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no) })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
+  const parca = akisOzeti(akis, isDis(ctx) ? vis : steps, m, now);
+  const son = events.length ? events[events.length - 1].created_at : akis.created_at;
+  return {
+    kod: akis.kisa_kod, baslik: akis.baslik, durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
+    en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay), risk: m.pay != null && m.pay < 0,
+    ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length, suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
+    sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, sahip: s.sahip, sahip_tip: s.sahip_tip })),
+    kritik_bekleme_saat: saat(m.kritikBekleme), toplam_bekleme_saat: saat(m.bekleme),
+    ust: akis.baglam?.ust_akis ? { akis: akis.baglam.ust_kod, kalem: akis.baglam.kalem } : null,
+    tekrar: altGruplar(akis).map((g) => ({ grup: g.id, kalem_turu: g.kalem_turu, kalem_sayisi: g.kalemler.length, adimlar: g.adimlar, ilerleme: steps.find((s: any) => g.adimlar.includes(s.no) && !DONE(s))?.ilerleme || null })),
+    olusturuldu: akis.created_at, son_hareket: son, kapandi_at: akis.kapandi_at || null,
+    ozet: yaz(parca), ozet_parcalar: parca,
+  };
+}
+
+async function akislarV(ctx: Ctx, durum: string, altlar = false) {
+  const where: Record<string, unknown> = { sahip_id: ctx.ws.id };
+  if (durum !== "hepsi") where.durum = durum;
+  let flows = await ctx.db.many("akis", where, "created_at");
+  if (!altlar) flows = flows.filter((f: any) => !f.baglam?.ust_akis);
+  const ids = flows.map((f: any) => f.id);
+  const allSteps = ids.length ? (await ctx.db.many("adim", { akis_id: ids }, "no")).map(fixStep) : [];
+  const allEv = ids.length ? await ctx.db.many("olay", { akis_id: ids }, "id") : [];
+  const out: any[] = [];
+  for (const f of flows) {
+    const steps = allSteps.filter((s: any) => s.akis_id === f.id);
+    if (!flowInScope(ctx, f, steps)) continue;
+    out.push(akisKart(f, steps, allEv.filter((e: any) => e.akis_id === f.id && e.tip !== "okuma"), ctx.now, ctx));
+  }
+  // önce riskli ve aktif, sonra en az pay, sonra son hareket
+  out.sort((a, b) => (a.durum === "aktif" ? 0 : 1) - (b.durum === "aktif" ? 0 : 1) || (b.risk ? 1 : 0) - (a.risk ? 1 : 0) || (a.pay_saat ?? Infinity) - (b.pay_saat ?? Infinity) || Date.parse(b.son_hareket) - Date.parse(a.son_hareket));
+  return out;
+}
+
+async function taslaklarV(ctx: Ctx) {
+  if (isDis(ctx)) return [];
+  const t = await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at");
+  return t.reverse().slice(0, 30).map((x: any) => ({
+    kod: x.kisa_kod, cumle: x.cumle, baslik: x.taslak?.baslik || null, varlik: x.baglam?.musteri || x.taslak?.anahtar_varlik?.ad || null, is_turu: x.is_turu_ad || x.is_turu || null,
+    soru_sayisi: (x.sorular?.secilen || []).length, adim_sayisi: (x.taslak?.adimlar || []).length, olusturuldu: x.created_at,
+  }));
+}
+
+async function anaV(ctx: Ctx) {
+  const akislar = await akislarV(ctx, "aktif");
+  const ben = norm(ctx.key.kisi);
+  const flows = await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at");
+  const ids = flows.map((f: any) => f.id);
+  const steps = ids.length ? (await ctx.db.many("adim", { akis_id: ids, durum: ["hazir", "engelli", "suruyor"] }, "no")).map(fixStep) : [];
+  const fBy = new Map(flows.map((f: any) => [f.id, f]));
+  const kartBy = new Map(akislar.map((k: any) => [k.kod, k]));
+  const benim = steps.filter((s: any) => (s.sahip_tip === "insan" || s.sahip_tip === "dis") && norm(s.sahip).includes(ben) && !altAdimi(fBy.get(s.akis_id), s.no)).map((s: any) => {
+    const f: any = fBy.get(s.akis_id);
+    const k: any = kartBy.get(f.kisa_kod) || (f.baglam?.ust_kod ? kartBy.get(f.baglam.ust_kod) : null);
+    const bek = k?.sira?.find((x: any) => x.no === s.no)?.bekleme_saat ?? null;
+    return { akis: f.kisa_kod, akis_baslik: f.baslik, no: s.no, ad: s.ad, durum: s.durum, engel: s.engel || null, son_tarih: s.son_tarih || null, bekleme_saat: bek, karar_adimi: kararAdimi(s), linkler: chatLinks(f, s) };
+  }).sort((a: any, b: any) => (a.son_tarih || "9999") .localeCompare(b.son_tarih || "9999") || (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
+  const risk = akislar.filter((k: any) => k.risk);
+  const p: Parca[] = [];
+  const A = (metin: string, tur: Parca["tur"] = "metin", ref?: any) => p.push({ tur, metin, ...(ref ? { ref } : {}) });
+  const hazir = benim.filter((x: any) => x.durum !== "suruyor");
+  if (hazir.length) {
+    A(`Senden beklenen ${hazir.length} iş var. Önce: `); const x = hazir[0]; A(x.ad, "adim", { akis: x.akis, no: x.no }); A(" ("); A(x.akis_baslik, "akis", { akis: x.akis });
+    if (x.son_tarih) { A(", son "); A(fmtD(x.son_tarih), "tarih", { tarih: x.son_tarih }); } A("). ");
+  } else if (benim.length) { A(`Senden beklenen yeni iş yok; ${benim.length} işin sürüyor. `); }
+  else A("Şu an senden beklenen iş yok. ");
+  if (risk.length) { A(`${risk.length} akışta `); A("hedef riski", "uyari"); A(" var: "); risk.slice(0, 2).forEach((k: any, i: number) => { if (i) A(", "); A(k.baslik, "akis", { akis: k.kod }); }); A("."); }
+  else if (akislar.length) A(`${akislar.length} aktif akışın hepsi hedefinde.`);
+  if (p.length) p[p.length - 1].metin = p[p.length - 1].metin.trimEnd();
+  return { kim: ctx.key.kisi, rol: ctx.key.rol, bugun: todayIst(ctx.now), ozet: yaz(p), ozet_parcalar: p, benim, akislar, taslaklar: await taslaklarV(ctx) };
+}
+
+async function akisV(ctx: Ctx, kod: string) {
+  const akis = await getAkis(ctx, kod);
+  const { steps, events } = await loadFlow(ctx, akis);
+  const ev = events.filter((e: any) => e.tip !== "okuma");
+  const m = metrics(akis, steps, ev, ctx.now);
+  const kart = akisKart(akis, steps, ev, ctx.now, ctx);
+  const dis = isDis(ctx);
+  const vis = steps.filter((s: any) => stepInScope(ctx, s));
+  const sahipler = new Map<string, any>();
+  for (const s of vis) {
+    const k = `${s.sahip_tip}|${norm(s.sahip)}`;
+    const o = sahipler.get(k) || { ad: s.sahip, tip: s.sahip_tip, adimlar: [], acik: 0, bekleyen_saat: 0, siradaki: null };
+    o.adimlar.push(s.no);
+    if (!DONE(s)) o.acik++;
+    if (s.durum === "hazir" || s.durum === "engelli") { o.bekleyen_saat = Math.round((o.bekleyen_saat + (m.tl.get(s.no)!.simdi / HOUR)) * 10) / 10; if (o.siradaki == null) o.siradaki = s.no; }
+    sahipler.set(k, o);
+  }
+  const out: any = {
+    akis: { ...kart, amac: akis.amac || null, iliski: akis.baglam?.iliski || null, kurallar: akis.kurallar || {} },
+    olcu: { sure_saat: saat(m.sure), aktif_saat: saat(m.aktif), bekleme_saat: saat(m.bekleme), kritik_bekleme_saat: saat(m.kritikBekleme), belirsiz_saat: saat(m.belirsiz), verim: m.verim != null ? Math.round(m.verim * 100) / 100 : null, paralel: Math.round(m.paralel * 10) / 10, en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay) },
+    kritik_yol: dis ? [] : m.pl.chain,
+    adimlar: vis.map((s: any) => adimV(akis, s, m, steps, { dis })),
+    sahipler: [...sahipler.values()],
+    acik_sorular: dis ? [] : Object.entries<any>(akis.baglam?.bekleyen || {}).map(([k, b]) => ({ kod: k, soru: b.soru, tip: b.tip, secenekler: b.secenekler || null, adim_no: b.adim_no || null })),
+    gizli_adim_sayisi: steps.length - vis.length,
+  };
+  if (!dis) {
+    out.kararlar = akis.baglam?.musteri ? (await kararlar(ctx, akis.baglam.musteri)).map(kararV) : [];
+    out.acik_isler = akis.baglam?.musteri ? (await acikIsler(ctx, akis.baglam.musteri)).filter((x: any) => x.akis_id !== akis.id).map((x: any) => ({ akis: x.akis_kod, no: x.no, ad: x.ad })) : [];
+    out.katilimcilar = (await ctx.db.many("katilimci", { akis_id: akis.id }, "created_at")).map((k: any) => katilimciV(k, null));
+    out.tekrar = await tekrarV(ctx, akis, steps);
+    out.olaylar = ev.slice(-60).reverse().map(olayV);
+    const ht = akis.taslak_id ? await ctx.db.one("taslak", { id: akis.taslak_id }) : null;
+    out.hatirlananlar = ht?.taslak?._hatira?.satirlar?.slice(0, 8) || [];
+  } else out.olaylar = ev.filter((e: any) => e.adim_no != null && vis.some((s: any) => s.no === e.adim_no)).slice(-30).reverse().map(olayV);
+  return out;
+}
+
+async function tekrarV(ctx: Ctx, akis: any, steps: any[]) {
+  const out: any[] = [];
+  for (const g of altGruplar(akis)) {
+    if (!g.kalemler.length) { out.push({ grup: g.id, kalem_turu: g.kalem_turu, adimlar: g.adimlar, kalemler: [] }); continue; }
+    const ids = g.kalemler.map((k) => k.akis_id);
+    const flows = await ctx.db.many("akis", { id: ids }, "created_at");
+    const cs = (await ctx.db.many("adim", { akis_id: ids }, "no")).map(fixStep);
+    out.push({
+      grup: g.id, kalem_turu: g.kalem_turu, adimlar: g.adimlar,
+      kalemler: g.kalemler.map((k) => {
+        const f: any = flows.find((x: any) => x.id === k.akis_id);
+        const ks = cs.filter((c: any) => c.akis_id === k.akis_id);
+        const acik = ks.find((c: any) => !DONE(c));
+        const ustNo = acik ? Number(f?.baglam?.ust_harita?.[String(acik.no)]) || null : null;
+        return { ad: k.ad, akis: k.kod, durum: f?.durum || null, bitti: !acik, asama: acik ? { ust_no: ustNo, no: acik.no, ad: acik.ad, durum: acik.durum, engel: acik.engel || null } : null, adimlar: ks.map((c: any) => ({ no: c.no, ust_no: Number(f?.baglam?.ust_harita?.[String(c.no)]) || null, durum: c.durum })) };
+      }),
+    });
+  }
+  return out;
+}
+
+const kararV = (k: any) => ({ id: k.id, varlik: k.varlik, karar: k.karar, kapsam: k.kapsam || null, istisna: k.istisna || null, kim: k.kim || null, konu: k.konu || null, tarih: k.created_at, durum: k.durum });
+const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac || null, tip: e.veri?.tur || e.tip, adim_no: e.adim_no, ozet: e.ozet, ...(e.veri?.to ? { durum: e.veri.to } : {}) });
+const katilimciV = (k: any, base: string | null) => ({ id: k.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k) : {}) });
+function linkV(base: string, k: any) {
+  const link = `${base}/l/${k.link_token}`;
+  return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Merhaba ${k.ad}, senden beklenen adımlar burada: ${link}`)}` };
+}
+
+async function adimDetayV(ctx: Ctx, kod: string, no: number) {
+  const akis = await getAkis(ctx, kod);
+  const { steps, events } = await loadFlow(ctx, akis);
+  const s = steps.find((x: any) => x.no === no);
+  if (!s) throw new ApiHata(404, `Bu akışta ${no} numaralı adım yok.`);
+  if (!stepInScope(ctx, s)) throw new ApiHata(403, `Adım ${no} sana atanmamış.`);
+  const ev = events.filter((e: any) => e.tip !== "okuma");
+  const m = metrics(akis, steps, ev, ctx.now);
+  const v: any = adimV(akis, s, m, steps, { dis: isDis(ctx) });
+  const dis = isDis(ctx);
+  v.ciktilar = (await ciktilar(ctx, akis.id, [s.no])).map(ciktiV);
+  v.girdiler = (await ciktilar(ctx, akis.id, s.bagimli)).filter((c: any) => !dis || c.paylasim === "dis").map(ciktiV);
+  if (!dis) {
+    v.bekledigi = s.bagimli.map((n: number) => { const d: any = steps.find((x: any) => x.no === n); return d ? { no: d.no, ad: d.ad, sahip: d.sahip, durum: d.durum } : null; }).filter(Boolean);
+    v.bekleyen_adimlar = steps.filter((x: any) => x.bagimli.includes(s.no)).map((d: any) => ({ no: d.no, ad: d.ad, sahip: d.sahip, durum: d.durum }));
+    v.kararlar = akis.baglam?.musteri ? (await kararlar(ctx, akis.baglam.musteri)).map(kararV) : [];
+  }
+  const bq = s.cevap_soru && akis.baglam?.bekleyen?.[s.cevap_soru];
+  v.cevaplanacak_soru = bq && !DONE(s) ? { kod: s.cevap_soru, soru: bq.soru, tip: bq.tip, secenekler: bq.secenekler || null } : null;
+  v.olaylar = ev.filter((e: any) => e.adim_no === s.no).reverse().map(olayV);
+  return { akis: { kod: akis.kisa_kod, baslik: akis.baslik, durum: akis.durum }, adim: v };
+}
+const ciktiV = (c: any) => ({ id: c.id, adim_no: c.adim_no, ad: c.ad, ozet: c.ozet || null, icerik: c.icerik || null, url: dosyaIdOf(c.url) ? null : c.url || null, dosya_id: dosyaIdOf(c.url), kaynak: c.kaynak || null, surum: c.surum, durum: c.durum, paylasim: c.paylasim, kim: c.kim || null, arac: c.arac || null, tarih: c.created_at });
+
+async function kararlarV(ctx: Ctx, varlik: string | null) {
+  const rows = await ctx.db.many("karar", varlik ? { ws_id: ctx.ws.id, varlik_norm: norm(varlik), durum: "gecerli" } : { ws_id: ctx.ws.id, durum: "gecerli" }, "created_at");
+  const by = new Map<string, any[]>();
+  for (const k of rows.reverse()) { const a = by.get(k.varlik) || []; a.push(kararV(k)); by.set(k.varlik, a); }
+  // karar bekleyen adımlar (aktif akışlarda, sırası gelmiş ya da sürüyor)
+  const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")).filter((f: any) => !varlik || norm(f.baglam?.musteri || "") === norm(varlik));
+  const ids = flows.map((f: any) => f.id);
+  const steps = ids.length ? (await ctx.db.many("adim", { akis_id: ids, durum: ["hazir", "suruyor", "engelli"] }, "no")).map(fixStep) : [];
+  const fBy = new Map(flows.map((f: any) => [f.id, f]));
+  const bekleyen = steps.filter((s: any) => { const f: any = fBy.get(s.akis_id); return (f.kurallar || {}).karar_insanda !== false && kararAdimi(s) && !altAdimi(f, s.no); })
+    .map((s: any) => { const f: any = fBy.get(s.akis_id); return { akis: f.kisa_kod, akis_baslik: f.baslik, varlik: f.baglam?.musteri || null, no: s.no, ad: s.ad, sahip: s.sahip, durum: s.durum, karar_kriteri: s.karar_kriteri || null, son_tarih: s.son_tarih || null }; });
+  return { varliklar: [...by.entries()].map(([v, k]) => ({ varlik: v, kararlar: k })), bekleyen };
+}
+
+async function taslakV(ctx: Ctx, kod: string) {
+  const t = await ctx.db.one("taslak", { kisa_kod: String(kod).toUpperCase(), ws_id: ctx.ws.id });
+  if (!t) throw new ApiHata(404, `'${kod}' taslağı yok.`);
+  const tt = t.taslak || {};
+  return {
+    kod: t.kisa_kod, cumle: t.cumle, durum: t.durum, akis_id: t.akis_id || null, baslik: tt.baslik || null, amac: tt.amac || null, varlik: t.baglam?.musteri || tt.anahtar_varlik?.ad || null,
+    hedef_tarih: tt.hedef_tarih || null, is_turu: t.is_turu_ad || t.is_turu || null, olusturuldu: t.created_at,
+    sorular: (t.sorular?.secilen || []).map((q: any) => ({ kod: q.kod, soru: q.soru, neden: q.neden || null, gerekce: q.gerekce || null, tip: q.tip, secenekler: q.secenekler || null, varsayilan: q.varsayilan ?? null })),
+    sonra_sorulacak: (t.sorular?.sonra || []).map((q: any) => ({ kod: q.kod, soru: q.soru, tip: q.tip })),
+    varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null })),
+    adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null })),
+    roller: tt.roller || [], hatirlananlar: tt._hatira?.satirlar || [],
+  };
+}
+
+// ---------- yönlendirme ----------
+const ARAC = "Devir web";
+function govdeAl(b: any) { return b && typeof b === "object" ? b : {}; }
+async function arac(ctx: Ctx, ad: string, a: any) {
+  try { return await callTool(ad, { arac: ARAC, kim_tip: "insan", ...a }, ctx); }
+  catch (e) { throw new ApiHata(400, (e as Error).message); }
+}
+
+function sahipMi(ctx: Ctx) { if (ctx.key.rol !== "sahip") throw new ApiHata(403, "Bunu yalnızca çalışma alanının sahibi yapabilir."); }
+function ekipMi(ctx: Ctx) { if (isDis(ctx)) throw new ApiHata(403, "Bunu yalnızca ekip üyeleri yapabilir."); }
+async function sha256(s: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join(""); }
+function yeniToken(on: string, n = 18) { const b = new Uint8Array(n); crypto.getRandomValues(b); return on + Array.from(b).map((x) => "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 57]).join(""); }
+const IPTAL = "iptal:";
+
+export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: URLSearchParams, body: any, taban: { fn: string; link: string }): Promise<unknown> {
+  const [r0, r1, r2, r3, r4] = yol;
+  const b = govdeAl(body);
+  if (method === "GET") {
+    if (r0 === "ozet" && !r1) return anaV(ctx);
+    if (r0 === "akislar" && !r1) return { akislar: await akislarV(ctx, q.get("durum") || "aktif", q.get("alt") === "1"), taslaklar: await taslaklarV(ctx) };
+    if (r0 === "akis" && r1 && !r2) return akisV(ctx, r1);
+    if (r0 === "akis" && r1 && r2 === "adim" && r3 && !r4) return adimDetayV(ctx, r1, Number(r3));
+    if (r0 === "akis" && r1 && r2 === "katilimcilar" && !r3) { ekipMi(ctx); const ak = await getAkis(ctx, r1); return { katilimcilar: (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).map((k: any) => katilimciV(k, taban.link)) }; }
+    if (r0 === "cikti" && r1) {
+      const ak = await getAkis(ctx, q.get("akis"));
+      const c = await ctx.db.one("cikti", { id: Number(r1), akis_id: ak.id });
+      if (!c) throw new ApiHata(404, "Çıktı yok.");
+      if (isDis(ctx)) { const s = await ctx.db.one("adim", { akis_id: ak.id, no: c.adim_no }); if (c.paylasim !== "dis" && !(s && stepInScope(ctx, s))) throw new ApiHata(403, "Bu çıktı ekibe özel."); }
+      return { cikti: ciktiV(c) };
+    }
+    if (r0 === "dosya" && r1 && !r2) return indir(ctx, r1);
+    if (r0 === "akis" && r1 && r2 === "dosyalar" && !r3) return akisDosyalari(ctx, r1);
+    if (r0 === "kararlar" && !r1) { ekipMi(ctx); return kararlarV(ctx, q.get("varlik")); }
+    if (r0 === "taslak" && r1 && !r2) { ekipMi(ctx); return taslakV(ctx, r1); }
+    if (r0 === "dersler" && !r1) {
+      ekipMi(ctx);
+      const L = await ctx.db.many("ders", { ws_id: ctx.ws.id, durum: ["kesin", "aday", "zayif"] }, "updated_at", 200);
+      return { dersler: L.reverse().map((x: any) => ({ kod: `D${x.id}`, metin: x.metin, durum: x.durum, etki: x.etki, kapsam: x.kapsam, varlik: x.varlik || null, kanit_sayi: x.kanit_sayi, uygulandi: x.uygulandi || 0, gereksiz: x.atlandi || 0, guven: x.guven })) };
+    }
+    if (r0 === "anahtarlar" && !r1) {
+      sahipMi(ctx);
+      const L = await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id }, "created_at");
+      return { anahtarlar: L.map((k: any) => ({ id: k.id, kisi: k.kisi, rol: k.rol, kapsam: k.kapsam || null, olusturuldu: k.created_at, son_kullanim: k.son_kullanim || null, iptal: String(k.token_hash || "").startsWith(IPTAL), ben: k.id === ctx.key.id })) };
+    }
+    if (r0 === "ben" && !r1) return { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { ad: ctx.ws.ad } };
+    throw new ApiHata(404, "Böyle bir uç yok.");
+  }
+  if (method === "POST") {
+    // akış işlemleri: sonuçta güncel görünüm döner
+    if (r0 === "akis" && r1 && r2 === "adim" && r3 && !r4) {
+      if (b.cikti) { const ak = await getAkis(ctx, r1); b.cikti = await dosyaCiktilari(ctx, ak.id, Number(r3), b.cikti); }
+      const mesaj = await arac(ctx, "devir_adim_guncelle", { ...b, akis: r1, no: Number(r3) });
+      return { mesaj, ...(await adimDetayV(ctx, r1, Number(r3))) };
+    }
+    if (r0 === "akis" && r1 && r2 === "adim" && r3 && r4 === "dosya") return yuklemeIste(ctx, r1, Number(r3), b);
+    if (r0 === "dosya" && r1 && r2 === "sil") return dosyaSil(ctx, [r1]);
+    if (r0 === "akis" && r1 && r2 === "dosyalari-sil" && !r3) { sahipMi(ctx); const ak = await getAkis(ctx, r1); return dosyaSil(ctx, null, ak.id); }
+    if (r0 === "akis" && r1 && r2 === "adim" && !r3) { const mesaj = await arac(ctx, "devir_adim_ekle", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }
+    if (r0 === "akis" && r1 && r2 === "cevap" && !r3) { const mesaj = await arac(ctx, "devir_cevapla", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }
+    if (r0 === "akis" && r1 && r2 === "tekrar" && !r3) { const mesaj = await arac(ctx, "devir_alt_akis", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }
+    if (r0 === "akis" && r1 && r2 === "kapat" && !r3) { const mesaj = await arac(ctx, "devir_akis_kapat", { ...b, akis: r1 }); return { mesaj }; }
+    if (r0 === "akis" && r1 && r2 === "sabitle" && !r3) { const mesaj = await arac(ctx, "devir_sabitle", { ...b, akis: r1 }); return { mesaj }; }
+    if (r0 === "karar" && !r1) { const mesaj = await arac(ctx, "devir_karar", b); return { mesaj, ...(await kararlarV(ctx, b.varlik || null)) }; }
+    if (r0 === "ders" && r1 && (r2 === "onayla" || r2 === "reddet")) { const mesaj = await arac(ctx, "devir_dersler", { islem: r2, ders: r1 }); return { mesaj }; }
+    if (r0 === "tasla" && !r1) { const mesaj = await arac(ctx, "devir_tasla", b); const kod = /Taslak (T\w+)/.exec(mesaj)?.[1] || /\b(T[A-Z0-9]{3,})\b/.exec(mesaj)?.[1]; return { mesaj, ...(kod ? { taslak: await taslakV(ctx, kod) } : {}) }; }
+    if (r0 === "taslak" && r1 && r2 === "kur" && !r3) { const mesaj = await arac(ctx, "devir_akis_olustur", { ...b, taslak: r1 }); const kod = /oluşturuldu: (\w+)/.exec(mesaj)?.[1]; return { mesaj, ...(kod ? await akisV(ctx, kod) : {}) }; }
+    // dış katılımcı bağlantısı
+    if (r0 === "akis" && r1 && r2 === "katilimci" && !r3) {
+      ekipMi(ctx);
+      const ak = await getAkis(ctx, r1);
+      const ad = String(b.ad || "").trim();
+      if (!ad) throw new ApiHata(400, "ad gerekli: bağlantıyı alacak kişinin adı (adımlarda sahip olarak yazılan ad).");
+      const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => norm(k.ad) === norm(ad));
+      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad, rol: b.rol || null, iletisim: b.iletisim || null }]))[0];
+      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => norm(s.sahip).includes(norm(ad)));
+      return { katilimci: katilimciV(k, taban.link), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
+    }
+    if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
+      ekipMi(ctx);
+      const k = await ctx.db.one("katilimci", { id: r1 });
+      const ak = k ? await ctx.db.one("akis", { id: k.akis_id, sahip_id: ctx.ws.id }) : null;
+      if (!k || !ak) throw new ApiHata(404, "Katılımcı yok.");
+      const t = yeniToken("", 24).toLowerCase();
+      await ctx.db.update("katilimci", { id: k.id }, { link_token: t });
+      return { katilimci: katilimciV({ ...k, link_token: t }, taban.link), not: "Eski bağlantı artık açılmıyor." };
+    }
+    // anahtar yönetimi (yalnızca sahip)
+    if (r0 === "anahtar" && !r1) {
+      sahipMi(ctx);
+      const kisi = String(b.kisi || "").trim();
+      const rol = ["ekip", "dis", "sahip"].includes(b.rol) ? b.rol : "ekip";
+      if (!kisi) throw new ApiHata(400, "kisi gerekli.");
+      if (rol === "dis" && !String(b.kapsam || kisi).trim()) throw new ApiHata(400, "dış katılımcı için kapsam gerekli.");
+      const token = yeniToken("dv_");
+      const [k] = await ctx.db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi, rol, kapsam: rol === "dis" ? String(b.kapsam || kisi).trim() : (b.kapsam || null), token_hash: await sha256(token) }]);
+      return { anahtar: { id: k.id, kisi, rol, kapsam: k.kapsam || null }, token, mcp_adresi: `${taban.fn}/${token}`, not: "Anahtar yalnızca şimdi gösterilir; kaybolursa yenisini üret." };
+    }
+    if (r0 === "anahtar" && r1 && r2 === "iptal" && !r3) {
+      sahipMi(ctx);
+      const k = await ctx.db.one("anahtar", { id: r1, kullanici_id: ctx.ws.id });
+      if (!k) throw new ApiHata(404, "Anahtar yok.");
+      if (k.id === ctx.key.id) throw new ApiHata(400, "Şu an kullandığın anahtarı iptal edemezsin.");
+      if (String(k.token_hash).startsWith(IPTAL)) return { iptal: true, not: "Zaten iptal." };
+      await ctx.db.update("anahtar", { id: k.id }, { token_hash: IPTAL + crypto.randomUUID() });
+      return { iptal: true };
+    }
+    throw new ApiHata(404, "Böyle bir uç yok.");
+  }
+  throw new ApiHata(405, "Yöntem desteklenmiyor.");
+}
+
+// ---------- dış katılımcı bağlantısı (anahtarsız; yalnızca kendi adımları ve dört eylem) ----------
+export async function baglantiCtx(db: DB, token: string, now: number, ua: string, depo?: Depo) {
+  if (!/^[a-z0-9]{16,64}$/i.test(token)) throw new ApiHata(404, "Bağlantı geçersiz.");
+  const k = await db.one("katilimci", { link_token: token });
+  if (!k) throw new ApiHata(404, "Bağlantı geçersiz ya da yenilenmiş. Gönderen kişiden yenisini iste.");
+  const akis = await db.one("akis", { id: k.akis_id });
+  if (!akis) throw new ApiHata(404, "Akış bulunamadı.");
+  const ws = await db.one("kullanici", { id: akis.sahip_id });
+  const ctx: Ctx = { db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad }, ua: ua || "Devir bağlantı", now, depo };
+  return { ctx, k, akis };
+}
+
+export async function baglantiV(db: DB, token: string, now: number, ua: string) {
+  const { ctx, k, akis } = await baglantiCtx(db, token, now, ua);
+  const { steps, events } = await loadFlow(ctx, akis).catch(() => ({ steps: [], events: [] } as any));
+  const ev = events.filter((e: any) => e.tip !== "okuma");
+  const m = metrics(akis, steps, ev, now);
+  const benim = steps.filter((s: any) => stepInScope(ctx, s));
+  const adimlar = [];
+  for (const s of benim) {
+    const v: any = adimV(akis, s, m, steps, { dis: true });
+    v.girdiler = (await ciktilar(ctx, akis.id, s.bagimli)).filter((c: any) => c.paylasim === "dis").map(ciktiV);
+    v.ciktilar = (await ciktilar(ctx, akis.id, [s.no])).map(ciktiV);
+    v.bekledigi = s.bagimli.map((n: number) => { const d: any = steps.find((x: any) => x.no === n); return d && !DONE(d) ? { ad: d.ad, durum: d.durum } : null; }).filter(Boolean);
+    v.eylemler = DONE(s) ? [] : s.durum === "suruyor" || s.durum === "engelli" ? ["tamam", "engel", "not"] : v.bekledigi.length ? ["not"] : ["basladim", "tamam", "engel", "not"];
+    adimlar.push(v);
+  }
+  const p: Parca[] = [];
+  const A = (metin: string, tur: Parca["tur"] = "metin", ref?: any) => p.push({ tur, metin, ...(ref ? { ref } : {}) });
+  const acik = adimlar.filter((v: any) => !DONE(v) && v.eylemler.includes("tamam"));
+  const bekle = adimlar.filter((v: any) => !DONE(v) && !v.eylemler.includes("tamam"));
+  A(`Merhaba ${k.ad}. `);
+  if (acik.length) { A(acik.length === 1 ? "Senden beklenen: " : `Senden ${acik.length} adım bekleniyor. Önce: `); A(acik[0].ad, "adim", { no: acik[0].no }); if (acik[0].son_tarih) { A(", son "); A(fmtD(acik[0].son_tarih), "tarih", { tarih: acik[0].son_tarih }); } A("."); }
+  else if (bekle.length) { A("Şu an senden bir şey beklenmiyor. Sıradaki adımın "); A(bekle[0].ad, "adim", { no: bekle[0].no }); A(`, ${bekle[0].bekledigi.map((x: any) => `"${x.ad}"`).join(", ")} bitince açılacak.`); }
+  else if (adimlar.length) A("Sana düşen adımların hepsi bitti, teşekkürler.");
+  else A("Bu bağlantıda sana atanmış bir adım görünmüyor.");
+  await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
+  return {
+    kisi: k.ad, akis: { baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length } },
+    ozet: yaz(p), ozet_parcalar: p, adimlar,
+  };
+}
+
+export async function baglantiEylem(db: DB, token: string, now: number, ua: string, body: any, depo?: Depo) {
+  const { ctx, akis } = await baglantiCtx(db, token, now, ua, depo);
+  const b = govdeAl(body);
+  const no = Number(b.no);
+  if (!no) throw new ApiHata(400, "no gerekli.");
+  const metin = b.metin != null ? String(b.metin).slice(0, 4000) : "";
+  const a: any = { akis: akis.kisa_kod, no, kim_tip: "insan", arac: "Devir bağlantı" };
+  if (b.eylem === "basladim") a.durum = "suruyor";
+  else if (b.eylem === "tamam") { a.durum = "tamam"; if (metin) a.not = metin; }
+  else if (b.eylem === "engel") { if (!metin) throw new ApiHata(400, "Ne bekliyorsun? Engeli kısaca yaz."); a.durum = "engelli"; a.engel = metin; }
+  else if (b.eylem === "not") { if (!metin && !b.cikti) throw new ApiHata(400, "Not yaz ya da dosya ekle."); if (metin) a.not = metin; }
+  else throw new ApiHata(400, "eylem: basladim, tamam, engel ya da not olmalı.");
+  if (b.cikti && typeof b.cikti === "object" && b.cikti.dosya) a.cikti = await dosyaCiktilari(ctx, akis.id, no, { dosya: String(b.cikti.dosya), ad: b.cikti.ad ? String(b.cikti.ad).slice(0, 120) : undefined, ozet: b.cikti.ozet ? String(b.cikti.ozet).slice(0, 1000) : null });
+  else if (b.cikti && typeof b.cikti === "object") a.cikti = { ad: String(b.cikti.ad || "Ek").slice(0, 120), url: b.cikti.url ? String(b.cikti.url).slice(0, 1000) : null, ozet: b.cikti.ozet ? String(b.cikti.ozet).slice(0, 1000) : null, icerik: b.cikti.icerik ? String(b.cikti.icerik).slice(0, 20000) : null };
+  let mesaj: string;
+  try { mesaj = await callTool("devir_adim_guncelle", a, ctx); } catch (e) { throw new ApiHata(400, (e as Error).message); }
+  return { mesaj: mesaj.split("\n")[0], ...(await baglantiV(db, token, now, ua)) };
+}
+
+// dış katılımcı dosyası: kendi adımına yükleme adresi ve görebildiği dosyayı indirme
+export async function baglantiDosya(db: DB, token: string, now: number, ua: string, method: string, id: string | undefined, body: any, depo?: Depo) {
+  const { ctx, akis } = await baglantiCtx(db, token, now, ua, depo);
+  if (method === "POST" && !id) { const b = govdeAl(body); return yuklemeIste(ctx, akis.id, Number(b.no), b); }
+  if (method === "GET" && id) return indir(ctx, id, akis.id);
+  throw new ApiHata(404, "Böyle bir uç yok.");
+}

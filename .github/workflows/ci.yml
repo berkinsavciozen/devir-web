@@ -14,6 +14,8 @@ jobs:
         run: npm run tokens && git diff --exit-code src/stil/tokens.css src/stil/tokens.ts
       - name: Geometri testi (galaksi-geometri --test)
         run: npm run geometri:test
+      - name: Sunucu testleri (sahte API'nin dayandığı gerçek sunucu kodu)
+        run: npm run sunucu:test
       - name: Birim testleri (yol uzunluğu, kaynakla eşdeğerlik)
         run: npm test
       - name: Tür denetimi ve derleme
