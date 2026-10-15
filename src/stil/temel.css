@@ -1,0 +1,50 @@
+/* Fontlar: Caladea yerel (public/fonts), Inter değişken (@fontsource-variable/inter) "Inter" adıyla. */
+@font-face { font-family: Caladea; src: url(/fonts/Caladea-Regular.woff2) format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: Caladea; src: url(/fonts/Caladea-Bold.woff2) format('woff2'); font-weight: 700; font-display: swap; }
+@font-face { font-family: Caladea; src: url(/fonts/Caladea-Italic.woff2) format('woff2'); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: Caladea; src: url(/fonts/Caladea-BoldItalic.woff2) format('woff2'); font-weight: 700; font-style: italic; font-display: swap; }
+@font-face {
+  font-family: Inter; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: Inter; font-style: normal; font-display: swap; font-weight: 100 900;
+  src: url(@fontsource-variable/inter/files/inter-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  background: var(--renk-zemin-sayfa-govde);
+  color: var(--renk-metin-ink);
+  font-family: var(--font-sans);
+  font-size: var(--tip-govde-boyut);
+  line-height: var(--tip-govde-satir);
+  font-weight: var(--tip-govde-agirlik);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 3px; border-radius: 12px; }
+.gorunmez { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Tipografi sınıfları (tokens.json → tipografi.olcek) */
+.t-ekran-basligi { font-family: var(--tip-ekran-basligi-aile); font-size: var(--tip-ekran-basligi-boyut); line-height: var(--tip-ekran-basligi-satir); font-weight: var(--tip-ekran-basligi-agirlik); }
+.t-liste-basligi { font-family: var(--tip-liste-basligi-aile); font-size: var(--tip-liste-basligi-boyut); line-height: var(--tip-liste-basligi-satir); font-weight: var(--tip-liste-basligi-agirlik); }
+.t-akilli-cumle { font-family: var(--tip-akilli-cumle-aile); font-size: var(--tip-akilli-cumle-boyut); line-height: var(--tip-akilli-cumle-satir); font-weight: var(--tip-akilli-cumle-agirlik); color: var(--renk-metin-ink2); }
+.t-akilli-cumle-buyuk { font-family: var(--tip-akilli-cumle-buyuk-aile); font-size: var(--tip-akilli-cumle-buyuk-boyut); line-height: var(--tip-akilli-cumle-buyuk-satir); font-weight: var(--tip-akilli-cumle-buyuk-agirlik); color: var(--renk-metin-ink2); }
+.t-sayfa-basligi { font-family: var(--tip-sayfa-basligi-aile); font-size: var(--tip-sayfa-basligi-boyut); line-height: var(--tip-sayfa-basligi-satir); font-weight: var(--tip-sayfa-basligi-agirlik); }
+.t-kutlama { font-family: var(--tip-kutlama-aile); font-size: var(--tip-kutlama-boyut); line-height: var(--tip-kutlama-satir); font-weight: var(--tip-kutlama-agirlik); }
+.t-satir-basligi { font-family: var(--tip-satir-basligi-aile); font-size: var(--tip-satir-basligi-boyut); line-height: var(--tip-satir-basligi-satir); font-weight: var(--tip-satir-basligi-agirlik); }
+.t-meta { font-family: var(--tip-meta-aile); font-size: var(--tip-meta-boyut); line-height: var(--tip-meta-satir); font-weight: var(--tip-meta-agirlik); color: var(--renk-metin-ink3); }
+.t-etiket { font-family: var(--tip-etiket-aile); font-size: var(--tip-etiket-boyut); line-height: var(--tip-etiket-satir); font-weight: var(--tip-etiket-agirlik); }
+.t-bolum { font-family: var(--tip-bolum-aile); font-size: var(--tip-bolum-boyut); font-weight: var(--tip-bolum-agirlik); letter-spacing: .6px; text-transform: uppercase; color: var(--renk-metin-ink3); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0ms !important; animation-iteration-count: 1 !important; transition-duration: 0ms !important; }
+}
