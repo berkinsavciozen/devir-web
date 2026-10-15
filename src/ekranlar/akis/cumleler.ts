@@ -1,7 +1,7 @@
 // Haritanın zaman sürgüsü cümleleri (S1–S3): sürgü bırakılınca x anına göre kurulur; en fazla 2 cümle.
 import type { Galaksi } from '../../geometri/galaksi-geometri';
 import type { Model } from '../../cizim/yol.js';
-import { adimAdi, ek, gunAyUzun, ozelEk, paySure } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, paySure } from '../../metin/turkce';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const SAYI = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on'];
@@ -16,11 +16,12 @@ const dilim = (ms: number) => { const h = new Date(ms + 3 * 36e5).getUTCHours();
 export function zamanCumlesi(d: any, M: Model, G: Galaksi, X: number, NOW: number): string[] | null {
   const by = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const ad = (no: number) => adimAdi(by.get(no));
+  const et = (no: number) => adimEtiketi(by.get(no));
   const t0 = G.T0;
   if (X < NOW) {
     // geçmiş: "12 Ekim akşamı kuruldu; ilk saatte brif, metin ve iki atlama bitti."
     const biten = M.F.steps.filter((s) => BITTI(s.durum) && G.byNo[s.no] && G.byNo[s.no].t <= X);
-    const tamam = biten.filter((s) => s.durum === 'tamam').sort((a, b) => G.byNo[a.no].t - G.byNo[b.no].t).map((s) => kucuk(ad(s.no)));
+    const tamam = biten.filter((s) => s.durum === 'tamam').sort((a, b) => G.byNo[a.no].t - G.byNo[b.no].t).map((s) => kucuk(et(s.no)));
     const atla = biten.filter((s) => s.durum !== 'tamam').length;
     const parca = [...tamam, ...(atla ? [`${SAYI[atla] || atla} atlama`] : [])];
     const bas = `${gunAyUzun(t0)} ${dilim(t0)} kuruldu`;
@@ -36,14 +37,14 @@ export function zamanCumlesi(d: any, M: Model, G: Galaksi, X: number, NOW: numbe
     // son adımdan sonra: "22 Ekim tahmini: rapor 21 Ekim’de biter; hedefe 11 gün pay kalır."
     const son = biter[biter.length - 1];
     const pay = d.akis.pay_saat;
-    return [`${tarih} ${kucuk(ad(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} biter;`, pay == null ? '' : pay >= 0 ? `hedefe ${paySure(pay)} pay kalır.` : `hedef ${paySure(pay)} geçer.`].filter(Boolean);
+    return [`${tarih} ${kucuk(et(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} biter;`, pay == null ? '' : pay >= 0 ? `hedefe ${paySure(pay)} pay kalır.` : `hedef ${paySure(pay)} geçer.`].filter(Boolean);
   }
   // ileri: "17 Ekim tahmini: görsel ve onay biter, sıra App Store onayında."
   const kritik = new Set<number>(d.kritik_yol || []);
   const sira = kalan.sort((a, b) => Number(kritik.has(b.no)) - Number(kritik.has(a.no)) || G.byNo[a.no].t - G.byNo[b.no].t)[0];
   if (!biter.length) return sira ? [`${tarih} sıra ${ek(ad(sira.no), 'de')}.`] : null;
   // x'ten önce biten en son iki adım (öncekiler zaten yanık görünür)
-  return [`${tarih} ${ve(biter.slice(-2).map((s) => kucuk(ad(s.no))))} biter,`, sira ? `sıra ${ek(ad(sira.no), 'de')}.` : ''].filter(Boolean);
+  return [`${tarih} ${ve(biter.slice(-2).map((s) => kucuk(et(s.no))))} biter,`, sira ? `sıra ${ek(ad(sira.no), 'de')}.` : ''].filter(Boolean);
 }
 
 /** B6 kişi odağı: "{kişi}'de {n} adım hazır; {kritik adım} kritik yolda ve {m} adımı tutuyor." */

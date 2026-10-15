@@ -101,3 +101,6 @@ export function evrenHalkasi(flows: EvrenAkis[], o: EvrenSecenek) {
   s += `<circle cx="${cx}" cy="${cy}" r="8" fill="url(#brass)"/><circle cx="${cx}" cy="${cy}" r="3" fill="#2A1D4F"/>`;
   return { svg: s, placed, pol, ang };
 }
+
+/** Fırtına bulutu glifi (engel) — tasarım ekranlar.js iconCloud */
+export const iconCloud = (x: number, y: number, s = 1) => `<g transform="translate(${x},${y}) scale(${s})"><path d="M-15,4 Q-19,4 -19,-1 Q-19,-6 -13,-6 Q-12,-13 -4,-13 Q2,-17 8,-11 Q16,-12 16,-4 Q20,-3 19,2 Q18,5 14,5 Z" fill="#6A5A9C" stroke="#C9BAF2" stroke-width="1.2"/><path d="M1,4 L-4,13 L1,13 L-3,22 L7,10 L2,10 L6,4Z" fill="#FFD27A" stroke="#FF8A78" stroke-width="1"/></g>`;

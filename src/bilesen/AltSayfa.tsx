@@ -20,14 +20,17 @@ export interface AltSayfaOz {
   guclu?: boolean;
   /** yazı girilmişse geri hareketi önce sorar */
   kirli?: boolean;
+  /** arka örtüyü sayfa çizmez (ekran kendi kararmasını ve üstündeki seçimi çizer); dokununca yine kapatır */
+  perdesiz?: boolean;
   children: ReactNode;
 }
 
 const TASARIM_H = 844;
+const acikSayfalar = new Set<string>();
 const Y = { orta: 330, yuksek: 150 } as const;
 const yOf = (v: 'orta' | 'yuksek' | number) => (typeof v === 'number' ? v : Y[v]);
 
-export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, guclu, kirli, children }: AltSayfaOz) {
+export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, guclu, kirli, perdesiz, children }: AltSayfaOz) {
   const [durak, setDurak] = useState(yukseklik);
   const [cek, setCek] = useState(0); // sürükleme ofseti (px, aşağı +)
   const surukle = useRef<{ y0: number; t0: number; son: number; ts: number } | null>(null);
@@ -41,7 +44,8 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
   // Geçmiş kaydı: geri hareketi önce bu sayfayı kapatır.
   useEffect(() => {
     if (!acik) return;
-    history.pushState({ altSayfa: id }, '');
+    acikSayfalar.add(id);
+    if (history.state?.altSayfa !== id) history.pushState({ altSayfa: id }, '');
     let bizden = false;
     const geri = () => {
       if (kirli && !window.confirm('Vazgeçilsin mi?')) { history.pushState({ altSayfa: id }, ''); return; }
@@ -56,7 +60,9 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
     return () => {
       window.removeEventListener('popstate', geri);
       window.removeEventListener('keydown', tus);
-      if (!bizden && history.state?.altSayfa === id) history.back();
+      acikSayfalar.delete(id);
+      // React geliştirme kipinde etki iki kez kurulur: hemen yeniden açılan sayfa için geri gitme
+      if (!bizden) setTimeout(() => { if (!acikSayfalar.has(id) && history.state?.altSayfa === id) history.back(); }, 0);
       onceki?.focus?.();
     };
   }, [acik, id, guclu, kirli]);
@@ -91,7 +97,7 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
   if (!acik) return null;
   return createPortal(
     <div className="alt-sayfa-kok">
-      <div className="alt-sayfa-perde" onClick={guclu ? undefined : kapanis} aria-hidden />
+      <div className={`alt-sayfa-perde ${perdesiz ? 'saydam' : ''}`} onClick={guclu ? undefined : kapanis} aria-hidden />
       <div
         ref={kutu}
         role="dialog"

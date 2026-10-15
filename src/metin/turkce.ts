@@ -46,7 +46,13 @@ export function adimAdi(a: { kisa_ad?: string | null; ad: string }): string {
 /** Harita etiketi: kısa adın en çok iki kelimesi ("App Store onayı" → "App Store"). */
 export function adimEtiketi(a: { kisa_ad?: string | null; ad: string }): string {
   const k = adimAdi(a), w = k.split(' ');
-  return w.length > 2 ? w.slice(0, 2).join(' ') : k;
+  if (w.length > 2) return w.slice(0, 2).join(' ');
+  if (w.length === 2 && /^[a-zçğıöşü]/.test(w[1])) {
+    // "Post görseli" → "Görsel", "Yayın onayı" → "Onay": tamlamanın başı, iyelik ekinden arınmış
+    const s = w[1].replace(/(?<=[^aeıioöuü])[ıiuü]$|(?<=[aeıioöuü])s[ıiuü]$/, '');
+    return s[0].toLocaleUpperCase('tr') + s.slice(1);
+  }
+  return k;
 }
 
 const tl = (ms: number) => new Date(ms + 3 * 36e5);

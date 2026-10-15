@@ -71,7 +71,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   const KISA: Record<string, string> = { RTD5: 'Hasat postu', U422: 'Test Bank', GKX8: 'Ege', '4BZC': 'Offsite', NESR: 'İzmir', XPVZ: 'Karadeniz', '4WDK': 'Karadeniz' };
   // adım kısa adları (`baglam.kisa_adlar`; harita etiketleri ve cümleler)
   const KISA_ADIM: Record<string, Record<string, string>> = {
-    RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Görsel', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
+    RTD5: { 1: 'Brif', 2: 'Marka kiti', 3: 'TestFlight bağlantısı', 4: 'App Store onayı', 5: 'Metin', 6: 'Post görseli', 7: 'Onay', 8: 'Yayın onayı', 9: 'Yayın', 10: 'Rapor' },
   };
   for (const a of T.akis) if (KISA_ADIM[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_adlar: KISA_ADIM[a.kisa_kod] };
   for (const a of T.akis) if (KISA[a.kisa_kod]) a.baglam = { ...(a.baglam || {}), kisa_ad: KISA[a.kisa_kod] };
