@@ -22,6 +22,7 @@ import { useBen } from '../../api/sorgular';
 import { haritaGelisi } from '../../cizim/yakinlas';
 import { useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
+import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -168,11 +169,18 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (GD) labels = labels.map((l: any[]) => [l[0], l[1], l[2] * GD.etiket.dx, l[3] * GD.etiket.dy, l[4], l[5]]);
     const gecti = gecenGun(d, NOW) > 0; // I2: hedef geçince şerit sıkışır (tasarım 11 px/gün)
     const uzun = (temel.G.hedef - temel.G.T0) / GUN > 30, satir = temel.G.uyeler.length > 6 ? 27 : uzun || temel.G.uyeler.length > 4 ? 38 : 42;
-    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, labels: (tarihNo != null && !GD) || zk >= 1.6 ? [] : labels, sats, sel: selNo ?? undefined, shipSc: .9, minR: 6.5, ikonAyri: zk >= 2 });
+    // öğe ölçeği (madde 9): ekrandaki adım sayısı ve yakınlaşmayla; en küçük gezegen 3 kat, büyükler √3 kat büyür
+    const gz0 = Object.values(temel.G.gezegen) as { x: number; y: number; r: number }[], r0 = Math.max(Math.min(...gz0.map((g) => g.r)), 6.5 * geo.ps);
+    // geniş düzende tasarım boyu zaten büyük (ps 1.35 ≈ telefonun 1,7 katı): hedef kat √(telefon ps / ps) ile iner
+    const kat = Math.min(ogeKat('ana', gz0.length, zk) * Math.min(1, Math.sqrt(HARITA.ps / geo.ps)), uygunKat(gz0.map((g) => ({ x: g.x * zk, y: g.y * zk, r: g.r })), OLCEK.ANA * 2, r0, 1.4));
+    const yk = yaziKat(kat, 11), gemiK = Math.min(kat, 1.9), rf = (r: number) => buyut(r, kat, r0);
+    // küme: yalnız tasarım boyunda da üst üste binenler (büyüyen gezegenler birbirinin üstüne çizilir, rozete düşmez)
+    const kumeRad = (no: number) => temel.radOf(no) * Math.min(kat, 1.4);
+    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, labels: (tarihNo != null && !GD) || zk >= 1.6 ? [] : labels, sats, sel: selNo ?? undefined, shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
     const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ...(GD ? { ps: GD.surgu.ps } : {}) });
     const S = GD
-      ? seritler(M, Y, GD.serit, { x: X, now: NOW, pxGun: uzun ? GD.serit.pxGun * .3 : GD.serit.pxGun, satir: GD.serit.satir, lw: GD.serit.lw, ps: GD.serit.ps, tBas: Y.G.T0 - GUN * .3, herGun: !uzun, focus: odak || undefined, kayma, sel: selNo ?? undefined })
-      : seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma });
+      ? seritler(M, Y, GD.serit, { x: X, now: NOW, pxGun: uzun ? GD.serit.pxGun * .3 : GD.serit.pxGun, satir: GD.serit.satir, lw: GD.serit.lw, ps: GD.serit.ps, tBas: Y.G.T0 - GUN * .3, herGun: !uzun, focus: odak || undefined, kayma, sel: selNo ?? undefined, ok: Math.min(kat, 1.6), yk: Math.min(yk, 1.15) })
+      : seritler(M, Y, SERIT, { x: X, now: NOW, pxGun: uzun ? 9 : gecti ? 11 : 30, satir, tBas: Y.G.T0 - GUN * .4, herGun: !uzun && !gecti, focus: odak || undefined, kayma, ok: Math.min(kat, 1.6), yk: Math.min(yk, 1.15) });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geoZ, now: NOW }) : { svg: '', hedefler: [] };
     let ust = '';
@@ -256,7 +264,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kumede = new Set<number>((Y.clusters || []).flat());
   for (const g of Object.values(Y.G.gezegen)) {
     const a = byNo.get(g.no); if (!a || kumede.has(g.no) || !gor(g.x, g.y)) continue;
-    hedefler.push({ key: 'g' + g.no, x: g.x, y: g.y, r: Math.max(22, Y.radOf(g.no) + 6), etiket: gezegenEtiketi(a, kritik.has(g.no)), olay: {
+    hedefler.push({ key: 'g' + g.no, x: g.x, y: g.y, r: hedefYaricap(Y.radOf(g.no)), etiket: gezegenEtiketi(a, kritik.has(g.no)), olay: {
       onClick: () => { if (bas.current.acildi) { bas.current.acildi = false; return; } ac(g.no); },
       onPointerDown: () => basiliBasla(g.no), onPointerUp: basiliBirak, onPointerLeave: () => clearTimeout(bas.current.zm),
       onContextMenu: (e: any) => { e.preventDefault(); setTarihNo(g.no); bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000); },

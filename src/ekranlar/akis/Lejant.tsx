@@ -1,5 +1,6 @@
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { planet, ship, tower } from '../../cizim/ortak.js';
+import { yuzeyKodlamalari } from '../../geometri/kodlama';
 
 // Harita dili (denetim planı, CELISKILER 64): haritadaki işaretlerin ne demek olduğu. "?" düğmesiyle açılır.
 const SATIRLAR: [string, string, string][] = [
@@ -16,7 +17,9 @@ const SATIRLAR: [string, string, string][] = [
 ];
 
 export function Lejant({ acik, kapat }: { acik: boolean; kapat: () => void }) {
-  const y0 = 844 - (SATIRLAR.length * 52 + 96);
+  // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
+  const K = yuzeyKodlamalari('galaksi').filter((k) => k.durum === 'var');
+  const y0 = Math.max(60, 844 - (SATIRLAR.length * 52 + K.length * 40 + 150));
   return (
     <AltSayfa acik={acik} kapat={kapat} baslik="Harita dili" yukseklik={Math.max(110, y0)} duraklar={['orta']}>
       <div className="lejant">
@@ -29,6 +32,10 @@ export function Lejant({ acik, kapat }: { acik: boolean; kapat: () => void }) {
             </li>
           ))}
         </ul>
+        <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
+        <dl className="lejant-kodlama">
+          {K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k.galaksi}</dd></div>)}
+        </dl>
       </div>
     </AltSayfa>
   );
