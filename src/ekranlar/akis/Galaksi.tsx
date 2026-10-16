@@ -13,6 +13,8 @@ import { git, arama } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
+import { AkisMenusu } from './Bilgi';
+import { AltSayfa } from '../../bilesen/AltSayfa';
 import { KapaliGalaksi } from './Kapali';
 import { useBen } from '../../api/sorgular';
 import { haritaGelisi } from '../../cizim/yakinlas';
@@ -116,7 +118,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const an0 = useMemo(() => { const v = arama().get('an'); const t = v ? Date.parse(v.length <= 16 ? v + ':00+03:00' : v) : NaN; return Number.isFinite(t) ? t : NOW; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [X, setX] = useState(an0);
   const [oynuyor, setOynuyor] = useState(false);
-  const [odak, setOdak] = useState<string | null>(null);
+  // ?odak=Ad → kişi sayfasından "Haritada yolunu göster"
+  const [odak, setOdak] = useState<string | null>(() => arama().get('odak'));
+  const [menu, setMenu] = useState(false);
   const [gonder, setGonder] = useState<string | null>(null);
   const [kayma, setKayma] = useState(0);
   // B7: basılı tut (450 ms) → tarih kartı; bırakınca 2 sn kalır
@@ -337,6 +341,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         cizim={panelZemini(GD) + cizim.svg + (tam ? kartCizimi(GD.kart, tam, secOlay.data?.adim?.olaylar || null) : '')}>
         <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (history.length > 1 ? history.back() : git('/'))} />
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
+        <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
+        <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
         {cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
@@ -350,10 +356,12 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     <Sahne gok={{ tohum: 33, yildiz: 280, sakin }} cizim={cizim.svg} etiket={ad} sinif={gelis ? 'harita-gelis' : ''}>
       <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
+      <Kutu as="button" x={326} y={40} w={44} h={44} className="akis-menu" aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></Kutu>
       {cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
       </div>
 
       {kontroller}
+      <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
     </Sahne>
   );
 }

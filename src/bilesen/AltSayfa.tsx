@@ -22,6 +22,8 @@ export interface AltSayfaOz {
   kirli?: boolean;
   /** arka örtüyü sayfa çizmez (ekran kendi kararmasını ve üstündeki seçimi çizer); dokununca yine kapatır */
   perdesiz?: boolean;
+  /** Perdenin üstünde, sayfanın dışında kalan denetimler (ör. adımlar arası gezinme) */
+  ust?: ReactNode;
   children: ReactNode;
 }
 
@@ -30,7 +32,7 @@ const acikSayfalar = new Set<string>();
 const Y = { orta: 330, yuksek: 150 } as const;
 const yOf = (v: 'orta' | 'yuksek' | number) => (typeof v === 'number' ? v : Y[v]);
 
-export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, guclu, kirli, perdesiz, children }: AltSayfaOz) {
+export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, guclu, kirli, perdesiz, ust, children }: AltSayfaOz) {
   const [durak, setDurak] = useState(yukseklik);
   const [cek, setCek] = useState(0); // sürükleme ofseti (px, aşağı +)
   const surukle = useRef<{ y0: number; t0: number; son: number; ts: number } | null>(null);
@@ -98,6 +100,7 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
   return createPortal(
     <div className={`alt-sayfa-kok ${guclu ? 'guclu' : ''}`}>
       <div className={`alt-sayfa-perde ${perdesiz ? 'saydam' : ''}`} onClick={guclu ? undefined : kapanis} aria-hidden />
+      {ust}
       <div
         ref={kutu}
         role="dialog"

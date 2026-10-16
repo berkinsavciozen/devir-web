@@ -20,6 +20,7 @@ import { Adim } from './ekranlar/akis/Adim';
 import { Karar } from './ekranlar/akis/Karar';
 import { Kalemler } from './ekranlar/akis/Kalemler';
 import { Cevapla } from './ekranlar/akis/Cevapla';
+import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { HesapSayfasi } from './ekranlar/hesap/Hesap';
@@ -65,12 +66,17 @@ function Uygulama({ yol }: { yol: string }) {
   if (sr) return <Cevapla key={sr.kod + sr.soru} kod={sr.kod} soru={sr.soru} ben={b.kisi || ''} />;
   const tk = eslestir('/akis/:kod/tekrar/:no', yol);
   if (tk) return <Kalemler key={tk.kod + tk.no} kod={tk.kod} no={Number(tk.no)} ben={b.kisi || ''} />;
+  const bl = eslestir('/akis/:kod/bilgi', yol);
+  if (bl) return <AkisBilgi key={bl.kod} kod={bl.kod} ben={b.kisi || ''} />;
+  const ks = eslestir('/akis/:kod/kisi/:ad', yol);
+  if (ks) return <KisiSayfasi key={ks.kod + ks.ad} kod={ks.kod} ad={ks.ad} ben={b.kisi || ''} />;
   const kr = eslestir('/akis/:kod/karar/:no', yol);
   if (kr) return <Karar key={kr.kod + kr.no} kod={kr.kod} no={Number(kr.no)} ben={b.kisi || ''} />;
   const ad = eslestir('/akis/:kod/adim/:no', yol);
   // tablet yatay ve masaüstünde adım haritanın yanındaki panelde açılır; ?tam=1 tam ayrıntı (geçmiş, çıktılar)
   if (ad && innerWidth >= 1024 && innerHeight >= 600 && !arama().has('tam')) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
-  if (ad) return <Adim key={ad.kod + ad.no} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
+  // adımlar arası geçişte sayfa yerinde kalır (geçmiş kaydı büyümez); içerik numarayla yenilenir
+  if (ad) return <Adim key={ad.kod} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;

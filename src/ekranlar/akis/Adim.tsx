@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKeyboardEvent } from 'react';
 import { boyutYaz, dosyaDenetle, dosyaIndir, dosyaSil, dosyaYukle, KABUL_UZANTI, turOf } from '../../api/dosya';
 import { BaglantiIkon, CarpiIkon, CopIkon, DisAcIkon, DosyaSatiri, IndirIkon, YukleIkon } from '../../bilesen/DosyaSatiri';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -105,6 +105,13 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
   const ciktilaraGit = useMemo(() => arama().get('bolum') === 'ciktilar', []);
   const [yuksek, setYuksek] = useState(ciktilaraGit);
   const durumBasligi = useRef<HTMLDivElement>(null);
+  // başka adıma geçince sayfa başa döner
+  const ilkNo = useRef(no);
+  useEffect(() => {
+    if (ilkNo.current === no) return;
+    ilkNo.current = no; setYuksek(false); setKucukBaslik(false);
+    (durumBasligi.current?.closest('.alt-sayfa-icerik') as HTMLElement | null)?.scrollTo({ top: 0 });
+  }, [no]);
   const [kucukBaslik, setKucukBaslik] = useState(ciktilaraGit);
   // durum bloğunun başlığı yukarı kayınca küçük başlık satırı yapışkan alana gelir
   useEffect(() => {
@@ -113,13 +120,31 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
     bak(); kap.addEventListener('scroll', bak, { passive: true });
     return () => kap.removeEventListener('scroll', bak);
   }, [a, sekme]);
+  // önceki / sonraki adım (numara sırası); ← → tuşları (yazı alanında değilken)
+  const nolar: number[] = d ? d.adimlar.map((x: any) => x.no).sort((p: number, q: number) => p - q) : [];
+  const i = nolar.indexOf(no), onceki = i > 0 ? nolar[i - 1] : null, sonraki = i >= 0 && i < nolar.length - 1 ? nolar[i + 1] : null;
+  const adimaGit = (n: number | null) => { if (n != null) git(`/akis/${encodeURIComponent(kod)}/adim/${n}`, { yerine: true }); };
+  useEffect(() => {
+    const t = (e: KeyboardEvent) => {
+      if (e.altKey || e.ctrlKey || e.metaKey || (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable], [role=slider], [role=tablist]')) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      // adres çizimden önce değişmiş olabilir (hızlı basış): komşu, adresteki adımdan hesaplanır
+      const m = location.pathname.match(/\/adim\/(\d+)/), j = nolar.indexOf(m ? +m[1] : no);
+      const h = j < 0 ? null : e.key === 'ArrowLeft' ? nolar[j - 1] : nolar[j + 1];
+      if (h != null) { e.preventDefault(); adimaGit(h); }
+    };
+    addEventListener('keydown', t); return () => removeEventListener('keydown', t);
+  }); // eslint-disable-line react-hooks/exhaustive-deps
   // karar adımı: verildiyse ya da seçenekleri yazıldıysa karar ekranı (C1, C2)
   if (a?.karar_adimi && (a.durum === 'tamam' || (a.karar?.secenekler?.length && !BITTI(a.durum)))) return <Karar kod={kod} no={no} ben={ben} />;
   const y = sekme === 'gecmis' || yuksek ? 150 : 330;
   return (
     <>
       <AdimArka d={d} no={no} sheetY={y} sahip={ben} />
-      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Adım'} yukseklik={y} duraklar={['orta', 'yuksek']} perdesiz>
+      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Adım'} yukseklik={y} duraklar={['orta', 'yuksek']} perdesiz ust={d && <nav className="adim-gez" aria-label="Adımlar arasında">
+        <button type="button" aria-label={onceki != null ? `Önceki adım: ${onceki}` : 'Önceki adım yok'} disabled={onceki == null} onClick={() => adimaGit(onceki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M3,-6 L-3,0 L3,6" /></svg></button>
+        <button type="button" aria-label={sonraki != null ? `Sonraki adım: ${sonraki}` : 'Sonraki adım yok'} disabled={sonraki == null} onClick={() => adimaGit(sonraki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-3,-6 L3,0 L-3,6" /></svg></button>
+      </nav>}>
         <div className="adim-panel">
           <div className="adim-yapiskan">
             <Segment secenekler={['Durum', 'Geçmiş']} aktif={sekme === 'durum' ? 0 : 1} sec={(i) => setSekme(i ? 'gecmis' : 'durum')} />
@@ -129,7 +154,7 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
             : sekme === 'durum' ? <>
               <div ref={durumBasligi}><AdimDurum a={a} d={d} ben={ben} kod={kod} /></div>
               <Ciktilar a={a} kod={kod} acilista={ciktilaraGit} yuksel={() => setYuksek(true)} />
-            </> : <AdimGecmis a={a} d={d} ben={ben} />}
+            </> : <AdimGecmis a={a} d={d} ben={ben} kod={kod} />}
         </div>
       </AltSayfa>
     </>
@@ -286,6 +311,7 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   const tut = tuttuklari(d.adimlar, a.no);
   const ist = a.durum === 'engelli' && a.engel ? istekBul(a.engel, ben) : null;
   const cumle = ikiSatir(adimCumlesi(a, ben), 350, '16.5px Caladea');
+  const bekledigi: number[] = (a.bekledigi || []).filter((b: any) => !BITTI(b.durum)).map((b: any) => b.no);
   const durumGor = BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark';
   const sahipAjan = ajanMi(a.sahip, a.sahip_tip), sahipDis = !sahipAjan && a.sahip_tip === 'dis' && a.sahip !== ben;
   const y0 = 10;
@@ -325,12 +351,15 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
     <div className="adim-durum">
       <svg className="panel-cizim" aria-hidden width="390" height="480" viewBox={`0 ${28} 390 480`} dangerouslySetInnerHTML={{ __html: svg }} />
       <Metin y={P(y0 + 218)} fs={24} lh={30} serif agirlik={700} hiza="orta" as="h2">{adimAdi(a)}</Metin>
-      <Metin y={P(y0 + 244)} fs={16.5} lh={21} serif renk="ink2" hiza="orta" style={{ whiteSpace: 'nowrap' }}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
+      <Metin y={P(y0 + 244)} fs={16.5} lh={21} serif renk="ink2" hiza="orta" style={{ whiteSpace: 'nowrap' }}>{bekledigi.length && /adım bitince başlar\.$/.test(cumle.join(' '))
+        ? <>{bekledigi.map((n: number, i: number) => <span key={n}>{i ? ', ' : ''}<button type="button" className="metin-baglanti" aria-label={`${n}. adım: ${by.get(n)?.ad ?? ''}`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${n}`)}>{n}</button></span>)}. adım bitince başlar.</>
+        : cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
       {sayilar.map(([b, k], i) => (
         <div key={k} className="sayi-kutusu" style={{ left: 20 + i * 119, top: P(y0 + 276) }}><b>{b}</b><small>{k}</small></div>
       ))}
       {basta && <Metin y={P(ry + 28)} x={26} fs={11.5} agirlik={700} style={{ width: 40, textAlign: 'center' }}>Sen</Metin>}
       {zincir.map((z, i) => <Metin key={z.no} y={P(ry + 28)} x={228 + i * 56 - 28} fs={11.5} agirlik={600} renk="ink2" style={{ width: 56, textAlign: 'center' }}>{adimAdi(z).split(' ')[0]}</Metin>)}
+      {zincir.map((z, i) => <button key={'h' + z.no} type="button" className="zincir-hedef" style={{ left: 228 + i * 56 - 28, top: P(ry) - 22 }} aria-label={`Bu adım bitince: ${z.no}. adım, ${z.ad}.`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />)}
       <div className="adim-eylem" style={{ top: P(y0 + 414) }}>
         {benim ? (
           <>
@@ -347,9 +376,10 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   );
 }
 
-function Satir({ ikon, ust, baslik, metin, cikti, cizgi }: { ikon: string; ust: string; baslik: string; metin?: string; cikti?: string | null; cizgi?: 'kesik' | 'dolu' | null }) {
+function Satir({ ikon, ust, baslik, metin, cikti, cizgi, git: gidis }: { ikon: string; ust: string; baslik: string; metin?: string; cikti?: string | null; cizgi?: 'kesik' | 'dolu' | null; git?: () => void }) {
+  const bag = gidis ? { role: 'link', tabIndex: 0, onClick: gidis, onKeyDown: (e: RKeyboardEvent) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); gidis(); } } } : {};
   return (
-    <li className={`gecmis-satir ${cizgi ? 'cizgi-' + cizgi : ''}`}>
+    <li className={`gecmis-satir ${cizgi ? 'cizgi-' + cizgi : ''} ${gidis ? 'baglanti' : ''}`} {...bag}>
       <svg aria-hidden className="gecmis-ikon" width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: ikon }} />
       <div>
         <small>{ust}</small>
@@ -370,14 +400,15 @@ const IKON = {
   not: `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/><path d="M-4,-3 H4 M-4,0 H4 M-4,3 H1" stroke="#D9CCFF" stroke-width="1.4" stroke-linecap="round"/>`,
 };
 
-function AdimGecmis({ a, d, ben }: { a: any; d: any; ben: string }) {
+function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: string }) {
+  const adimaGit = (n: number) => () => git(`/akis/${encodeURIComponent(kod)}/adim/${n}`);
   const by = new Map<number, any>(d.adimlar.map((x: any) => [x.no, x]));
   const ist = a.durum === 'engelli' && a.engel ? istekBul(a.engel, ben) : null;
   const sonraki = (a.bekleyen_adimlar || []).map((b: any) => by.get(b.no)).filter(Boolean)[0];
   const sirada: ReactNode[] = [];
   if (ist) sirada.push(<Satir key="sen" ikon={ship(0, 0, 0, 'insan', (ben[0] || 'S').toLocaleUpperCase('tr'), C.peach, .62, { flame: false })} ust={`Senden bekleniyor · ${sureKisa(a.bekleme_saat)}`} baslik={ist.emir} cizgi="kesik" />);
   else if (!BITTI(a.durum)) sirada.push(<Satir key="sahip" ikon={IKON.gelecek} ust={`${kisaAd(a.sahip)} · ${a.durum_etiket || a.durum}`} baslik={a.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(a.en_erken_bitis))} biter` : 'Tarihi belli değil'} cizgi="kesik" />);
-  if (sonraki && !BITTI(a.durum)) sirada.push(<Satir key="sonraki" ikon={IKON.gelecek} ust={sonraki.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(sonraki.en_erken_bitis))} ${saat(Date.parse(sonraki.en_erken_bitis))}` : 'Sonra'} baslik={`${sonraki.ad} ${sonraki.sahip === ben ? 'sana' : ozelEk(kisaAd(sonraki.sahip), 'e')} gelir`} />);
+  if (sonraki && !BITTI(a.durum)) sirada.push(<Satir key="sonraki" ikon={IKON.gelecek} ust={sonraki.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(sonraki.en_erken_bitis))} ${saat(Date.parse(sonraki.en_erken_bitis))}` : 'Sonra'} baslik={`${sonraki.ad} ${sonraki.sahip === ben ? 'sana' : ozelEk(kisaAd(sonraki.sahip), 'e')} gelir`} git={adimaGit(sonraki.no)} />);
   // yeniden eskiye; aynı anda (2 sn) yazılan durum + ilerleme: durum önce, ilerleme yalnız çıktı taşıyorsa ayrı satır
   const ham = (a.olaylar || []).filter((e: any) => e.tip !== 'okuma').map((e: any) => ({ ...e, _t: Date.parse(e.zaman) }));
   const olaylar = ham
@@ -385,6 +416,7 @@ function AdimGecmis({ a, d, ben }: { a: any; d: any; ben: string }) {
     .sort((x: any, y: any) => (Math.abs(x._t - y._t) < 2000 ? Number(y.tip === 'durum') - Number(x.tip === 'durum') : y._t - x._t));
   const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/>` + ship(0, 0, 0, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim_tip === 'agent' ? e.arac || e.kim : e.kim || '?')[0], e.kim_tip === 'agent' ? C.lilac : C.peach, .42, { flame: false }) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
   const kim = (e: any) => e.kim_tip === 'agent' ? e.arac || e.kim : e.kim;
+  const ilkHazir: number | null = (a.bekledigi || []).find((b: any) => b.durum === 'tamam')?.no ?? null;
   const sistemHazir = (e: any) => { const h = (a.bekledigi || []).filter((b: any) => b.durum === 'tamam').map((b: any) => adimAdi(by.get(b.no) || b)); return h.length ? `Sırası geldi; ${h.map((x: string, i: number) => (i || true) && /^[A-ZÇĞİÖŞÜ][^A-ZÇĞİÖŞÜ]*$/.test(x.split(' ')[0]) ? x[0].toLocaleLowerCase('tr') + x.slice(1) : x).join(', ').replace(/, ([^,]+)$/, ' ve $1')} hazır` : olayBasligi(e); };
   return (
     <div className="adim-gecmis">
@@ -394,7 +426,7 @@ function AdimGecmis({ a, d, ben }: { a: any; d: any; ben: string }) {
         {olaylar.map((e: any) => {
           const { metin, cikti } = olayMetni(e);
           const z = Date.parse(e.zaman);
-          return <Satir key={e.id} ikon={ikonOf(e)} ust={`${gunAy(z)} ${saat(z)} · ${e.kim_tip === 'sistem' ? 'Devir' : kim(e)}`} baslik={e.kim_tip === 'sistem' && e.durum === 'hazir' ? sistemHazir(e) : olayBasligi(e)} metin={metin} cikti={cikti} cizgi="dolu" />;
+          return <Satir key={e.id} ikon={ikonOf(e)} ust={`${gunAy(z)} ${saat(z)} · ${e.kim_tip === 'sistem' ? 'Devir' : kim(e)}`} baslik={e.kim_tip === 'sistem' && e.durum === 'hazir' ? sistemHazir(e) : olayBasligi(e)} metin={metin} cikti={cikti} cizgi="dolu" git={e.kim_tip === 'sistem' && e.durum === 'hazir' && ilkHazir ? adimaGit(ilkHazir) : undefined} />;
         })}
       </ol>
       {olaylar.length >= 60 && <p className="gecmis-not">Son 60 kayıt gösteriliyor.</p>}

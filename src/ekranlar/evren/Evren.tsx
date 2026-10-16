@@ -5,7 +5,7 @@ import { simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
-import { GenisSahne, Metin, Sahne } from '../../bilesen/Sahne';
+import { GenisSahne, Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { Segment } from '../akis/Adim';
 import { evrenOlcek, iconCloud, iconRings, usturlap } from '../../cizim/ekran';
@@ -142,6 +142,11 @@ function YakinDugmeleri({ gz, x, y, hep }: { gz: ReturnType<typeof useGezinme>; 
   );
 }
 
+/** Akıllı cümle → anlattığı adım (cümlenin üstünde saydam hedef; metin okunur kalır). */
+function CumleHedef({ c, x, y, w, h }: { c: { kod?: string; no?: number; metin: string }; x: number; y: number; w: number; h: number }) {
+  return <button type="button" className="cumle-hedef" style={{ left: x, top: y, width: w, height: Math.max(44, h) }} aria-label={`${c.metin} Adımı aç.`} onClick={() => git(`/akis/${encodeURIComponent(c.kod!)}/adim/${c.no}`)} />;
+}
+
 /** Mobil evrende gezinme alanı: cümlelerin altı, alt gezinmenin üstü. */
 const EVREN_BOLGE: Bolge = { x: 0, y: 228, w: 390, h: 510 };
 
@@ -234,6 +239,7 @@ export function Evren({ ben }: { ben: Ben }) {
           {s.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
         </Metin>
       ))}
+      {satirlar.map(({ c, s, y: yy }) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={20} y={metinUst(yy, 17.5, 22, true) - 4} w={350} h={s.length * 22 + 8} />)}
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} minR={24} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
       <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
@@ -300,6 +306,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       </button>
       <Metin y={64} x={80} fs={17} agirlik={650} style={{ right: 'auto', pointerEvents: 'none' }}>{kisi}</Metin>
       {cumleler.slice(0, 2).map((c, i) => <Metin key={c.metin} y={118 + i * 44} x={86} fs={19} lh={25} serif as="p" style={{ whiteSpace: 'nowrap', right: 'auto' }}>{c.metin}</Metin>)}
+      {cumleler.slice(0, 2).map((c, i) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={40} y={metinUst(118 + i * 44, 19, 25, true) - 6} w={Math.min(X - 80, 760)} h={36} />)}
       <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} minR={24} />
       <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep />
       <div style={{ position: 'absolute', left: X + 4, top: 30, width: 280 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>

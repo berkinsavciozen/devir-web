@@ -215,6 +215,9 @@
 .adim-panel { position: relative; width: 390px; max-width: 100%; margin: 0 auto; min-height: 100%; }
 .segment { position: relative; margin: 0 20px; height: 44px; display: flex; padding: 4px; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-alan) 80%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 10%, transparent); }
 .segment button { flex: 1; border-radius: 18px; font-size: 14px; font-weight: 550; color: var(--renk-metin-ink2); transition: background var(--sure-kisa); }
+.segment button { position: relative; }
+/* dolgu da dokunma alanı: 36 px çizim, 44 px hedef */
+.segment button::after { content: ""; position: absolute; inset: -4px 0; }
 .segment button.secili { background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-weight: 750; }
 .adim-durum { position: relative; height: 480px; }
 .panel-cizim { position: absolute; left: 0; top: -44px; overflow: visible; pointer-events: none; }
@@ -506,3 +509,25 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 /* evren yakınlaşınca: çizgiler ölçekle kalınlaşmaz; yakında halka yazıları (ay adları) çekilir */
 .evren-olcekli * { vector-effect: non-scaling-stroke; }
 .evren-olcekli.yazisiz text { display: none; }
+
+/* ---------- Akış bilgisi, kişi sayfası, akış menüsü (PR B) ---------- */
+.filtre-satir { position: absolute; left: 20px; right: 20px; display: flex; gap: 6px; }
+.filtre-cip { flex: 1; height: 44px; border-radius: 22px; font-size: 13px; font-weight: 600; color: var(--renk-metin-ink2); background: color-mix(in srgb, var(--renk-zemin-alan) 70%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 10%, transparent); cursor: pointer; }
+.filtre-cip[aria-pressed="true"] { color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-seftali); font-weight: 750; box-shadow: none; }
+.filtre-cip:focus-visible, .akis-menu-satir.dugmeli:focus-visible, .metin-baglanti:focus-visible, .adim-gez button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.akis-menu-satir.dugmeli { width: 100%; padding: 0; background: none; text-align: left; cursor: pointer; font: inherit; border-top: 0; border-left: 0; border-right: 0; }
+.akis-menu-satir.dugmeli:hover b { color: var(--renk-metin-altin); }
+/* metin içi bağlantı: adım numarası, zincirdeki ad */
+.metin-baglanti { display: inline; padding: 0; margin: 0; border: 0; background: none; font: inherit; color: var(--renk-metin-altin); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; cursor: pointer; }
+/* adım: önceki / sonraki */
+.adim-gez { position: absolute; top: 40px; right: 16px; display: flex; gap: 6px; z-index: 1; }
+.adim-gez button { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; background: color-mix(in srgb, var(--renk-zemin-kart) 88%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; }
+.adim-gez button:disabled { opacity: .4; cursor: default; }
+.adim-gez svg { width: 18px; height: 18px; fill: none; stroke: var(--renk-metin-ink); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.zincir-hedef { position: absolute; width: 56px; height: 64px; border-radius: 18px; background: none; border: 0; cursor: pointer; }
+.zincir-hedef:focus-visible { outline: 2px solid var(--renk-vurgu-altin); }
+.gecmis-satir.baglanti { cursor: pointer; }
+.gecmis-satir.baglanti b { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.cumle-hedef { position: absolute; border: 0; background: none; border-radius: 12px; cursor: pointer; }
+.cumle-hedef:focus-visible { outline: 2px solid var(--renk-vurgu-altin); }
+@media (hover: hover) { .cumle-hedef:hover + .sahne-metin, .cumle-hedef:hover { text-decoration: underline; } }
