@@ -3,7 +3,7 @@ import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 
-export interface EvrenCumle { tur: 'engel' | 'bekleme' | 'ozet'; metin: string; kod?: string }
+export interface EvrenCumle { tur: 'engel' | 'bekleme' | 'ozet'; metin: string; kod?: string; no?: number }
 
 /** Geçişli bekleyen açık adım sayısı (sunucu `sira[].tuttugu` vermezse detaydan). */
 export function tuttugu(adimlar: any[], no: number): number {
@@ -39,10 +39,10 @@ export function evrenCumleleri(kartlar: any[], detay: Record<string, any>, ben: 
   const e = sec(adayE);
   if (e) {
     const ek = e.a.engel_kisa || 'engelini';
-    out.push({ tur: 'engel', kod: e.k.kod, metin: `${akisAdi(e.k)} senin ${ek} bekliyor${e.n ? `; ${e.n} adımı tutuyor` : ''}.` });
+    out.push({ tur: 'engel', kod: e.k.kod, no: e.a.no, metin: `${akisAdi(e.k)} senin ${ek} bekliyor${e.n ? `; ${e.n} adımı tutuyor` : ''}.` });
   }
   const b = sec(adayB.filter((x) => x.n > 0));
-  if (b) out.push({ tur: 'bekleme', kod: b.k.kod, metin: `${ozelEk(akisAdi(b.k), 'de')} ${ozelEk(kisiAdi(b.a.sahip), 'in')} ${kucuk(adimAdi(b.a))} ${b.n} adımı tutuyor.` });
+  if (b) out.push({ tur: 'bekleme', kod: b.k.kod, no: b.a.no, metin: `${ozelEk(akisAdi(b.k), 'de')} ${ozelEk(kisiAdi(b.a.sahip), 'in')} ${kucuk(adimAdi(b.a))} ${b.n} adımı tutuyor.` });
   if (!out.length && ozet) out.push({ tur: 'ozet', metin: ozet.split(/(?<=\.)\s+/).slice(0, 2).join(' ') });
   return out;
 }
