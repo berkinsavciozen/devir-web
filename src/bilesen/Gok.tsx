@@ -19,12 +19,12 @@ function useBoyut() {
  * Gök: degrade + kâğıt dokusu + bulutsular + tohumlu yıldızlar + kenar karartma (ortak.js → sky).
  * Yıldız sayısı tasarımdaki 390×844 karede verilir; başka boyutta alanla orantılı artar.
  */
-export const Gok = memo(function Gok({ tohum = 1, yildiz = 330, parilti }: { tohum?: number; yildiz?: number; parilti?: number }) {
+export const Gok = memo(function Gok({ tohum = 1, yildiz = 330, parilti, bulutsu }: { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]> }) {
   const { w, h } = useBoyut();
   const n = Math.round(yildiz * (w * h) / TASARIM_ALAN);
   return (
     <svg className="gok" aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`}
-      dangerouslySetInnerHTML={{ __html: sky(w, h, tohum, { stars: n, sparkles: parilti }) }} />
+      dangerouslySetInnerHTML={{ __html: sky(w, h, tohum, { stars: n, sparkles: parilti, nebs: bulutsu?.map(([x, y, r, id]) => [x + (w - 390) / 2, y, r, id]) }) }} />
   );
 });
 

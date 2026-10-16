@@ -11,19 +11,25 @@ export interface DugmeOz extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** yazma sürerken metin yerinde üç noktalı nabız */
   mesgul?: boolean;
   yukseklik?: number;
+  /** ikonun merkezi, düğmenin sol kenarından (tasarımdaki gibi metinden bağımsız durur) */
+  ikonX?: number;
+  /** metnin ortadan kayması (px) */
+  kayma?: number;
+  /** yazı boyu (tasarımda düğmeye göre 14–17) */
+  fs?: number;
 }
 
-export function Dugme({ tur = 'birincil', ton = 'lila', ikon, mesgul, yukseklik, children, className = '', disabled, style, ...p }: DugmeOz) {
+export function Dugme({ tur = 'birincil', ton = 'lila', ikon, mesgul, yukseklik, ikonX, kayma, fs, children, className = '', disabled, style, ...p }: DugmeOz) {
   return (
     <button
       {...p}
       disabled={disabled || mesgul}
       aria-busy={mesgul || undefined}
       className={`dugme dugme-${tur} ${tur === 'ikincil' ? `ton-${ton}` : ''} ${className}`}
-      style={yukseklik ? { ...style, height: yukseklik } : style}
+      style={{ ...style, ...(yukseklik ? { height: yukseklik } : {}), ...(fs ? { fontSize: fs } : {}) }}
     >
-      {ikon && <span className="dugme-ikon" aria-hidden>{ikon}</span>}
-      <span className="dugme-metin">{mesgul ? <span className="nabiz" aria-label="Kaydediliyor"><i /><i /><i /></span> : children}</span>
+      {ikon && !mesgul && <span className={`dugme-ikon ${ikonX != null ? 'dugme-ikon-yerli' : ''}`} style={ikonX != null ? { left: ikonX } : undefined} aria-hidden>{ikon}</span>}
+      <span className="dugme-metin" style={kayma ? { transform: `translateX(${kayma}px)` } : undefined}>{mesgul ? <span className="nabiz" aria-label="Kaydediliyor"><i /><i /><i /></span> : children}</span>
     </button>
   );
 }
