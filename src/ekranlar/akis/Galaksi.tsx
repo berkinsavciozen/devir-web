@@ -1,3 +1,4 @@
+import { hareketAz } from '../../ayar/hareket';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -201,7 +202,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // oynat: 1 gün / sn (§4.10); sona gelince durur
   useEffect(() => {
     if (!oynuyor || !cizim) return;
-    const t1 = cizim.Z.t1, azalt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t1 = cizim.Z.t1, azalt = hareketAz();
     let son = performance.now(), id = 0;
     const kare = (t: number) => {
       const dt = t - son; son = t;

@@ -27,7 +27,7 @@ const FILTRE = ['Hepsi', 'Açık', 'Sende', 'Engelli', 'Bitti'] as const;
 const SATIR = 66;
 
 export const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
-const adimIkon = (a: any, h = 58) => `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
+export const adimIkon = (a: any, h = 58) => `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
 /** "Berkin · hazır · en erken 21 Eki" */
 export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';
@@ -39,8 +39,8 @@ const kisiIkon = (ad: string, tip: string, sahip: boolean, h = 58) => tip === 'd
 const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#1A1238" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
 
 /** Bir sütun satır kartı ve bölüm başlıkları; dönen y sonraki boş yer. */
-type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; sag?: ReactNode } | { tur: 'not'; metin: string };
-function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etiket: string }) {
+export type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; sag?: ReactNode } | { tur: 'not'; metin: string };
+export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etiket: string }) {
   let y = y0;
   const out: ReactNode[] = [];
   ogeler.forEach((o, i) => {

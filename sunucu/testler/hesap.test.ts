@@ -192,6 +192,21 @@ const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
   x = await api("GET", "/api/v1/ozet", null, AUTH_AYSE);
   ok(x.st === 403, "çıkarılan üye giremez");
 
+  // akış kapsamlı ekip (0.11.0): uye/anahtar kapsamı "akis:KOD"
+  const r2 = await mcp("devir_akis_olustur", { baslik: "Fuar hazırlığı", hedef_tarih: "2026-11-30", adimlar: [{ ad: "Stant", sahip: "Berkin", kriter: "stant", sure_tahmin_gun: 2 }] });
+  const kod2 = /oluşturuldu: (\w+)/.exec(r2)![1];
+  await db.insert("anahtar", [{ kullanici_id: ws.id, kisi: "Selin", rol: "ekip", kapsam: `akis:${kod2}`, token_hash: await sha("dv_selin") }, { kullanici_id: ws.id, kisi: "Zeynep", rol: "ekip", kapsam: `akis:${kod2}`, token_hash: await sha("dv_zeynep2") }]);
+  x = await api("GET", "/api/v1/ozet", null, "dv_selin");
+  ok(x.j.ok && x.j.akislar.map((k: any) => k.kod).join() === kod2, "kapsamlı ekip yalnız seçili akışı görür");
+  x = await api("GET", `/api/v1/akis/${kod}`, null, "dv_selin");
+  ok(!x.j.ok && x.st >= 400, "kapsam dışı akış açılmaz");
+  x = await api("GET", "/api/v1/akislar?durum=hepsi", null, "dv_selin");
+  ok(x.j.akislar?.length === 1, "akış listesi kapsamla süzülür");
+  x = await api("GET", "/api/v1/ozet", null, "dv_zeynep2");
+  ok(x.j.akislar?.length === 2, "kendi adımı olan akış kapsam dışında da görünür");
+  x = await api("GET", "/api/v1/ozet", null, "dv_ekip");
+  ok(x.j.akislar?.length === 2, "kapsamsız ekip bütün akışları görür");
+
   // mevcut anahtar akışı bozulmadı
   x = await api("GET", "/api/v1/ozet");
   ok(x.j.ok && x.j.rol === "sahip", "dv_ anahtarıyla eski yol çalışıyor");

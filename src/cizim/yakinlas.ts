@@ -1,3 +1,4 @@
+import { hareketAz } from '../ayar/hareket';
 import { git } from '../yonlendirme';
 
 const BAYRAK = 'devir:yakinlas';
@@ -11,7 +12,7 @@ const EGRI = 'cubic-bezier(.2,0,0,1)';
 export function yakinlas(kod: string, hedef: HTMLElement) {
   const yol = `/akis/${encodeURIComponent(kod)}`;
   const main = hedef.closest('main') as HTMLElement | null;
-  if (!main || matchMedia('(prefers-reduced-motion: reduce)').matches || !main.animate) return git(yol);
+  if (!main || hareketAz() || !main.animate) return git(yol);
   const r = hedef.getBoundingClientRect(), m = main.getBoundingClientRect();
   const x = r.left + r.width / 2, y = r.top + r.height / 2;
   const katman = document.createElement('div');

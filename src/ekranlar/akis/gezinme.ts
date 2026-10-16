@@ -1,3 +1,4 @@
+import { hareketAz } from '../../ayar/hareket';
 import { useCallback, useEffect, useRef, useState, type MouseEvent as RMouseEvent, type PointerEvent as RPointerEvent } from 'react';
 
 /**
@@ -27,7 +28,7 @@ export function useGezinme(b: Bolge, o: { max?: number; asiri?: (p: [number, num
   // bölge değişince (pencere boyu) dönüşüm sınır içine
   useEffect(() => setG((d) => sinirla(d)), [sinirla]);
 
-  const azalt = () => typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const azalt = hareketAz;
   /** p noktası yerinde kalarak k2'ye */
   const etrafinda = (d: Donusum, k2: number, p: [number, number]): Donusum => {
     const k = Math.max(1, Math.min(max, k2)), r = k / d.k;

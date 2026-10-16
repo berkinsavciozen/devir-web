@@ -242,7 +242,7 @@ export function Evren({ ben }: { ben: Ben }) {
       {satirlar.map(({ c, s, y: yy }) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={20} y={metinUst(yy, 17.5, 22, true) - 4} w={350} h={s.length * 22 + 8} />)}
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} minR={24} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
-      <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
+      <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
     </Sahne>
   );
 }
@@ -268,7 +268,7 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now }: { kis
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} />
       {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
-      <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
+      <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
     </Sahne>
   );
 }
@@ -309,9 +309,13 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       {cumleler.slice(0, 2).map((c, i) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={40} y={metinUst(118 + i * 44, 19, 25, true) - 6} w={Math.min(X - 80, 760)} h={36} />)}
       <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} minR={24} />
       <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep />
-      <div style={{ position: 'absolute', left: X + 4, top: 30, width: 280 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>
+      <div style={{ position: 'absolute', left: X + 4, top: 30, width: 284 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>
+      <button type="button" className="genis-geri genis-ayarlar" style={{ left: X + 296, top: 30 }} aria-label="Ayarlar" onClick={() => git('/ayarlar')}>
+        <svg aria-hidden width="24" height="24" viewBox="-12 -12 24 24"><path d="M-7,-4 L7,-4 M-7,4 L7,4" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" strokeLinecap="round" /><circle cx="-2.5" cy="-4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /><circle cx="3" cy="4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /></svg>
+      </button>
       <button type="button" className="genis-geri" style={{ left: X + 348, top: 30 }} aria-label="Yeni iş" onClick={() => git('/yeni')} />
       <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>SENDEN BEKLENEN</h2>
+      {benim.length > 0 && <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 96, top: 118 - 26 }} onClick={() => git('/bana')}>Hepsi ({benim.length})</button>}
       {bekl.length ? bekl.map((b, i) => {
         const y = 132 + i * 64, akis = ad(b.akis), t = b.son_tarih ? gunAy(tarihMs(b.son_tarih)) : null;
         return <button key={b.akis + b.no} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 56, background: 'none', boxShadow: 'none' }} onClick={() => git(`/akis/${encodeURIComponent(b.akis)}/adim/${b.no}`)}>
