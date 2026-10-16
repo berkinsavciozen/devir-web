@@ -76,7 +76,15 @@ const SYS = { kim: "Devir", kim_tip: "sistem", arac: null };
 export const isDis = (ctx: Ctx) => ctx.key.rol === "dis";
 const kapsam = (ctx: Ctx) => norm(ctx.key.kapsam || ctx.key.kisi);
 export function stepInScope(ctx: Ctx, s: any) { return !isDis(ctx) || norm(s.sahip).includes(kapsam(ctx)); }
+/** Ekip üyesinin akış kapsamı (0.11.0): uye.kapsam "akis:KOD1,KOD2" ise yalnız o akışlar (ve alt akışları) ile kendi adımı olan akışlar. */
+export function akisKapsami(ctx: Ctx): Set<string> | null {
+  if (ctx.key.rol !== "ekip") return null;
+  const m = String(ctx.key.kapsam || "").match(/^akis:(.*)$/i);
+  return m ? new Set(m[1].split(",").map((x) => x.trim().toUpperCase()).filter(Boolean)) : null;
+}
 export function flowInScope(ctx: Ctx, akis: any, steps: any[]) {
+  const ak = akisKapsami(ctx);
+  if (ak) { const b = norm(ctx.key.kisi || ""); return ak.has(String(akis.kisa_kod).toUpperCase()) || ak.has(String(akis.baglam?.ust_kod || "").toUpperCase()) || (!!b && steps.some((s) => norm(s.sahip) === b)); }
   if (!isDis(ctx)) return true;
   const k = kapsam(ctx);
   return norm(akis.baglam?.musteri || "").includes(k) || steps.some((s) => norm(s.sahip).includes(k));
@@ -1068,7 +1076,7 @@ async function akislar(a: any, ctx: Ctx) {
     if (top.length) out.push(`En çok bekleten: ${top.map(([k, v]) => `${k} ${dur(v)}`).join(" · ")}`);
     const risk = rows.filter((r) => r.f.durum === "aktif" && r.m.pay != null && r.m.pay < 0);
     if (risk.length) out.push(`⚠ Hedefi kaçırma riski: ${risk.map((r) => `${r.f.kisa_kod} (${dur(-r.m.pay)})`).join(", ")}`);
-    const tumAkis = await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at");
+    const tumAkis = (await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at")).filter((f: any) => !akisKapsami(ctx) || rows.some((r) => r.f.id === f.id));
     const er = tumAkis.length ? await ctx.db.many("adim", { akis_id: tumAkis.map((f: any) => f.id), durum: "ertelendi" }, "no") : [];
     if (er.length) { const kod = new Map(tumAkis.map((f: any) => [f.id, f])); out.push(`↷ Ertelenmiş açık işler (${er.length}): ${er.map((x: any) => { const f: any = kod.get(x.akis_id); return `${x.ad} (${f?.kisa_kod}${f?.baglam?.musteri ? ` · ${f.baglam.musteri}` : ""})`; }).join("; ")}`); }
   }

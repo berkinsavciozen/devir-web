@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { alanSecimi } from './api/istemci';
 import { sorguIstemcisi, useBen, useOzet } from './api/sorgular';
@@ -7,6 +7,8 @@ import { Baslik } from './bilesen/Baslik';
 import { Gok, Gren } from './bilesen/Gok';
 import { Kutu, Metin, Sahne } from './bilesen/Sahne';
 import { SvgTanimlar } from './bilesen/Svg';
+import { Dugme } from './bilesen/Dugme';
+import { planet } from './cizim/ortak.js';
 import { Evren } from './ekranlar/evren/Evren';
 import { Akislar } from './ekranlar/evren/Akislar';
 import { Arsiv } from './ekranlar/evren/Arsiv';
@@ -24,19 +26,30 @@ import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { HesapSayfasi } from './ekranlar/hesap/Hesap';
+import { BanaDusenler } from './ekranlar/evren/Bana';
+import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
 import { OrnekMenusu } from './bilesen/OrnekMenusu';
 import { eslestir, git, useYol, arama } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
-function Sirada({ baslik }: { baslik: string }) {
+/** Bilinmeyen adres (404, CELISKILER 66): kullanıcı dilinde tek cümle ve evrene dönüş. */
+function Bulunamadi() {
+  const cizim = `<circle cx="195" cy="330" r="90" fill="url(#glowLilac)" opacity=".6"/>` + planet(195, 330, 26, 'ghost', { life: false }) + planet(262, 286, 7, 'dark', { life: false }) + planet(136, 372, 5, 'dark', { life: false });
   return (
-    <Sahne gok={{ tohum: 17, yildiz: 200 }} etiket={baslik}>
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={baslik} geri={() => git('/')} /></Kutu>
-      <Metin y={112} fs={17} lh={22} serif renk="ink2">Bu ekran sıradaki adımda geliyor.</Metin>
+    <Sahne gok={{ tohum: 17, yildiz: 200 }} cizim={cizim} etiket="Sayfa bulunamadı">
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Bu sayfa yok" geri={() => git('/')} /></Kutu>
+      <Metin y={112} fs={17} lh={22} serif renk="ink2" as="p">Adres değişmiş ya da eksik yazılmış olabilir.</Metin>
+      <Dugme style={{ top: 470 }} fs={16} onClick={() => git('/', { yerine: true })}>Evrene dön</Dugme>
     </Sahne>
   );
+}
+
+/** İlk açılışta bir kez üç kartlık tanıtım (evrenin üstünde). */
+function IlkTanitim() {
+  const [acik, setAcik] = useState(tanitimGorulmeli);
+  return acik ? <Tanitim bitti={() => setAcik(false)} /> : null;
 }
 
 /** Yüklenirken gök hemen çizilir; beyaz boş ekran yok (§3.21). */
@@ -58,7 +71,7 @@ function Uygulama({ yol }: { yol: string }) {
   if (!b) return <Giris />;
   if (b.kayit_gerekli) return b.bekleyen_davetler?.length ? <DavetKabul ben={b} /> : <DavetYok ben={b} yenile={() => void ben.refetch()} yenileniyor={ben.isFetching} />;
   if (yol === '/bagla') return <ClaudeaBagla ben={b} />;
-  if (yol === '/' || yol === '') return <Evren ben={b} />;
+  if (yol === '/' || yol === '') return <><Evren ben={b} /><IlkTanitim /></>;
   if (yol === '/hesap') return <><Evren ben={b} /><HesapSayfasi kapat={() => git('/', { yerine: true })} /></>;
   if (yol === '/ayarlar') return <Ayarlar />;
   if (yol === '/ayarlar/ekip') return <Ekip />;
@@ -80,11 +93,12 @@ function Uygulama({ yol }: { yol: string }) {
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;
+  if (yol === '/bana') return <BanaDusenler ben={b} />;
   if (yol === '/akislar/arsiv') return <Arsiv ben={b} />;
   if (yol === '/yeni') return <YeniIs />;
   const ty = eslestir('/yeni/:kod', yol);
   if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;
-  return <Sirada baslik="Devir" />;
+  return <Bulunamadi />;
 }
 
 export function App() {

@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, isDis, stepInScope, flowInScope, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -120,7 +120,9 @@ async function taslaklarV(ctx: Ctx) {
 async function anaV(ctx: Ctx) {
   const akislar = await akislarV(ctx, "aktif");
   const ben = norm(ctx.key.kisi);
-  const flows = await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at");
+  // akış kapsamlı ekip üyesi (0.11.0): yalnız kartı görünen akışlar (alt akışlar üstüyle)
+  const gorunen = new Set(akislar.map((k: any) => k.kod));
+  const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")).filter((f: any) => !akisKapsami(ctx) || gorunen.has(f.kisa_kod) || gorunen.has(f.baglam?.ust_kod));
   const ids = flows.map((f: any) => f.id);
   const steps = ids.length ? (await ctx.db.many("adim", { akis_id: ids, durum: ["hazir", "engelli", "suruyor"] }, "no")).map(fixStep) : [];
   const fBy = new Map(flows.map((f: any) => [f.id, f]));
@@ -248,7 +250,8 @@ async function kararlarV(ctx: Ctx, varlik: string | null) {
   const by = new Map<string, any[]>();
   for (const k of rows.reverse()) { const a = by.get(k.varlik) || []; a.push(kararV(k)); by.set(k.varlik, a); }
   // karar bekleyen adımlar (aktif akışlarda, sırası gelmiş ya da sürüyor)
-  const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")).filter((f: any) => !varlik || norm(f.baglam?.musteri || "") === norm(varlik));
+  let flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")).filter((f: any) => !varlik || norm(f.baglam?.musteri || "") === norm(varlik));
+  if (akisKapsami(ctx)) { const ids0 = flows.map((f: any) => f.id), tum = ids0.length ? await ctx.db.many("adim", { akis_id: ids0 }, "no") : []; flows = flows.filter((f: any) => flowInScope(ctx, f, tum.filter((s: any) => s.akis_id === f.id))); }
   const ids = flows.map((f: any) => f.id);
   const steps = ids.length ? (await ctx.db.many("adim", { akis_id: ids, durum: ["hazir", "suruyor", "engelli"] }, "no")).map(fixStep) : [];
   const fBy = new Map(flows.map((f: any) => [f.id, f]));

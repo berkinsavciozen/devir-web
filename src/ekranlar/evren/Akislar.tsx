@@ -119,7 +119,7 @@ export function Akislar({ ben }: { ben: Ben }) {
       </ul>
       <button className="liste-alt taslak" style={{ top: cizim.yd, left: 16, width: 180, height: 64 }} aria-label={`${taslakN} taslak`} onClick={() => git('/yeni')}><span style={{ left: 72, top: metinUst(38, 14, 18) }}>{taslakN} taslak</span></button>
       <button className="liste-alt arsiv" style={{ top: cizim.yd, left: 196, width: 178, height: 64 }} aria-label="Arşiv" onClick={() => git('/akislar/arsiv')}><span style={{ left: 66, top: metinUst(38, 14, 18) }}>Arşiv</span></button>
-      <AltGezinme aktif="akislar" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
+      <AltGezinme aktif="akislar" yeni={() => git('/yeni')} />
     </Sahne>
   );
 }

@@ -1,3 +1,4 @@
+import { hareketAz } from '../../ayar/hareket';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -13,6 +14,7 @@ import { git, arama } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
+import { Lejant, SoruIkon } from './Lejant';
 import { AkisMenusu } from './Bilgi';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { KapaliGalaksi } from './Kapali';
@@ -120,6 +122,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const [oynuyor, setOynuyor] = useState(false);
   // ?odak=Ad → kişi sayfasından "Haritada yolunu göster"
   const [odak, setOdak] = useState<string | null>(() => arama().get('odak'));
+  const [lejant, setLejant] = useState(false);
   const [menu, setMenu] = useState(false);
   const [gonder, setGonder] = useState<string | null>(null);
   const [kayma, setKayma] = useState(0);
@@ -201,7 +204,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // oynat: 1 gün / sn (§4.10); sona gelince durur
   useEffect(() => {
     if (!oynuyor || !cizim) return;
-    const t1 = cizim.Z.t1, azalt = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const t1 = cizim.Z.t1, azalt = hareketAz();
     let son = performance.now(), id = 0;
     const kare = (t: number) => {
       const dt = t - son; son = t;
@@ -300,6 +303,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </>}
       {/* yakınlaşma düğmeleri: geniş düzende her zaman; telefonda yalnız yakınken "sığdır" (tekerlek ve iki parmak yeter) */}
       <div className="harita-yakin" style={{ left: bolge.x + bolge.w - (GD ? 64 : 58), top: bolge.y + 6 }}>
+        <button type="button" className="lejant-dugme" aria-label="Harita dili" aria-haspopup="dialog" onClick={() => setLejant(true)}><SoruIkon /></button>
         {GD && <button type="button" aria-label="Yakınlaştır" disabled={zk >= 3.999} onClick={() => gz.yakinlas(1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
         {GD && <button type="button" aria-label="Uzaklaştır" disabled={!yak} onClick={() => gz.yakinlas(1 / 1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
         {(GD || yak) && <button type="button" aria-label="Haritayı sığdır" disabled={!yak} onClick={gz.sigdir}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
@@ -343,6 +347,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
         <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
+      <Lejant acik={lejant} kapat={() => setLejant(false)} />
         {cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
@@ -362,6 +367,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
 
       {kontroller}
       <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
+      <Lejant acik={lejant} kapat={() => setLejant(false)} />
     </Sahne>
   );
 }
@@ -383,10 +389,12 @@ export function HaritaYukleniyor() {
 function HaritaHata({ hata, yeniden }: { hata?: string; yeniden: () => void }) {
   return (
     <Sahne gok={{ tohum: 33, yildiz: 280 }} etiket="Harita">
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Akış" geri={() => git('/')} /></Kutu>
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Akış açılamadı" geri={() => git('/akislar')} /></Kutu>
       <Kutu y={600} className="kart hata-karti" role="alert">
         <p>{hata || 'Akış şu an açılamadı.'}</p>
-        <button className="dugme dugme-ikincil ton-mercan" onClick={yeniden}>Yeniden dene</button>
+        {hata && /bulunamadı|açık değil/.test(hata)
+          ? <button className="dugme dugme-ikincil ton-mercan" onClick={() => git('/akislar', { yerine: true })}>Akışlara dön</button>
+          : <button className="dugme dugme-ikincil ton-mercan" onClick={yeniden}>Yeniden dene</button>}
       </Kutu>
     </Sahne>
   );
