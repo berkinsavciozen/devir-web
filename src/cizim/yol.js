@@ -88,7 +88,8 @@ function fenerDizisi(pts, ps = 1, aralik = 14) {
 
 /**
  * Sarmal harita. M: akisModeli(). o: { cx, cy, R, ps, now, x (sürgü anı), focus (üye adı), sel (adım no), labels, states, sats, haric,
- *   ships, lod: 'detay'|'kucuk', allLit, sira, spin, sis, ip, fener, kule, kuleEtiket, kuleDx, tw, shipSc, rk, rad, pr }
+ *   ships, lod: 'detay'|'kucuk', allLit, sira, spin, sis, ip, fener, kule, kuleEtiket, kuleDx, tw, shipSc, rk, rad, pr,
+ *   ok (öğe katsayısı: gemi, gezegen), rf (gezegen yarıçap işlevi; verilirse ok yerine), yk (yazı katsayısı) }
  */
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
@@ -98,7 +99,8 @@ export function yolCiz(M, o = {}) {
   const UYE_RENK = (u) => RENK[u.ad] || '#9EE6CF';
   const byNo = byNoOf(F), P = {}; for (const no in G.gezegen) P[no] = [G.gezegen[no].x, G.gezegen[no].y];
   const stOf = (no) => (o.states && o.states[no]) || (o.allLit ? (byNo[no].durum === 'atlandi' ? 'ghost' : 'lit') : G.durumAn(+no, X)) || 'dark';
-  const radOf = (no) => (o.rad && o.rad[no] ? o.rad[no] * ps : G.gezegen[no].r) * (o.rk ?? 1);
+  const OK = o.ok ?? 1, YK = o.yk ?? 1;
+  const radOf = (no) => { const r = (o.rad && o.rad[no] ? o.rad[no] * ps : G.gezegen[no].r) * (o.rk ?? 1); return o.rf ? o.rf(r) : r * OK; };
   const dim = (ad) => (o.focus && o.focus !== ad) ? (o.sis ? .3 : .16) : 1;
   const tEnd = Math.max(G.hedef, G.tSon);
   let s = '';
@@ -175,7 +177,7 @@ export function yolCiz(M, o = {}) {
     }
   }
   const vis = Object.keys(G.gezegen).map(Number);
-  const cl = G.kumeler((no) => radOf(no), vis), inCl = new Set(cl.flat());
+  const cl = G.kumeler(o.kumeRad || ((no) => radOf(no)), vis), inCl = new Set(cl.flat());
   // ikonAyri (yakınlaşınca): bulut ve bayrak gezegenden ayrılır, kendi dokunma alanları olur
   const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !['lit', 'ghost'].includes(stOf(no)), waitRings: 2, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
   const ikonlar = [];
@@ -208,7 +210,7 @@ export function yolCiz(M, o = {}) {
     const p = G.konumAn(u.ad, X); if (!p || !acik) continue;
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
-    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4);
+    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK;
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
     L[u.ad] += `<g opacity="${X > NOWx ? .75 : 1}">` + ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u), sc, { flame: kind !== 'dis' && X <= NOWx }) + '</g>';
   }
@@ -217,7 +219,7 @@ export function yolCiz(M, o = {}) {
   if (G.kule && o.kule !== false) {
     const lit = !!F.kapandi;
     s += `<circle cx="${f(G.kule.x)}" cy="${f(G.kule.y)}" r="${f(4 * m13)}" fill="#FFD27A"/>` + tower(G.kule.x, G.kule.y - 3, (o.tw ?? .24) * Math.min(ps, 1.5), lit);
-    if (o.kuleEtiket !== false) s += pill(G.kule.x + (o.kuleDx ?? 0), G.kule.y + 16 * m13, o.kuleEtiket || gunAy(G.hedef - 12 * 36e5), { fs: 11 * Math.min(ps, 1.2), fw: 650, col: C.ink });
+    if (o.kuleEtiket !== false) s += pill(G.kule.x + (o.kuleDx ?? 0), G.kule.y + 16 * m13, o.kuleEtiket || gunAy(G.hedef - 12 * 36e5), { fs: 11 * Math.min(ps, 1.2) * YK, fw: 650, col: C.ink });
   }
   let secim = '';
   if (o.sel && G.gezegen[o.sel]) {
@@ -237,19 +239,20 @@ export function yolCiz(M, o = {}) {
     secim += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(radOf(o.sel) + 15)}" fill="none" stroke="#FFF3E8" stroke-width="1.6" opacity=".55"/>` + planet(g.x, g.y, radOf(o.sel), stOf(o.sel), ex(o.sel));
     if (!o.selTop) s += secim;
   }
-  if (o.labels) for (const [no, text, dx, dy, col, st] of o.labels) { const g = G.gezegen[no]; if (g) s += pill(g.x + dx * ps, g.y + dy * ps, esc(text), { fs: 11 * m13, fw: 650, col: col || C.ink, stroke: st }); }
+  if (o.labels) for (const [no, text, dx, dy, col, st] of o.labels) { const g = G.gezegen[no]; if (g) s += pill(g.x + dx * ps * YK, g.y + dy * ps * YK, esc(text), { fs: 11 * m13 * YK, fw: 650, col: col || C.ink, stroke: st }); }
   return { svg: s, G, P, radOf, stOf, clusters: cl, secim, RENK, gemiler, ikonlar };
 }
 
 /**
  * Şeritler: her üye bir satır; x = zaman. b: { x, y, w, h } kutu ;
- * o: { lw, satir, pxGun, tBas, x (sürgü), sel, focus, uyeler, now, herGun, ps, states, bg, kaydir, ships, kayma (yatay px) }
+ * o: { lw, satir, pxGun, tBas, x (sürgü), sel, focus, uyeler, now, herGun, ps, states, bg, kaydir, ships, kayma (yatay px), ok, yk }
  */
 export function seritler(M, Y, b, o = {}) {
   const F = M.F, G = Y.G, RENK = Y.RENK;
   const UYE_RENK = (u) => RENK[u.ad] || '#9EE6CF';
-  const NOWx = o.now, X = o.x ?? NOWx, lw = o.lw ?? 72, satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
-  const byNo = byNoOf(F), ps = o.ps ?? 1;
+  const byNo = byNoOf(F), ps = o.ps ?? 1, OK = o.ok ?? 1, YK = o.yk ?? 1;
+  // ad sütunu büyüyen gemi ve yazıyla genişler (madde 15)
+  const NOWx = o.now, X = o.x ?? NOWx, lw = (o.lw ?? 72) * (1 + (OK - 1) * .35), satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
   const us = (o.uyeler || G.uyeler.map((u) => u.ad)).map((ad) => G.uyeOf[ad]).filter(Boolean);
   const tBas = o.tBas ?? G.T0;
   const X0 = b.x + lw + 10, XW = b.w - lw - 14;
@@ -258,7 +261,8 @@ export function seritler(M, Y, b, o = {}) {
   const yOf = (i) => b.y + 14 + i * satir + satir / 2;
   const id = 'sr' + Math.round(b.x) + '_' + Math.round(b.y);
   let s = o.bg === false ? '' : kart(b.x, b.y, b.w, b.h, { rx: 22 });
-  s += `<clipPath id="${id}"><rect x="${X0 - 8}" y="${b.y}" width="${XW + 8}" height="${b.h}"/></clipPath>`;
+  // yumuşak kenarlı maske: büyük gezegenlerin ışıması sert bir kare kenarla kesilmesin
+  s += `<mask id="${id}" maskUnits="userSpaceOnUse" x="${b.x}" y="${b.y - 20}" width="${b.w}" height="${b.h + 40}"><rect x="${X0 - 2 - 8 * (OK - 1)}" y="${b.y + 6}" width="${XW + 2 + 8 * (OK - 1)}" height="${b.h - 12}" fill="#fff" filter="url(#blur6)"/></mask>`;
   let ic = '';
   const eksenY = b.y + 14 + us.length * satir + 6;
   const d0 = Math.floor((tBas + 3 * 36e5) / GUN) * GUN - 3 * 36e5;
@@ -267,7 +271,7 @@ export function seritler(M, Y, b, o = {}) {
     if (x < X0 - 10) continue;
     ic += `<line x1="${f(x)}" y1="${b.y + 10}" x2="${f(x)}" y2="${eksenY}" stroke="#8E80D6" stroke-width="${pzt ? .9 : .5}" opacity="${pzt ? .45 : .2}"/>`;
     ic += `<line x1="${f(x)}" y1="${eksenY}" x2="${f(x)}" y2="${eksenY + (pzt ? 7 : 4)}" stroke="#B9A6F2" stroke-width="${pzt ? 1.3 : .7}"/>`;
-    if ((o.herGun ? tl(t).getUTCDate() % 2 === 0 : pzt) && x > X0 + 14) ic += sans(f(x), eksenY + 20, gunAy(t), { fs: 10.5 * Math.min(ps, 1.3), fw: 600, col: C.ink3, anchor: 'middle' });
+    if ((o.herGun ? tl(t).getUTCDate() % 2 === 0 : pzt) && x > X0 + 14) ic += sans(f(x), eksenY + 20, gunAy(t), { fs: 10.5 * Math.min(ps, 1.3) * YK, fw: 600, col: C.ink3, anchor: 'middle' });
   }
   if (G.kule && !F.kapandi) { const xk = xOf(G.hedef); ic += `<line x1="${f(xk)}" y1="${b.y + 10}" x2="${f(xk)}" y2="${eksenY}" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 4" opacity=".8"/>` + tower(xk, eksenY - 2, .16 * ps, false); }
   us.forEach((u, i) => {
@@ -287,7 +291,7 @@ export function seritler(M, Y, b, o = {}) {
     if (rows.length > 1) ic += `<line x1="${f(xOf(g.t))}" y1="${f(yOf(Math.min(...rows)))}" x2="${f(xOf(g.t))}" y2="${f(yOf(Math.max(...rows)))}" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="2 3" opacity=".8"/>`;
   }
   for (const ip of G.ipler) { const i = us.findIndex((u) => u.ad === ip.uye), j = us.findIndex((u) => u.ad === byNo[ip.no].sahip); if (i < 0 || j < 0) continue; ic += `<path d="M${f(xOf(ip.t))},${f(yOf(j))} L${f(xOf(Math.max(ip.t, G.uyeOf[ip.uye].t0)))},${f(yOf(i))}" stroke="${UYE_RENK(G.uyeOf[ip.uye])}" stroke-width=".9" stroke-dasharray="1.2 3" opacity=".8"/>`; }
-  const rr = (no) => Math.max(4, Math.min(8, G.gezegen[no].r * .55 / (G.ps || 1))) * Math.min(ps, 1.4);
+  const rr = (no) => Math.max(4, Math.min(8, G.gezegen[no].r * .55 / (G.ps || 1))) * Math.min(ps, 1.4) * OK;
   const kopyalar = [];
   us.forEach((u, i) => {
     const y = yOf(i), sn = o.focus && o.focus !== u.ad ? .3 : 1;
@@ -296,7 +300,7 @@ export function seritler(M, Y, b, o = {}) {
     for (const no of nos) {
       const g = G.gezegen[no], x = xOf(g.t); let k = G.durumAn(no, X) || 'dark';
       if (o.states && o.states[no]) k = o.states[no];
-      const yy = x - last < rr(no) * 1.2 ? y - 7 : y; last = x;
+      const yy = x - last < rr(no) * 1.2 ? y - 7 * OK : y; last = x;
       kopyalar.push({ no, x, y: yy, r: rr(no), uye: u.ad });
       let t = '';
       if (o.sel === no) t += `<circle cx="${f(x)}" cy="${f(yy)}" r="${f(rr(no) + 8)}" fill="url(#glowGold)" opacity=".9"/><circle cx="${f(x)}" cy="${f(yy)}" r="${f(rr(no) + 6)}" fill="none" stroke="#FFF3E8" stroke-width="1.5"/>`;
@@ -308,14 +312,14 @@ export function seritler(M, Y, b, o = {}) {
   const xn = xOf(NOWx);
   ic += `<line x1="${f(xn)}" y1="${b.y + 8}" x2="${f(xn)}" y2="${eksenY}" stroke="#FFC9A3" stroke-width="1.4"/>`;
   if (Math.abs(X - NOWx) > 36e5) ic += `<line x1="${f(xOf(X))}" y1="${b.y + 8}" x2="${f(xOf(X))}" y2="${eksenY}" stroke="#FFD27A" stroke-width="1.6" stroke-dasharray="4 3"/>`;
-  if (o.ships !== false) us.forEach((u, i) => { if (u.hayalet || X < u.t0 || X > u.tSon + GUN * .2) return; const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan'; ic += ship(xOf(X), yOf(i) - (kind === 'dis' ? 4 : 0), 0, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], UYE_RENK(u), .5 * Math.min(ps, 1.4), { flame: false }); });
-  s += `<g clip-path="url(#${id})">${ic}</g>`;
+  if (o.ships !== false) us.forEach((u, i) => { if (u.hayalet || X < u.t0 || X > u.tSon + GUN * .2) return; const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan'; ic += ship(xOf(X), yOf(i) - (kind === 'dis' ? 4 : 0), 0, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], UYE_RENK(u), .5 * Math.min(ps, 1.4) * OK, { flame: false }); });
+  s += `<g mask="url(#${id})">${ic}</g>`;
   if (o.kaydir !== false) s += `<rect x="${b.x + b.w - 44}" y="${b.y + 2}" width="42" height="${b.h - 4}" rx="20" fill="url(#fadeR)"/><g transform="translate(${b.x + b.w - 18},${f(b.y + b.h / 2 - 6)})"><circle r="11" fill="#1E1645" stroke="#B9A6F2"/><path d="M-2,-4.5 L3,0 L-2,4.5" stroke="#D9CCFF" stroke-width="1.7" fill="none" stroke-linecap="round"/></g>`;
   us.forEach((u, i) => {
     const y = yOf(i), on = o.focus === u.ad, kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
     if (on) s += `<rect x="${b.x + 6}" y="${f(y - satir / 2 + 3)}" width="${lw}" height="${satir - 6}" rx="${(satir - 6) / 2}" fill="#2A1D5C" stroke="#FFD27A" stroke-width="1.4"/>`;
-    s += ship(b.x + 22, y - (kind === 'dis' ? 3 : 0), kind === 'dis' ? 0 : -14, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], u.hayalet ? '#6B5FB0' : UYE_RENK(u), .56 * Math.min(ps, 1.4), { flame: false });
-    s += sans(b.x + 38 * Math.min(ps, 1.3), y + 4, kisaAd(u.ad), { fs: 11.5 * Math.min(ps, 1.25), fw: on ? 750 : 600, col: u.hayalet ? '#9F92C8' : on ? C.ink : C.ink2 });
+    s += ship(b.x + 22, y - (kind === 'dis' ? 3 : 0), kind === 'dis' ? 0 : -14, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], u.hayalet ? '#6B5FB0' : UYE_RENK(u), .56 * Math.min(ps, 1.4) * Math.min(OK, 1.6), { flame: false });
+    s += sans(b.x + 38 * Math.min(ps, 1.3) * Math.min(OK, 1.3), y + 4, kisaAd(u.ad), { fs: 11.5 * Math.min(ps, 1.25) * YK, fw: on ? 750 : 600, col: u.hayalet ? '#9F92C8' : on ? C.ink : C.ink2 });
   });
   return { svg: s, xOf, yOf, eksenY, X0, XW, us, kopyalar, lw, satir };
 }

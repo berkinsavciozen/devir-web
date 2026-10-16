@@ -142,7 +142,7 @@
 }
 
 /* ---------- Sahne (390 × 844 tasarım karesine göre yerleşen ekran) ---------- */
-.sahne { position: relative; min-height: max(100dvh, 844px); max-width: 430px; margin: 0 auto; }
+.sahne { position: relative; min-height: 100dvh; max-width: 430px; margin: 0 auto; }
 .sahne-ortala { margin-top: max(0px, calc((100dvh - 844px) / 2)); min-height: 844px; }
 .sahne-cizim { position: absolute; top: 0; left: calc(50% - 195px); pointer-events: none; overflow: visible; }
 .sahne-metin { position: absolute; margin: 0; }
@@ -583,6 +583,11 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .lejant li span { display: flex; flex-direction: column; line-height: 17px; }
 .lejant li b { font-size: 14px; font-weight: 700; color: var(--renk-metin-ink); }
 .lejant li small { font-size: 12px; font-weight: 500; color: var(--renk-metin-ink3); }
+.lejant-alt-baslik { margin: 18px 0 8px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 750; color: var(--renk-metin-ink3); }
+.lejant-kodlama { margin: 0; display: grid; gap: 6px; }
+.lejant-kodlama div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; font-size: 13px; line-height: 17px; }
+.lejant-kodlama dt { font-weight: 700; color: var(--renk-metin-ink); }
+.lejant-kodlama dd { margin: 0; color: var(--renk-metin-ink2); }
 .harita-yakin .lejant-dugme svg { stroke-width: 2; }
 /* İlk açılış tanıtımı */
 .tanitim-kok { position: fixed; inset: 0; z-index: 400; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--renk-zemin-gok-0) 72%, transparent); animation: perde var(--sure-orta) var(--egri-standart); }
