@@ -58,6 +58,8 @@ async function mcp(name: string, args: any) {
   let l = await api("GET", `/l/${link}`, undefined, "");
   ok(l.st === 200 && l.j.adimlar.length === 1 && l.j.adimlar[0].eylemler.includes("basladim"), "bağlantı: yalnızca kendi adımı ve eylemler");
   console.log("  bağlantı özeti:", l.j.ozet);
+  { const h = l.j.harita, kendi = l.j.adimlar[0]; const yaban = h.adimlar.filter((x: any) => x.no !== kendi.no);
+    ok(h && h.adimlar.length > 1 && yaban.every((x: any) => /^yol-\d+$/.test(x.sahip) && !("ad" in x)) && h.adimlar.find((x: any) => x.no === kendi.no).sahip === kendi.sahip, "bağlantı: sisli harita adsız, kendi yolu adıyla"); }
   l = await api("POST", `/l/${link}`, { no: 4, eylem: "basladim" }, "");
   ok(l.st === 403 || l.st === 400, `bağlantı: başkasının adımı reddedildi (${l.st})`);
   l = await api("POST", `/l/${link}`, { no: 2, eylem: "tamam", metin: "Belge modeli uygun", cikti: { ad: "Belge modeli", url: "https://drive/x", ozet: "3 belge" } }, "");
@@ -88,6 +90,16 @@ async function mcp(name: string, args: any) {
   ok(x.st === 200 && x.j.tekrar[0].kalemler.length === 2, "tekrar uçu: 2 kalem");
   x = await api("GET", "/api/v1/akislar");
   ok(x.j.akislar.length === 1 && x.j.akislar[0].tekrar[0].kalem_sayisi === 2, "alt akışlar listede üst akışın altında");
+  // karar seçenekleri ve öneri (§9-6), engel_kisa (§9-14)
+  let m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar: { secenekler: [{ ad: "%10", etiket: "önerilen" }, { ad: "%12" }], oneri: { secim: ["%10"], ozet: "%10 öner" } }, kim_tip: "agent", arac: "Claude" });
+  x = await api("GET", `/api/v1/akis/${kod}/adim/3`);
+  ok(x.j.adim.karar?.secenekler?.length === 2 && x.j.adim.karar.oneri.kim === "Claude" && x.j.adim.karar.oneri.secim[0] === "%10", "karar seçenekleri ve öneri adımda");
+  x = await api("POST", `/api/v1/akis/${kod}/adim/3`, { karar_secimi: ["%12"] });
+  ok(x.st === 200, "karar seçimi yazıldı");
+  x = await api("GET", `/api/v1/akis/${kod}/adim/3`);
+  ok(x.j.adim.karar.secim?.secim[0] === "%12" && x.j.adim.karar.secim.kim === "Berkin", "karar seçimi adımda");
+  m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar_secimi: ["%10"], kim_tip: "agent" });
+  ok(/yalnızca insan/.test(m), "agent karar seçemez");
   x = await api("GET", "/api/v1/yok");
   ok(x.st === 404, "bilinmeyen uç 404");
   x = await api("GET", "/api/v1/ozet", undefined, "dv_yanlis");

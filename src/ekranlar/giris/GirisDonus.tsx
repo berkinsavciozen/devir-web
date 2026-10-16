@@ -5,7 +5,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { zarf } from '../../cizim/ekran';
 import { f, tower } from '../../cizim/ortak.js';
-import { git } from '../../yonlendirme';
+import { git, arama } from '../../yonlendirme';
 import { AnahtarSayfasi, EpostaAlani, epostaGecerli, Giris, sonEposta } from './Giris';
 
 // A1c süsleri: dönen altın yay ayrı katmanda (1.2 sn'de bir tur)
@@ -32,7 +32,7 @@ const A1D_CIZIM = a1dCizim();
 
 /** Adresten ?code= / ?error_code= (Supabase PKCE dönüşü; hata bazen # içinde gelir). */
 function donusOku() {
-  const q = new URLSearchParams(location.search), h = new URLSearchParams(location.hash.slice(1));
+  const q = arama(), h = new URLSearchParams(location.hash.slice(1));
   return { kod: q.get('code'), hata: q.get('error_code') || h.get('error_code') || q.get('error') || h.get('error') };
 }
 

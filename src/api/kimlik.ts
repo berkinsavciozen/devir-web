@@ -6,6 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SAHTE } from './ortam';
+import { arama } from '../yonlendirme';
 
 export interface Kimlik {
   /** Authorization başlığına girecek değer (oturum belirteci ya da dv_ anahtarı); yoksa null */
@@ -68,7 +69,7 @@ const SAHTE_KISI: Record<string, string> = {
 };
 function sahteKimlik(): Kimlik {
   const OTURUM = 'devir:sahte-oturum', CIKTI = 'devir:sahte-cikti';
-  const q = new URLSearchParams(location.search);
+  const q = arama();
   if (q.get('oturum') === 'yok') yaz(CIKTI, '1');
   const senaryoKisi = () => SAHTE_KISI[q.get('senaryo') || oku('devir:senaryo') || 'berkin'] || SAHTE_KISI.berkin;
   const okuL = () => oku(OTURUM) || (oku(CIKTI) ? null : `sahte:${senaryoKisi()}`);

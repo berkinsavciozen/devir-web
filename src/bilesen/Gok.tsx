@@ -3,7 +3,7 @@ import { grain, sky } from '../cizim/ortak.js';
 
 const TASARIM_ALAN = 390 * 844;
 
-function useBoyut() {
+export function useBoyut() {
   const al = () => ({ w: Math.max(320, window.innerWidth), h: Math.max(480, window.innerHeight) });
   const [b, setB] = useState(al);
   useEffect(() => {

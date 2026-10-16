@@ -415,12 +415,21 @@ export interface ApiAkisDetay {
     bekleme_saat?: number | null; capa_soru?: string | null; son_tarih?: string | null; [k: string]: unknown;
   }>;
   olaylar?: Array<{ zaman: string; kim?: string; kim_tip?: string; arac?: string | null; tip?: string; adim_no?: number | null; durum?: string | null; [k: string]: unknown }>;
+  /** 0.10.0: her adımın ilk okunuşu (okuma olayları akışta yok; üyenin yola çıkışı için) */
+  ilk_okumalar?: Array<{ zaman: string; kim?: string; kim_tip?: string; arac?: string | null; adim_no: number }>;
 }
+
+/** Planlanan başlangıç = bitiş − süre tahmini; biten adımda bitiş gerçek bitiştir (tasarım veridenAkis: ef − sure). */
+const planBasi = (a: any): number | null => {
+  const t = BITTI(a.durum) ? a.durum_at : a.en_erken_bitis;
+  return t && a.sure_tahmin_gun ? Date.parse(t) - a.sure_tahmin_gun * GUN : null;
+};
 
 /** API → girdi. detay = GET /akis/:kod ; o.sahip = akış sahibinin adı */
 export function apidenAkis(detay: ApiAkisDetay, o: { sahip?: string } = {}): GirdiAkis {
   const k = detay.akis, ms = (x: string | number | null | undefined): number | null => (x == null ? null : typeof x === 'number' ? x : Date.parse(x));
-  const olaylar: GirdiOlay[] = (detay.olaylar || []).map((e) => ({ t: ms(e.zaman) as number, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac, tip: e.tip, adim_no: e.adim_no, durum: e.durum }));
+  const olaylar: GirdiOlay[] = (detay.olaylar || []).map((e) => ({ t: ms(e.zaman) as number, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac, tip: e.tip, adim_no: e.adim_no, durum: e.durum }))
+    .concat((detay.ilk_okumalar || []).map((e) => ({ t: ms(e.zaman) as number, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac, tip: 'okuma', adim_no: e.adim_no, durum: null })));
   const ilk = (no: number, d: string) => { const e = olaylar.filter((x) => x.adim_no === no && x.tip === 'durum' && x.durum === d).sort((p, q) => p.t - q.t)[0]; return e ? e.t : null; };
   return {
     t0: ms(k.olusturuldu) as number, hedef: Date.parse(k.hedef_tarih + 'T23:59:00+03:00'), kapandi: ms(k.kapandi_at), sahip: o.sahip,
@@ -428,7 +437,7 @@ export function apidenAkis(detay: ApiAkisDetay, o: { sahip?: string } = {}): Gir
     adimlar: detay.adimlar.map((a) => ({
       no: a.no, sahip: a.sahip, sahip_tip: a.sahip_tip, durum: a.durum, bagimli: a.bagimli || [],
       t: (BITTI(a.durum) ? ms(a.durum_at) : ms(a.en_erken_bitis)) as number,
-      hazir_at: ilk(a.no, 'hazir'), basla_plan: a.en_erken_bitis && a.sure_tahmin_gun ? (ms(a.en_erken_bitis) as number) - a.sure_tahmin_gun * GUN : null,
+      hazir_at: ilk(a.no, 'hazir'), basla_plan: planBasi(a),
       engel_at: a.durum === 'engelli' ? ms(a.durum_at) : null, bekleme_saat: a.bekleme_saat ?? null,
       tarih_bilinmiyor: !!a.capa_soru && !a.son_tarih && !BITTI(a.durum),
     })),
