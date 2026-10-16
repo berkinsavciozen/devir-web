@@ -9,7 +9,7 @@ import { genisDuzen, GenisKart, kartCizimi, panelZemini, useAdimOlaylari, varsay
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, sayiIyelik, tarihDi } from '../../metin/turkce';
-import { git } from '../../yonlendirme';
+import { git, arama } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
@@ -111,7 +111,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const ben = useBen();
   const NOW = simdi();
   // ?an=2026-10-17T12:00 → sürgü o anda açılır (paylaşılan bağlantı, ekran testleri)
-  const an0 = useMemo(() => { const v = new URLSearchParams(location.search).get('an'); const t = v ? Date.parse(v.length <= 16 ? v + ':00+03:00' : v) : NaN; return Number.isFinite(t) ? t : NOW; }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const an0 = useMemo(() => { const v = arama().get('an'); const t = v ? Date.parse(v.length <= 16 ? v + ':00+03:00' : v) : NaN; return Number.isFinite(t) ? t : NOW; }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [X, setX] = useState(an0);
   const [oynuyor, setOynuyor] = useState(false);
   const [odak, setOdak] = useState<string | null>(null);

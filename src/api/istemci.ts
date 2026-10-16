@@ -6,6 +6,7 @@
  */
 import { kimlik } from './kimlik';
 import { API_TABAN, SAHTE, hal } from './ortam';
+import { arama } from '../yonlendirme';
 
 export class ApiHatasi extends Error {
   constructor(public durum: number, public hata: string) { super(hata); }
@@ -16,7 +17,7 @@ let tasima: Promise<Tasima> | null = null;
 
 /** Sahte kipte senaryo adresten okunur (?senaryo=bos) ve sekme boyunca korunur. */
 export function senaryo(): string {
-  const q = new URLSearchParams(location.search).get('senaryo');
+  const q = arama().get('senaryo');
   try { if (q) sessionStorage.setItem('devir:senaryo', q); return q || sessionStorage.getItem('devir:senaryo') || 'berkin'; } catch { return q || 'berkin'; }
 }
 
@@ -24,7 +25,7 @@ function tasimaAl(): Promise<Tasima> {
   if (tasima) return tasima;
   if (SAHTE) {
     tasima = import('./sahte/sahte').then(async (m) => {
-      const s = await m.sahteSunucu(senaryo() as any, { acikKayit: new URLSearchParams(location.search).get('kayit') !== 'kapali', hal: hal() });
+      const s = await m.sahteSunucu(senaryo() as any, { acikKayit: arama().get('kayit') !== 'kapali', hal: hal() });
       (window as any).__devirSahte = s;
       return (req: Request) => s.istek(req);
     });

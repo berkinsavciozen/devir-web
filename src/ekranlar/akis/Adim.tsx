@@ -13,7 +13,7 @@ import { iconCloud } from '../../cizim/ekran';
 import { C, planet, route, shareRing, ship, sparkle } from '../../cizim/ortak.js';
 import { akisModeli, gunAy, gunAyHafta, saat, uyeRenkleri, yolCiz, kisaAd } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
-import { git } from '../../yonlendirme';
+import { git, arama } from '../../yonlendirme';
 import { haritaCumlesi, useAkis } from './Galaksi';
 import { Karar } from './Karar';
 
@@ -98,11 +98,11 @@ const SEKME_Y = { durum: 330, gecmis: 150 } as const;
 export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string }) {
   const akis = useAkis(kod);
   const q = useQuery({ queryKey: ['adim', kod, no], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`) });
-  const [sekme, setSekme] = useState<'durum' | 'gecmis'>(() => (new URLSearchParams(location.search).get('sekme') === 'gecmis' ? 'gecmis' : 'durum'));
+  const [sekme, setSekme] = useState<'durum' | 'gecmis'>(() => (arama().get('sekme') === 'gecmis' ? 'gecmis' : 'durum'));
   const kapat = () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true });
   const d = akis.data, a = q.data?.adim;
   // ?bolum=ciktilar → sayfa yüksek açılır, çıktılar görünür (B8; bildirimden gelinen yer)
-  const ciktilaraGit = useMemo(() => new URLSearchParams(location.search).get('bolum') === 'ciktilar', []);
+  const ciktilaraGit = useMemo(() => arama().get('bolum') === 'ciktilar', []);
   const [yuksek, setYuksek] = useState(ciktilaraGit);
   const durumBasligi = useRef<HTMLDivElement>(null);
   const [kucukBaslik, setKucukBaslik] = useState(ciktilaraGit);
