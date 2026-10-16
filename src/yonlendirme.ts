@@ -7,9 +7,17 @@ import { hareketAz } from './ayar/hareket';
  * Sunucu yönlendirmesi olmayan yerlerde (önizleme sayfası) kullanılır.
  */
 const HASH = import.meta.env.VITE_HASH === '1';
+/**
+ * Yayın alt yolu: workers.dev'de '', GitHub Pages'te '/devir-web' (vite --base). Uygulama içi yollar hep '/akis/…' biçiminde
+ * kalır; adres çubuğuna yazarken önüne eklenir, okurken atılır.
+ */
+export const TABAN = HASH ? '' : import.meta.env.BASE_URL.replace(/\/+$/, '');
+const tabansiz = (p: string) => (TABAN && (p === TABAN || p.startsWith(TABAN + '/')) ? p.slice(TABAN.length) || '/' : p);
+/** Paylaşılan ve e-postaya giden tam adres: köken + alt yol + uygulama yolu. */
+export const tamAdres = (yol: string) => location.origin + TABAN + yol;
 const hashParca = () => { const h = location.hash.slice(1); const i = h.indexOf('?'); return i < 0 ? [h, ''] : [h.slice(0, i), h.slice(i)]; };
 /** Geçerli yol (/akis/RTD5). */
-export const yolAl = () => (HASH ? hashParca()[0] || '/' : location.pathname);
+export const yolAl = () => (HASH ? hashParca()[0] || '/' : tabansiz(location.pathname));
 /** Geçerli sorgu (?hal=karar); hash kipinde sayfa adresindeki sorgu da geçerlidir. */
 export const arama = () => {
   if (!HASH) return new URLSearchParams(location.search);
@@ -69,9 +77,9 @@ export function git(yol: string, o: { yerine?: boolean; gecissiz?: boolean } = {
     if (o.yerine) location.replace('#' + yol); else location.hash = yol;
     return;
   }
-  if (yol === location.pathname + location.search) return;
+  if (TABAN + yol === location.pathname + location.search) return;
   sonrakiYon = yon;
-  if (o.yerine) history.replaceState(null, '', yol); else history.pushState(null, '', yol);
+  if (o.yerine) history.replaceState(null, '', TABAN + yol); else history.pushState(null, '', TABAN + yol);
   window.dispatchEvent(new Event('devir:yol'));
 }
 

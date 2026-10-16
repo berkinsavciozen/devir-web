@@ -6,7 +6,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { SAHTE } from './ortam';
-import { arama } from '../yonlendirme';
+import { arama, tamAdres } from '../yonlendirme';
 
 export interface Kimlik {
   /** Authorization başlığına girecek değer (oturum belirteci ya da dv_ anahtarı); yoksa null */
@@ -42,7 +42,7 @@ function gercekKimlik(): Kimlik {
     },
     async girisBaglantisi(eposta) {
       // Kayıt herkese açık (15 Eki kararı): yeni e-postaya da bağlantı gider; hata dönse de ekran ilerler (e-posta varlığı sızmasın)
-      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: `${location.origin}/giris`, shouldCreateUser: true } }).catch(() => undefined);
+      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: tamAdres('/giris'), shouldCreateUser: true } }).catch(() => undefined);
     },
     async kodDegistir(kod) {
       const { data, error } = await (await al()).auth.exchangeCodeForSession(kod);

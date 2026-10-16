@@ -15,7 +15,8 @@
     "ekran": "playwright test",
     "karsilastir": "node scripts/karsilastir.mjs",
     "sunucu:test": "for f in sunucu/testler/*.test.ts; do tsx \"$f\" || exit 1; done",
-    "onizleme": "VITE_HASH=1 vite build --mode sahte --base ./ --outDir dist-onizleme --emptyOutDir"
+    "onizleme": "VITE_HASH=1 vite build --mode sahte --base ./ --outDir dist-onizleme --emptyOutDir",
+    "build:pages": "npm run tokens && tsc -b && vite build --base /devir-web/ && cp dist/index.html dist/404.html"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",

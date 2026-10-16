@@ -5,7 +5,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { zarf } from '../../cizim/ekran';
 import { f, tower } from '../../cizim/ortak.js';
-import { git, arama } from '../../yonlendirme';
+import { git, arama, TABAN } from '../../yonlendirme';
 import { AnahtarSayfasi, EpostaAlani, epostaGecerli, Giris, sonEposta } from './Giris';
 
 // A1c süsleri: dönen altın yay ayrı katmanda (1.2 sn'de bir tur)
@@ -94,7 +94,7 @@ function BaglantiGecersiz({ ag, eposta, setEposta, yeniden }: { ag: boolean; epo
     setMesgul(false);
     setGonderildi(true);
   };
-  if (gonderildi) { history.replaceState(null, '', '/'); return <Giris />; }
+  if (gonderildi) { history.replaceState(null, '', TABAN + '/'); return <Giris />; }
   return (
     <Sahne gok={{ tohum: 13, yildiz: 200, parilti: 2 }} cizim={A1D_CIZIM} etiket="Giriş bağlantısı" ortala>
       <Metin y={420} fs={27} lh={33} serif agirlik={700} hiza="orta" as="h1">{ag ? 'Şu an açılamadı' : 'Bağlantının süresi dolmuş'}</Metin>

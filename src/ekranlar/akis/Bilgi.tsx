@@ -8,7 +8,7 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, gunAyUzun } from '../../metin/turkce';
-import { arama, git } from '../../yonlendirme';
+import { arama, git, tamAdres } from '../../yonlendirme';
 import { SatirKart } from '../hesap/Hesap';
 import { Segment } from './Adim';
 import { odakCumlesi } from './cumleler';
@@ -174,7 +174,7 @@ export function AkisMenusu({ kod, kapat, d }: { kod: string; kapat: () => void; 
     ['ciktilar', 'Çıktılar', `${A.reduce((t, a) => t + (a.cikti_sayisi || 0), 0)} çıktı`],
     ['kisiler', 'Kişiler', `${new Set(A.map((a) => a.sahip)).size} kişi`],
   ];
-  const kopyala = async () => { try { await navigator.clipboard.writeText(`${location.origin}/akis/${enc(kod)}`); setKopyalandi(true); } catch { setKopyalandi(false); } };
+  const kopyala = async () => { try { await navigator.clipboard.writeText(tamAdres(`/akis/${enc(kod)}`)); setKopyalandi(true); } catch { setKopyalandi(false); } };
   return (
     <div className="akis-menu-liste">
       <h2 className="gorunmez">Akış menüsü</h2>
