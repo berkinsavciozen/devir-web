@@ -2,9 +2,9 @@
   "name": "Devir",
   "short_name": "Devir",
   "lang": "tr",
-  "start_url": "/",
+  "start_url": ".",
   "display": "standalone",
   "background_color": "#090619",
   "theme_color": "#090619",
-  "icons": [{ "src": "/ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+  "icons": [{ "src": "ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
 }

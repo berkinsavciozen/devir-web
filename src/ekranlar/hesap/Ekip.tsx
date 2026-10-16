@@ -9,7 +9,7 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { gunAy } from '../../cizim/yol.js';
 import { ozelEk } from '../../metin/turkce';
 import { Segment } from '../akis/Adim';
-import { git } from '../../yonlendirme';
+import { git, tamAdres } from '../../yonlendirme';
 import { KopyaAlan } from './Ayarlar';
 import { kisiGemi, rolAdi, SatirKart, Svg, useUyeler } from './Hesap';
 import { useOzet } from '../../api/sorgular';
@@ -25,7 +25,7 @@ const GITMEYEN = 'devir:gitmeyen-davetler';
 const gitmeyenler = (): string[] => { try { return JSON.parse(localStorage.getItem(GITMEYEN) || '[]'); } catch { return []; } };
 const gitmedi = (id: string) => { try { localStorage.setItem(GITMEYEN, JSON.stringify([...new Set([...gitmeyenler(), id])])); } catch { /* yok */ } };
 const kisiAdi = (x: { kisi?: string | null; eposta: string }) => x.kisi || x.eposta.split('@')[0];
-const webAdresi = () => `${location.origin}/giris`;
+const webAdresi = () => tamAdres('/giris');
 
 /** K2 cümlesi: "Selin katıldı; Emre’nin daveti bekliyor." */
 export function ekipCumlesi(uyeler: any[], davetler: any[]): string {
