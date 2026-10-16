@@ -1,0 +1,9 @@
+// Cloudflare Workers (statik dosyalar): dist/ yayımlanır, bilinmeyen yollar index.html'e düşer.
+{
+  "name": "devir-web",
+  "compatibility_date": "2026-09-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

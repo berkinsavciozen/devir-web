@@ -13,9 +13,13 @@
     "test": "vitest run",
     "geometri:test": "tsx scripts/geometri-test.ts",
     "ekran": "playwright test",
-    "karsilastir": "node scripts/karsilastir.mjs"
+    "karsilastir": "node scripts/karsilastir.mjs",
+    "sunucu:test": "for f in sunucu/testler/*.test.ts; do tsx \"$f\" || exit 1; done",
+    "onizleme": "VITE_HASH=1 vite build --mode sahte --base ./ --outDir dist-onizleme --emptyOutDir"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.45.4",
+    "@tanstack/react-query": "^5.62.7",
     "react": "18.3.1",
     "react-dom": "18.3.1"
   },
