@@ -1,0 +1,141 @@
+/* Ortak bileşenler. Ölçüler 390 × 844 tasarım karesinden (SPESIFIKASYON §2.3, §3, §5). */
+
+/* ---------- Ekran ---------- */
+.uygulama { position: relative; min-height: 100dvh; isolation: isolate; }
+.gok { position: fixed; inset: 0; z-index: -2; display: block; }
+.gren { position: fixed; inset: 0; z-index: 1000; pointer-events: none; display: block; }
+.ekran {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  padding-top: max(40px, env(safe-area-inset-top));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+/* 600–767: ortalanmış mobil düzen */
+@media (min-width: 600px) and (max-width: 767px) { .ekran { max-width: 430px; margin: 0 auto; } }
+
+/* ---------- Başlık ve cümle ---------- */
+.baslik { display: flex; align-items: center; height: 44px; padding: 0 20px; gap: 6px; }
+.baslik.geri-var { padding-left: 12px; }
+.baslik h1 { margin: 0; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.baslik.geri-var h1 { margin-left: 8px; }
+.baslik-sag { margin-left: auto; display: flex; align-items: center; }
+.geri { width: 44px; height: 44px; display: grid; place-items: center; flex: none; border-radius: 22px; }
+.geri-zemin { fill: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 60%, var(--renk-zemin-gok-0)); stroke: var(--renk-metin-ink); stroke-opacity: .14; }
+.geri-ok { stroke: var(--renk-metin-ink); stroke-width: 2; fill: none; stroke-linecap: round; }
+.akilli-cumle { margin: 20px 20px 0; }
+
+/* ---------- Düğmeler ---------- */
+.dugme {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; border-radius: 999px; user-select: none;
+  transition: transform var(--sure-anlik) var(--egri-standart), opacity var(--sure-kisa) var(--egri-standart);
+}
+.dugme:active:not(:disabled) { transform: scale(.97); }
+.dugme-birincil {
+  height: 54px; background: var(--degrade-dugme); color: var(--renk-metin-koyu-uzerine);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 50%, transparent);
+  font-size: var(--tip-dugme-boyut); font-weight: var(--tip-dugme-agirlik);
+}
+/* altta sıcak ışık: elips, genişliğin %40'ı × 8, blur 6 */
+.dugme-birincil::after {
+  content: ''; position: absolute; left: 10%; right: 10%; bottom: -14px; height: 16px; border-radius: 50%;
+  background: var(--renk-vurgu-kayisi); opacity: .25; filter: blur(6px); z-index: -1; pointer-events: none;
+}
+.dugme-birincil:disabled:not([aria-busy])::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; background: var(--renk-zemin-gok-0); opacity: .48;
+}
+.dugme-ikincil {
+  height: 48px; color: var(--renk-metin-ink);
+  background: color-mix(in srgb, var(--renk-metin-ink) 5%, transparent);
+  font-size: var(--tip-dugme-ikincil-boyut); font-weight: var(--tip-dugme-ikincil-agirlik);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ton) 75%, transparent);
+}
+.ton-altin { --ton: var(--renk-vurgu-altin); }
+.ton-mercan { --ton: var(--renk-vurgu-mercan); }
+.ton-lila { --ton: var(--renk-vurgu-cizgi-lila); }
+.dugme-tehlike {
+  height: 54px; background: var(--renk-vurgu-tehlike-dolgu); color: var(--renk-metin-koyu-uzerine);
+  font-size: var(--tip-dugme-boyut); font-weight: var(--tip-dugme-agirlik);
+}
+.dugme-tehlike:disabled { opacity: .5; }
+.dugme-ikon { display: inline-flex; }
+.nabiz { display: inline-flex; gap: 5px; }
+.nabiz i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: nabiz 1s var(--egri-standart) infinite; }
+.nabiz i:nth-child(2) { animation-delay: .15s; }
+.nabiz i:nth-child(3) { animation-delay: .3s; }
+@keyframes nabiz { 0%, 100% { opacity: .3; } 50% { opacity: 1; } }
+
+/* ---------- Alt gezinme ---------- */
+.alt-gezinme {
+  position: fixed; z-index: 50; left: 16px; right: 16px; height: 58px;
+  bottom: max(26px, calc(env(safe-area-inset-bottom) + 8px));
+  border-radius: 29px;
+  background: color-mix(in srgb, var(--renk-zemin-kart) 85%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent);
+}
+@media (min-width: 600px) and (max-width: 767px) { .alt-gezinme { left: 50%; right: auto; width: 398px; transform: translateX(-50%); } }
+.alt-gezinme .sekme {
+  position: absolute; top: 0; width: 72px; height: 58px; transform: translateX(-50%);
+  display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 2px;
+  font-size: var(--tip-etiket-boyut); font-weight: 500; color: var(--renk-metin-ink3); line-height: 14px;
+}
+.alt-gezinme .sekme svg { overflow: visible; }
+.alt-gezinme .sekme.aktif { color: var(--renk-metin-ink); font-weight: 700; }
+.alt-gezinme .yeni-is { position: absolute; left: 50%; top: -8px; width: 60px; height: 60px; transform: translateX(-50%); border-radius: 30px; }
+.alt-gezinme .yeni-is svg { overflow: visible; }
+.alt-gezinme .yeni-is:active { transform: translateX(-50%) scale(.97); }
+
+/* ---------- Alt sayfa ---------- */
+.alt-sayfa-kok { position: fixed; inset: 0; z-index: 200; }
+.alt-sayfa-perde { position: absolute; inset: 0; background: var(--renk-zemin-gok-0); opacity: .38; animation: perde var(--sure-orta) var(--egri-standart); }
+@keyframes perde { from { opacity: 0; } }
+.alt-sayfa {
+  position: absolute; left: 0; right: 0; bottom: 0; outline: none;
+  border-radius: 28px 28px 0 0; overflow: hidden;
+  background: var(--degrade-sayfa);
+  transition: transform var(--sure-orta) var(--egri-standart), top var(--sure-orta) var(--egri-standart);
+  animation: sayfa-gir var(--sure-orta) var(--egri-giris);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* üstte şeftali ince çizgi (x 28 → W − 28) */
+.alt-sayfa::before {
+  content: ''; position: absolute; top: 0; left: 28px; right: 28px; height: 1px; z-index: 1;
+  background: var(--renk-vurgu-seftali); opacity: .45;
+}
+@keyframes sayfa-gir { from { transform: translateY(100%); } }
+.alt-sayfa-doku { position: absolute; inset: 0; pointer-events: none; }
+.alt-sayfa-tutamac { position: relative; height: 28px; touch-action: none; cursor: grab; display: flex; justify-content: center; }
+.alt-sayfa-tutamac span { margin-top: 10px; width: 40px; height: 4px; border-radius: 2px; background: var(--renk-metin-ink); opacity: .35; }
+.alt-sayfa-icerik { position: relative; height: calc(100% - 28px); overflow: auto; overscroll-behavior: contain; }
+@media (min-width: 1280px) {
+  .alt-sayfa-perde { display: none; }
+  .alt-sayfa { top: 0 !important; left: auto; width: 432px; border-radius: 28px 0 0 28px; transform: none !important; animation-name: panel-gir; }
+  .alt-sayfa-tutamac { display: none; }
+  .alt-sayfa-icerik { height: 100%; padding-top: 24px; }
+  @keyframes panel-gir { from { transform: translateX(100%); } }
+}
+
+/* ---------- Kart, alan, hap ---------- */
+.kart {
+  border-radius: var(--yaricap-kart);
+  background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent);
+}
+.alan-etiket { display: block; margin: 0 0 8px 2px; font-size: 12px; font-weight: 600; color: var(--renk-metin-ink3); }
+.alan {
+  width: 100%; height: 48px; border-radius: var(--yaricap-alan); padding: 0 16px; border: 0; outline: none;
+  background: color-mix(in srgb, var(--renk-zemin-alan) 75%, transparent);
+  box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila);
+  font-size: 14.5px; font-weight: 550; color: var(--renk-metin-ink); caret-color: var(--renk-vurgu-altin);
+}
+.alan::placeholder { color: var(--renk-metin-yer-tutucu); font-weight: 450; }
+.alan:focus { box-shadow: inset 0 0 0 1.6px var(--renk-vurgu-altin); }
+.alan[aria-invalid='true'] { box-shadow: inset 0 0 0 1.6px var(--renk-vurgu-mercan); }
+.alan-hata { margin: 8px 2px 0; font-size: 12.5px; color: var(--renk-metin-mercan); }
+.hap {
+  display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 10px;
+  background: color-mix(in srgb, var(--renk-zemin-hap) 88%, transparent);
+  font-size: var(--tip-etiket-boyut); font-weight: 600; color: var(--renk-metin-ink); white-space: nowrap;
+}

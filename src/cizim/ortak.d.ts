@@ -1,0 +1,24 @@
+// ortak.js için tür bildirimleri (çizim parçaları SVG dizgesi döner).
+type O = Record<string, any>;
+export const C: Record<string, string>;
+export function rng(seed: number): () => number;
+export function f(n: number): number;
+export function defs(): string;
+export function sky(w: number, h: number, seed?: number, opts?: O): string;
+export function sparkle(x: number, y: number, s: number, col?: string, op?: number): string;
+export function grain(w: number, h: number): string;
+export function vignette(w: number, h: number): string;
+export function planet(x: number, y: number, r: number, state: string, o?: O): string;
+export function ship(x: number, y: number, ang: number, kind: string, initial: string, col?: string, sc?: number, o?: O): string;
+export function pill(x: number, y: number, text: string, o?: O): string;
+export function tower(x: number, y: number, sc?: number, lit?: boolean): string;
+export function shareRing(x: number, y: number, r: number, shares: { ad: string; n: number; agent?: boolean }[], o?: O): string;
+export function brackets(x: number, y: number, w: number, h: number, col: string, glyph?: string, gl?: boolean): string;
+export function flag(r: number, ang: number, col?: string): string;
+export function route(p0: number[], p1: number[], o?: O): string;
+export function onRoute(p0: number[], p1: number[], t: number, k?: number): { p: number[]; a: number };
+export function bez(p0: number[], p1: number[], k?: number): number[][];
+export function bAt(b: number[][], t: number): number[];
+export function galaxy(cx: number, cy: number, steps: O[], o?: O): string;
+export function galaxyPos(cx: number, cy: number, n: number, o?: O): O[];
+export function page(w: number, h: number, body: string, extraCss?: string): string;

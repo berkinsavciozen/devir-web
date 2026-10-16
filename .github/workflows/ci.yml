@@ -1,0 +1,20 @@
+name: CI
+on:
+  push: { branches: [main] }
+  pull_request:
+jobs:
+  denetim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - name: Token'lar güncel mi
+        run: npm run tokens && git diff --exit-code src/stil/tokens.css src/stil/tokens.ts
+      - name: Geometri testi (galaksi-geometri --test)
+        run: npm run geometri:test
+      - name: Birim testleri (yol uzunluğu, kaynakla eşdeğerlik)
+        run: npm test
+      - name: Tür denetimi ve derleme
+        run: npm run build
