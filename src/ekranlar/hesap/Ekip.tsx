@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
@@ -12,6 +12,9 @@ import { Segment } from '../akis/Adim';
 import { git } from '../../yonlendirme';
 import { KopyaAlan } from './Ayarlar';
 import { kisiGemi, rolAdi, SatirKart, Svg, useUyeler } from './Hesap';
+import { useOzet } from '../../api/sorgular';
+import { akisAdi } from '../../metin/turkce';
+import { akisErisimi, akisKapsami, ekipOzeti, ekipSayilari, rolOnizleme, type Rol } from './Roller';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const ROL = ['sahip', 'ekip', 'dis'] as const;
@@ -36,6 +39,7 @@ export function ekipCumlesi(uyeler: any[], davetler: any[]): string {
 export function Ekip() {
   const ben = useBen().data;
   const q = useUyeler();
+  const an = useQuery({ queryKey: ['anahtarlar'], queryFn: () => api.get<any>('/anahtarlar'), enabled: ben?.rol === 'sahip' });
   const [sayfa, setSayfa] = useState<null | { tur: 'davet' } | { tur: 'paylas'; davet: any } | { tur: 'uye'; uye: any } | { tur: 'cikar'; uye: any }>(null);
   const [geriAl, setGeriAl] = useState<any>(null);
   const tazele = () => void sorguIstemcisi.invalidateQueries({ queryKey: ['uyeler'] });
@@ -46,6 +50,8 @@ export function Ekip() {
   const U: any[] = q.data?.uyeler || [], D: any[] = q.data?.davetler || [];
   const posta = q.data?.posta !== false;
   const gm = gitmeyenler();
+  // sayılar Ayarlar'daki ekip satırıyla aynı hesaptan
+  const sayi = ekipSayilari(U, D, an.data?.anahtarlar);
   // yerleşim (son-090 K2): davet kartı 124 + 12; ÜYELER başlığı, satırlar 74 arayla; bilgi satırı
   const davetL = 160, uyeL = D.length ? 174 + D.length * 136 + 26 : 160;
   const bilgiY = uyeL + 44 + U.length * 74;
@@ -71,10 +77,11 @@ export function Ekip() {
           );
         })}
         <h3 className="bolum-baslik" style={{ top: uyeL - 12 }}>ÜYELER</h3>
+        {q.data && <span className="bolum-not" style={{ top: uyeL - 12 }}>{ekipOzeti({ ...sayi, davet: 0 })}</span>}
         {U.map((u, i) => {
           const y = uyeL + 14 + i * 74;
           return <SatirKart key={u.id} y={y} h={66} ikon={kisiGemi(kisiAdi(u), u.rol, u.rol === 'sahip', 26, 32, .85)} ust={kisiAdi(u)}
-            alt={u.ben ? `${rolAdi(u.rol)} · bu sen` : u.son_giris ? `son giriş ${gunAy(Date.parse(u.son_giris))}` : 'henüz girmedi'}
+            alt={[u.ben ? 'bu sen' : u.son_giris ? `son giriş ${gunAy(Date.parse(u.son_giris))}` : 'henüz girmedi', u.rol === 'ekip' && akisErisimi(u.kapsam) ? `${akisErisimi(u.kapsam)!.length} akış` : null, sayi.bilinen ? (sayi.anahtarSayisi(u.kisi) ? 'anahtarı var' : 'anahtarı yok') : null].filter(Boolean).join(' · ')}
             sag={u.ben ? <span className="satir-not">{rolAdi(u.rol)}</span> : <button type="button" className="rol-dugme" onClick={() => setSayfa({ tur: 'uye', uye: u })} aria-label={`${kisiAdi(u)}: rol ${ROL_AD[u.rol]}`}><span>{ROL_AD[u.rol]}</span><svg aria-hidden width="12" height="8" viewBox="0 0 12 8"><path d="M1,1 L6,7 L11,1" stroke="#D9CCFF" strokeWidth="1.6" fill="none" strokeLinecap="round" /></svg></button>} />;
         })}
         {q.data && !posta && <p className="bilgi-satir" style={{ top: bilgiY - 10 }}><svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16"><circle r="7" fill="none" stroke="#FFD27A" strokeWidth="1.4" /><rect x="-.8" y="-1" width="1.6" height="4.6" fill="#FFD27A" /><circle cy="-3.4" r=".9" fill="#FFD27A" /></svg>Davet e-postaları şimdilik gitmiyor; bağlantıyı sen paylaş.</p>}
@@ -153,26 +160,53 @@ function DavetPaylas({ d, kapat }: { d: any; kapat: () => void }) {
   );
 }
 
-/** K2d · Üye: rol segmenti anında yazılır; dışta kapsam; "Alandan çıkar" (§5 K2d). */
+/**
+ * K2d · Üye: rol seçimi önce önizlenir, "Kaydet" ile yazılır (denetim planı; tasarımda anında yazılıyordu, CELISKILER 61).
+ * Ekipte akış erişimi: bütün akışlar ya da seçili akışlar (uye.kapsam "akis:…"); dışta adımlardaki adı.
+ */
 function UyeSayfa({ u, kapat, cikar }: { u: any; kapat: () => void; cikar: () => void }) {
-  const [rol, setRol] = useState<string>(u.rol);
-  const [kapsam, setKapsam] = useState<string>(u.kapsam || '');
-  const m = useMutation({ mutationFn: (g: any) => api.post<any>(`/uye/${u.id}`, g), onSuccess: () => void sorguIstemcisi.invalidateQueries({ queryKey: ['uyeler'] }), onError: () => setRol(u.rol) });
-  const dis = rol === 'dis', y0 = dis ? 470 : 540, P = (y: number) => y - (y0 + 28);
+  const ozet = useOzet();
+  const [rol, setRol] = useState<Rol>(u.rol);
+  const [kapsam, setKapsam] = useState<string>(u.rol === 'dis' ? u.kapsam || '' : '');
+  const [kodlar, setKodlar] = useState<string[] | null>(u.rol === 'ekip' ? akisErisimi(u.kapsam) : null);
+  const m = useMutation({ mutationFn: (g: any) => api.post<any>(`/uye/${u.id}`, g), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['uyeler'] }); kapat(); } });
   const ad = kisiAdi(u);
+  const akislar: any[] = ozet.data?.akislar || [];
+  const yeniKapsam = rol === 'dis' ? kapsam.trim() || ad : rol === 'ekip' ? akisKapsami(kodlar) : null;
+  const degisti = rol !== u.rol || (yeniKapsam || null) !== (u.kapsam || null);
+  const gecerli = !(rol === 'ekip' && kodlar && !kodlar.length);
+  // yerleşim: başlık, rol, (erişim | ad), önizleme, Kaydet, Alandan çıkar
+  const T = 28;
+  let y = T + 98;
+  const rolY = y; y += 72;
+  const erisimY = y;
+  if (rol === 'ekip') y += 72 + (kodlar ? Math.ceil(Math.max(1, akislar.length) / 3) * 52 + 4 : 0);
+  if (rol === 'dis') y += 80;
+  const onY = y; y += degisti ? 50 : 0;
+  const kaydetY = y; y += 66;
+  const cikarY = y; y += 70;
+  const y0 = Math.max(110, 844 - y + T), P = (v: number) => v - T;
+  const sec = (kod: string) => setKodlar((k) => (k ? (k.includes(kod) ? k.filter((x) => x !== kod) : [...k, kod]) : [kod]));
   return (
     <AltSayfa acik kapat={kapat} baslik={ad} yukseklik={y0} duraklar={['orta']}>
       <div className="karar-panel" style={{ height: 844 - y0 - 28 }}>
-        <Svg w={60} h={60} x={16} y={P(y0 + 56) - 30} svg={kisiGemi(ad, u.rol, u.rol === 'sahip', 46, P(y0 + 56), 1)} />
-        <Metin y={P(y0 + 52)} x={76} fs={18} lh={22} agirlik={750} as="h2" className="tek-satir">{ad}</Metin>
-        <Metin y={P(y0 + 72)} x={76} fs={12.5} lh={16} renk="ink3" className="tek-satir">{u.eposta}{u.son_giris ? ` · son giriş ${gunAy(Date.parse(u.son_giris))}` : ''}</Metin>
-        <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: P(y0 + 116) - 12 }}>Rol</span>
-        <div className="dis-segment" style={{ top: P(y0 + 124) }}><Segment secenekler={['Sahip', 'Ekip', 'Dış']} aktif={ROL.indexOf(rol as any)} sec={(i) => { const r = ROL[i]; setRol(r); if (r !== 'dis') m.mutate({ rol: r }); }} /></div>
-        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 176) }}>{(m.error as Error).message}</p>}
-        {dis && <form onSubmit={(e) => { e.preventDefault(); m.mutate({ rol: 'dis', kapsam: kapsam.trim() || ad }); }}>
-          <label className="dis-alan" style={{ top: P(y0 + 210) - 26 }}><span className="alan-etiket">Adımlardaki adı</span><input className="alan" value={kapsam} onChange={(e) => setKapsam(e.target.value)} placeholder={ad} onBlur={() => m.mutate({ rol: 'dis', kapsam: kapsam.trim() || ad })} /></label>
-        </form>}
-        <Dugme tur="ikincil" ton="mercan" yukseklik={50} fs={15} style={{ top: P(y0 + (dis ? 276 : 196)) }} ikonX={136 - 20} kayma={8} onClick={cikar}
+        <Svg w={60} h={60} x={16} y={P(T + 56) - 30} svg={kisiGemi(ad, u.rol, u.rol === 'sahip', 46, P(T + 56), 1)} />
+        <Metin y={P(T + 52)} x={76} fs={18} lh={22} agirlik={750} as="h2" className="tek-satir">{ad}</Metin>
+        <Metin y={P(T + 72)} x={76} fs={12.5} lh={16} renk="ink3" className="tek-satir">{u.eposta}{u.son_giris ? ` · son giriş ${gunAy(Date.parse(u.son_giris))}` : ''}</Metin>
+        <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: P(rolY) - 22 }}>Rol</span>
+        <div className="dis-segment" style={{ top: P(rolY) }}><Segment secenekler={['Sahip', 'Ekip', 'Dış']} aktif={ROL.indexOf(rol)} sec={(i) => setRol(ROL[i])} /></div>
+        {rol === 'ekip' && <>
+          <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: P(erisimY) - 22 }}>Erişim</span>
+          <div className="dis-segment" style={{ top: P(erisimY) }}><Segment secenekler={['Bütün akışlar', 'Seçili akışlar']} aktif={kodlar ? 1 : 0} sec={(i) => setKodlar(i ? kodlar || [] : null)} /></div>
+          {kodlar && <div className="erisim-cipler" role="group" aria-label="Görebileceği akışlar" style={{ top: P(erisimY + 60) }}>
+            {akislar.map((k) => <button key={k.kod} type="button" className="filtre-cip" aria-pressed={kodlar.includes(k.kod)} onClick={() => sec(k.kod)}>{akisAdi(k)}</button>)}
+          </div>}
+        </>}
+        {rol === 'dis' && <label className="dis-alan" style={{ top: P(erisimY + 26) - 26 }}><span className="alan-etiket">Adımlardaki adı</span><input className="alan" value={kapsam} onChange={(e) => setKapsam(e.target.value)} placeholder={ad} /></label>}
+        {degisti && <p className="onizleme-cumle" role="status" style={{ top: P(onY) }}>{rolOnizleme(ad, rol, { kodlar, kapsam: kapsam.trim() || ad })}</p>}
+        <Dugme style={{ top: P(kaydetY) }} fs={16} disabled={!degisti || !gecerli} mesgul={m.isPending} onClick={() => m.mutate({ rol, kapsam: yeniKapsam })}>Kaydet</Dugme>
+        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(kaydetY + 58) }}>{(m.error as Error).message}</p>}
+        <Dugme tur="ikincil" ton="mercan" yukseklik={50} fs={15} style={{ top: P(cikarY) }} ikonX={136 - 20} kayma={8} onClick={cikar}
           ikon={<svg aria-hidden width="16" height="18" viewBox="-8 -9 16 18"><path d="M-7,-5 L7,-5 M-3,-5 L-3,-8 L3,-8 L3,-5 M-5,-5 L-4,8 L4,8 L5,-5" stroke="#FFB4A8" strokeWidth="1.7" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>}>Alandan çıkar</Dugme>
       </div>
     </AltSayfa>

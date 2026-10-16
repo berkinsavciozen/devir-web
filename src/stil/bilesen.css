@@ -77,12 +77,13 @@
 }
 @media (min-width: 600px) and (max-width: 767px) { .alt-gezinme { left: 50%; right: auto; width: 398px; transform: translateX(-50%); } }
 .alt-gezinme .sekme {
-  position: absolute; top: 0; width: 72px; height: 58px; transform: translateX(-50%);
+  position: absolute; top: 0; width: 64px; height: 58px; transform: translateX(-50%); white-space: nowrap; letter-spacing: -.01em;
   display: flex; flex-direction: column; align-items: center; padding-top: 8px; gap: 2px;
   font-size: var(--tip-etiket-boyut); font-weight: 500; color: var(--renk-metin-ink3); line-height: 14px;
 }
 .alt-gezinme .sekme svg { overflow: visible; }
 .alt-gezinme .sekme.aktif { color: var(--renk-metin-ink); font-weight: 700; }
+.alt-gezinme .sekme-sayi { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-size: 10.5px; font-weight: 800; line-height: 16px; text-align: center; }
 .alt-gezinme .yeni-is { position: absolute; left: 50%; top: -8px; width: 60px; height: 60px; transform: translateX(-50%); border-radius: 30px; }
 .alt-gezinme .yeni-is svg { overflow: visible; }
 .alt-gezinme .yeni-is:active { transform: translateX(-50%) scale(.97); }
@@ -531,3 +532,24 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .cumle-hedef { position: absolute; border: 0; background: none; border-radius: 12px; cursor: pointer; }
 .cumle-hedef:focus-visible { outline: 2px solid var(--renk-vurgu-altin); }
 @media (hover: hover) { .cumle-hedef:hover + .sahne-metin, .cumle-hedef:hover { text-decoration: underline; } }
+
+/* Görünüm ayarı "Hareketi azalt" (data-hareket="az"): döngüler durur, geçişler anında */
+:root[data-hareket="az"] *, :root[data-hareket="az"] *::before, :root[data-hareket="az"] *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; scroll-behavior: auto !important; }
+
+/* Rol tablosu (Ayarlar · Alan) */
+.rol-tablo { position: absolute; left: 20px; width: 350px; border-collapse: separate; border-spacing: 0; border-radius: 18px; overflow: hidden; background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 8%, transparent); font-size: 12px; line-height: 15px; }
+.rol-tablo th, .rol-tablo td { height: 36px; padding: 0 6px; text-align: center; color: var(--renk-metin-ink2); font-weight: 550; border-top: 1px solid color-mix(in srgb, var(--renk-metin-ink) 7%, transparent); }
+.rol-tablo thead th { border-top: 0; color: var(--renk-metin-ink3); font-weight: 700; font-size: 12px; letter-spacing: .3px; }
+.rol-tablo tbody th { text-align: left; padding-left: 14px; width: 132px; color: var(--renk-metin-ink); font-weight: 600; }
+.rol-tablo .vurgu { background: color-mix(in srgb, var(--renk-vurgu-altin) 10%, transparent); color: var(--renk-metin-altin); }
+.rol-tablo thead .vurgu { color: var(--renk-metin-altin); }
+/* Ekip üyesi: akış erişimi çipleri */
+.erisim-cipler { position: absolute; left: 20px; right: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+.erisim-cipler .filtre-cip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.onizleme-cumle { position: absolute; left: 22px; right: 22px; margin: 0; font-family: var(--font-serif); font-size: 15px; line-height: 20px; color: var(--renk-metin-altin); }
+.ayar-secenek { position: absolute; left: 20px; right: 20px; }
+.erisim-cipler .filtre-cip { flex: 0 1 auto; padding: 0 16px; }
+.bolum-not { position: absolute; right: 20px; margin: 0; font-size: 12px; line-height: 15px; font-weight: 600; color: var(--renk-metin-ink3); }
+.genis-ayarlar { display: grid; place-items: center; box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); background: color-mix(in srgb, var(--renk-zemin-kart) 70%, transparent); }
+.genis-ayarlar:focus-visible, .genis-hepsi:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.genis-hepsi { position: absolute; width: 96px; height: 44px; border: 0; background: none; text-align: right; font: inherit; font-size: 12.5px; font-weight: 650; color: var(--renk-metin-altin); cursor: pointer; }

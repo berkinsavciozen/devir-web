@@ -42,7 +42,7 @@ export function BosEvren({ ad, avatar }: { ad: string; avatar?: () => void }) {
       <Dugme tur="ikincil" ton="altin" yukseklik={50} fs={15} style={{ top: 654 }} ikon={<Ikon svg={kalemIkon()} />} ikonX={110} onClick={() => git('/yeni')}>
         Buradan yaz
       </Dugme>
-      <AltGezinme aktif="evren" git={(s) => git(s === 'evren' ? '/' : '/akislar')} yeni={() => git('/yeni')} />
+      <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
     </Sahne>
   );
 }

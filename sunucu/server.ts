@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.10.0";
+export const SURUM = "0.11.0";
 import type { Depo } from "./dosya.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
