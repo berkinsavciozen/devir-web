@@ -53,10 +53,26 @@ async function gonder(method: 'GET' | 'POST', yol: string, govde?: unknown, o: {
   return t(new Request(TABAN() + yol, { method, headers: h, body: govde !== undefined ? JSON.stringify(govde) : undefined }));
 }
 
+/**
+ * Sunucu hata cümlesi → kullanıcı dili (denetim planı, CELISKILER 66). MCP araç adları ve teknik yollar ekrana
+ * çıkmaz; bilinmeyen cümle olduğu gibi kalır (§3.21), sunucu çökmesi ve boş yanıt sade bir cümleye döner.
+ */
+export function kullaniciDili(durum: number, hata?: string | null): string {
+  const h = String(hata || '').trim();
+  if (/akışı senin kapsamında değil/.test(h)) return 'Bu akış sana açık değil; alanın sahibinden erişim iste.';
+  if (/kodlu akış bulunamadı|akış bulunamadı/i.test(h)) return 'Bu akış bulunamadı; kapanmış ya da başka bir alanda olabilir.';
+  if (/sana atanmamış/.test(h)) return 'Bu adım sana atanmamış; yalnız kendi adımlarını görebilirsin.';
+  if (/taslağı yok/.test(h)) return 'Bu taslak bulunamadı; kurulmuş ya da silinmiş olabilir.';
+  if (/^Böyle bir uç yok/.test(h)) return 'Bu işlem şu an yapılamıyor.';
+  if (h) return h.replace(/\s*devir_\w+ (ile|aracıyla)[^.]*\./g, '').trim() || 'Bu işlem şu an yapılamıyor.';
+  if (durum >= 500) return 'Bir şeyler ters gitti; birazdan yeniden dene.';
+  return 'Şu an bağlanılamadı. Yeniden dene.';
+}
+
 async function cozumle<T>(r: Response): Promise<T> {
   let j: any = null;
   try { j = await r.json(); } catch { /* boş */ }
-  if (!r.ok || !j || j.ok === false) throw new ApiHatasi(r.status, j?.hata || 'Şu an bağlanılamadı. Yeniden dene.');
+  if (!r.ok || !j || j.ok === false) throw new ApiHatasi(r.status, kullaniciDili(r.status, j?.hata));
   return j as T;
 }
 
