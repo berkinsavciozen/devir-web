@@ -469,3 +469,40 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .ornek-menusu ul { margin: 0; padding: 6px; list-style: none; width: 240px; border-radius: 18px; background: var(--renk-zemin-sayfa-orta); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-koyu), 0 12px 32px rgb(0 0 0 / .45); }
 .ornek-menusu li button { width: 100%; min-height: 40px; padding: 0 12px; border: 0; border-radius: 12px; background: none; text-align: left; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--renk-metin-ink); cursor: pointer; }
 .ornek-menusu li button:hover, .ornek-menusu li button:focus-visible { background: color-mix(in srgb, var(--renk-vurgu-lila) 18%, transparent); outline: none; }
+
+/* ---------- Harita gezinme (B3 "Pinch", §12), küme yelpazesi (§3.7), sakin döngüler (§2.5) ---------- */
+.harita-gezinme { position: absolute; touch-action: none; pointer-events: auto; -webkit-user-select: none; user-select: none; }
+.harita-gezinme .harita-katman { right: auto; bottom: auto; }
+/* tıklanır nesne: üstüne gelince ve odakta hale (parçacıklardan ayrılır) */
+.gezegen-hedef { transition: box-shadow var(--sure-anlik, 120ms) ease-out, background-color var(--sure-anlik, 120ms) ease-out; }
+@media (hover: hover) { .gezegen-hedef:hover { background: radial-gradient(closest-side, transparent 62%, color-mix(in srgb, var(--renk-vurgu-altin) 22%, transparent) 78%, transparent); box-shadow: 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 55%, transparent); cursor: pointer; } }
+.gezegen-hedef:focus-visible { background: radial-gradient(closest-side, transparent 62%, color-mix(in srgb, var(--renk-vurgu-altin) 22%, transparent) 78%, transparent); }
+.gezegen-hedef[aria-pressed="true"] { box-shadow: 0 0 0 1.5px var(--renk-vurgu-altin); }
+.yelpaze-perde { position: fixed; inset: 0; background: transparent; border: 0; z-index: 0; cursor: default; }
+.harita-yakin { position: absolute; display: flex; flex-direction: column; gap: 8px; z-index: 1; pointer-events: none; }
+.harita-yakin button { pointer-events: auto; }
+.harita-yakin button { width: 44px; height: 44px; border-radius: 22px; display: grid; place-items: center; background: color-mix(in srgb, var(--renk-zemin-kart) 88%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; }
+.harita-yakin button:disabled { opacity: .45; cursor: default; }
+.harita-yakin svg { width: 20px; height: 20px; fill: none; stroke: var(--renk-metin-ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.harita-yakin button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.yelpaze-acilis { animation: yelpaze-ac 320ms cubic-bezier(.34, 1.4, .64, 1) both; }
+@keyframes yelpaze-ac { from { opacity: 0; transform: scale(.4); } }
+.dongu-halka { transform-box: fill-box; transform-origin: center; animation: halka-don 24s linear infinite, halka-nabiz 2.4s ease-in-out infinite alternate; }
+.dongu-halka.ic { animation: halka-don 18s linear infinite reverse, halka-nabiz 2.4s ease-in-out infinite alternate; }
+@keyframes halka-don { to { transform: rotate(360deg); } }
+@keyframes halka-nabiz { from { opacity: .55; } to { opacity: .95; } }
+.dongu-fener { animation: fener 3.2s ease-in-out infinite alternate; }
+@keyframes fener { from { opacity: .75; } to { opacity: 1; } }
+.dongu-firtina { animation: firtina 3s ease-in-out infinite alternate; }
+@keyframes firtina { from { transform: translateX(-2px); } to { transform: translateX(2px); } }
+.dongu-simsek { animation: simsek 6s steps(1) infinite; }
+@keyframes simsek { 0%, 92%, 96% { opacity: 1; } 94% { opacity: .35; } 98% { opacity: .7; } }
+.dongu-gemi { transform-box: fill-box; transform-origin: center; animation: gemi 4s ease-in-out infinite alternate; }
+@keyframes gemi { from { transform: translate(0, -1.5px) rotate(-3deg); } to { transform: translate(0, 1.5px) rotate(3deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .dongu-halka, .dongu-halka.ic, .dongu-fener, .dongu-firtina, .dongu-simsek, .dongu-gemi, .yelpaze-acilis { animation: none; }
+  .gezegen-hedef { transition: none; }
+}
+/* evren yakınlaşınca: çizgiler ölçekle kalınlaşmaz; yakında halka yazıları (ay adları) çekilir */
+.evren-olcekli * { vector-effect: non-scaling-stroke; }
+.evren-olcekli.yazisiz text { display: none; }

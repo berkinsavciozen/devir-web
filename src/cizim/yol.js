@@ -76,11 +76,11 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
 
 // fenerler bir nokta dizisi boyunca (14 px aralık)
 function fenerDizisi(pts, ps = 1, aralik = 14) {
-  let s = '', acc = 0;
+  let s = '', acc = 0, n = 0;
   for (let i = 1; i < pts.length; i++) {
     const [x0, y0] = pts[i - 1], [x1, y1] = pts[i], L = Math.hypot(x1 - x0, y1 - y0);
     let d = aralik - acc;
-    while (d <= L) { const x = x0 + (x1 - x0) * d / L, y = y0 + (y1 - y0) * d / L; s += `<g transform="translate(${f(x)},${f(y)}) scale(${ps})"><circle r="6" fill="url(#glowGold)" opacity=".8"/><rect x="-2.3" y="-2.9" width="4.6" height="5.8" rx="1.5" fill="#FFE29A" stroke="#C98A4E" stroke-width=".6"/></g>`; d += aralik; }
+    while (d <= L) { const x = x0 + (x1 - x0) * d / L, y = y0 + (y1 - y0) * d / L; s += `<g transform="translate(${f(x)},${f(y)}) scale(${ps})"><g class="dongu-fener" style="animation-delay:${(n++ % 8) * 120}ms"><circle r="6" fill="url(#glowGold)" opacity=".8"/><rect x="-2.3" y="-2.9" width="4.6" height="5.8" rx="1.5" fill="#FFE29A" stroke="#C98A4E" stroke-width=".6"/></g></g>`; d += aralik; }
     acc = (acc + L) % aralik;
   }
   return s;
@@ -176,12 +176,21 @@ export function yolCiz(M, o = {}) {
   }
   const vis = Object.keys(G.gezegen).map(Number);
   const cl = G.kumeler((no) => radOf(no), vis), inCl = new Set(cl.flat());
-  const ex = (no) => ({ karar: byNo[no].karar && !['lit', 'ghost'].includes(stOf(no)), waitRings: 2, life: radOf(no) > 10, cloudGap: 4 });
+  // ikonAyri (yakınlaşınca): bulut ve bayrak gezegenden ayrılır, kendi dokunma alanları olur
+  const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !['lit', 'ghost'].includes(stOf(no)), waitRings: 2, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
+  const ikonlar = [];
   const pl = (no) => {
-    const g = G.gezegen[no], k = stOf(no), r = radOf(no);
+    const g = G.gezegen[no], k = stOf(no), r = k === 'dark' && o.minR ? Math.max(radOf(no), o.minR * ps) : radOf(no);
     let t = '';
     if (k === 'tahmin') t += `<g opacity=".55">${planet(g.x, g.y, r, 'lit', { life: false })}</g><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 4)}" fill="none" stroke="#FFD27A" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     else t += planet(g.x, g.y, r, k, ex(no));
+    if (o.ikonAyri && k === 'block') ikonlar.push({ tur: 'bulut', no: +no, x: g.x + radOf(no) * .15, y: g.y - radOf(no) - ex(no).cloudGap - 3 });
+    if (o.ikonAyri && byNo[no].karar && !['lit', 'ghost'].includes(k)) {
+      const D = Math.max(44, radOf(no) + 30), a = 35 * Math.PI / 180, bx = g.x + Math.sin(a) * D, by = g.y - Math.cos(a) * D;
+      t += `<path d="M${f(g.x + Math.sin(a) * (r + 3))},${f(g.y - Math.cos(a) * (r + 3))} L${f(g.x + Math.sin(a) * (D - 12))},${f(g.y - Math.cos(a) * (D - 12))}" stroke="#FFD27A" stroke-width="1" stroke-dasharray="1.5 3" opacity=".8"/>`;
+      t += `<circle cx="${f(bx)}" cy="${f(by)}" r="12" fill="#1A1238" stroke="#FFD27A" stroke-width="1.2"/><g transform="translate(${f(bx - 2)},${f(by + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7.5,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
+      ikonlar.push({ tur: 'bayrak', no: +no, x: bx, y: by });
+    }
     if (g.ortak && !o.sis) g.uyeler.forEach((ad) => {
       const pp = G.konumAn(ad, g.t - 36e5 * 3) || { x: G.cx, y: G.cy }, a = Math.atan2(pp.y - g.y, pp.x - g.x);
       t += `<circle cx="${f(g.x + Math.cos(a) * (r + 3))}" cy="${f(g.y + Math.sin(a) * (r + 3))}" r="${f(2.4 * m13)}" fill="${UYE_RENK(G.uyeOf[ad])}" stroke="#1A1238" stroke-width=".8"/>`;
@@ -192,6 +201,7 @@ export function yolCiz(M, o = {}) {
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
   for (const no of vis) if (!inCl.has(no)) L[sahipGrubu(no)] += pl(no);
   for (const c of cl) { const g = G.gezegen[c[0]]; L[o.focus && c.some((n) => G.gezegen[n].uyeler.includes(o.focus)) ? o.focus : byNo[c[0]].sahip] += clusterBadge(g.x, g.y, c, radOf, (n) => [stOf(n) === 'tahmin' ? 'lit' : stOf(n), ex(n)], ps * .9); }
+  const gemiler = [];
   if (o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
     if (u.hayalet || (o.sis && o.focus !== u.ad)) continue;
     const acik = u.ziyaret.some((no) => !BIT(byNo[no].durum)) || X < u.tSon;
@@ -199,6 +209,7 @@ export function yolCiz(M, o = {}) {
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
     const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4);
+    gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
     L[u.ad] += `<g opacity="${X > NOWx ? .75 : 1}">` + ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u), sc, { flame: kind !== 'dis' && X <= NOWx }) + '</g>';
   }
   for (const u of G.uyeler) { const d = dim(u.ad); if (d) s += `<g opacity="${o.sel ? Math.min(d, .55) : d}" ${o.sis && o.focus !== u.ad ? 'filter="url(#blur2)"' : ''}>${L[u.ad]}</g>`; }
@@ -227,7 +238,7 @@ export function yolCiz(M, o = {}) {
     if (!o.selTop) s += secim;
   }
   if (o.labels) for (const [no, text, dx, dy, col, st] of o.labels) { const g = G.gezegen[no]; if (g) s += pill(g.x + dx * ps, g.y + dy * ps, esc(text), { fs: 11 * m13, fw: 650, col: col || C.ink, stroke: st }); }
-  return { svg: s, G, P, radOf, stOf, clusters: cl, secim, RENK };
+  return { svg: s, G, P, radOf, stOf, clusters: cl, secim, RENK, gemiler, ikonlar };
 }
 
 /**

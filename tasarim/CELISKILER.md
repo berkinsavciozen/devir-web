@@ -53,3 +53,9 @@ Spesifikasyon kazanır; burada not edilir.
 | 47 | Duyarlı kırılımda 768–1023 dikey tablet "tam genişlik mobil düzen" (R = genişlik × .4) | Kapsam | Şimdilik mobil sütun ortalanır; 1024'ten itibaren T1, 1280'den itibaren M1/M2 (harita alanı pencereyle orantılı) |
 | 48 | Z1 dört karelik bir anlatım; §7.1 900 ms | §7.1 | Halka (0–150), kamera yakınlaşması + hız çizgileri (150–600), haritada katmanlar 80 ms arayla belirir. Geri dönüş animasyonsuz |
 | 49 | Arşiv ekranı tasarımda yok (B2 "Arşiv", J1 "N kapandı" bağlantısı) | — | /akislar/arsiv: K satır kartlarıyla kapanan akışlar (en yeni önce), sonra arşivdekiler |
+| 50 | B3 pinch "1×–3×"; denetim planında 1×–4× (Berkin onayı) | Berkin'in onayı | Galakside 1×–4×, evrende 1×–6× (evrende en yakında bir galaksinin üstünde daha da yaklaşmak o akışa girer) |
+| 51 | §3.7 "28 px aralıklı yay" ve 44 px dokunma hedefi birlikte sığmaz | Erişilebilirlik (≥ 44 px, çakışmasız) | Yelpazede hedefler arası 28 px (merkezler 72 px); 4'ten çok üyede iki sıra |
+| 52 | RTD5'te 1, 2, 5, 8 aynı dakikada bitti: aynı noktada durduğu için yakınlaşınca da çözülmez | §4.12 (gün şartı yok) | Küme rozeti her ölçekte kalır; yelpaze ile açılır |
+| 53 | Bayrak ve bulut gezegene yapışık; 44 px hedefleri gezegenin hedefiyle çakışır | Çakışmasız hedef kuralı | 2× ve üstünde bulut gezegenin 44 px üstüne kalkar, bayrak ip ile bağlı ayrı rozete geçer; ikisinin de kendi hedefi var. 1×'te gezegene dokunmak adımı açar |
+| 54 | Gemi ölçeği tasarımda .78; agent/insan farkı yalnız pencere biçiminde | Denetim bulgusu (nesne ayrımı) | Haritada gemi .9; agent iki antenli, köşeli pencereli. Karanlık gezegen en az 6.5·ps yarıçap ve tam opak kenar; harita alanında yıldızlar yarı sayıda ve %45 parlaklıkta |
+| 55 | Yakınlaşma düğmeleri tasarımda yok | §12 "masaüstünde görünür" | Geniş düzende +, −, sığdır; telefonda yalnız yakınken sığdır |
