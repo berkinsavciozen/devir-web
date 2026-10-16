@@ -2,6 +2,8 @@ import { test } from '@playwright/test';
 import { EKRANLAR } from './ekranlar';
 
 // npm run ekran [-- -g A1]  →  karsilastirma/uygulama/<ad>.png (tasarım boyutunda, 2x)
+// dokunmatik cihaz gibi: harita yakınlaşma düğmeleri yalnız ince imleçte görünür (telefon tasarımında yok)
+test.use({ hasTouch: true });
 for (const e of EKRANLAR) {
   test(e.ad, async ({ page }) => {
     await page.setViewportSize({ width: e.w ?? 390, height: e.h ?? 844 });

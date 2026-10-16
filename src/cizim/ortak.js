@@ -92,6 +92,10 @@ function sky(w, h, seed = 1, opts = {}) {
     const rr = z < .85 ? .4 + r() * .7 : 1 + r() * .8;
     const op = .25 + r() * .6;
     const col = r() < .2 ? '#FFD9B8' : r() < .3 ? '#C9B8FF' : '#FFF6EC';
+    // harita alanında yıldızlar seyrek ve soluk: tıklanır nesnelerle karışmasın
+    const H = opts.sakin, ic = H && Math.hypot(x - H[0], y - H[1]) < H[2];
+    if (ic && i % 2) continue;
+    if (ic) { s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(Math.min(rr, .9))}" fill="${col}" opacity="${f(op * .45)}"/>`; continue; }
     s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr)}" fill="${col}" opacity="${f(op)}"/>`;
   }
   // birkaç 4 köşeli parıltı
@@ -171,7 +175,7 @@ function planet(x, y, r, state, o = {}) {
   }
   if (state === 'dark') {
     s += `<circle r="${f(r * 1.7)}" fill="url(#glowLilac)" opacity=".5"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-opacity=".7" stroke-width="1"/>`;
+    s += `<circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-opacity="${o.kenar ? 1 : .7}" stroke-width="${o.kenar ? 1.4 : 1}"/>`;
     s += `<ellipse cx="${f(r * .25)}" cy="${f(r * .3)}" rx="${f(r * .2)}" ry="${f(r * .13)}" fill="#1E1946" opacity=".7"/>`;
     s += `<ellipse cx="${f(-r * .35)}" cy="${f(r * .05)}" rx="${f(r * .12)}" ry="${f(r * .08)}" fill="#1E1946" opacity=".7"/>`;
     if (o.life !== false) s += house(r, -15, false) + tree(r, 22, false);
@@ -181,7 +185,7 @@ function planet(x, y, r, state, o = {}) {
   if (state === 'wait') {
     const n = o.waitRings ?? 2;
     for (let i = n; i >= 1; i--) {
-      s += `<circle r="${f(r + 5 * i + 1)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.8 - i * .3)}" stroke-dasharray="${i === 1 ? '6 3' : '3 4'}" opacity="${f(.95 - i * .22)}"/>`;
+      s += `<g class="dongu-halka${i === 1 ? ' ic' : ''}"><circle r="${f(r + 5 * i + 1)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.8 - i * .3)}" stroke-dasharray="${i === 1 ? '6 3' : '3 4'}" opacity="${f(.95 - i * .22)}"/></g>`;
     }
     s += `<circle r="${f(r * 2)}" fill="url(#glowGold)" opacity=".28"/>`;
     s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#FFD9B8" stroke-opacity=".6" stroke-width="1"/>`;
@@ -200,11 +204,11 @@ function planet(x, y, r, state, o = {}) {
     s += house(r, -40, false, .9);
     // fırtına bulutu + şimşek
     const cy = -r - (o.cloudGap ?? 10), cs = Math.max(.7, r / 20);
-    s += `<g transform="translate(${f(r * .15)},${f(cy)}) scale(${f(cs)})">
+    s += `<g transform="translate(${f(r * .15)},${f(cy)}) scale(${f(cs)})"><g class="dongu-firtina">
       <path d="M-15,4 Q-19,4 -19,-1 Q-19,-6 -13,-6 Q-12,-13 -4,-13 Q2,-17 8,-11 Q16,-12 16,-4 Q20,-3 19,2 Q18,5 14,5 Z" fill="#6A5A9C" stroke="#C9BAF2" stroke-width="1"/>
       <path d="M-13,4 Q0,8 16,4" fill="none" stroke="#3E336E" stroke-width="2" opacity=".6"/>
-      <path d="M1,4 L-4,13 L1,13 L-3,22 L7,10 L2,10 L6,4Z" fill="#FFD27A" stroke="#FF8A78" stroke-width=".8"/>
-    </g>`;
+      <path class="dongu-simsek" d="M1,4 L-4,13 L1,13 L-3,22 L7,10 L2,10 L6,4Z" fill="#FFD27A" stroke="#FF8A78" stroke-width=".8"/>
+    </g></g>`;
     return s + '</g>';
   }
   return s + '</g>';
@@ -213,7 +217,8 @@ function planet(x, y, r, state, o = {}) {
 // --- gemiler ---
 // kind: insan | agent | dis
 function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
-  let s = `<g transform="translate(${f(x)},${f(y)}) rotate(${f(ang)}) scale(${sc})">`;
+  let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(ang)}) scale(${sc})">`;
+  const son = '</g></g></g>';
   if (kind === 'dis') {
     // yelkenli
     s += `<ellipse cx="0" cy="10" rx="20" ry="5" fill="url(#glowPeach)" opacity=".6"/>`;
@@ -223,7 +228,7 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
     s += `<path d="M-1.5,-15 Q-10,-6 -10,1 L-1.5,1Z" fill="#FFF1E2" opacity=".9"/>`;
     s += `<path d="M2,-19 L8,-22 L2,-24Z" fill="#FFD27A"/>`;
     s += `<circle cx="-4" cy="6" r="2" fill="#2B2160"/><circle cx="4" cy="6" r="2" fill="#2B2160"/>`;
-    return s + '</g>';
+    return s + son;
   }
   if (o.flame !== false) s += `<path d="M-11,-4 Q-30,0 -11,4Z" fill="url(#flame)"/>`;
   s += `<path d="M-9,-6 L-15,-11 L-12,-3Z M-9,6 L-15,11 L-12,3Z" fill="${col}"/>`;
@@ -231,14 +236,15 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
   s += `<path d="M15,0 C11,8.5 -1,10 -10,7.5 Q-11,4 -11,2 C0,4 9,3 15,0Z" fill="${col}" opacity=".55"/>`;
   s += `<path d="M15,0 C13,-3 11,-5 9,-6 L9,6 C11,5 13,3 15,0Z" fill="${col}"/>`;
   if (kind === 'agent') {
-    s += `<path d="M0,-8.5 L-2,-16" stroke="#FFF1E2" stroke-width="1.2" stroke-linecap="round"/>`;
-    s += sparkle(-2.2, -17.5, 3.2, '#9EE6CF', 1);
-    s += `<rect x="-6" y="-5.5" width="11" height="11" rx="3.5" fill="#2B2160" stroke="${col}" stroke-width="1.6"/>`;
+    // agent: iki anten, ışıklı uç, köşeli pencere (insandan şekille ayrılır, renge dayanmaz)
+    s += `<path d="M0,-8.5 L-2,-16 M4,-8 L6.5,-14" stroke="#FFF1E2" stroke-width="1.2" stroke-linecap="round"/>`;
+    s += sparkle(-2.2, -17.5, 4.2, '#9EE6CF', 1) + `<circle cx="6.5" cy="-14.6" r="1.3" fill="#9EE6CF"/>`;
+    s += `<rect x="-6" y="-5.5" width="11" height="11" rx="1.8" fill="#2B2160" stroke="${col}" stroke-width="1.8"/>`;
   } else {
     s += `<circle cx="-.5" cy="0" r="6" fill="#2B2160" stroke="${col}" stroke-width="1.6"/>`;
   }
   s += `<text x="-.5" y="3.2" transform="rotate(${f(-ang)} -.5 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="8.5" fill="#FFF3E8">${initial}</text>`;
-  return s + '</g>';
+  return s + son;
 }
 
 // isim etiketi (koyu hap)

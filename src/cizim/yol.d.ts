@@ -2,7 +2,7 @@
 import type { Galaksi } from '../geometri/galaksi-geometri';
 type O = Record<string, any>;
 export interface Model { F: { kod: string; baslik: string; kapandi: number | null; steps: { no: number; ad: string; sahip: string; tip?: string; durum: string; dep: number[]; karar: boolean }[] }; AK: any; sahip?: string; detay: any }
-export interface YolSonuc { svg: string; G: Galaksi; P: Record<number, [number, number]>; radOf: (no: number) => number; stOf: (no: number) => string; clusters?: number[][]; secim?: string; RENK: Record<string, string> }
+export interface YolSonuc { svg: string; G: Galaksi; P: Record<number, [number, number]>; radOf: (no: number) => number; stOf: (no: number) => string; clusters?: number[][]; secim?: string; RENK: Record<string, string>; gemiler?: { ad: string; tip: string; x: number; y: number; sc: number }[]; ikonlar?: { tur: 'bayrak' | 'bulut'; no: number; x: number; y: number }[] }
 export const GUN: number;
 export function tl(ms: number): Date;
 export function gunAy(ms: number): string;

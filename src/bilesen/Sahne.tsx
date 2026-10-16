@@ -7,12 +7,12 @@ import { Gok } from './Gok';
  * - Metin, alan ve düğmeler HTML'dir; `y` değerleri tasarımdaki konumlardır (metinde taban çizgisi).
  * - Yatayda sol/sağ 20 px kenar boşluğu korunur; 430 px'ten geniş ekranda sütun ortalanır.
  */
-export interface GokAyar { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]> }
+export interface GokAyar { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]>; sakin?: [number, number, number] }
 
 export function Sahne({ gok, cizim, ortala, children, etiket, yukseklik, sinif = '' }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string; yukseklik?: number; sinif?: string }) {
   return (
     <>
-      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} />
+      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} sakin={gok.sakin} />
       <main className={`sahne ${ortala ? 'sahne-ortala' : ''} ${sinif}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
         {cizim && <svg className="sahne-cizim" aria-hidden width="390" height="844" viewBox="0 0 390 844" dangerouslySetInnerHTML={{ __html: cizim }} />}
         {children}
@@ -71,7 +71,7 @@ export function Kutu({ x = 20, y, w, h, children, className = '', style, as: Eti
 export function GenisSahne({ gok, cizim, w, h, children, etiket, sinif = '' }: { gok: GokAyar; cizim: string; w: number; h: number; children?: ReactNode; etiket?: string; sinif?: string }) {
   return (
     <>
-      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} />
+      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} sakin={gok.sakin} genis />
       <main className={`sahne-genis ${sinif}`} aria-label={etiket} style={{ width: w, height: h }}>
         <svg className="sahne-genis-cizim" aria-hidden width={w} height={h} viewBox={`0 0 ${w} ${h}`} dangerouslySetInnerHTML={{ __html: cizim }} />
         {children}
