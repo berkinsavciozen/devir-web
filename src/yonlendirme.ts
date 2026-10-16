@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
+import { hareketAz } from './ayar/hareket';
 
 /**
  * Hash kipi (VITE_HASH=1): yol ve sorgu adresin # kısmında durur ("#/akis/RTD5?hal=karar").
@@ -16,11 +18,35 @@ export const arama = () => {
   return q;
 };
 
+/**
+ * Sayfa geçişi (denetim planı, CELISKILER 63): tek dil, View Transitions ile 280 ms. İleri giderken eski sayfa sola
+ * kayıp söner, yenisi sağdan gelir; geri dönüşte tersi; yerinde değişimde (adımdan adıma) yalnız çapraz geçiş.
+ * Tarayıcı desteklemiyorsa ya da hareket azaltılmışsa doğrudan değişir.
+ */
+export type Yon = 'ileri' | 'geri' | 'yer';
+let sonrakiYon: Yon | 'yok' | null = null;
+export function gecis(yon: Yon, degistir: () => void) {
+  const d = document as Document & { startViewTransition?: (f: () => void) => { finished: Promise<void> } };
+  if (!d.startViewTransition || hareketAz()) { degistir(); return; }
+  const kok = document.documentElement;
+  kok.dataset.gecis = yon;
+  try {
+    d.startViewTransition(degistir).finished.finally(() => { if (kok.dataset.gecis === yon) delete kok.dataset.gecis; });
+  } catch { delete kok.dataset.gecis; degistir(); }
+}
+
 /** Küçük geçmiş tabanlı yönlendirici: /, /akislar, /akis/:kod, /giris, /l/:token … */
 export function useYol(): string {
   const [yol, setYol] = useState(yolAl);
+  const sonYol = useRefYol(yol);
   useEffect(() => {
-    const d = () => setYol(yolAl());
+    const d = () => {
+      const yeni = yolAl(), yon = sonrakiYon ?? 'geri';
+      sonrakiYon = null;
+      // alt sayfanın kendi geçmiş kaydı ya da aynı yol: geçiş yok
+      if (yeni === sonYol.current || yon === 'yok') { setYol(yeni); return; }
+      gecis(yon, () => flushSync(() => setYol(yeni)));
+    };
     window.addEventListener('popstate', d);
     window.addEventListener('hashchange', d);
     window.addEventListener('devir:yol', d);
@@ -28,14 +54,23 @@ export function useYol(): string {
   }, []);
   return yol;
 }
+function useRefYol(yol: string) {
+  const r = useRef(yol);
+  r.current = yol;
+  return r;
+}
 
-export function git(yol: string, o: { yerine?: boolean } = {}) {
+/** Yola git. `yerine`: geçmiş kaydı büyümez (çapraz geçiş); `gecissiz`: geçiş animasyonu yok (Z1 kendi çizer). */
+export function git(yol: string, o: { yerine?: boolean; gecissiz?: boolean } = {}) {
+  const yon = o.gecissiz ? 'yok' : o.yerine ? 'yer' : 'ileri';
   if (HASH) {
     if ('#' + yol === location.hash) return;
+    sonrakiYon = yon;
     if (o.yerine) location.replace('#' + yol); else location.hash = yol;
     return;
   }
   if (yol === location.pathname + location.search) return;
+  sonrakiYon = yon;
   if (o.yerine) history.replaceState(null, '', yol); else history.pushState(null, '', yol);
   window.dispatchEvent(new Event('devir:yol'));
 }
