@@ -96,6 +96,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   };
   const ogeler: Oge[] = [];
   for (const [ad, A] of gruplar(L)) ogeler.push({ tur: 'baslik', metin: `${ad} · ${A.length}` }, ...A.map(satir));
+  if (G.isError && !eski) ogeler.push({ tur: 'not', metin: 'Görevler alınamadı; birazdan yeniden dene.' });
   if (!L.length && (G.data || eski)) ogeler.push({ tur: 'not', metin: S.kisi === 'ben' && S.durum === 'acik' ? 'Yeni bir iş açınca senin adımların burada toplanır.' : 'Bu süzgeçte iş yok.' });
   // bekleyenler: görev değil; yalnız kendi görünümünde
   const taslaklar: any[] = ozet.data?.taslaklar || [];

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
+import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { AltSayfa } from '../../bilesen/AltSayfa';
@@ -15,7 +16,7 @@ import { Segment } from '../akis/Adim';
 import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { SatirKart } from '../hesap/Hesap';
-import { adimAdi, bSuzgecAdresi, bSuzgecOku, gunlere, kisa, olayAciklamasi, olayFiili, suz, topla, type BSuzgec, type Toplu } from './model';
+import { adimAdi, bSuzgecAdresi, gecmistenOlaylar, bSuzgecOku, gunlere, kisa, olayAciklamasi, olayFiili, suz, topla, type BSuzgec, type Toplu } from './model';
 
 // Bildirimler (/bildirimler; el notu 18): görünen akışlardaki başkalarının hareketleri. "Senin için" (senin adımın ya da
 // seni bekleyen) ve "Tüm etkinlik" sekmeleri, Kişi ve Akış süzgeçleri adreste; güne göre gruplar, aynı adımdaki art arda
@@ -36,9 +37,13 @@ export function Bildirimler({ ben }: { ben: Ben }) {
   const Q = useOlaylar();
   const qc = useQueryClient();
   const eski = Q.isError && Q.error instanceof ApiHatasi && Q.error.durum === 404;
-  const O: any[] = Q.data?.olaylar || [];
-  const kodlar = useMemo(() => [...new Set(O.map((e) => e.akis))], [O]);
-  const detay = useDetaylar(kodlar);
+  // eski sunucu: aktif akışların geçmişlerinden
+  const ozet = useOzet(eski);
+  const eskiKodlar: string[] = useMemo(() => (eski ? (ozet.data?.akislar || []).map((k: any) => k.kod) : []), [eski, ozet.data]);
+  const yeniKodlar = useMemo(() => [...new Set<string>((Q.data?.olaylar || []).map((e: any) => e.akis))], [Q.data]);
+  const detay = useDetaylar(eski ? eskiKodlar : yeniKodlar);
+  const O: any[] = useMemo(() => (eski ? gecmistenOlaylar(detay, kisi) : Q.data?.olaylar || []), [eski, detay, kisi, Q.data]);
+  const hata = Q.isError && !eski;
   const [sec, setSec] = useState<'kisi' | 'akis' | null>(null);
   const uygula = (y: Partial<BSuzgec>) => { setSec(null); git(bSuzgecAdresi({ ...S, ...y }), { yerine: true }); };
 
@@ -79,11 +84,12 @@ export function Bildirimler({ ben }: { ben: Ben }) {
   };
   const ogeler: Oge[] = [];
   for (const [gun, G] of gunlere(T, NOW, gunAy)) ogeler.push({ tur: 'baslik', metin: gun }, ...G.map(satir));
-  if (Q.data && !T.length) ogeler.push({ tur: 'not', metin: S.sekme === 'sen' && !S.kisi && !S.akis ? 'Senin adımlarında ya da seni bekleyenlerde yeni bir hareket yok.' : 'Bu süzgeçte hareket yok.' });
+  if (hata) ogeler.push({ tur: 'not', metin: 'Bildirimler alınamadı; birazdan yeniden dene.' });
+  if ((Q.data || (eski && ozet.data)) && !T.length) ogeler.push({ tur: 'not', metin: S.sekme === 'sen' && !S.kisi && !S.akis ? 'Senin adımlarında ya da seni bekleyenlerde yeni bir hareket yok.' : 'Bu süzgeçte hareket yok.' });
   if (Q.data?.devami) ogeler.push({ tur: 'not', metin: 'Son 100 hareket gösteriliyor.' });
   const Lst = Liste({ y0: LISTE_Y, ogeler, etiket: 'Bildirimler' });
 
-  const cumleMetin = eski ? 'Sunucu 0.12.0 yüklenince bütün akışlardaki hareketler burada.'
+  const cumleMetin = eski ? 'Akışlarının son hareketleri; okundu bilgisi sunucu 0.12.0 ile gelir.' : hata ? ''
     : !Q.data ? '' : tumYeni ? `${tumYeni} yeni hareket${ilgiliYeni ? `; ${ilgiliYeni === tumYeni ? 'hepsi' : ilgiliYeni} senin işlerinle ilgili` : ''}.` : 'Yeni hareket yok; hepsini gördün.';
   const cumle = doluSatir(cumleMetin, 340, '17px Caladea', 2);
   const kisiAd = S.kisi ? kisa(S.kisi) : 'Herkes';
@@ -94,7 +100,7 @@ export function Bildirimler({ ben }: { ben: Ben }) {
       <Sahne gok={GOK} etiket="Bildirimler" yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Bildirimler</Metin>
         <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
-        {!eski && <>
+        {<>
           <div style={{ position: 'absolute', left: 20, right: 20, top: 128 }}>
             <Segment secenekler={['Senin için', 'Tüm etkinlik']} aktif={S.sekme === 'tum' ? 1 : 0} sec={(i) => uygula({ sekme: i ? 'tum' : 'sen' })} />
           </div>

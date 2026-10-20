@@ -89,3 +89,21 @@ export function gunlere<T extends { e: any }>(L: T[], now: number, gunAy: (ms: n
 export function suz(O: any[], s: BSuzgec): any[] {
   return O.filter((e) => (s.sekme === 'tum' || e.ilgili) && (!s.kisi || e.kim === s.kisi) && (!s.akis || e.akis === s.akis));
 }
+
+/**
+ * Sunucu 0.12.0 yoksa (/olaylar 404): akışların kendi geçmişlerinden (her akışın son 60 olayı) aynı biçimde olaylar.
+ * Okundu bilgisi yok; hepsi okunmuş sayılır, zil sayısız kalır.
+ */
+export function gecmistenOlaylar(detaylar: Record<string, any>, ben: string): any[] {
+  const out: any[] = [];
+  for (const [kod, d] of Object.entries(detaylar)) {
+    const A = d?.adimlar || [];
+    for (const e of d?.olaylar || []) {
+      if (e.tip === 'okuma' || (ben && e.kim === ben)) continue;
+      const s = e.adim_no != null ? A.find((x: any) => x.no === e.adim_no) : null;
+      const ilgili = !!s && (s.sahip === ben || A.some((x: any) => (x.bagimli || []).includes(s.no) && x.sahip === ben));
+      out.push({ ...e, akis: kod, akis_baslik: d.akis?.baslik || kod, akis_kisa_ad: d.akis?.kisa_ad || null, adim_ad: s?.ad || null, adim_kisa_ad: s?.kisa_ad || null, ilgili, okundu: true });
+    }
+  }
+  return out.sort((a, b) => Date.parse(b.zaman) - Date.parse(a.zaman) || (b.id || 0) - (a.id || 0));
+}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { api } from '../../api/istemci';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiHatasi } from '../../api/istemci';
 import { SAHTE, simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
@@ -34,9 +34,30 @@ const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00
 /** Kapanan akışlar (dış halka). */
 const useKapananlar = () => useQuery({ queryKey: ['akislar', 'kapandi'], queryFn: () => api.get<any>('/akislar?durum=kapandi') });
 
-/** Akış detayları (küçük galaksiler için; §9-15 gelene kadar N çağrı, önbellekli). */
+/** Sunucu toplu detayı biliyor mu (0.12.0 /akislar/detay); 404 görülünce bu oturumda tek tek çağrıya dönülür. */
+let topluDetay: boolean | null = null;
+/**
+ * Akış detayları (küçük galaksiler için). 0.12.0'da 30'arlı toplu çağrı; dönenler tek akış önbelleğine de yazılır,
+ * böylece galaksiye geçince yeniden çekilmez. Eski sunucuda akış başına bir çağrı.
+ */
 export function useDetaylar(kodlar: string[]) {
-  const qs = useQueries({ queries: kodlar.map((kod) => ({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) })) });
+  const qc = useQueryClient();
+  const [toplu, setToplu] = useState(topluDetay);
+  const parcalar: string[][] = [];
+  for (let i = 0; i < kodlar.length; i += 30) parcalar.push(kodlar.slice(i, i + 30));
+  useQueries({ queries: parcalar.map((P) => ({
+    queryKey: ['akislar-detay', P.join(',')], enabled: toplu !== false,
+    retry: (n: number, e: unknown) => !(e instanceof ApiHatasi && e.durum === 404) && n < 2,
+    queryFn: async () => {
+      try {
+        const r = await api.get<any>(`/akislar/detay?kodlar=${P.map(encodeURIComponent).join(',')}`);
+        topluDetay = true;
+        for (const [k, v] of Object.entries(r.akislar || {})) qc.setQueryData(['akis', k], v);
+        return r;
+      } catch (e) { if (e instanceof ApiHatasi && e.durum === 404) { topluDetay = false; setToplu(false); } throw e; }
+    },
+  })) });
+  const qs = useQueries({ queries: kodlar.map((kod) => ({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`), enabled: toplu === false })) });
   const d: Record<string, any> = {};
   qs.forEach((q, i) => { if (q.data) d[kodlar[i]] = q.data; });
   return d;

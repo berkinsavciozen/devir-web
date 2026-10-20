@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bSuzgecAdresi, bSuzgecOku, gunBasligi, olayAciklamasi, olayFiili, suz, topla } from './model';
+import { gecmistenOlaylar, bSuzgecAdresi, bSuzgecOku, gunBasligi, olayAciklamasi, olayFiili, suz, topla } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const gunAy = (ms: number) => new Date(ms).toISOString().slice(5, 10);
@@ -38,5 +38,12 @@ describe('bildirimler', () => {
     expect(bSuzgecAdresi(s)).toBe('/bildirimler?sekme=tum&kisi=Selin');
     expect(suz([e({}), e({ ilgili: false })], bSuzgecOku(new URLSearchParams()))).toHaveLength(1);
     expect(suz([e({}), e({ kim: 'Claude' })], s)).toHaveLength(1);
+  });
+  it('eski sunucu: akış geçmişlerinden olaylar, kendininki yok, ilgili hesaplanır', () => {
+    const d = { A: { akis: { baslik: 'Hasat', kisa_ad: 'Hasat' }, adimlar: [{ no: 1, ad: 'Liste', sahip: 'Selin', bagimli: [] }, { no: 2, ad: 'Karar', sahip: 'Berkin', bagimli: [1] }],
+      olaylar: [e({ id: 2, adim_no: 1, kim: 'Selin', zaman: '2026-10-14T06:00:00Z' }), e({ id: 1, adim_no: 2, kim: 'Berkin' }), e({ id: 3, tip: 'okuma', kim: 'Selin' })] } };
+    const O = gecmistenOlaylar(d, 'Berkin');
+    expect(O).toHaveLength(1);
+    expect(O[0]).toMatchObject({ akis: 'A', adim_ad: 'Liste', ilgili: true, okundu: true });
   });
 });
