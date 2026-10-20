@@ -116,7 +116,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     <>
       <Sahne gok={GOK} etiket="Görevler" cizim={svg} yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Görevler</Metin>
-        <Zil x={338} y={36} />
+        <Zil y={36} />
         <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
         {!eski ? (
           <div className="pano-cipler gorev-suzgec" role="group" aria-label="Süzgeçler" style={{ top: cumle.length > 1 ? 146 : 128 }}>

@@ -14,11 +14,12 @@ export function useOlaylar() {
  * Bildirim zili (el notu 18, karar 3): alt çubukta değil, sayfa başında. Evrenin diliyle çizilir: lila çan,
  * dilinde küçük bir yıldız; okunmamış varsa altın çan ve şeftali rozet.
  */
-export function Zil({ x, y, stil }: { x: number; y: number; stil?: React.CSSProperties }) {
+/** x verilmezse sağ kenara 8 px yaslanır (dar telefonda da görünür). */
+export function Zil({ x, y, stil }: { x?: number; y: number; stil?: React.CSSProperties }) {
   const n = useOlaylar().data?.okunmamis ?? 0;
   const r = n ? 'var(--renk-vurgu-altin)' : 'var(--renk-vurgu-lila)';
   return (
-    <button type="button" className="zil-dugme" style={{ left: x, top: y, ...stil }} aria-label={n ? `Bildirimler: ${n} okunmamış` : 'Bildirimler'} onClick={() => git('/bildirimler')}>
+    <button type="button" className="zil-dugme" style={{ ...(x == null ? { right: 8 } : { left: x }), top: y, ...stil }} aria-label={n ? `Bildirimler: ${n} okunmamış` : 'Bildirimler'} onClick={() => git('/bildirimler')}>
       <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26">
         {n > 0 && <circle r="13" fill="url(#glowGold)" opacity=".45" />}
         <path d="M-7.5,5 C-6,3.5 -6,1 -6,-1.5 C-6,-5.5 -3.5,-8 0,-8 C3.5,-8 6,-5.5 6,-1.5 C6,1 6,3.5 7.5,5 Z" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" strokeLinejoin="round" />

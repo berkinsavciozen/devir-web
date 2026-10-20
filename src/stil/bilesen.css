@@ -645,3 +645,4 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .ayar-grup { scroll-margin-top: 24px; }
 .ayar-yardim { position: absolute; right: 20px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-kart) 55%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); color: var(--renk-metin-ink2); font-size: 17px; font-weight: 700; cursor: pointer; }
 .ayar-yardim:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.satir-kart > .satir-gemi { position: absolute; right: 12px; top: calc(50% - 14px); overflow: visible; }

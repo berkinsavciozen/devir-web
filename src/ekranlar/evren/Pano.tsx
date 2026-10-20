@@ -51,7 +51,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
           const alt = [ad(a.kod), kim, a.tuttugu ? `${a.tuttugu} adımı tutuyor` : null, son].filter(Boolean).join(' · ');
           const ikon = planet(0, 0, 9, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: a.karar });
           return (
-            <button key={a.kod + a.no} type="button" className="kart satir-kart pano-satir" style={{ left: 20, top: y, width: 350, height: SATIR }} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)}>
+            <button key={a.kod + a.no} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)}>
               <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: ikon }} />
               <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{a.ad}</b><small>{alt}</small></span>
             </button>
@@ -67,7 +67,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
             const e = t.e, adim = adimAdi(e), y = Y.hY + 30 + i * (SATIR + ARA);
             const alt = [ad(e.akis), adim, saat(Date.parse(e.zaman))].filter(Boolean).join(' · ');
             return (
-              <button key={t.ids.join('-')} type="button" className="kart satir-kart pano-satir" style={{ left: 20, top: y, width: 350, height: SATIR }}
+              <button key={t.ids.join('-')} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }}
                 onClick={() => git(e.adim_no == null ? `/akis/${encodeURIComponent(e.akis)}` : `/akis/${encodeURIComponent(e.akis)}/adim/${e.adim_no}?sekme=gecmis`)}>
                 <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: e.kim_tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim[0] || '?').toLocaleUpperCase('tr'), e.kim_tip === 'agent' ? '#B9A6F2' : '#9EE6CF', .7, { flame: false }) }} />
                 <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{olayFiili(e)}</b><small>{alt}</small></span>

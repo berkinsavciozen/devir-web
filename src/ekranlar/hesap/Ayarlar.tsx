@@ -118,7 +118,7 @@ export function Ayarlar() {
               <SatirKart key={k.id} y={anahtarY + 14 + i * 68} h={60} ikon={kisiGemi(k.kisi, k.rol, k.rol === 'sahip', 26, k.rol === 'dis' ? 31 : 30, k.rol === 'dis' ? .73 : .82)} ust={k.kisi}
                 alt={k.iptal ? 'iptal edildi' : `${rolAdi(k.rol)}${k.rol === 'dis' && k.kapsam ? ` · ${k.kapsam}` : ''}${k.rol === 'ekip' && akisErisimi(k.kapsam) ? ` · ${akisErisimi(k.kapsam)!.length} akış` : ''} · ${sonKullanim(k.son_kullanim)}`}
                 sag={k.iptal ? <span /> : k.ben ? <span className="satir-not">bu cihaz</span> : <button type="button" className="satir-eylem mercan" onClick={() => setIptal(k)} aria-label={`${k.kisi} anahtarını iptal et`}>İptal</button>}
-                x={20} w={350} />
+              />
             );
             return k.iptal ? <div key={k.id} style={{ opacity: .45 }}>{el}</div> : el;
           })}

@@ -277,7 +277,7 @@ export function Evren({ ben }: { ben: Ben }) {
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 470, 200] }} cizim={(E.sonuc?.svg ?? '') + satirlar.map(({ c, y: yy }) => c.tur === 'engel' ? iconCloud(32, yy - 5, .55) : c.tur === 'bekleme' ? iconRings(32, yy - 3, .72) : '').join('')} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
-      <Zil x={338} y={36} />
+      <Zil y={36} />
       {satirlar.map(({ c, s, y: yy }) => (
         <Metin key={c.metin} y={yy} x={56} fs={17.5} lh={22} serif as="p" style={{ whiteSpace: s.length > 1 ? 'nowrap' : undefined }}>
           {s.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
@@ -317,7 +317,7 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
-      <Zil x={338} y={36} />
+      <Zil y={36} />
       <Metin y={112} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} kaydir />
       {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
