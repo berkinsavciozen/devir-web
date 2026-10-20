@@ -26,6 +26,7 @@ import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { HesapSayfasi } from './ekranlar/hesap/Hesap';
+import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
 import { Gorevler } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
@@ -94,6 +95,7 @@ function Uygulama({ yol }: { yol: string }) {
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;
   if (yol === '/gorevler') return <Gorevler ben={b} />;
+  if (yol === '/bildirimler') return <Bildirimler ben={b} />;
   if (yol === '/bana') return <Yonlen yol={'/gorevler' + (arama().toString() ? '?' + arama().toString() : '')} />;
   if (yol === '/akislar/arsiv') return <Arsiv ben={b} />;
   if (yol === '/yeni') return <YeniIs />;

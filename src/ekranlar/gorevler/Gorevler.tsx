@@ -5,6 +5,7 @@ import { simdi } from '../../api/ortam';
 import { useBen, useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
+import { Zil } from '../../bilesen/Zil';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
@@ -115,6 +116,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     <>
       <Sahne gok={GOK} etiket="Görevler" cizim={svg} yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Görevler</Metin>
+        <Zil x={338} y={36} />
         <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
         {!eski ? (
           <div className="pano-cipler gorev-suzgec" role="group" aria-label="Süzgeçler" style={{ top: cumle.length > 1 ? 146 : 128 }}>
