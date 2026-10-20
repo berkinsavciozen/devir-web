@@ -1,6 +1,8 @@
 /**
  * Kimlik: iki yol (SPESIFIKASYON §5 A).
- *  - E-postayla giriş: Supabase Auth sihirli bağlantı (PKCE). İstekler `Bearer <oturum belirteci>` taşır.
+ *  - E-postayla giriş: Supabase Auth sihirli bağlantı (örtük akış). İstekler `Bearer <oturum belirteci>` taşır.
+ *    PKCE'den vazgeçildi (20 Eki): PKCE doğrulayıcısı bağlantıyı isteyen tarayıcıda durur; e-posta başka tarayıcıda
+ *    (telefondaki posta uygulaması, başka profil) açılınca kod değiştirilemiyor ve kullanıcı "süresi dolmuş" görüyordu.
  *  - Devir anahtarı (`dv_…`): web'de yalnız oturum süresince (sessionStorage) tutulur.
  * Sahte kipte Supabase'e gidilmez; oturum senaryodan kurulur.
  */
@@ -14,12 +16,18 @@ export interface Kimlik {
   /** 401 sonrası bir kez: oturumu yenile; yenilenemezse false */
   yenile(): Promise<boolean>;
   girisBaglantisi(eposta: string): Promise<void>;
-  /** /giris dönüşü: ?code= → oturum */
-  kodDegistir(kod: string): Promise<{ eposta: string }>;
+  /** /giris dönüşü (#access_token=…, ?token_hash=…&type=… ya da eski ?code=) → oturum */
+  donusIsle(d: Donus): Promise<{ eposta: string }>;
   eposta(): Promise<string | null>;
   anahtarlaGir(anahtar: string): void;
   cikis(): Promise<void>;
 }
+
+/** /giris adresinin taşıdığı giriş bilgisi; hangisi geldiyse o dolu. */
+export type Donus =
+  | { tur: 'belirtec'; access: string; refresh: string }
+  | { tur: 'hash'; tokenHash: string; tip: string }
+  | { tur: 'kod'; kod: string };
 
 const ANAHTAR_YERI = 'devir:anahtar';
 const oku = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
@@ -28,7 +36,7 @@ const yaz = (k: string, v: string | null) => { try { if (v == null) sessionStora
 function gercekKimlik(): Kimlik {
   let sb: Promise<SupabaseClient> | null = null;
   const al = () => (sb ||= import('@supabase/supabase-js').then(({ createClient }) =>
-    createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANAHTAR, { auth: { flowType: 'pkce', persistSession: true, detectSessionInUrl: false } })));
+    createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANAHTAR, { auth: { flowType: 'implicit', persistSession: true, detectSessionInUrl: false } })));
   return {
     async belirtec() {
       const a = oku(ANAHTAR_YERI); if (a) return a;
@@ -44,8 +52,13 @@ function gercekKimlik(): Kimlik {
       // Kayıt herkese açık (15 Eki kararı): yeni e-postaya da bağlantı gider; hata dönse de ekran ilerler (e-posta varlığı sızmasın)
       await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: tamAdres('/giris'), shouldCreateUser: true } }).catch(() => undefined);
     },
-    async kodDegistir(kod) {
-      const { data, error } = await (await al()).auth.exchangeCodeForSession(kod);
+    async donusIsle(d) {
+      const auth = (await al()).auth;
+      const { data, error } =
+        d.tur === 'belirtec' ? await auth.setSession({ access_token: d.access, refresh_token: d.refresh })
+        : d.tur === 'hash' ? await auth.verifyOtp({ token_hash: d.tokenHash, type: d.tip as 'email' | 'magiclink' | 'signup' | 'invite' })
+        // eski PKCE bağlantısı: yalnız isteyen tarayıcıda açılır
+        : await auth.exchangeCodeForSession(d.kod);
       if (error || !data.session) throw new Error(error?.message || 'Giriş bağlantısı açılamadı.');
       yaz(ANAHTAR_YERI, null);
       return { eposta: data.session.user.email || '' };
@@ -77,9 +90,9 @@ function sahteKimlik(): Kimlik {
     async belirtec() { return oku(ANAHTAR_YERI) || okuL(); },
     async yenile() { return false; },
     async girisBaglantisi() { /* e-posta gitmez; A1b'ye geçilir */ },
-    async kodDegistir(kod) {
+    async donusIsle(d) {
       // sahte bağlantı: /giris?code=<auth_id>:<eposta>
-      const [id, eposta] = kod.split(':');
+      const [id, eposta] = d.tur === 'kod' ? d.kod.split(':') : [];
       await new Promise((r) => setTimeout(r, 600)); // ağ gecikmesi (A1c görünsün)
       if (!id || !eposta) throw new Error('Giriş bağlantısı açılamadı.');
       yaz(OTURUM, `sahte:${id}:${eposta}`); yaz(CIKTI, null);
