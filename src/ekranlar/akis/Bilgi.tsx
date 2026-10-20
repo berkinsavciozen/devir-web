@@ -51,34 +51,33 @@ export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etike
   return { dugum: <div role="list" aria-label={etiket}>{out}</div>, y };
 }
 
-/** Akış bilgisi: Adımlar · Kararlar · Çıktılar · Kişiler (/akis/:kod/bilgi). */
-export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
-  const q = useAkis(kod);
+/**
+ * Akışın alt bölümü (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler. Galaksi sayfasında haritanın altında,
+ * /akis/:kod/bilgi'de tek başına çizilir. y0: sekmelerin üstü; dönen y sonraki boş yer.
+ */
+export function useAkisBolumu({ d, kod, ben, y0, adres }: { d: any; kod: string; ben: string; y0: number; adres?: boolean }) {
   const s0 = Math.max(0, SEKME_KOD.indexOf((arama().get('sekme') || 'adimlar') as any));
   const [sekme, setSekme] = useState(s0);
   const [filtre, setFiltre] = useState(0);
-  const dosyalar = useQuery({ queryKey: ['dosyalar', kod], queryFn: () => api.get<any>(`/akis/${enc(kod)}/dosyalar`), enabled: sekme === 2 });
-  const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}`));
-  const d = q.data;
-  const ad = d ? akisAdi(d.akis) : 'Akış';
-  const sec = (i: number) => { setSekme(i); git(`/akis/${enc(kod)}/bilgi?sekme=${SEKME_KOD[i]}`, { yerine: true }); };
-  if (!d) return <Sahne gok={GOK} etiket={ad}><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>{q.isError && <Metin y={112} fs={16} renk="ink2">{(q.error as Error).message}</Metin>}</Sahne>;
+  const dosyalar = useQuery({ queryKey: ['dosyalar', kod], queryFn: () => api.get<any>(`/akis/${enc(kod)}/dosyalar`), enabled: !!d && sekme === 2 });
+  const sec = (i: number) => { setSekme(i); if (adres) git(`/akis/${enc(kod)}/bilgi?sekme=${SEKME_KOD[i]}`, { yerine: true }); };
+  if (!d) return { dugum: null, y: y0, sekme, sec, ad: SEKMELER[sekme] };
 
   const A: any[] = [...d.adimlar].sort((a, b) => a.no - b.no);
-  const tm = A.filter((a) => BITTI(a.durum)).length, eng = A.filter((a) => a.durum === 'engelli').length;
-  const cumle = `${A.length} adım: ${tm} tamam, ${A.length - tm} açık${eng ? `, ${eng} engelli` : ''}.`;
   const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, alt: adimAlt(a), etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
 
-  let ogeler: Oge[] = [], y0 = 204, ust: ReactNode = null;
+  let ogeler: Oge[] = [], ust: ReactNode = null, ly = y0 + 68, zincir = false;
   if (sekme === 0) {
     const uy = [() => true, (a: any) => !BITTI(a.durum), (a: any) => a.sahip === ben && !BITTI(a.durum), (a: any) => a.durum === 'engelli', (a: any) => BITTI(a.durum)][filtre];
-    const L = A.filter(uy);
+    // zincir: adımlar zaman sırasında (biten bitiş anına, açık en erken bitişine göre); aralarındaki ray bitenlerde yanar
+    const L = A.filter(uy).sort((a, b) => adimAn(a) - adimAn(b) || a.no - b.no);
     ust = (
-      <div className="filtre-satir" role="group" aria-label="Süz" style={{ top: 198 }}>
+      <div className="filtre-satir" role="group" aria-label="Süz" style={{ top: y0 + 62 }}>
         {FILTRE.map((f, i) => <button key={f} type="button" className="filtre-cip" aria-pressed={i === filtre} onClick={() => setFiltre(i)}>{f}</button>)}
       </div>
     );
-    y0 = 256;
+    ly = y0 + 120;
+    zincir = L.length > 1;
     ogeler = L.length ? L.map(adimSatir) : [{ tur: 'not', metin: filtre === 2 ? 'Sende açık adım yok.' : 'Bu süzgece uyan adım yok.' }];
   } else if (sekme === 1) {
     const K = A.filter((a) => a.karar_adimi);
@@ -123,14 +122,41 @@ export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
       return { tur: 'satir', key: 'p' + k.ad, ikon: kisiIkon(k.ad, tip, k.ad === sahibi), ust: k.ad, alt, etiket: `${k.ad} (${tip === 'agent' ? 'agent' : tip === 'dis' ? 'dış katılımcı' : 'insan'}): ${alt}.`, git: () => git(`/akis/${enc(kod)}/kisi/${enc(k.ad)}`) } as Oge;
     });
   }
-  const L = Liste({ y0, ogeler, etiket: SEKMELER[sekme] });
+  const L = Liste({ y0: ly, ogeler, etiket: SEKMELER[sekme] });
+  // zincir rayı: ardışık satırların gezegenlerini bağlar (kartların arasından görünür)
+  const satirSayisi = ogeler.filter((o) => o.tur === 'satir').length;
+  const ray = zincir ? <svg aria-hidden className="zincir-ray" style={{ top: ly + 29, height: (satirSayisi - 1) * 66 }} width="4" viewBox={`0 0 4 ${(satirSayisi - 1) * 66}`} preserveAspectRatio="none" dangerouslySetInnerHTML={{ __html: (ogeler as any[]).slice(0, -1).map((o, i) => `<rect x="1" y="${i * 66}" width="2" height="66" fill="${zincirRenk(o)}"/>`).join('') }} /> : null;
+  return {
+    sekme, sec, ad: SEKMELER[sekme], y: L.y,
+    dugum: (
+      <>
+        <Kutu x={0} y={y0} style={{ right: 0 }}><Segment secenekler={[...SEKMELER]} aktif={sekme} sec={sec} /></Kutu>
+        {ust}
+        {ray}
+        {L.dugum}
+      </>
+    ),
+  };
+}
+/** Zincir sırası: biten adım bitiş anına, açık adım en erken bitişine göre. */
+const adimAn = (a: any) => (BITTI(a.durum) && a.durum_at ? Date.parse(a.durum_at) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : Number.MAX_SAFE_INTEGER);
+const zincirRenk = (o: any) => (/^a\d/.test(o.key) && o.ikon.includes('pLit') ? '#FFD27A' : '#6B5FB0');
+/** Akış bilgisi sayfası (/akis/:kod/bilgi): haritanın altındaki bölümün tek başına hâli (bağlantılar ve geniş ekran için). */
+export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
+  const q = useAkis(kod);
+  const d = q.data;
+  const ad = d ? akisAdi(d.akis) : 'Akış';
+  const B = useAkisBolumu({ d, kod, ben, y0: 136, adres: true });
+  const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}`));
+  if (!d) return <Sahne gok={GOK} etiket={ad}><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>{q.isError && <Metin y={112} fs={16} renk="ink2">{(q.error as Error).message}</Metin>}</Sahne>;
+  const A: any[] = d.adimlar;
+  const tm = A.filter((a) => BITTI(a.durum)).length, eng = A.filter((a) => a.durum === 'engelli').length;
+  const cumle = `${A.length} adım: ${tm} tamam, ${A.length - tm} açık${eng ? `, ${eng} engelli` : ''}.`;
   return (
-    <Sahne gok={GOK} etiket={`${ad} · ${SEKMELER[sekme]}`} yukseklik={L.y + 40}>
+    <Sahne gok={GOK} etiket={`${ad} · ${B.ad}`} yukseklik={B.y + 40}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>
       <Metin y={110} fs={17} lh={22} serif renk="ink2" as="p" className="tek-satir">{cumle}</Metin>
-      <Kutu x={0} y={136} style={{ right: 0 }}><Segment secenekler={[...SEKMELER]} aktif={sekme} sec={sec} /></Kutu>
-      {ust}
-      {L.dugum}
+      {B.dugum}
     </Sahne>
   );
 }
@@ -164,9 +190,10 @@ export function KisiSayfasi({ kod, ad, ben }: { kod: string; ad: string; ben: st
 }
 
 /** Akış menüsü (etkin akış, "…"): bilgi sekmeleri ve bağlantı. */
-export function AkisMenusu({ kod, kapat, d }: { kod: string; kapat: () => void; d: any }) {
+export function AkisMenusu({ kod, kapat, d, bolumAc }: { kod: string; kapat: () => void; d: any; bolumAc?: (i: number) => void }) {
   const [kopyalandi, setKopyalandi] = useState(false);
-  const ac = (s: string) => { kapat(); git(`/akis/${enc(kod)}/bilgi?sekme=${s}`); };
+  // aynı sayfadaki bölüm varsa oraya kayar (madde 12); yoksa bilgi sayfası açılır
+  const ac = (s: string) => { kapat(); if (bolumAc) bolumAc(SEKME_KOD.indexOf(s as any)); else git(`/akis/${enc(kod)}/bilgi?sekme=${s}`); };
   const A: any[] = d.adimlar;
   const satirlar: [string, string, string][] = [
     ['adimlar', 'Adımlar', `${A.length} adım, ${A.filter((a) => !BITTI(a.durum)).length} açık`],

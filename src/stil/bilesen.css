@@ -612,3 +612,12 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .baslik-cip.cip-karar, .baslik-cip.cip-risk { border-color: color-mix(in srgb, var(--renk-vurgu-altin) 65%, transparent); color: var(--renk-metin-altin); }
 .baslik-cip.cip-sende { border-color: color-mix(in srgb, var(--renk-vurgu-nane) 60%, transparent); color: var(--renk-metin-ink); }
 .baslik-cip:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+/* Galaksi tek sayfa (el notu 12): harita ve altındaki bölüm; kaydırma iki durakta oturur */
+html.kaydir-otur { scroll-snap-type: y proximity; }
+.kaydir-durak { position: absolute; left: 0; width: 1px; height: 1px; scroll-snap-align: start; }
+.bolum-durak { position: absolute; left: 20px; right: 20px; margin: 0; font-family: var(--font-serif); font-size: 22px; line-height: 28px; font-weight: 400; color: var(--renk-metin-ink); scroll-snap-align: start; scroll-margin-top: 8px; padding-top: 4px; }
+.bolum-ipucu { position: absolute; left: 50%; transform: translateX(-50%); height: 28px; padding: 0 14px 0 30px; border-radius: 14px; font-size: 12.5px; font-weight: 650; color: var(--renk-metin-ink2); background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 80%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 40%, transparent); }
+.bolum-ipucu::before { content: ""; position: absolute; left: 13px; top: 9px; width: 7px; height: 7px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(45deg); }
+.bolum-ipucu::after { content: ""; position: absolute; inset: -8px 0; }
+.zincir-ray { position: absolute; left: 47px; pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { html.kaydir-otur { scroll-snap-type: none; } }
