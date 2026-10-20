@@ -255,15 +255,21 @@ export function yolCiz(M, o = {}) {
  * Şeritler: her üye bir satır; x = zaman. b: { x, y, w, h } kutu ;
  * o: { lw, satir, pxGun, tBas, x (sürgü), sel, focus, uyeler, now, herGun, ps, states, bg, kaydir, ships, kayma (yatay px), ok, yk }
  */
+/** Şerit kutusunun ad sütunu ve zaman alanı (seritler ile aynı hesap; sığdırma ve kaydırma için). */
+export function seritOlcu(b, o = {}) {
+  const OK = o.ok ?? 1, lw = (o.lw ?? 72) * (1 + (OK - 1) * .35);
+  return { lw, X0: b.x + lw + 10, XW: b.w - lw - 14 };
+}
+
 export function seritler(M, Y, b, o = {}) {
   const F = M.F, G = Y.G, RENK = Y.RENK;
   const UYE_RENK = (u) => RENK[u.ad] || '#9EE6CF';
   const byNo = byNoOf(F), ps = o.ps ?? 1, OK = o.ok ?? 1, YK = o.yk ?? 1;
   // ad sütunu büyüyen gemi ve yazıyla genişler (madde 15)
-  const NOWx = o.now, X = o.x ?? NOWx, lw = (o.lw ?? 72) * (1 + (OK - 1) * .35), satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
+  const NOWx = o.now, X = o.x ?? NOWx, { lw } = seritOlcu(b, o), satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
   const us = (o.uyeler || G.uyeler.map((u) => u.ad)).map((ad) => G.uyeOf[ad]).filter(Boolean);
   const tBas = o.tBas ?? G.T0;
-  const X0 = b.x + lw + 10, XW = b.w - lw - 14;
+  const { X0, XW } = seritOlcu(b, o);
   const kay = o.kayma ?? 0;
   const xOf = (t) => X0 + (t - tBas) / GUN * pxGun - kay;
   const yOf = (i) => b.y + 14 + i * satir + satir / 2;
