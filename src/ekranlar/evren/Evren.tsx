@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
-import { simdi } from '../../api/ortam';
+import { SAHTE, simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
@@ -12,12 +12,18 @@ import { evrenOlcek, iconCloud, iconRings, usturlap } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { brackets, C, pill, planet, ship } from '../../cizim/ortak.js';
 import { akisAdi, doluSatir, ozelEk, paySure, yaziTipleriHazir } from '../../metin/turkce';
-import { git } from '../../yonlendirme';
+import { arama, git } from '../../yonlendirme';
+import { tanitimGorulmeli } from './Tanitim';
 import { yakinlas } from '../../cizim/yakinlas';
 import { AvatarAd, BosEvren } from './BosEvren';
 import { evrenCumleleri } from './cumleler';
+import { evrenTakvimi } from '../../geometri/evren';
 import { useGezinme, type Bolge } from '../akis/gezinme';
 import { bos, type Daire } from '../akis/katman';
+import { Lejant, SoruIkon } from '../akis/Lejant';
+import { hareketAz } from '../../ayar/hareket';
+import { PANO_AD, pano, type PanoTur } from './pano';
+import { EvrenPano, panoYerlesimi } from './Pano';
 
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
 /** Bu sayıdan çok aktif akışta evren ölçek düzenine geçer (J1). */
@@ -51,15 +57,19 @@ type Hap = [number, number, string, Record<string, unknown>];
  * Evren yakınlaşması: usturlap ölçeklenir; ekranda yarıçapı 64 px'i geçen galaksi ayrıntılı çizilir, adımları ve kişileri
  * dokunulur olur. En yakında bir galaksinin üstünde daha da yaklaşmak o akışa girer (Z1).
  */
-function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, GYer>; hap: Hap[] } | null, detay: Record<string, any>, kisi: string, now: number, taban = { k: 1, x: 0, y: 0 }) {
+function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, GYer>; hap: Hap[] } | null, detay: Record<string, any>, kisi: string, now: number, taban = { k: 1, x: 0, y: 0 }, soluk?: Set<string> | null) {
   const ref = useRef<(kod: string) => void>(() => {});
-  const gz = useGezinme(b, { max: 6, asiri: (p) => ref.current(enYakin(p)) });
+  // en büyük galaksi ekranın yaklaşık yarısını doldurunca yakınlaşma durur; daha da açmak o akışa girer (el notu 6)
+  const enR = Math.max(8, ...Object.values(cizim?.konum || {}).map((g) => g.r)) * taban.k;
+  const gz = useGezinme(b, { max: Math.max(2.5, Math.min(6, b.w * .42 / (enR * 1.35))), asiri: (p) => ref.current(enYakin(p)) });
   const { k, tx, ty } = gz.g;
   const kucukler = useMemo(() => {
     const m: Record<string, string> = {};
-    if (cizim) for (const [kod, g] of Object.entries(cizim.konum)) m[kod] = kucukGalaksi(detay[kod], kisi, g.x, g.y, g.r, g.pr, now);
+    if (cizim) for (const [kod, g] of Object.entries(cizim.konum)) m[kod] = sonuk(kod, kucukGalaksi(detay[kod], kisi, g.x, g.y, g.r, g.pr, now));
     return m;
-  }, [cizim, detay, kisi, now]);
+  }, [cizim, detay, kisi, now, soluk]); // eslint-disable-line react-hooks/exhaustive-deps
+  // pano süzgeci (el notu 3): eşleşmeyen galaksi sönükleşir
+  function sonuk(kod: string, t: string) { return soluk?.has(kod) ? `<g opacity=".22">${t}</g>` : t; }
   // tasarım (390 kare) → pencere: önce taban (geniş düzende ×1.6), sonra yakınlaşma
   const K = k * taban.k, TX = tx + taban.x * k, TY = ty + taban.y * k;
   const ekran = (g: GYer) => ({ x: g.x * K + TX, y: g.y * K + TY, r: g.r * K });
@@ -87,14 +97,14 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
       ayrinti.push({ kod, Y: yolCiz(akisModeli(detay[kod], { sahip: kisi }), { cx: e.x, cy: e.y, R, ps: Math.max(.36, Math.min(.78, R * .005)), now, x: now, labels: [], shipSc: .9, minR: 6.5, kuleEtiket: false }) });
       return '';
     });
-    const svg = `<defs><clipPath id="evren-kirp"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/></clipPath></defs><g clip-path="url(#evren-kirp)"><g class="evren-olcekli${k > 1.6 ? ' yazisiz' : ''}">${sar(tabanSvg, K, TX, TY)}</g>${ayrinti.map((a) => a.Y.svg).join('')}${haplar(true)}</g>`;
+    const svg = `<defs><clipPath id="evren-kirp"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"/></clipPath></defs><g clip-path="url(#evren-kirp)"><g class="evren-olcekli${k > 1.6 ? ' yazisiz' : ''}">${sar(tabanSvg, K, TX, TY)}</g>${ayrinti.map((a) => sonuk(a.kod, a.Y.svg)).join('')}${haplar(true)}</g>`;
     return { svg, ayrinti };
-  }, [cizim, kucukler, gz.yaklasik, k, tx, ty, detay, kisi, now, b, taban.k, taban.x, taban.y]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [cizim, kucukler, gz.yaklasik, k, tx, ty, detay, kisi, now, b, taban.k, taban.x, taban.y, soluk]); // eslint-disable-line react-hooks/exhaustive-deps
   return { gz, sonuc, ekran, girisRef: ref };
 }
 
 /** Evren dokunma katmanı: galaksiler (dokun → Z1), yakınken adımlar ve kişiler. */
-function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; minR?: number }) {
+function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22, kaydir }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; minR?: number; kaydir?: boolean }) {
   const { gz, sonuc, ekran } = E;
   E.girisRef.current = (kod) => { if (!kod) return; const el = document.querySelector<HTMLElement>(`[data-kod="${CSS.escape(kod)}"]`); if (el) yakinlas(kod, el); else git(`/akis/${encodeURIComponent(kod)}`); };
   const hedef: (Daire & { key: string; etiket: string; tikla: (e: any) => void; kod?: string })[] = [];
@@ -120,7 +130,7 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22 }: { E: Retur
     if (!ayrintili.has(g.kod) || bos(h, hedef)) hedef.push(h);
   }
   return (
-    <div ref={gz.ref} className="harita-gezinme" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} {...gz.olaylar}>
+    <div ref={gz.ref} className={`harita-gezinme${kaydir && !gz.yaklasik ? ' kaydirilir' : ''}`} style={{ left: b.x, top: b.y, width: b.w, height: b.h }} {...gz.olaylar}>
       <div role="list" aria-label="Akışlar" className="harita-katman" style={{ left: -b.x, top: -b.y }}>
         {hedef.map((h) => <button key={h.key} role="listitem" data-kod={h.kod} className="gezegen-hedef" style={{ left: h.x - h.r, top: h.y - h.r, width: h.r * 2, height: h.r * 2 }} aria-label={h.etiket} onClick={h.tikla} />)}
         {taslak && (() => { const e = ekran({ x: taslak.x, y: taslak.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button className="gezegen-hedef" style={{ left: e.x - 52 * e.r, top: e.y - 58 * e.r, width: 104 * e.r, height: 72 * e.r }} aria-label={`${taslak.n} taslak`} onClick={() => git('/yeni')} />; })()}
@@ -130,14 +140,15 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22 }: { E: Retur
 }
 
 /** Yakınlaşma düğmeleri: geniş düzende hepsi; telefonda yalnız yakınken sığdır. */
-function YakinDugmeleri({ gz, x, y, hep }: { gz: ReturnType<typeof useGezinme>; x: number; y: number; hep: boolean }) {
+function YakinDugmeleri({ gz, x, y, hep, lejant }: { gz: ReturnType<typeof useGezinme>; x: number; y: number; hep: boolean; lejant?: () => void }) {
   const tam = hep;
-  if (!tam && !gz.yaklasik) return null;
+  if (!tam && !gz.yaklasik && !lejant) return null;
   return (
     <div className="harita-yakin" style={{ left: x, top: y }}>
+      {lejant && <button type="button" className="lejant-dugme" aria-label="Evren dili" aria-haspopup="dialog" onClick={lejant}><SoruIkon /></button>}
       {tam && <button type="button" aria-label="Yakınlaştır" onClick={() => gz.yakinlas(1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
       {tam && <button type="button" aria-label="Uzaklaştır" disabled={!gz.yaklasik} onClick={() => gz.yakinlas(1 / 1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
-      <button type="button" aria-label="Haritayı sığdır" disabled={!gz.yaklasik} onClick={gz.sigdir}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>
+      {(tam || gz.yaklasik) && <button type="button" aria-label="Haritayı sığdır" disabled={!gz.yaklasik} onClick={gz.sigdir}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
     </div>
   );
 }
@@ -149,6 +160,14 @@ function CumleHedef({ c, x, y, w, h }: { c: { kod?: string; no?: number; metin: 
 
 /** Mobil evrende gezinme alanı: cümlelerin altı, alt gezinmenin üstü. */
 const EVREN_BOLGE: Bolge = { x: 0, y: 228, w: 390, h: 510 };
+const LEJANT_ANAHTAR = 'devir:evren-dili';
+/** Pano bölümünün başı: ilk ekranın hemen altı. */
+const PANO_Y = 852;
+/** Evren dili ilk açılışta bir kez: genel tanıtım görüldükten sonra (sahte kipte yalnız ?lejant=1). */
+function evrenDiliGorulmeli(): boolean {
+  if (SAHTE) return arama().get('lejant') === '1';
+  try { return !localStorage.getItem(LEJANT_ANAHTAR) && !tanitimGorulmeli(); } catch { return false; }
+}
 
 /** B1 · Evren: bütün aktif akışlar tek bakışta (§5 B1, §3.10). */
 export function Evren({ ben }: { ben: Ben }) {
@@ -190,10 +209,15 @@ export function Evren({ ben }: { ben: Ben }) {
       if (O.kapanan) hap.push([O.kapananHap.x, O.kapananHap.y, `${O.kapanan} kapandı`, { fs: 11, fw: 650, stroke: '#FFD27A', col: '#FFE6B0' }]);
       return { svg: s, U: { yer: O.yer, taslak: null }, olcek: O, konum, hap };
     }
+    // evren matematiği (madde 5): başlangıç, pay, adım sayısı, biten ve kişiler; takvim veriden
+    const kisileri = (k: any) => [...new Set<string>((detay[k.kod]?.adimlar || []).map((a: any) => a.sahip))];
+    const aktifler = kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam,
+      t0: tarihMs(k.olusturuldu || k.son_hareket || k.hedef_tarih), payGun: k.pay_saat == null ? null : k.pay_saat / 24, adim: say(k)[1], biten: say(k)[0], kisiler: kisileri(k) }));
+    const takvim = evrenTakvimi([...aktifler, ...kapanan.filter((k) => k.kapandi_at && tarihMs(k.kapandi_at) > NOW - 45 * 864e5).map((k) => ({ t0: tarihMs(k.kapandi_at), hedef: tarihMs(k.kapandi_at) }))], NOW);
     const U = usturlap({
-      simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0,
+      simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0, takvim,
       akislar: [
-        ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam })),
+        ...aktifler,
         ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
       ],
       kucuk: (kod, x, y, r, pr) => { konum[kod] = { x, y, r, pr }; return yerTutucu(kod); },
@@ -212,7 +236,17 @@ export function Evren({ ben }: { ben: Ben }) {
     return { svg: s, U, olcek: null, konum, hap };
   }, [ozet.data, kap.data, detay, cumleler, NOW]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const E = useEvrenGezinme(EVREN_BOLGE, cizim && !cizim.olcek ? cizim : null, detay, kisi, NOW);
+  // pano (el notu 3–4): tutanak, durum süzgeci; seçilen süzgeç haritada eşleşmeyenleri söndürür
+  const P = useMemo(() => pano(kartlar, detay, kisi), [ozet.data, detay, kisi]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [suz, setSuz] = useState<PanoTur | null>(null);
+  const soluk = useMemo(() => suz ? new Set(kartlar.map((k) => k.kod).filter((kod) => !P.adimlar[suz].some((a) => a.kod === kod))) : null, [suz, P]); // eslint-disable-line react-hooks/exhaustive-deps
+  const panoRef = useRef<HTMLHeadingElement>(null);
+  useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
+  const E = useEvrenGezinme(EVREN_BOLGE, cizim && !cizim.olcek ? cizim : null, detay, kisi, NOW, undefined, soluk);
+  // evren dili (madde 2, 3): "?" ile; ilk açılışta bir kez kendiliğinden tanıtılır
+  const [lejant, setLejant] = useState(false);
+  useEffect(() => { if (cizim && !cizim.olcek && evrenDiliGorulmeli()) setLejant(true); }, [!!cizim]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lejantKapat = () => { setLejant(false); try { localStorage.setItem(LEJANT_ANAHTAR, '1'); } catch { /* depolama kapalı */ } };
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 21, yildiz: 330 }} etiket="Evren"><AvatarAd ad={kisi} /></Sahne>;
   const bos = ozet.data && !kartlar.length && !ozet.data.taslaklar?.length;
@@ -220,8 +254,9 @@ export function Evren({ ben }: { ben: Ben }) {
   if (bos) return <BosEvren ad={kisi} avatar={avatar} />;
   if (!cizim) return null;
 
-  if (cizim.olcek) return <EvrenOlcek kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} now={NOW} />;
-  if (boy.w >= 1280 && boy.h >= 600) return <EvrenGenis W={boy.w} H={boy.h} kisi={kisi} avatar={avatar} cizim={cizim} cumleler={cumleler} kartlar={kartlar} kapanan={kapanan} detay={detay} benim={ozet.data?.benim || []} taslak={ozet.data?.taslaklar?.length || 0} now={NOW} />;
+  const panoOz = { P, suz, setSuz, soluk };
+  if (cizim.olcek) return <EvrenOlcek kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} now={NOW} pano={panoOz} />;
+  if (boy.w >= 1280 && boy.h >= 600) return <EvrenGenis W={boy.w} H={boy.h} kisi={kisi} avatar={avatar} cizim={cizim} cumleler={cumleler} kartlar={kartlar} kapanan={kapanan} detay={detay} taslak={ozet.data?.taslaklar?.length || 0} now={NOW} pano={panoOz} />;
   // cümleler: glif + en çok iki satır (Caladea 17.5/22, x 56)
   let y = 113;
   const satirlar = cumleler.slice(0, 2).map((c) => {
@@ -230,9 +265,13 @@ export function Evren({ ben }: { ben: Ben }) {
     return { c, s, y: y0 };
   });
   const tum = [...kartlar, ...kapanan];
+  const goster = suz ?? P.varsayilan;
+  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y);
+  const panoAc = () => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' });
 
   return (
-    <Sahne gok={{ tohum: 21, yildiz: 330, sakin: [195, 470, 200] }} cizim={(E.sonuc?.svg ?? '') + satirlar.map(({ c, y: yy }) => c.tur === 'engel' ? iconCloud(32, yy - 5, .55) : c.tur === 'bekleme' ? iconRings(32, yy - 3, .72) : '').join('')} etiket="Evren">
+    <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 470, 200] }} cizim={(E.sonuc?.svg ?? '') + satirlar.map(({ c, y: yy }) => c.tur === 'engel' ? iconCloud(32, yy - 5, .55) : c.tur === 'bekleme' ? iconRings(32, yy - 3, .72) : '').join('')} etiket="Evren">
+      <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       {satirlar.map(({ c, s, y: yy }) => (
         <Metin key={c.metin} y={yy} x={56} fs={17.5} lh={22} serif as="p" style={{ whiteSpace: s.length > 1 ? 'nowrap' : undefined }}>
@@ -240,9 +279,13 @@ export function Evren({ ben }: { ben: Ben }) {
         </Metin>
       ))}
       {satirlar.map(({ c, s, y: yy }) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={20} y={metinUst(yy, 17.5, 22, true) - 4} w={350} h={s.length * 22 + 8} />)}
-      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} minR={24} />
-      <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
+      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} minR={24} kaydir />
+      <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} lejant={() => setLejant(true)} />
+      {suz && <button type="button" className="harita-suzgec" style={{ top: EVREN_BOLGE.y + 8 }} onClick={() => setSuz(null)} aria-label={`Süzgeç: ${PANO_AD[suz]}. Kaldır.`}>{PANO_AD[suz]} · {P.adimlar[suz].length}</button>}
+      <button type="button" className="bolum-ipucu" style={{ top: 724 }} onClick={panoAc}>Pano ve bekleyen işler</button>
+      <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} goster={goster} secili={suz} sec={setSuz} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
+      <Lejant acik={lejant} kapat={lejantKapat} yuzey="evren" />
     </Sahne>
   );
 }
@@ -256,42 +299,53 @@ export function olcekCumlesi(kartlar: any[], detay: Record<string, any>): string
   return `${bir} ${dar.pay_saat >= 0 ? `En dar pay ${ozelEk(akisAdi(dar), 'de')}: ${paySure(dar.pay_saat)}.` : `${ozelEk(akisAdi(dar), 'de')} hedef ${paySure(dar.pay_saat)} geçiyor.`}`;
 }
 
-function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number }) {
+type PanoOz = { P: ReturnType<typeof pano>; suz: PanoTur | null; setSuz: (t: PanoTur | null) => void; soluk: Set<string> | null };
+function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, suz, setSuz, soluk } }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz }) {
   const tum = [...kartlar, ...kapanan];
   const cumle = doluSatir(olcekCumlesi(kartlar, detay), 340, '17.5px Caladea', 3);
   const O = cizim.olcek;
-  const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now);
+  const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now, undefined, soluk);
+  const panoRef = useRef<HTMLHeadingElement>(null);
+  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y);
   return (
-    <Sahne gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
+    <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
+      <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <Metin y={112} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
-      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} />
+      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} kaydir />
       {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
+      {suz && <button type="button" className="harita-suzgec" style={{ top: EVREN_BOLGE.y + 8 }} onClick={() => setSuz(null)} aria-label={`Süzgeç: ${PANO_AD[suz]}. Kaldır.`}>{PANO_AD[suz]} · {P.adimlar[suz].length}</button>}
+      <button type="button" className="bolum-ipucu" style={{ top: 724 }} onClick={() => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' })}>Pano ve bekleyen işler</button>
+      <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} goster={goster} secili={suz} sec={setSuz} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
     </Sahne>
   );
 }
 
 /** M2 · Masaüstü evren (≥ 1280): solda usturlap ×1.6, iki cümle tek satır; sağda 440 px panel (§5 M2). */
-function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, detay, benim, taslak, now }: { W: number; H: number; kisi: string; avatar: () => void; cizim: any; cumleler: any[]; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; benim: any[]; taslak: number; now: number }) {
+function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, detay, taslak, now, pano: { P, suz, setSuz, soluk } }: { W: number; H: number; kisi: string; avatar: () => void; cizim: any; cumleler: any[]; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; taslak: number; now: number; pano: PanoOz }) {
   const PW = 440, X = W - PW, k = 1.6 * Math.min((W - PW) / 1000, H / 900);
   const tx = (W - PW) * .52 - 195 * k, ty = H * .547 - 470 * k;
   const tum = [...kartlar, ...kapanan];
   const say = (kod: string) => { const a = detay[kod]?.adimlar; return a ? [a.filter((x: any) => ['tamam', 'atlandi', 'ertelendi'].includes(x.durum)).length, a.length] : null; };
   const akislar = kartlar.slice().sort((a, b) => (a.pay_saat ?? 1e9) - (b.pay_saat ?? 1e9));
-  const bekl = benim.filter((b) => b.durum !== 'suruyor').slice(0, 5);
-  const akY = 132 + Math.max(1, bekl.length) * 64 + 26;
+  // pano (el notu 3): tutanak + durum süzgeci; seçilen süzgeç haritayı da süzer
+  const goster = suz ?? P.varsayilan, bekl = (goster ? P.adimlar[goster] : []).slice(0, 5), benimN = P.adimlar.sende.length;
+  const tutanak = doluSatir(P.cumle, PW - 48, '15px Caladea', 3);
+  const cipY = 128 + tutanak.length * 20 + 8, lY = cipY + 50;
+  const akY = lY + Math.max(1, bekl.length) * 64 + 26;
+  const [lejant, setLejant] = useState(false);
   const B: Bolge = useMemo(() => ({ x: 0, y: 190, w: X, h: H - 190 }), [X, H]);
   const taban = useMemo(() => ({ k, x: tx, y: ty }), [k, tx, ty]);
-  const E = useEvrenGezinme(B, cizim, detay, kisi, now, taban);
+  const E = useEvrenGezinme(B, cizim, detay, kisi, now, taban, soluk);
   let svg = E.sonuc?.svg ?? '';
   svg += `<rect x="${X}" y="0" width="${PW}" height="${H}" fill="url(#sheet)"/><rect x="${X}" y="0" width="${PW}" height="${H}" filter="url(#paper)" opacity=".5"/><rect x="${X}" y="0" width="1" height="${H}" fill="#FFC9A3" opacity=".35"/>`;
   svg += `<g transform="translate(${X + 370},52)"><circle r="26" fill="url(#bloom)" opacity=".7"/><circle r="22" fill="url(#btn)"/><path d="M0,-8 L0,8 M-8,0 L8,0" stroke="#2A1D4F" stroke-width="2.6" stroke-linecap="round"/></g>`;
   cumleler.slice(0, 2).forEach((c, i) => { svg += c.tur === 'engel' ? iconCloud(58, 112 + i * 44, .6) : c.tur === 'bekleme' ? iconRings(58, 112 + i * 44, .78) : ''; });
   bekl.forEach((b, i) => {
-    const y = 132 + i * 64;
-    svg += `<rect x="${X + 20}" y="${y}" width="${PW - 40}" height="56" rx="18" fill="#120B2C" fill-opacity=".72" stroke="#FFFFFF" stroke-opacity=".08"/>` + planet(X + 48, y + 28, 9, b.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: b.karar_adimi });
+    const y = lY + i * 64;
+    svg += `<rect x="${X + 20}" y="${y}" width="${PW - 40}" height="56" rx="18" fill="#120B2C" fill-opacity=".72" stroke="#FFFFFF" stroke-opacity=".08"/>` + planet(X + 48, y + 28, 9, b.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: b.karar });
   });
   akislar.forEach((a, i) => {
     const y = akY + 14 + i * 66;
@@ -308,20 +362,26 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       {cumleler.slice(0, 2).map((c, i) => <Metin key={c.metin} y={118 + i * 44} x={86} fs={19} lh={25} serif as="p" style={{ whiteSpace: 'nowrap', right: 'auto' }}>{c.metin}</Metin>)}
       {cumleler.slice(0, 2).map((c, i) => c.kod && c.no != null && <CumleHedef key={'h' + c.metin} c={c} x={40} y={metinUst(118 + i * 44, 19, 25, true) - 6} w={Math.min(X - 80, 760)} h={36} />)}
       <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} minR={24} />
-      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep />
+      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep lejant={() => setLejant(true)} />
+      {suz && <button type="button" className="harita-suzgec" style={{ top: B.y + 8, left: 40 }} onClick={() => setSuz(null)} aria-label={`Süzgeç: ${PANO_AD[suz]}. Kaldır.`}>{PANO_AD[suz]} · {P.adimlar[suz].length}</button>}
+      <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" />
       <div style={{ position: 'absolute', left: X + 4, top: 30, width: 284 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>
       <button type="button" className="genis-geri genis-ayarlar" style={{ left: X + 296, top: 30 }} aria-label="Ayarlar" onClick={() => git('/ayarlar')}>
         <svg aria-hidden width="24" height="24" viewBox="-12 -12 24 24"><path d="M-7,-4 L7,-4 M-7,4 L7,4" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" strokeLinecap="round" /><circle cx="-2.5" cy="-4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /><circle cx="3" cy="4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /></svg>
       </button>
       <button type="button" className="genis-geri" style={{ left: X + 348, top: 30 }} aria-label="Yeni iş" onClick={() => git('/yeni')} />
-      <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>SENDEN BEKLENEN</h2>
-      {benim.length > 0 && <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 96, top: 118 - 26 }} onClick={() => git('/bana')}>Hepsi ({benim.length})</button>}
+      <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>PANO</h2>
+      <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/bana')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
+      <Metin y={140} x={X + 24} fs={15} lh={20} serif as="p" style={{ right: 'auto', width: PW - 48, whiteSpace: tutanak.length > 1 ? 'nowrap' : undefined }}>{tutanak.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+      {P.suzgecler.length > 0 && <div className="pano-cipler" role="group" aria-label="Duruma göre süz; haritada da süzer" style={{ top: cipY, left: X + 4, right: 'auto', width: PW - 8 }}>
+        {P.suzgecler.map((c) => <button key={c.tur} type="button" className="filtre-cip" aria-pressed={goster === c.tur} onClick={() => setSuz(suz === c.tur ? null : c.tur)}>{PANO_AD[c.tur]} {c.n}</button>)}
+      </div>}
       {bekl.length ? bekl.map((b, i) => {
-        const y = 132 + i * 64, akis = ad(b.akis), t = b.son_tarih ? gunAy(tarihMs(b.son_tarih)) : null;
-        return <button key={b.akis + b.no} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 56, background: 'none', boxShadow: 'none' }} onClick={() => git(`/akis/${encodeURIComponent(b.akis)}/adim/${b.no}`)}>
-          <span className="satir-metin" style={{ left: 54, right: 16 }}><b>{b.ad}</b><small>{akis}{t ? ` · ${t}` : ''}</small></span>
+        const y = lY + i * 64, akis = ad(b.kod), t = b.son ? gunAy(tarihMs(b.son)) : null, kim = b.sahip === kisi ? 'Sende' : b.sahip.replace(/\s*\(.*\)$/, '');
+        return <button key={b.kod + b.no} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 56, background: 'none', boxShadow: 'none' }} onClick={() => git(`/akis/${encodeURIComponent(b.kod)}/adim/${b.no}`)}>
+          <span className="satir-metin" style={{ left: 54, right: 16 }}><b>{b.ad}</b><small>{[akis, kim, b.tuttugu ? `${b.tuttugu} adımı tutuyor` : null, t].filter(Boolean).join(' · ')}</small></span>
         </button>;
-      }) : <Metin y={160} x={X + 24} fs={13} renk="ink3">Şu an senden beklenen iş yok.</Metin>}
+      }) : <Metin y={lY + 28} x={X + 24} fs={13} renk="ink3">Şu an bekleyen iş yok.</Metin>}
       <h2 className="genis-bolum" style={{ left: X + 24, top: akY - 12 }}>AKIŞLAR</h2>
       {akislar.map((a, i) => {
         const y = akY + 14 + i * 66; if (y + 58 > H - 8) return null;

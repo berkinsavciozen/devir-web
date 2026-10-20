@@ -1,3 +1,4 @@
+import { evrenYerlesimi } from '../geometri/evren';
 // Ekran süsleri: tasarım kaynağındaki (d3-son/kaynak/son-ortak.js, son-090.js, ekranlar.js) yardımcıların
 // yalnız çizim kısmı. Metin, düğme ve alanlar HTML olarak çizilir; burada yalnız SVG süsleri kalır.
 // Ölçüler ve renkler kaynakla aynıdır (token dışı illüstrasyon renkleri: tasarim/CELISKILER.md #1).
@@ -112,8 +113,8 @@ const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl'
 /** pill genişliği (ortak.js pill ile aynı kural) */
 export const hapEni = (t: string, fs = 11) => Math.round(t.length * fs * .56 + 14);
 
-export interface UAkis { kod: string; ad: string; hedef: number; kapandi?: number | null; isaret?: 'engel' | 'bekleme'; bitti?: boolean; karar?: boolean }
-export interface UYer { kod: string; x: number; y: number; rr: number; a: number; etiket: { x: number; y: number; w: number } }
+export interface UAkis { kod: string; ad: string; hedef: number; kapandi?: number | null; isaret?: 'engel' | 'bekleme'; bitti?: boolean; karar?: boolean; t0?: number; payGun?: number | null; adim?: number; biten?: number; kisiler?: string[] }
+export interface UYer { kod: string; x: number; y: number; rr: number; a: number; etiket: { x: number; y: number; w: number }; isik?: number }
 
 /**
  * B1 · usturlap (ekranlar.js astrolabe, §3.10): R 170 bant 22; pirinç yay 1 Eki → bugün; ay adları dışta;
@@ -124,8 +125,10 @@ export function usturlap(o: {
   simdi: number; akislar: UAkis[]; oran: number; taslak: number;
   kucuk: (kod: string, x: number, y: number, r: number, pr: number) => string;
   c?: { cx: number; cy: number; R: number };
+  /** takvim penceresi (evrenTakvimi); yoksa sabit Eki–Ara */
+  takvim?: { CA: number; CB: number };
 }) {
-  const { cx, cy, R } = o.c || { cx: 195, cy: 470, R: 170 }, NOW = o.simdi, CA = TAKVIM0, CB = TAKVIM1;
+  const { cx, cy, R } = o.c || { cx: 195, cy: 470, R: 170 }, NOW = o.simdi, CA = o.takvim?.CA ?? TAKVIM0, CB = o.takvim?.CB ?? TAKVIM1;
   const ang = (ms: number) => -90 + (ms - CA) / (CB - CA) * 360;
   const pol = (a: number, r: number) => [cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r];
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
@@ -165,7 +168,37 @@ export function usturlap(o: {
   const oncelik = (F: UAkis) => (F.isaret === 'engel' ? 0 : F.isaret === 'bekleme' ? 1 : 2);
   const aktif = o.akislar.filter((F) => !F.kapandi).map((F) => ({ F, a: ang(F.hedef) })).sort((p, q) => oncelik(p.F) - oncelik(q.F) || p.a - q.a);
   const bantlar = [R - 60, R - 30, R - 90, R - 115];
-  for (const it of aktif) {
+  // evren matematiği (el notu 5, geometri/evren.ts): açı = hedef, uzaklık = pay, alan ∝ adım; çakışma yalnız yarıçap yönünde
+  const matematik = aktif.length > 0 && aktif.every((x) => x.F.adim != null && x.F.t0 != null);
+  const EY = matematik ? evrenYerlesimi(aktif.map(({ F }) => ({ kod: F.kod, t0: F.t0!, hedef: F.hedef, payGun: F.payGun ?? null, adim: F.adim!, biten: F.biten ?? 0, kisiler: F.kisiler || [] })), { cx, cy, R, CA, CB, engeller: engeller.slice(1) }) : null;
+  if (EY) {
+    // zaman yayı (yörünge): galaksinin kendi uzaklığında, başlangıcından hedefine; bugüne kadarki kısmı altın. İbre her yörüngeyi
+    // o akışın bugünkü noktasında keser
+    for (const g of EY.yer) {
+      const a0 = Math.max(-90, g.yay[0]), a1 = Math.min(270, Math.max(a0 + .5, g.yay[1])), an = Math.min(a1, Math.max(a0, aNow));
+      s += `<path d="${arc(a0, a1, g.rho)}" fill="none" stroke="#B9A6F2" stroke-width="1.2" opacity=".28" stroke-linecap="round"/>`;
+      if (an > a0 + .3) s += `<path d="${arc(a0, an, g.rho)}" fill="none" stroke="#FFD27A" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>`;
+    }
+    // ortak kişi ipleri: merkeze doğru eğilen ince bağlar
+    for (const ip of EY.ipler) {
+      const p = EY.yer.find((g) => g.kod === ip.a)!, q = EY.yer.find((g) => g.kod === ip.b)!;
+      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, kx = mx + (cx - mx) * .45, ky = my + (cy - my) * .45;
+      s += `<path d="M${f(p.x)},${f(p.y)} Q${f(kx)},${f(ky)} ${f(q.x)},${f(q.y)}" fill="none" stroke="#D9CCFF" stroke-width="${f(.7 + .5 * Math.min(ip.n, 4))}" opacity=".2" stroke-dasharray="2 3"/>`;
+    }
+    // etiket: altta, üstte, merkeze bakan yanda, dış yanda; halkaya, başka etikete ve galaksiye binmeyen ilk yer
+    const kutular: { x: number; y: number; w: number }[] = [];
+    const carpar = (x: number, y: number, w: number) => Math.hypot(x - cx, y - cy) + w / 2 > R - 10
+      || kutular.some((k) => Math.abs(k.x - x) < (k.w + w) / 2 + 4 && Math.abs(k.y - y) < 22)
+      || EY.yer.some((q) => Math.abs(q.x - x) < q.rr + w / 2 - 2 && Math.abs(q.y - y) < q.rr + 9);
+    for (const g of EY.yer) {
+      const w = hapEni(o.akislar.find((F) => F.kod === g.kod)!.ad, 11.5), yon = g.x > cx + 4 ? -1 : 1;
+      const aday: [number, number][] = [[g.x, g.y + g.rr + 12], [g.x, g.y - g.rr - 12], [g.x + yon * (g.rr + w / 2 + 6), g.y], [g.x - yon * (g.rr + w / 2 + 6), g.y]];
+      const [ex, ey] = aday.find(([x, y]) => !carpar(x, y, w)) || aday[0];
+      kutular.push({ x: ex, y: ey, w });
+      yer.push({ kod: g.kod, x: g.x, y: g.y, rr: g.rr, a: g.a, etiket: { x: ex, y: ey + 4, w }, isik: g.isik });
+    }
+  }
+  if (!EY) for (const it of aktif) {
     const rr0 = .54 * 62;
     let best: { p: number[]; clash: number } | null = null;
     for (const b of bantlar) {
@@ -185,6 +218,12 @@ export function usturlap(o: {
     const q = yer.find((y) => y.kod === F.kod); if (!q) continue;
     const [tx, ty] = pol(q.a, R - 12), tam = !!F.bitti;
     s += `<line x1="${f(q.x)}" y1="${f(q.y)}" x2="${f(tx)}" y2="${f(ty)}" stroke="${tam ? '#FFD27A' : '#8E80D6'}" stroke-width=".8" stroke-dasharray="1.5 3" opacity=".7"/><circle cx="${f(tx)}" cy="${f(ty)}" r="3.2" fill="${tam ? '#FFE29A' : '#B9A6F2'}"/>`;
+    // ışık (biten / toplam): hale ve ilerleme yayı
+    if (q.isik != null) {
+      s += `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(q.rr * 1.7)}" fill="url(#glowGold)" opacity="${f(.08 + .5 * q.isik)}"/>`;
+      s += `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(q.rr + 4)}" fill="none" stroke="#3A3170" stroke-width="1.6"/>`;
+      if (q.isik > 0) { const a1 = -90 + Math.min(.9999, q.isik) * 360, [x0, y0] = [q.x, q.y - q.rr - 4], [x1, y1] = [q.x + Math.cos(a1 * Math.PI / 180) * (q.rr + 4), q.y + Math.sin(a1 * Math.PI / 180) * (q.rr + 4)]; s += `<path d="M${f(x0)},${f(y0)} A${f(q.rr + 4)},${f(q.rr + 4)} 0 ${q.isik > .5 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="1.8" stroke-linecap="round"/>`; }
+    }
     s += o.kucuk(F.kod, q.x, q.y, q.rr, 3);
     if (F.karar) s += bayrak(q.x + q.rr * .9, q.y - q.rr * .9, .8);
   }
