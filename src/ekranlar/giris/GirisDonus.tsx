@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { kimlik } from '../../api/kimlik';
+import { kimlik, type Donus } from '../../api/kimlik';
 import { oturumDegisti } from '../../api/sorgular';
 import { Dugme } from '../../bilesen/Dugme';
 import { Metin, Sahne } from '../../bilesen/Sahne';
@@ -30,10 +30,17 @@ function a1dCizim() {
 }
 const A1D_CIZIM = a1dCizim();
 
-/** Adresten ?code= / ?error_code= (Supabase PKCE dönüşü; hata bazen # içinde gelir). */
-function donusOku() {
+/**
+ * Adresten giriş bilgisi: örtük akışta #access_token=…&refresh_token=…, e-posta şablonu token_hash taşıyorsa
+ * ?token_hash=…&type=…, eski PKCE bağlantısında ?code=. Hata ?error_code= ya da # içinde gelir.
+ */
+function donusOku(): { donus: Donus | null; hata: string | null } {
   const q = arama(), h = new URLSearchParams(location.hash.slice(1));
-  return { kod: q.get('code'), hata: q.get('error_code') || h.get('error_code') || q.get('error') || h.get('error') };
+  const access = h.get('access_token'), refresh = h.get('refresh_token'), th = q.get('token_hash'), kod = q.get('code');
+  const donus: Donus | null = access && refresh ? { tur: 'belirtec', access, refresh }
+    : th ? { tur: 'hash', tokenHash: th, tip: q.get('type') || 'email' }
+    : kod ? { tur: 'kod', kod } : null;
+  return { donus, hata: q.get('error_code') || h.get('error_code') || q.get('error') || h.get('error') };
 }
 
 type Hal = { tur: 'aciliyor' } | { tur: 'gecersiz' } | { tur: 'ag' } | { tur: 'giris' };
@@ -43,17 +50,19 @@ const SINIR = 8000;
 export function GirisDonus() {
   const [hal, setHal] = useState<Hal>(() => {
     const d = donusOku();
-    return d.kod ? { tur: 'aciliyor' } : d.hata ? { tur: 'gecersiz' } : { tur: 'giris' };
+    return d.donus ? { tur: 'aciliyor' } : d.hata ? { tur: 'gecersiz' } : { tur: 'giris' };
   });
   const [eposta, setEposta] = useState(sonEposta.al);
-  const kod = useRef(donusOku().kod);
+  const kod = useRef(donusOku().donus);
+  // belirteçler adres çubuğunda ve geçmişte kalmasın
+  useEffect(() => { if (location.hash.includes('access_token')) history.replaceState(null, '', location.pathname + location.search); }, []);
 
   const ac = useCallback(async () => {
     if (!kod.current) { setHal({ tur: 'gecersiz' }); return; }
     setHal({ tur: 'aciliyor' });
     const sure = new Promise<never>((_, red) => setTimeout(() => red(new Error('sure')), SINIR));
     try {
-      const r = await Promise.race([kimlik.kodDegistir(kod.current), sure]);
+      const r = await Promise.race([kimlik.donusIsle(kod.current), sure]);
       if (r.eposta) sonEposta.koy(r.eposta);
       kod.current = null;
       oturumDegisti();
