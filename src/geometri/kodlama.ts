@@ -21,12 +21,12 @@ export interface Kodlama {
 }
 
 export const KODLAMA: Kodlama[] = [
-  { kod: 'zaman', veri: 'Zaman', galaksi: 'sarmal yay uzunluğu, süreyle orantılı', evren: 'halkada açı; başlangıçtan hedefe yay', serit: 'yatay eksen', iddia: 'her yol parçasında piksel uzunluğu / gün sabit (%1)', durum: 'var' },
-  { kod: 'adim-sayisi', veri: 'Adım sayısı', galaksi: 'gezegen sayısı', evren: 'galaksi alanı (yarıçap √adım)', serit: 'satırdaki gezegen', iddia: 'adım sayısı iki katına çıkınca evren alanı iki katına çıkar', durum: 'E3' },
-  { kod: 'tamamlanma', veri: 'Biten adım', galaksi: 'gezegen yanar', evren: 'aydınlanma = biten / toplam', serit: 'yanan gezegen', iddia: 'durumu tamam olan her adım "lit" çizilir', durum: 'var' },
-  { kod: 'darbogaz', veri: 'Darboğaz ağırlığı', galaksi: 'gezegen boyu (tuttuğu adım, kritik yol, bekleme)', evren: 'bulut simgesi ve sayı', serit: 'bulut simgesi', iddia: 'darboğaz puanı artınca gezegen küçülmez (büyütmeden sonra da)', durum: 'var' },
-  { kod: 'pay', veri: 'Hedefe kalan pay', galaksi: 'kuyruk uzunluğu', evren: 'yarıçap: pay azaldıkça halkaya yakın', serit: 'pay çipi', iddia: 'payı az olan galaksi halkaya daha yakın', durum: 'E3' },
-  { kod: 'kisi', veri: 'Kişi', galaksi: 'gemi ve rota', evren: 'ortak kişiyle bağlı galaksiler arasında ip', serit: 'satır ve gemi', iddia: 'her üyenin bir rotası ve bir satırı var', durum: 'var' },
+  { kod: 'zaman', veri: 'Zaman', galaksi: 'sarmal yay uzunluğu, süreyle orantılı', evren: 'halkada açı = hedef tarih; yörünge başlangıçtan hedefe', serit: 'yatay eksen', iddia: 'her yol parçasında piksel uzunluğu / gün sabit (%1)', durum: 'var' },
+  { kod: 'adim-sayisi', veri: 'Adım sayısı', galaksi: 'gezegen sayısı', evren: 'galaksi alanı (yarıçap √adım)', serit: 'satırdaki gezegen', iddia: 'adım sayısı iki katına çıkınca evren alanı iki katına çıkar (evren.test.ts)', durum: 'var' },
+  { kod: 'tamamlanma', veri: 'Biten adım', galaksi: 'gezegen yanar', evren: 'hale ışığı ve ilerleme yayı = biten / toplam', serit: 'yanan gezegen', iddia: 'durumu tamam olan her adım "lit" çizilir', durum: 'var' },
+  { kod: 'darbogaz', veri: 'Darboğaz ağırlığı', galaksi: 'gezegen boyu (tuttuğu adım, kritik yol, bekleme)', evren: 'cümledeki engel: köşeli çerçeve ve bulut', serit: 'bulut simgesi', iddia: 'darboğaz puanı artınca gezegen küçülmez (büyütmeden sonra da)', durum: 'var' },
+  { kod: 'pay', veri: 'Hedefe kalan pay', galaksi: 'kuyruk uzunluğu', evren: 'merkeze uzaklık: pay azaldıkça halkaya yakın (45 gün ve üstü en içte)', serit: 'pay çipi', iddia: 'payı az olan galaksi halkaya daha yakın (evren.test.ts)', durum: 'var' },
+  { kod: 'kisi', veri: 'Kişi', galaksi: 'gemi ve rota', evren: 'ortak kişisi olan galaksiler arasında ip', serit: 'satır ve gemi', iddia: 'her üyenin bir rotası ve bir satırı var', durum: 'var' },
   { kod: 'alt-adim', veri: 'Alt adım, kalem', galaksi: 'ana gezegenin çevresinde uydu (2 kat)', serit: 'sahibinin satırında küçük nokta', iddia: 'uydu ana gezegenden küçük, kendi durumunun rengiyle', durum: 'E2' },
   { kod: 'karar', veri: 'Karar bekleyen adım', galaksi: 'bayrak', evren: 'bayrak', serit: 'bayrak', iddia: 'açık karar adımı bayraklı çizilir', durum: 'var' },
 ];

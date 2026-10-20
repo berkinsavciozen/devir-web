@@ -623,3 +623,13 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .bolum-ipucu::after { content: ""; position: absolute; inset: -8px 0; }
 .zincir-ray { position: absolute; left: 47px; pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { html.kaydir-otur { scroll-snap-type: none; } }
+/* Evren panosu (el notu 3–4) */
+.pano-cipler { position: absolute; left: 0; right: 0; display: flex; gap: 6px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
+.pano-cipler::-webkit-scrollbar { display: none; }
+.pano-cipler .filtre-cip { flex: 0 0 auto; height: 40px; padding: 0 14px; }
+.pano-satir .pano-ikon { position: absolute; left: 10px; top: 12px; overflow: visible; }
+.pano-baglanti { position: absolute; height: 44px; font-size: 14px; font-weight: 650; }
+.harita-gezinme.kaydirilir { touch-action: pan-y; }
+.harita-suzgec { position: absolute; left: 20px; height: 32px; padding: 0 30px 0 12px; border-radius: 16px; font-size: 12.5px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-seftali); }
+.harita-suzgec::after { content: "×"; position: absolute; right: 11px; top: 6px; font-size: 16px; line-height: 18px; font-weight: 600; }
+.harita-suzgec::before { content: ""; position: absolute; inset: -6px 0; }

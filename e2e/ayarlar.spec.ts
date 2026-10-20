@@ -89,7 +89,7 @@ test('M2-ayarlar: masaüstünde yan panelden Ayarlar ve Bana düşenler', async 
   await ac(page, '/?senaryo=berkin', 1440, 900);
   await page.getByRole('button', { name: 'Ayarlar' }).waitFor();
   await cek(page, 'M2-ayarlar');
-  await page.getByRole('button', { name: /^Hepsi/ }).click();
+  await page.getByRole('button', { name: /^Görevler/ }).click();
   await expect(page).toHaveURL(/\/bana/);
   await page.goBack();
   await page.getByRole('button', { name: 'Ayarlar' }).click();
