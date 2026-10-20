@@ -137,6 +137,19 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     T.kullanici.push({ id: 'bos-alan', ad: 'Berkin · çalışma alanı', created_at: '2026-10-14T06:55:00Z' });
     uye('sahte-berkin-yeni', 'berkin@ornek.com', 'bos-alan', 'Berkin', 'sahip', null, '2026-10-14T06:55:00Z');
   }
+  // Bildirimler (el notu 18): ekipten son hareketler (kurgu; durum değiştirmeyen olaylar, Berkin'in görünümü için)
+  if (senaryo === 'berkin') {
+    const ak = (k: string) => T.akis.find((x) => x.kisa_kod === k)?.id;
+    const ol: [string, number, string, string, string, string, string][] = [
+      ['4BZC', 4, 'Otel / mekan temsilcisi', 'dis', 'not', 'İki otelden teklif geldi; üçüncüsü pazartesi.', '2026-10-13T11:05:00+03:00'],
+      ['U422', 14, 'Emre (Test Bank)', 'dis', 'not', 'IP listesi bankanın ağ ekibinde; cuma dönüş bekleniyor.', '2026-10-13T16:30:00+03:00'],
+      ['RTD5', 6, 'Claude', 'agent', 'not', 'Kapak fotoğrafları gelince carousel’i tamamlayacağım.', '2026-10-13T18:05:00+03:00'],
+      ['U422', 3, 'Ölçüm planı agent\'ı', 'agent', 'guncelleme', 'ilerleme: Event taksonomisinde 42 olay listelendi.', '2026-10-14T07:15:00+03:00'],
+      ['U422', 15, 'Selin', 'insan', 'guncelleme', 'ilerleme: Raporun ilk taslağı hazır; bulgular güvenlik ekibine gidiyor.', '2026-10-14T08:40:00+03:00'],
+      ['U422', 15, 'Selin', 'insan', 'cikti', 'Adım 15 · çıktı: Sızma testi özeti', '2026-10-14T08:42:00+03:00'],
+    ];
+    ol.forEach(([k, no, kim, kim_tip, tip, ozet, at], i) => { const id = ak(k); if (id) T.olay.push({ id: 950001 + i, akis_id: id, adim_no: no, kim, kim_tip, arac: kim_tip === 'agent' ? 'Claude' : null, tip, ozet, veri: {}, created_at: new Date(at).toISOString() }); });
+  }
   // K1–K3 · ekip hali (§10): Selin katıldı, Emre'nin daveti bekliyor; Berkin'in ikinci alanı (Kapsama testi, gerçek) ve Misafir daveti (kurgu)
   if (o.hal === 'ekip' && senaryo === 'berkin') {
     uye('sahte-selin', 'selin@ornek.com', BERKIN_ALAN, 'Selin', 'ekip', null, '2026-10-12T15:10:00Z');

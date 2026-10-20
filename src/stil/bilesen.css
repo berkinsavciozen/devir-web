@@ -627,9 +627,22 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .pano-cipler { position: absolute; left: 0; right: 0; display: flex; gap: 6px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
 .pano-cipler::-webkit-scrollbar { display: none; }
 .pano-cipler .filtre-cip { flex: 0 0 auto; height: 40px; padding: 0 14px; }
+.gorev-suzgec .filtre-cip { height: 44px; }
+.gorev-harita .gezegen-hedef { cursor: pointer; }
 .pano-satir .pano-ikon { position: absolute; left: 10px; top: 12px; overflow: visible; }
 .pano-baglanti { position: absolute; height: 44px; font-size: 14px; font-weight: 650; }
 .harita-gezinme.kaydirilir { touch-action: pan-y; }
 .harita-suzgec { position: absolute; left: 20px; height: 32px; padding: 0 30px 0 12px; border-radius: 16px; font-size: 12.5px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-seftali); }
 .harita-suzgec::after { content: "×"; position: absolute; right: 11px; top: 6px; font-size: 16px; line-height: 18px; font-weight: 600; }
 .harita-suzgec::before { content: ""; position: absolute; inset: -6px 0; }
+/* bildirim zili (el notu 18) */
+.zil-dugme { position: absolute; width: 44px; height: 44px; border: 0; border-radius: 22px; padding: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--renk-zemin-kart) 55%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; z-index: 3; }
+.zil-dugme:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.zil-sayi { position: absolute; top: -2px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-size: 11px; font-weight: 800; line-height: 18px; text-align: center; }
+.okunmamis-nokta { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 4px; background: var(--renk-vurgu-seftali); vertical-align: 1px; }
+.satir-kart .soluk { font-weight: 500; color: var(--renk-metin-ink2); }
+/* Ayarlar tek sayfa (el notu 17): grup başlıkları kaydırma durağı, rol tablosu "?" arkasında */
+.ayar-grup { scroll-margin-top: 24px; }
+.ayar-yardim { position: absolute; right: 20px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-kart) 55%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); color: var(--renk-metin-ink2); font-size: 17px; font-weight: 700; cursor: pointer; }
+.ayar-yardim:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.satir-kart > .satir-gemi { position: absolute; right: 12px; top: calc(50% - 14px); overflow: visible; }

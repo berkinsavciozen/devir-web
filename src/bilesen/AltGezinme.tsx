@@ -2,7 +2,7 @@ import { useOzet } from '../api/sorgular';
 import { git as yonlen } from '../yonlendirme';
 
 export type Sekme = 'evren' | 'akislar' | 'bana' | 'ayarlar';
-const YOL: Record<Sekme, string> = { evren: '/', akislar: '/akislar', bana: '/bana', ayarlar: '/ayarlar' };
+const YOL: Record<Sekme, string> = { evren: '/', akislar: '/akislar', bana: '/gorevler', ayarlar: '/ayarlar' };
 
 const renk = (on: boolean) => (on ? 'var(--renk-vurgu-altin)' : 'var(--renk-vurgu-lila)');
 const Parilti = ({ on }: { on: boolean }) => (on ? <circle r="14" fill="url(#glowGold)" opacity=".6" /> : null);
@@ -20,7 +20,7 @@ const AkislarIkon = ({ on }: { on: boolean }) => (
     <path d="M-7,-3 Q0,-9 7,-3 M7,3 Q0,9 -7,3" fill="none" stroke={renk(on)} strokeWidth="1.5" strokeLinecap="round" />
   </svg>
 );
-/** Bana düşenler: sırası gelmiş gezegen (halka + nokta) */
+/** Görevler (eski Bana düşenler): sırası gelmiş gezegen (halka + nokta) */
 const BanaIkon = ({ on }: { on: boolean }) => (
   <svg width="24" height="24" viewBox="-12 -12 24 24" aria-hidden>
     <Parilti on={on} />
@@ -39,11 +39,11 @@ const AyarlarIkon = ({ on }: { on: boolean }) => (
 
 const SEKMELER: [Sekme, string, (p: { on: boolean }) => JSX.Element, string][] = [
   ['evren', 'Evren', EvrenIkon, '10%'], ['akislar', 'Akışlar', AkislarIkon, '29%'],
-  ['bana', 'Bana düşenler', BanaIkon, '71%'], ['ayarlar', 'Ayarlar', AyarlarIkon, '90%'],
+  ['bana', 'Görevler', BanaIkon, '71%'], ['ayarlar', 'Ayarlar', AyarlarIkon, '90%'],
 ];
 
 /**
- * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, ortada + (yeni iş), Bana düşenler, Ayarlar.
+ * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, ortada + (yeni iş), Görevler, Ayarlar.
  * Tasarımda üç yuva vardı; dört sekme denetim planından (CELISKILER 60).
  */
 export function AltGezinme({ aktif, git, yeni }: { aktif: Sekme | null; git?: (s: Sekme) => void; yeni: () => void }) {

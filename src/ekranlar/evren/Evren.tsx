@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueries, useQuery } from '@tanstack/react-query';
-import { api } from '../../api/istemci';
+import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiHatasi } from '../../api/istemci';
 import { SAHTE, simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
+import { useOlaylar, Zil } from '../../bilesen/Zil';
 import { GenisSahne, Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { Segment } from '../akis/Adim';
@@ -23,7 +24,7 @@ import { bos, type Daire } from '../akis/katman';
 import { Lejant, SoruIkon } from '../akis/Lejant';
 import { hareketAz } from '../../ayar/hareket';
 import { PANO_AD, pano, type PanoTur } from './pano';
-import { EvrenPano, panoYerlesimi } from './Pano';
+import { EvrenPano, panoYerlesimi, sonHareketler } from './Pano';
 
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
 /** Bu sayıdan çok aktif akışta evren ölçek düzenine geçer (J1). */
@@ -33,9 +34,30 @@ const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00
 /** Kapanan akışlar (dış halka). */
 const useKapananlar = () => useQuery({ queryKey: ['akislar', 'kapandi'], queryFn: () => api.get<any>('/akislar?durum=kapandi') });
 
-/** Akış detayları (küçük galaksiler için; §9-15 gelene kadar N çağrı, önbellekli). */
+/** Sunucu toplu detayı biliyor mu (0.12.0 /akislar/detay); 404 görülünce bu oturumda tek tek çağrıya dönülür. */
+let topluDetay: boolean | null = null;
+/**
+ * Akış detayları (küçük galaksiler için). 0.12.0'da 30'arlı toplu çağrı; dönenler tek akış önbelleğine de yazılır,
+ * böylece galaksiye geçince yeniden çekilmez. Eski sunucuda akış başına bir çağrı.
+ */
 export function useDetaylar(kodlar: string[]) {
-  const qs = useQueries({ queries: kodlar.map((kod) => ({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) })) });
+  const qc = useQueryClient();
+  const [toplu, setToplu] = useState(topluDetay);
+  const parcalar: string[][] = [];
+  for (let i = 0; i < kodlar.length; i += 30) parcalar.push(kodlar.slice(i, i + 30));
+  useQueries({ queries: parcalar.map((P) => ({
+    queryKey: ['akislar-detay', P.join(',')], enabled: toplu !== false,
+    retry: (n: number, e: unknown) => !(e instanceof ApiHatasi && e.durum === 404) && n < 2,
+    queryFn: async () => {
+      try {
+        const r = await api.get<any>(`/akislar/detay?kodlar=${P.map(encodeURIComponent).join(',')}`);
+        topluDetay = true;
+        for (const [k, v] of Object.entries(r.akislar || {})) qc.setQueryData(['akis', k], v);
+        return r;
+      } catch (e) { if (e instanceof ApiHatasi && e.durum === 404) { topluDetay = false; setToplu(false); } throw e; }
+    },
+  })) });
+  const qs = useQueries({ queries: kodlar.map((kod) => ({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`), enabled: toplu === false })) });
   const d: Record<string, any> = {};
   qs.forEach((q, i) => { if (q.data) d[kodlar[i]] = q.data; });
   return d;
@@ -161,6 +183,8 @@ function CumleHedef({ c, x, y, w, h }: { c: { kod?: string; no?: number; metin: 
 /** Mobil evrende gezinme alanı: cümlelerin altı, alt gezinmenin üstü. */
 const EVREN_BOLGE: Bolge = { x: 0, y: 228, w: 390, h: 510 };
 const LEJANT_ANAHTAR = 'devir:evren-dili';
+/** Ayarlar · "Evren dilini yeniden göster": evren bir sonraki açılışta dili yeniden tanıtır. */
+export function evrenDiliniSifirla() { try { localStorage.removeItem(LEJANT_ANAHTAR); } catch { /* depolama kapalı */ } }
 /** Pano bölümünün başı: ilk ekranın hemen altı. */
 const PANO_Y = 852;
 /** Evren dili ilk açılışta bir kez: genel tanıtım görüldükten sonra (sahte kipte yalnız ?lejant=1). */
@@ -241,6 +265,7 @@ export function Evren({ ben }: { ben: Ben }) {
   const [suz, setSuz] = useState<PanoTur | null>(null);
   const soluk = useMemo(() => suz ? new Set(kartlar.map((k) => k.kod).filter((kod) => !P.adimlar[suz].some((a) => a.kod === kod))) : null, [suz, P]); // eslint-disable-line react-hooks/exhaustive-deps
   const panoRef = useRef<HTMLHeadingElement>(null);
+  const olaylar = useOlaylar();
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const E = useEvrenGezinme(EVREN_BOLGE, cizim && !cizim.olcek ? cizim : null, detay, kisi, NOW, undefined, soluk);
   // evren dili (madde 2, 3): "?" ile; ilk açılışta bir kez kendiliğinden tanıtılır
@@ -250,7 +275,7 @@ export function Evren({ ben }: { ben: Ben }) {
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 21, yildiz: 330 }} etiket="Evren"><AvatarAd ad={kisi} /></Sahne>;
   const bos = ozet.data && !kartlar.length && !ozet.data.taslaklar?.length;
-  const avatar = () => git('/hesap');
+  const avatar = () => git('/ayarlar?bolum=ben');
   if (bos) return <BosEvren ad={kisi} avatar={avatar} />;
   if (!cizim) return null;
 
@@ -266,13 +291,14 @@ export function Evren({ ben }: { ben: Ben }) {
   });
   const tum = [...kartlar, ...kapanan];
   const goster = suz ?? P.varsayilan;
-  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y);
+  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length);
   const panoAc = () => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' });
 
   return (
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 470, 200] }} cizim={(E.sonuc?.svg ?? '') + satirlar.map(({ c, y: yy }) => c.tur === 'engel' ? iconCloud(32, yy - 5, .55) : c.tur === 'bekleme' ? iconRings(32, yy - 3, .72) : '').join('')} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
+      <Zil y={36} />
       {satirlar.map(({ c, s, y: yy }) => (
         <Metin key={c.metin} y={yy} x={56} fs={17.5} lh={22} serif as="p" style={{ whiteSpace: s.length > 1 ? 'nowrap' : undefined }}>
           {s.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
@@ -306,11 +332,13 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
   const O = cizim.olcek;
   const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now, undefined, soluk);
   const panoRef = useRef<HTMLHeadingElement>(null);
-  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y);
+  const olaylar = useOlaylar();
+  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length);
   return (
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
+      <Zil y={36} />
       <Metin y={112} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} kaydir />
       {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
@@ -365,13 +393,14 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep lejant={() => setLejant(true)} />
       {suz && <button type="button" className="harita-suzgec" style={{ top: B.y + 8, left: 40 }} onClick={() => setSuz(null)} aria-label={`Süzgeç: ${PANO_AD[suz]}. Kaldır.`}>{PANO_AD[suz]} · {P.adimlar[suz].length}</button>}
       <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" />
-      <div style={{ position: 'absolute', left: X + 4, top: 30, width: 284 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>
+      <div style={{ position: 'absolute', left: X + 4, top: 30, width: 232 }}><Segment secenekler={['Evren', 'Akışlar']} aktif={0} sec={(i) => { if (i) git('/akislar'); }} /></div>
+      <Zil x={X + 244} y={30} />
       <button type="button" className="genis-geri genis-ayarlar" style={{ left: X + 296, top: 30 }} aria-label="Ayarlar" onClick={() => git('/ayarlar')}>
         <svg aria-hidden width="24" height="24" viewBox="-12 -12 24 24"><path d="M-7,-4 L7,-4 M-7,4 L7,4" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" strokeLinecap="round" /><circle cx="-2.5" cy="-4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /><circle cx="3" cy="4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /></svg>
       </button>
       <button type="button" className="genis-geri" style={{ left: X + 348, top: 30 }} aria-label="Yeni iş" onClick={() => git('/yeni')} />
       <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>PANO</h2>
-      <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/bana')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
+      <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/gorevler')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
       <Metin y={140} x={X + 24} fs={15} lh={20} serif as="p" style={{ right: 'auto', width: PW - 48, whiteSpace: tutanak.length > 1 ? 'nowrap' : undefined }}>{tutanak.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
       {P.suzgecler.length > 0 && <div className="pano-cipler" role="group" aria-label="Duruma göre süz; haritada da süzer" style={{ top: cipY, left: X + 4, right: 'auto', width: PW - 8 }}>
         {P.suzgecler.map((c) => <button key={c.tur} type="button" className="filtre-cip" aria-pressed={goster === c.tur} onClick={() => setSuz(suz === c.tur ? null : c.tur)}>{PANO_AD[c.tur]} {c.n}</button>)}
