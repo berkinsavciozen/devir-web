@@ -65,6 +65,8 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
   if (done) { const a1 = -90 + done / n * 360, p = (a) => [x + Math.cos(a * Math.PI / 180) * orR, y + Math.sin(a * Math.PI / 180) * orR]; const [x0, y0] = p(-90), [x1, y1] = p(Math.min(a1, 269.9)); s += `<path d="M${f(x0)},${f(y0)} A${f(orR)},${f(orR)} 0 ${a1 + 90 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>`; }
   kalemler.forEach((k, i) => {
     const a = (-90 + (i + .5) / n * 360) * Math.PI / 180, mx = x + Math.cos(a) * orR, my = y + Math.sin(a) * orR, mr = (o.mr ?? 4.6) * ps;
+    // ip: ana gezegene bağlı olduğu görülsün (alt adım, ayrı gezegen değil)
+    if (o.ip) s += `<path d="M${f(x + Math.cos(a) * (r + 1))},${f(y + Math.sin(a) * (r + 1))} L${f(mx - Math.cos(a) * mr)},${f(my - Math.sin(a) * mr)}" stroke="#D9CCFF" stroke-width="1" opacity=".55"/>`;
     if (k.durum === 'tamam') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * 2.4)}" fill="url(#glowGold)" opacity=".8"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pLit2)"/>`;
     else if (k.durum === 'suruyor' || k.durum === 'hazir') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.6)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 1.6"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#2A2452"/><path d="M${f(mx)},${f(my - mr)} A${f(mr)},${f(mr)} 0 0 1 ${f(mx)},${f(my + mr)}Z" fill="#FFE29A"/>`;
     else if (k.durum === 'engelli') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pBlock)"/><path d="M${f(mx - mr * .6)},${f(my - mr * .6)} L${f(mx + mr * .6)},${f(my + mr * .6)}" stroke="#1A1238" stroke-width="1.6"/>`;
@@ -197,7 +199,13 @@ export function yolCiz(M, o = {}) {
       const pp = G.konumAn(ad, g.t - 36e5 * 3) || { x: G.cx, y: G.cy }, a = Math.atan2(pp.y - g.y, pp.x - g.x);
       t += `<circle cx="${f(g.x + Math.cos(a) * (r + 3))}" cy="${f(g.y + Math.sin(a) * (r + 3))}" r="${f(2.4 * m13)}" fill="${UYE_RENK(G.uyeOf[ad])}" stroke="#1A1238" stroke-width=".8"/>`;
     });
-    if (o.sats && o.sats[no]) t += uydular(g.x, g.y, r, o.sats[no], ps);
+    // alt adımlar (madde 10): ilk bakışta seçilsin diye uydu 2 kat, yörünge öğe katıyla açılır; azsa baş harfli
+    // yürüyen aşamada (o.satOn) uydu 2 kat ve baş harfli; başlamamış aşamada yalnız yörünge ve küçük uydular (kalabalık olmasın)
+    if (o.sats && o.sats[no]) {
+      const ks = o.sats[no], n = ks.length, on = o.satOn == null || o.satOn === no, basladi = ks.some((k) => k.durum !== 'sirada');
+      t += on ? uydular(g.x, g.y, r, ks, ps, { mr: Math.min(r * .4 / ps, 9.2 * 8 / Math.max(8, n)), gap: 16 * Math.sqrt(OK), ini: n <= 6, ip: true })
+        : uydular(g.x, g.y, r, basladi ? ks : [], ps, { mr: 3.6 * Math.min(OK, 1.3), gap: 9 * Math.sqrt(OK) });
+    }
     return t;
   };
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
@@ -247,15 +255,21 @@ export function yolCiz(M, o = {}) {
  * Şeritler: her üye bir satır; x = zaman. b: { x, y, w, h } kutu ;
  * o: { lw, satir, pxGun, tBas, x (sürgü), sel, focus, uyeler, now, herGun, ps, states, bg, kaydir, ships, kayma (yatay px), ok, yk }
  */
+/** Şerit kutusunun ad sütunu ve zaman alanı (seritler ile aynı hesap; sığdırma ve kaydırma için). */
+export function seritOlcu(b, o = {}) {
+  const OK = o.ok ?? 1, lw = (o.lw ?? 72) * (1 + (OK - 1) * .35);
+  return { lw, X0: b.x + lw + 10, XW: b.w - lw - 14 };
+}
+
 export function seritler(M, Y, b, o = {}) {
   const F = M.F, G = Y.G, RENK = Y.RENK;
   const UYE_RENK = (u) => RENK[u.ad] || '#9EE6CF';
   const byNo = byNoOf(F), ps = o.ps ?? 1, OK = o.ok ?? 1, YK = o.yk ?? 1;
   // ad sütunu büyüyen gemi ve yazıyla genişler (madde 15)
-  const NOWx = o.now, X = o.x ?? NOWx, lw = (o.lw ?? 72) * (1 + (OK - 1) * .35), satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
+  const NOWx = o.now, X = o.x ?? NOWx, { lw } = seritOlcu(b, o), satir = o.satir ?? 40, pxGun = o.pxGun ?? 24;
   const us = (o.uyeler || G.uyeler.map((u) => u.ad)).map((ad) => G.uyeOf[ad]).filter(Boolean);
   const tBas = o.tBas ?? G.T0;
-  const X0 = b.x + lw + 10, XW = b.w - lw - 14;
+  const { X0, XW } = seritOlcu(b, o);
   const kay = o.kayma ?? 0;
   const xOf = (t) => X0 + (t - tBas) / GUN * pxGun - kay;
   const yOf = (i) => b.y + 14 + i * satir + satir / 2;

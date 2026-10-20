@@ -65,7 +65,8 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
       acikSayfalar.delete(id);
       // React geliştirme kipinde etki iki kez kurulur: hemen yeniden açılan sayfa için geri gitme
       if (!bizden) setTimeout(() => { if (!acikSayfalar.has(id) && history.state?.altSayfa === id) history.back(); }, 0);
-      onceki?.focus?.();
+      // odak geri döner ama sayfa kaydırılmaz (menüden bir bölüme inilmiş olabilir)
+      onceki?.focus?.({ preventScroll: true });
     };
   }, [acik, id, guclu, kirli]);
 

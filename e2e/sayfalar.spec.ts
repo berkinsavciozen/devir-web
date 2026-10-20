@@ -9,13 +9,15 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('B3-menu: "…" menüsü → bilgi sekmeleri', async ({ page }) => {
+test('B3-menu: "…" menüsü → haritanın altındaki bölümde sekme', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Akış menüsü' }).click();
   await page.waitForTimeout(200);
   await cek(page, 'B3-menu');
   await page.getByRole('button', { name: /^Kararlar/ }).click();
-  await expect(page).toHaveURL(/\/akis\/RTD5\/bilgi\?sekme=kararlar/);
+  // telefonda aynı sayfada kalır (el notu 12); bölüm başlığı görünür olur
+  await expect(page).toHaveURL(/\/akis\/RTD5\?/);
+  await expect(page.locator('.bolum-durak')).toBeInViewport();
   await expect(page.getByRole('tab', { name: 'Kararlar' })).toHaveAttribute('aria-selected', 'true');
 });
 

@@ -12,7 +12,7 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { iconCloud } from '../../cizim/ekran';
 import { C, planet, route, shareRing, ship, sparkle } from '../../cizim/ortak.js';
 import { akisModeli, gunAy, gunAyHafta, saat, uyeRenkleri, yolCiz, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
 import { git, arama } from '../../yonlendirme';
 import { haritaCumlesi, useAkis } from './Galaksi';
 import { Karar } from './Karar';
@@ -315,9 +315,11 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   const durumGor = BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark';
   const sahipAjan = ajanMi(a.sahip, a.sahip_tip), sahipDis = !sahipAjan && a.sahip_tip === 'dis' && a.sahip !== ben;
   const y0 = 10;
-  // zincir: bekleyen (Sen ya da sahip) → bu adım → tuttuğu (en çok 3)
-  const ry = y0 + 372;
-  const zincir = tut.slice(0, 3).map((n) => by.get(n));
+  // bağ zinciri (madde 14): solda bu adımı etkileyenler (doğrudan önündekiler, bitenler yanık), ortada adım, sağda etkiledikleri
+  const ry = y0 + 384;
+  const gor = (z: any) => (BITTI(z.durum) ? (z.durum === 'atlandi' ? 'ghost' : 'lit') : z.durum === 'engelli' ? 'block' : z.durum === 'hazir' || z.durum === 'suruyor' ? 'wait' : 'dark');
+  const onde: any[] = (a.bagimli || d.adimlar.find((x: any) => x.no === a.no)?.bagimli || []).map((n: number) => by.get(n)).filter(Boolean).slice(ist ? -2 : -3);
+  const sonra: any[] = d.adimlar.filter((x: any) => (x.bagimli || []).includes(a.no)).slice(0, 3);
   let svg = `<ellipse cx="195" cy="${y0 + 138}" rx="160" ry="70" fill="url(#${durumGor === 'block' ? 'glowCoral' : 'glowGold'})" opacity=".35"/>`;
   svg += planet(195, y0 + 142, 30, durumGor, { cloudGap: 10, karar: a.karar_adimi, waitRings: 2 });
   const pay = isPayi(a.olaylar);
@@ -325,23 +327,31 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   svg += ship(116, y0 + 150, -8, sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahipDis ? '' : kisaAd(a.sahip)[0], renk[a.sahip] || C.mint, 1.15, { flame: false });
   const chipRenk = ['#FF8A78', '#B9A6F2', '#FFD27A'];
   for (let i = 0; i < 3; i++) svg += `<rect x="${20 + i * 119}" y="${y0 + 276}" width="112" height="54" rx="18" fill="#FFFFFF" fill-opacity=".06" stroke="${chipRenk[i]}" stroke-opacity=".6"/>`;
-  const basta = ist ? { ad: 'Sen', gemi: ship(46, ry, 0, 'insan', (ben[0] || 'S').toLocaleUpperCase('tr'), C.peach, 1.05, { flame: false }) } : null;
-  if (basta) svg += basta.gemi + route([66, ry], [148, ry], { col: C.peach });
-  svg += `<g transform="translate(166,${ry})">${durumGor === 'block' ? '<circle r="11" fill="url(#pBlock)"/><circle cx="4.5" cy="2" r="9" fill="#1A1238" opacity=".9"/>' : planet(0, 0, 11, durumGor, { life: false, waitRings: 1 })}<circle r="12" fill="none" stroke="${durumGor === 'block' ? '#FF8A78' : '#FFD27A'}" stroke-width="1.2"/></g>`;
-  let onceki = 166, oncekiNo = a.no;
-  zincir.forEach((z, i) => {
-    const x = 228 + i * 56;
-    const kr = kritik.has(z.no) && kritik.has(oncekiNo);
-    svg += route([onceki + (i ? 12 : 14), ry], [x - 12, ry], kr ? { kind: 'critical' } : { col: C.peach });
-    svg += planet(x, ry, 10, BITTI(z.durum) ? 'lit' : z.durum === 'engelli' ? 'block' : z.durum === 'hazir' ? 'wait' : 'dark', { life: false, karar: z.karar_adimi });
-    onceki = x; oncekiNo = z.no;
+  const basta = ist ? { ad: 'Sen', gemi: '' } : null;
+  const solX = (i: number) => 140 - i * 56, sagX = (i: number) => 250 + i * 56;
+  const soldakiler: { no?: number; x: number; ad: string }[] = onde.slice().reverse().map((z, i) => ({ no: z.no, x: solX(i), ad: adimEtiketi(z) }));
+  if (basta) { const x = solX(soldakiler.length); soldakiler.push({ x, ad: 'Sen' }); svg += ship(x, ry, 0, 'insan', (ben[0] || 'S').toLocaleUpperCase('tr'), C.peach, .95, { flame: false }); }
+  onde.slice().reverse().forEach((z, i) => {
+    svg += route([solX(i) + 12, ry], [i ? solX(i - 1) - 12 : 195 - 15, ry], BITTI(z.durum) ? { col: '#FFD27A' } : { col: C.peach });
+    svg += planet(solX(i), ry, 10, gor(z), { life: false, karar: z.karar_adimi });
   });
+  if (basta && onde.length === 0) svg += route([solX(0) + 16, ry], [195 - 15, ry], { col: C.peach });
+  svg += `<g transform="translate(195,${ry})">${planet(0, 0, 13, durumGor, { life: false, waitRings: 1, cloudGap: 2 })}<circle r="16" fill="none" stroke="#FFF3E8" stroke-width="1.4" opacity=".7"/></g>`;
+  sonra.forEach((z, i) => {
+    const kr = kritik.has(z.no) && kritik.has(a.no);
+    svg += route([i ? sagX(i - 1) + 12 : 195 + 15, ry], [sagX(i) - 12, ry], kr ? { kind: 'critical' } : { col: C.peach });
+    svg += planet(sagX(i), ry, 10, gor(z), { life: false, karar: z.karar_adimi });
+  });
+  // tuttuğu ama doğrudan bağlı olmayanlar: "+n"
+  const dolayli = tut.length - sonra.filter((z) => !BITTI(z.durum)).length;
   const sayilar: [string, string][] = [
     [a.durum === 'engelli' || a.durum === 'hazir' || a.durum === 'suruyor' ? sureKisa(a.bekleme_saat) : BITTI(a.durum) ? gunAy(Date.parse(a.durum_at)) : '–', a.durum === 'engelli' ? 'engelli' : a.durum === 'hazir' ? 'bekliyor' : a.durum === 'suruyor' ? 'sürüyor' : a.durum_etiket || a.durum],
     [`${tut.length} adım`, 'tutuyor'],
     a.son_tarih ? [gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00')), 'son tarih'] : a.en_erken_bitis ? [gunAy(Date.parse(a.en_erken_bitis)), 'en erken'] : ['–', 'son tarih'],
   ];
   const benim = a.sahip === ben && !BITTI(a.durum);
+  // ne yapılacak (madde 14): beklenen çıktı ya da kısaltılmış adın tamamı; bitmiş adımda yazılmaz
+  const yapilacak = BITTI(a.durum) ? null : a.beklenen_cikti || (a.ad !== adimAdi(a) ? a.ad : null);
   const bitir = useMutation({
     mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${a.no}`, { durum: 'tamam' }),
     onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['akis', kod] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['adim', kod, a.no] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); },
@@ -357,10 +367,15 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
       {sayilar.map(([b, k], i) => (
         <div key={k} className="sayi-kutusu" style={{ left: 20 + i * 119, top: P(y0 + 276) }}><b>{b}</b><small>{k}</small></div>
       ))}
-      {basta && <Metin y={P(ry + 28)} x={26} fs={11.5} agirlik={700} style={{ width: 40, textAlign: 'center' }}>Sen</Metin>}
-      {zincir.map((z, i) => <Metin key={z.no} y={P(ry + 28)} x={228 + i * 56 - 28} fs={11.5} agirlik={600} renk="ink2" style={{ width: 56, textAlign: 'center' }}>{adimAdi(z).split(' ')[0]}</Metin>)}
-      {zincir.map((z, i) => <button key={'h' + z.no} type="button" className="zincir-hedef" style={{ left: 228 + i * 56 - 28, top: P(ry) - 22 }} aria-label={`Bu adım bitince: ${z.no}. adım, ${z.ad}.`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />)}
-      <div className="adim-eylem" style={{ top: P(y0 + 414) }}>
+      {(soldakiler.length > 0 || sonra.length > 0) && <>
+        {soldakiler.length > 0 && <Metin y={P(ry - 30)} x={20} fs={11} agirlik={700} renk="ink3" style={{ width: 150, letterSpacing: '.6px' }}>ETKİLEYEN</Metin>}
+        {sonra.length > 0 && <Metin y={P(ry - 30)} hiza="sag" x={370} fs={11} agirlik={700} renk="ink3" style={{ letterSpacing: '.6px' }}>{`ETKİLEDİĞİ${dolayli > 0 ? ` · +${dolayli} dolaylı` : ''}`}</Metin>}
+        {[...soldakiler, ...sonra.map((z, i) => ({ no: z.no, x: sagX(i), ad: adimEtiketi(z) }))].map((z) => <Metin key={'e' + (z.no ?? 'sen')} y={P(ry + 30)} x={z.x - 28} fs={11.5} agirlik={z.no == null ? 700 : 600} renk={z.no == null ? 'ink' : 'ink2'} style={{ width: 56, textAlign: 'center' }}>{z.ad}</Metin>)}
+        {[...soldakiler.filter((z) => z.no != null), ...sonra.map((z, i) => ({ no: z.no, x: sagX(i) }))].map((z) => { const b = by.get(z.no!); return <button key={'h' + z.no} type="button" className="zincir-hedef" style={{ left: z.x - 28, top: P(ry) - 22 }} aria-label={`${sonra.some((x) => x.no === z.no) ? 'Bu adım bitince' : 'Önce'}: ${z.no}. adım, ${b?.ad ?? ''}.`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />; })}
+      </>}
+      <Metin y={P(y0 + 182)} x={76} fs={11.5} agirlik={700} renk={kritik.has(a.no) && !BITTI(a.durum) ? 'altin' : 'ink2'} style={{ width: 80, textAlign: 'center', lineHeight: '14px' }}>{kisaAd(a.sahip)}{kritik.has(a.no) && !BITTI(a.durum) ? <><br />kritik yol</> : null}</Metin>
+      {yapilacak && <Metin y={P(y0 + 440)} fs={14} lh={19} renk="ink2" className="yapilacak"><b>Yapılacak:</b> {yapilacak}</Metin>}
+      <div className="adim-eylem" style={{ top: P(y0 + (yapilacak ? 470 : 430)) }}>
         {benim ? (
           <>
             {claude && <Dugme tur="ikincil" ton="lila" yukseklik={54} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
@@ -371,7 +386,7 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
             ikon={<svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -12, 'insan', '✦', '#E8738A', .75, { flame: false }) }} />}>Claude’da aç</Dugme>
         ) : null}
       </div>
-      {bitir.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 474) }}>{(bitir.error as Error).message}</p>}
+      {bitir.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 534) }}>{(bitir.error as Error).message}</p>}
     </div>
   );
 }
