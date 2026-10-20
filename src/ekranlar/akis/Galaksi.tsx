@@ -150,7 +150,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // haritanın altındaki bölüm (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler; telefonda aynı sayfada
   const B = useAkisBolumu({ d, kod, ben: sahip, y0: BOLUM_Y + 44 });
   const bolumRef = useRef<HTMLHeadingElement>(null);
-  const bolumAc = (i?: number) => { if (i != null && i >= 0) B.sec(i); bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }); };
+  // alt sayfa kapanırken geçmiş bir adım geri gider; kaydırma ondan sonra yapılır
+  const bolumAc = (i?: number) => { if (i != null && i >= 0) B.sec(i); setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
   // kalabalık akış (> 6 kişi): ps .82, şerit satırı 27 (§4.14)
@@ -320,7 +321,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   for (const sh of (Y.gemiler || []) as any[]) {
     const n = d.adimlar.filter((a: any) => a.sahip === sh.ad && !BITTI(a.durum)).length;
     const tur = sh.tip === 'agent' ? 'agent' : sh.tip === 'dis' ? 'dış katılımcı' : 'insan';
-    koy({ key: 'kisi' + sh.ad, x: sh.x, y: sh.y, r: 22, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
+    // gemi kalabalıkta kalırsa hedef küçülür ve gemi gövdesi içinde boş yere kayar (kişi her zaman seçilebilir)
+    const yer = [22, 18, 15].flatMap((r) => [[0, 0], [0, 8], [8, 4], [-8, 4], [0, -8], [10, 10], [-10, 10]].map(([dx, dy]) => ({ x: sh.x + dx, y: sh.y + dy, r }))).find((c) => gor(c.x, c.y) && bos(c, hedefler));
+    if (yer) hedefler.push({ key: 'kisi' + sh.ad, ...yer, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
   }
 
   // başlık çipleri: rol bazlı; dokununca ilgili adım ya da kendi odağın
