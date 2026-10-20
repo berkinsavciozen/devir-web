@@ -4,7 +4,6 @@ import { api, alanSecimi } from '../../api/istemci';
 import { kimlik } from '../../api/kimlik';
 import { oturumDegisti, sorguIstemcisi, useBen } from '../../api/sorgular';
 import type { Ben, Davet, Uyelik } from '../../api/turler';
-import { AltSayfa } from '../../bilesen/AltSayfa';
 import { galaxy, ship } from '../../cizim/ortak.js';
 import { git } from '../../yonlendirme';
 
@@ -36,72 +35,23 @@ export function SatirKart({ y, h = 58, ikon, ust, alt, sec, sag, onClick, etiket
   );
 }
 
-/** K3 · Avatar sayfası: kişi, çalışma alanları, davet, Ayarlar (sahip), Çıkış (§5 K3). */
-export function HesapSayfasi({ kapat }: { kapat: () => void }) {
-  const ben = useBen().data as Ben | undefined;
-  const [hata, setHata] = useState<string | null>(null);
-  const katil = useMutation({
-    mutationFn: (d: Davet) => api.post<{ katildi: { alan_id: string } }>('/kayit', { davet: d.id }),
-    onSuccess: (r) => alanaGec(r.katildi.alan_id),
-    onError: (e) => setHata((e as Error).message),
-  });
-  if (!ben) return null;
-  const U: Uyelik[] = ben.uyelikler || [], D: Davet[] = ben.bekleyen_davetler || [];
-  const acikAlan = ben.calisma_alani?.id;
-  // yerleşim: bölüm başlığı L, satırlar L+12'den 66 arayla; çizgi son satırın 18 altında (son-090 K3)
-  let L = 108, cizgi = 96;
-  const alanL = U.length > 1 ? L : null;
-  if (alanL != null) { const son = alanL + 12 + U.length * 66 - 8; cizgi = son + 18; L = son + 26; }
-  const davetL = D.length ? L : null;
-  if (davetL != null) { const son = davetL + 12 + D.length * 66 - 8; cizgi = son + 18; }
-  const y0 = Math.max(120, 844 - (cizgi + 134)), P = (y: number) => y - 28;
-  return (
-    <AltSayfa acik kapat={kapat} baslik="Hesap" yukseklik={y0} duraklar={['orta', 'yuksek']}>
-      <div className="karar-panel hesap-panel" style={{ height: cizgi + 134 - 28 }}>
-        <Svg w={60} h={60} x={16} y={P(52) - 30} svg={kisiGemi(ben.kisi || '', 'insan', true, 46, P(52), 1)} />
-        <b className="hesap-ad" style={{ top: P(48) - 15 }}>{ben.kisi}</b>
-        <small className="hesap-eposta" style={{ top: P(68) - 12 }}>{ben.eposta}</small>
-        {alanL != null && <>
-          <h3 className="bolum-baslik" style={{ top: P(alanL) - 12 }}>ÇALIŞMA ALANLARI</h3>
-          {U.map((u, i) => {
-            const sec = u.alan_id === acikAlan, y = P(alanL + 12 + i * 66);
-            return <SatirKart key={u.alan_id} y={y} ikon={alanIkon(26, 29, sec ? '#FFD27A' : '#8E80D6')} ust={alanAdi(u.alan, u.kisi)} alt={`${rolAdi(u.rol)}${sec ? ' · şu an açık' : ''}`} sec={sec} onClick={sec ? undefined : () => alanaGec(u.alan_id)} etiket={sec ? undefined : `${alanAdi(u.alan, u.kisi)} alanına geç`} />;
-          })}
-        </>}
-        {davetL != null && <>
-          <h3 className="bolum-baslik" style={{ top: P(davetL) - 12 }}>DAVET</h3>
-          {D.map((d, i) => (
-            <SatirKart key={d.id} y={P(davetL + 12 + i * 66)} ikon={`<g transform="translate(26,29)"><circle r="15" fill="#1E1645" stroke="#F2B8D8" stroke-dasharray="2 3"/>${zarfIkon(0, 0, .22)}</g>`}
-              ust={alanAdi(d.alan || '', d.davet_eden)} alt={`${rolAdi(d.rol)}${d.davet_eden ? ` · ${d.davet_eden} davet etti` : ''}`}
-              sag={<button type="button" className="satir-eylem altin" onClick={() => katil.mutate(d)} disabled={katil.isPending}>Katıl</button>} />
-          ))}
-        </>}
-        {hata && <p className="canli-hata" role="alert" style={{ top: P(cizgi) - 22 }}>{hata}</p>}
-        <hr className="hesap-cizgi" style={{ top: P(cizgi) }} />
-        {/* Ayarlar herkese açık; yönetim satırları içeride yalnız sahibe */}
-        {<button type="button" className="hesap-satir" style={{ top: P(cizgi + 34) - 22 }} onClick={() => git('/ayarlar')}>
-          <svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><circle r="9" fill="none" stroke="#D9CCFF" strokeWidth="1.6" /><circle r="3" fill="#D9CCFF" /></svg><span>Ayarlar</span><Ok />
-        </button>}
-        <button type="button" className="hesap-satir cikis" style={{ top: P(cizgi + 86) - 22 }} onClick={cikisYap}>
-          <svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><path d="M2,-7 L-6,-7 L-6,7 L2,7 M-1,0 L9,0 M5,-4 L9,0 L5,4" stroke="#FFB4A8" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg><span>Çıkış yap</span>
-        </button>
-      </div>
-    </AltSayfa>
-  );
-}
-
 /** Alan değiştir: başlık değişir, seçim cihazda kalır, önbellek temizlenir, evren yeniden çekilir (§5 K3). */
 export function alanaGec(id: string) { alanSecimi.koy(id); sorguIstemcisi.clear(); oturumDegisti(); git('/', { yerine: true }); }
 async function cikisYap() { await kimlik.cikis(); alanSecimi.koy(null); oturumDegisti(); git('/', { yerine: true }); }
 
 export const useUyeler = (etkin = true) => useQuery({ queryKey: ['uyeler'], queryFn: () => api.get<any>('/uyeler'), enabled: etkin });
 
-/** Ayarlar · Hesap sekmesi: kişi, çalışma alanları, davetler, çıkış (K3'ün sayfa hali). */
-export function hesapYuksekligi(ben: Ben | undefined, y: number) {
+/** Ayarlar · Ben grubu: kişi, çalışma alanları, davetler (eski Hesap çekmecesi K3); çıkış sayfanın sonunda. */
+export function hesapYuksekligi(ben: Ben | undefined, y: number, cikis = true) {
   const U = ben?.uyelikler?.length || 0, D = ben?.bekleyen_davetler?.length || 0;
-  return y + 80 + (U ? 34 + U * 66 : 0) + (D ? 34 + D * 66 : 0) + 24 + 50;
+  return y + 80 + (U ? 34 + U * 66 : 0) + (D ? 34 + D * 66 : 0) + (cikis ? 24 + 50 : 0);
 }
-export function HesapIcerik({ y, ben }: { y: number; ben: Ben | undefined }) {
+export const CikisSatiri = ({ y }: { y: number }) => (
+  <button type="button" className="hesap-satir cikis" style={{ top: y, left: 20, right: 20 }} onClick={cikisYap}>
+    <svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><path d="M2,-7 L-6,-7 L-6,7 L2,7 M-1,0 L9,0 M5,-4 L9,0 L5,4" stroke="#FFB4A8" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg><span>Çıkış yap</span>
+  </button>
+);
+export function HesapIcerik({ y, ben, cikis = true }: { y: number; ben: Ben | undefined; cikis?: boolean }) {
   const [hata, setHata] = useState<string | null>(null);
   const katil = useMutation({
     mutationFn: (d: Davet) => api.post<{ katildi: { alan_id: string } }>('/kayit', { davet: d.id }),
@@ -133,8 +83,6 @@ export function HesapIcerik({ y, ben }: { y: number; ben: Ben | undefined }) {
       ))}
     </>}
     {hata && <p className="canli-hata" role="alert" style={{ top: L }}>{hata}</p>}
-    <button type="button" className="hesap-satir cikis" style={{ top: L + 12, left: 20, right: 20 }} onClick={cikisYap}>
-      <svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><path d="M2,-7 L-6,-7 L-6,7 L2,7 M-1,0 L9,0 M5,-4 L9,0 L5,4" stroke="#FFB4A8" strokeWidth="1.6" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg><span>Çıkış yap</span>
-    </button>
+    {cikis && <CikisSatiri y={L + 12} />}
   </>;
 }

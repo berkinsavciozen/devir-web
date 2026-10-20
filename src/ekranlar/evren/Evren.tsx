@@ -162,6 +162,8 @@ function CumleHedef({ c, x, y, w, h }: { c: { kod?: string; no?: number; metin: 
 /** Mobil evrende gezinme alanı: cümlelerin altı, alt gezinmenin üstü. */
 const EVREN_BOLGE: Bolge = { x: 0, y: 228, w: 390, h: 510 };
 const LEJANT_ANAHTAR = 'devir:evren-dili';
+/** Ayarlar · "Evren dilini yeniden göster": evren bir sonraki açılışta dili yeniden tanıtır. */
+export function evrenDiliniSifirla() { try { localStorage.removeItem(LEJANT_ANAHTAR); } catch { /* depolama kapalı */ } }
 /** Pano bölümünün başı: ilk ekranın hemen altı. */
 const PANO_Y = 852;
 /** Evren dili ilk açılışta bir kez: genel tanıtım görüldükten sonra (sahte kipte yalnız ?lejant=1). */
@@ -252,7 +254,7 @@ export function Evren({ ben }: { ben: Ben }) {
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 21, yildiz: 330 }} etiket="Evren"><AvatarAd ad={kisi} /></Sahne>;
   const bos = ozet.data && !kartlar.length && !ozet.data.taslaklar?.length;
-  const avatar = () => git('/hesap');
+  const avatar = () => git('/ayarlar?bolum=ben');
   if (bos) return <BosEvren ad={kisi} avatar={avatar} />;
   if (!cizim) return null;
 

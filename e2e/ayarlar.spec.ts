@@ -55,15 +55,35 @@ test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır, şeritler kişi baş�
   await hedefler(page);
 });
 
-for (const [s, ad] of [['alan', 'K1-alan'], ['baglantilar', 'K1-baglantilar'], ['hesap', 'K1-hesap'], ['gorunum', 'K1-gorunum']] as const) {
+// tek sayfa (el notu 17): dört grup; adres grubu açar, eski ?sekme= adresleri de aynı gruba iner
+for (const [s, ad, baslik] of [['ekip', 'K1-alan', 'EKİP'], ['baglantilar', 'K1-baglantilar', 'BAĞLANTILAR'], ['ben', 'K1-hesap', 'BEN'], ['gorunum', 'K1-gorunum', 'GÖRÜNÜM VE BİLDİRİMLER']] as const) {
   test(`${ad}: Ayarlar · ${s}`, async ({ page }) => {
-    await ac(page, `/ayarlar?senaryo=berkin&hal=ekip&sekme=${s}`);
-    await page.getByRole('tab', { selected: true }).first().waitFor();
+    await ac(page, `/ayarlar?senaryo=berkin&hal=ekip&bolum=${s}`);
+    const h = page.getByRole('heading', { name: baslik, exact: true });
+    await expect(h).toBeInViewport();
     await page.waitForTimeout(400);
     await cek(page, ad);
     await hedefler(page);
   });
 }
+
+test('K1-tek-sayfa: dört grup tek sayfada; rol tablosu "?" arkasında; avatar Ben grubunu açar', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin&hal=ekip&sekme=gorunum');
+  await expect(page.getByRole('heading', { name: 'GÖRÜNÜM VE BİLDİRİMLER' })).toBeInViewport();
+  for (const b of ['BEN', 'EKİP', 'BAĞLANTILAR']) await expect(page.getByRole('heading', { name: b, exact: true })).toHaveCount(1);
+  await expect(page.getByText('Bağlantı denetimi')).toBeVisible();
+  // son satır alt çubuğun üstüne kadar kayabilir
+  await page.mouse.wheel(0, 4000);
+  await page.waitForTimeout(200);
+  const cikis = await page.getByRole('button', { name: 'Çıkış yap' }).boundingBox(), nav = await page.locator('.alt-gezinme').boundingBox();
+  expect(cikis!.y + cikis!.height).toBeLessThanOrEqual(nav!.y);
+  await page.getByRole('button', { name: 'Roller ve yetkiler' }).click();
+  await expect(page.getByRole('dialog', { name: 'Roller ve yetkiler' })).toBeVisible();
+  await page.goto('/?senaryo=berkin');
+  await page.getByRole('button', { name: /hesap ve çalışma alanı/ }).click();
+  await expect(page).toHaveURL(/\/ayarlar\?bolum=ben/);
+  await expect(page.getByRole('heading', { name: 'BEN', exact: true })).toBeInViewport();
+});
 
 test('K1-sayilar: Ayarlar ekip satırı ile Ekip sayfası aynı sayıyı söyler', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=ekip');
