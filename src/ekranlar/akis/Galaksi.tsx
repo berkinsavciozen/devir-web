@@ -22,6 +22,8 @@ import { useBen } from '../../api/sorgular';
 import { haritaGelisi } from '../../cizim/yakinlas';
 import { useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
+import { akilliCumle, basliktaCipler, type Cip } from './ozet';
+import { BaslikCipleri } from './Cipler';
 import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
@@ -149,7 +151,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const [yelpazeNo, setYelpazeNo] = useState<number | null>(null);
   const [kuleAcik, setKuleAcik] = useState(false);
   const [kisiKarti, setKisiKarti] = useState<string | null>(null);
-  const bolge = useMemo<Bolge>(() => { if (GD) { const y0 = GD.ust.cumleY + 24; return { x: 0, y: y0, w: GD.PX, h: GD.surgu.y - 34 - y0 }; } return { x: 0, y: 136, w: 390, h: 356 }; }, [GD]);
+  const bolge = useMemo<Bolge>(() => { if (GD) { const y0 = GD.ust.cumleY + 72; return { x: 0, y: y0, w: GD.PX, h: GD.surgu.y - 34 - y0 }; } return { x: 0, y: 136, w: 390, h: 356 }; }, [GD]);
   const gz = useGezinme(bolge, { hareket: () => { clearTimeout(bas.current.zm); setKuleAcik(false); } });
   const zk = gz.g.k, yak = gz.yaklasik;
   const geoZ = useMemo(() => (yak ? { ...geo, cx: geo.cx * zk + gz.g.tx, cy: geo.cy * zk + gz.g.ty, R: geo.R * zk } : geo), [geo, yak, zk, gz.g.tx, gz.g.ty]);
@@ -231,7 +233,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   if (d.akis.kapandi_at) return <KapaliGalaksi d={d} kod={kod} sahipMi={ben.data?.rol === 'sahip'} sahip={sahip} />;
   const { Y, Z, S, SK } = cizim;
   const ad = akisAdi(d.akis);
-  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (soruCumlesi(d) ? [soruCumlesi(d)!] : tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : haritaCumlesi(d)) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
+  const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (soruCumlesi(d) ? [soruCumlesi(d)!] : tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : [akilliCumle(d)]) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
   const soruC = !odak && Math.abs(birakildi - NOW) < 36e5 ? soruCumlesi(d) : null;
   const gecC = !odak && !soruC && Math.abs(birakildi - NOW) < 36e5 ? gecikmeCumlesi(d, NOW) : null;
   const cumle = soruC ? doluSatir(soruC, 330, '17px Caladea', 5) : gecC ? doluSatir(gecC, 300, '17px Caladea', 5) : ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
@@ -294,6 +296,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     koy({ key: 'kisi' + sh.ad, x: sh.x, y: sh.y, r: 22, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
   }
 
+  // başlık çipleri: rol bazlı; dokununca ilgili adım ya da kendi odağın
+  const cipler = basliktaCipler(d, sahip || null, ben.data?.rol ?? null, GD ? 4 : 3);
+  const cipSec = (c: Cip) => (c.tur === 'sende' ? setOdak(odak === sahip ? null : sahip) : c.no != null && ac(c.no));
   const kontroller = (
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yelpaze), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
@@ -356,6 +361,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
         <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} />
+        <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: U.cumleX, top: U.cumleY + (U.tekSatir ? 18 : 40), maxWidth: GD.PX - U.cumleX - 80 }} />
         {cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
@@ -374,6 +380,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </div>
 
       {kontroller}
+      <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: 20, top: 142, maxWidth: 300 }} />
       <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} />
     </Sahne>

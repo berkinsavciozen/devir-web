@@ -604,3 +604,11 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .tanitim-gec { background: none; color: var(--renk-metin-ink2); box-shadow: inset 0 0 0 1.5px var(--renk-vurgu-cizgi-lila); }
 .tanitim-ileri { background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); }
 .tanitim-dugmeler button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+/* Galaksi başlık çipleri (el notu 7) */
+.baslik-cipler { position: absolute; display: flex; gap: 6px; margin: 0; padding: 0; list-style: none; flex-wrap: nowrap; overflow: hidden; }
+.baslik-cip { display: inline-flex; align-items: center; gap: 4px; height: 30px; padding: 0 10px 0 4px; border-radius: 15px; border: 1px solid color-mix(in srgb, var(--renk-vurgu-lila) 45%, transparent); background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 82%, transparent); color: var(--renk-metin-ink2); font-size: 12.5px; font-weight: 650; line-height: 1; white-space: nowrap; cursor: pointer; }
+.baslik-cip:disabled { cursor: default; opacity: 1; }
+.baslik-cip.cip-engel { border-color: color-mix(in srgb, var(--renk-vurgu-mercan) 70%, transparent); color: var(--renk-metin-mercan); }
+.baslik-cip.cip-karar, .baslik-cip.cip-risk { border-color: color-mix(in srgb, var(--renk-vurgu-altin) 65%, transparent); color: var(--renk-metin-altin); }
+.baslik-cip.cip-sende { border-color: color-mix(in srgb, var(--renk-vurgu-nane) 60%, transparent); color: var(--renk-metin-ink); }
+.baslik-cip:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
