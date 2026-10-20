@@ -65,6 +65,13 @@ async function mcp(name: string, args: any) {
   ok((await api("GET", "/api/v1/olaylar", undefined, "dv_ekip")).j.okunmamis >= 1, "okundu kişiye özel");
   ok((await api("POST", "/api/v1/olaylar/okundu", {})).st === 400, "okundu: son_id gerekli");
 
+  // dış katılımcı: yalnız kendi adımları ve onlardaki olaylar
+  await db.insert("anahtar", [{ kullanici_id: ws.id, kisi: "Zeynep (Kooperatif)", rol: "dis", kapsam: "Zeynep", token_hash: await sha("dv_dis") }]);
+  const gd = (await api("GET", "/api/v1/gorevler?kisi=hepsi&durum=hepsi", undefined, "dv_dis")).j;
+  ok(gd.gorevler?.length > 0 && gd.gorevler.every((x: any) => x.sahip === "Zeynep") && gd.kisiler.every((k: any) => k.ad === "Zeynep"), "görevler: dış kişi yalnız kendi adımlarını görür");
+  const od = (await api("GET", "/api/v1/olaylar", undefined, "dv_dis")).j;
+  ok(od.olaylar?.length > 0 && od.olaylar.every((e: any) => e.adim_no != null && e.akis === kod && e.adim_no === 1), "olaylar: dış kişi başkasının adımındaki olayı görmez");
+
   // toplu detay
   const d = (await api("GET", `/api/v1/akislar/detay?kodlar=${kod},${kod2},YOKK`)).j;
   ok(Object.keys(d.akislar).sort().join() === [kod, kod2].sort().join() && d.akislar[kod].adimlar.length === 3, "toplu detay: var olanlar döner, olmayan atlanır");
