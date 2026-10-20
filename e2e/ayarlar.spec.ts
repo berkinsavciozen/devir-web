@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Roller ve ayarlar (PR C): dört sekmeli alt gezinme, Bana düşenler, Ayarlar sekmeleri, ekip sayıları, rol önizlemesi, akış erişimi.
+// Roller ve ayarlar (PR C): dört sekmeli alt gezinme, Görevler, Ayarlar sekmeleri, ekip sayıları, rol önizlemesi, akış erişimi.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
   await p.setViewportSize({ width: w, height: h });
   await p.emulateMedia({ reducedMotion: 'reduce' });
@@ -20,25 +20,39 @@ async function hedefler(p: Page, kok = 'body') {
   }
 }
 
-test('B1-gezinme: dört sekme; Bana düşenler sayılı, ≤ 1 dokunuş', async ({ page }) => {
+test('B1-gezinme: dört sekme; Görevler sayılı, ≤ 1 dokunuş', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
   await expect(nav.getByRole('button')).toHaveCount(5);
   await hedefler(page, '.alt-gezinme');
-  await nav.getByRole('button', { name: /^Bana düşenler/ }).click();
-  await expect(page).toHaveURL(/\/bana/);
-  await expect(nav.getByRole('button', { name: /^Bana düşenler/ })).toHaveAttribute('aria-current', 'page');
+  await nav.getByRole('button', { name: /^Görevler/ }).click();
+  await expect(page).toHaveURL(/\/gorevler/);
+  await expect(nav.getByRole('button', { name: /^Görevler/ })).toHaveAttribute('aria-current', 'page');
 });
 
-test('N1-bana: sırası gelen, engelli, süren; satır adıma açılır', async ({ page }) => {
+test('N1-gorevler: eski /bana adresi Görevler’e döner; gruplar, harita, satır adıma açılır', async ({ page }) => {
   await ac(page, '/bana?senaryo=berkin');
-  const L = page.getByRole('list', { name: 'Bana düşenler' });
+  await expect(page).toHaveURL(/\/gorevler/);
+  await expect(page.getByText('SIRASI GELEN')).toBeVisible();
+  await expect(page.locator('.gorev-harita .gezegen-hedef').first()).toBeVisible();
+  const L = page.getByRole('list', { name: 'Görevler' });
   await L.getByRole('listitem').first().waitFor();
   await page.waitForTimeout(200);
-  await cek(page, 'N1-bana');
+  await cek(page, 'N1-gorevler');
   await hedefler(page);
   await L.getByRole('listitem').first().click();
   await expect(page).toHaveURL(/\/akis\/[^/]+\/(adim|karar)\/\d+/);
+});
+
+test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır, şeritler kişi başına olur', async ({ page }) => {
+  await ac(page, '/gorevler?senaryo=berkin');
+  await page.getByRole('button', { name: /^Kişi: Ben/ }).click();
+  await page.getByRole('dialog').getByText('Herkes', { exact: true }).click();
+  await expect(page).toHaveURL(/kisi=hepsi/);
+  await expect(page.getByText('GÖREV HARİTASI · KİŞİLER')).toBeVisible();
+  await page.waitForTimeout(300);
+  await cek(page, 'N1-gorevler-herkes');
+  await hedefler(page);
 });
 
 for (const [s, ad] of [['alan', 'K1-alan'], ['baglantilar', 'K1-baglantilar'], ['hesap', 'K1-hesap'], ['gorunum', 'K1-gorunum']] as const) {
@@ -85,12 +99,12 @@ test('K1-hareket: Görünüm · Azalt kök öğeye yazılır ve kalır', async (
   await expect(page.locator('html')).toHaveAttribute('data-hareket', 'az');
 });
 
-test('M2-ayarlar: masaüstünde yan panelden Ayarlar ve Bana düşenler', async ({ page }) => {
+test('M2-ayarlar: masaüstünde yan panelden Ayarlar ve Görevler', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', 1440, 900);
   await page.getByRole('button', { name: 'Ayarlar' }).waitFor();
   await cek(page, 'M2-ayarlar');
   await page.getByRole('button', { name: /^Görevler/ }).click();
-  await expect(page).toHaveURL(/\/bana/);
+  await expect(page).toHaveURL(/\/gorevler/);
   await page.goBack();
   await page.getByRole('button', { name: 'Ayarlar' }).click();
   await expect(page).toHaveURL(/\/ayarlar/);

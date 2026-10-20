@@ -26,7 +26,7 @@ import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { HesapSayfasi } from './ekranlar/hesap/Hesap';
-import { BanaDusenler } from './ekranlar/evren/Bana';
+import { Gorevler } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
@@ -93,12 +93,19 @@ function Uygulama({ yol }: { yol: string }) {
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return <Akislar ben={b} />;
-  if (yol === '/bana') return <BanaDusenler ben={b} />;
+  if (yol === '/gorevler') return <Gorevler ben={b} />;
+  if (yol === '/bana') return <Yonlen yol={'/gorevler' + (arama().toString() ? '?' + arama().toString() : '')} />;
   if (yol === '/akislar/arsiv') return <Arsiv ben={b} />;
   if (yol === '/yeni') return <YeniIs />;
   const ty = eslestir('/yeni/:kod', yol);
   if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;
   return <Bulunamadi />;
+}
+
+/** Eski adres → yeni adres (geçmiş kaydı büyümez). */
+function Yonlen({ yol }: { yol: string }) {
+  useEffect(() => git(yol, { yerine: true }), [yol]);
+  return null;
 }
 
 export function App() {

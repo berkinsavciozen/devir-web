@@ -371,7 +371,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       </button>
       <button type="button" className="genis-geri" style={{ left: X + 348, top: 30 }} aria-label="Yeni iş" onClick={() => git('/yeni')} />
       <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>PANO</h2>
-      <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/bana')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
+      <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/gorevler')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
       <Metin y={140} x={X + 24} fs={15} lh={20} serif as="p" style={{ right: 'auto', width: PW - 48, whiteSpace: tutanak.length > 1 ? 'nowrap' : undefined }}>{tutanak.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
       {P.suzgecler.length > 0 && <div className="pano-cipler" role="group" aria-label="Duruma göre süz; haritada da süzer" style={{ top: cipY, left: X + 4, right: 'auto', width: PW - 8 }}>
         {P.suzgecler.map((c) => <button key={c.tur} type="button" className="filtre-cip" aria-pressed={goster === c.tur} onClick={() => setSuz(suz === c.tur ? null : c.tur)}>{PANO_AD[c.tur]} {c.n}</button>)}

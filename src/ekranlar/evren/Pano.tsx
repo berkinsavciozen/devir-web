@@ -51,7 +51,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
             </button>
           );
         }) : <Metin y={Y.lY + 22} x={20} fs={14} renk="ink3">Şu an bekleyen iş yok.</Metin>}
-        <button type="button" className="metin-baglanti pano-baglanti" style={{ left: 20, top: Y.aY }} onClick={() => git('/bana')}>
+        <button type="button" className="metin-baglanti pano-baglanti" style={{ left: 20, top: Y.aY }} onClick={() => git('/gorevler')}>
           {benimN ? `Görevler (${benimN})` : 'Görevler'}
         </button>
         <button type="button" className="metin-baglanti pano-baglanti" style={{ right: 20, top: Y.aY }} onClick={() => git('/akislar')}>Bütün akışlar</button>

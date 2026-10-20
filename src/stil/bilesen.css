@@ -627,6 +627,8 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .pano-cipler { position: absolute; left: 0; right: 0; display: flex; gap: 6px; padding: 0 20px; overflow-x: auto; scrollbar-width: none; }
 .pano-cipler::-webkit-scrollbar { display: none; }
 .pano-cipler .filtre-cip { flex: 0 0 auto; height: 40px; padding: 0 14px; }
+.gorev-suzgec .filtre-cip { height: 44px; }
+.gorev-harita .gezegen-hedef { cursor: pointer; }
 .pano-satir .pano-ikon { position: absolute; left: 10px; top: 12px; overflow: visible; }
 .pano-baglanti { position: absolute; height: 44px; font-size: 14px; font-weight: 650; }
 .harita-gezinme.kaydirilir { touch-action: pan-y; }
