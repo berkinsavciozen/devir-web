@@ -43,6 +43,8 @@ async function mcp(name: string, args: any) {
   g = (await api("GET", "/api/v1/gorevler?kisi=hepsi&durum=hepsi")).j;
   ok(g.gorevler.length === 4 && g.kisiler.some((k: any) => k.ad === "Zeynep" && k.acik === 1), "görevler: hepsi ve kişi sayıları");
   ok(g.gorevler[0].tuttugu === 2 || g.gorevler.find((x: any) => x.ad === "Aday listesi").tuttugu === 2, "görevler: tuttuğu");
+  const kom = g.gorevler.find((x: any) => x.ad.startsWith("Komisyon"));
+  ok(kom.onceki.map((x: any) => x.sahip).join() === "Zeynep" && kom.sonraki.map((x: any) => x.no).join() === "3", "görevler: kimi bekliyor, kim bekliyor");
   g = (await api("GET", `/api/v1/gorevler?kisi=hepsi&akis=${kod2}`)).j;
   ok(g.gorevler.every((x: any) => x.akis === kod2) && g.akislar.length === 2, "görevler: akış süzgeci");
   ok((await api("GET", "/api/v1/gorevler", undefined, "dv_ekip")).j.gorevler.map((x: any) => x.ad).join() === "Aday listesi", "görevler: ekip üyesinin kendi işi");

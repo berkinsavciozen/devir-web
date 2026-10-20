@@ -317,6 +317,9 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
         akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akis.baglam?.kisa_ad || null,
         no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum,
         engel: s.engel || null, karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s), kritik: !DONE(s) && m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no),
+        // kimi bekliyor, kim bekliyor (doğrudan, açık olanlar): satırdaki bağımlılık işareti
+        onceki: steps.filter((x: any) => s.bagimli.includes(x.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
+        sonraki: DONE(s) ? [] : steps.filter((x: any) => x.bagimli.includes(s.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
         son_tarih: s.son_tarih || null, en_erken_bitis: iso(ef), gec_risk: ef != null && !!s.son_tarih && ef > eod(s.son_tarih), bekleme_saat: t ? saat(t.simdi) : null, durum_at: s.durum_at || null,
       });
     }
