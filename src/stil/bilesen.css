@@ -220,7 +220,9 @@
 /* dolgu da dokunma alanı: 36 px çizim, 44 px hedef */
 .segment button::after { content: ""; position: absolute; inset: -4px 0; }
 .segment button.secili { background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-weight: 750; }
-.adim-durum { position: relative; height: 480px; }
+.adim-durum { position: relative; height: 540px; }
+.yapilacak { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.yapilacak b { color: var(--renk-metin-ink); font-weight: 700; }
 .panel-cizim { position: absolute; left: 0; top: -44px; overflow: visible; pointer-events: none; }
 .adim-durum .sahne-metin, .adim-durum .sayi-kutusu { position: absolute; }
 .sayi-kutusu { width: 112px; height: 54px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
