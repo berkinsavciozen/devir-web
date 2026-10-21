@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
+import { kimlik, type BagliIstemci } from '../../api/kimlik';
 import { API_TABAN, SAHTE } from '../../api/ortam';
 import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
@@ -22,7 +23,7 @@ import { evrenDiliniSifirla } from '../evren/Evren';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const MCP_TABAN = () => (SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN);
-const kisaMcp = (a: string) => { const i = a.indexOf('/functions/'); return i >= 0 ? '…' + a.slice(i).replace(/\/dv_\S+$/, '/dv_••••') : a; };
+const kisaMcp = (a: string) => { const i = a.indexOf('/functions/'); return i >= 0 ? '…' + a.slice(i) : a; };
 
 /** Kopyalanabilir alan (değer kısaltılmış görünür, tamamı kopyalanır). */
 export function KopyaAlan({ deger, gosterim, etiket, style }: { deger: string; gosterim: string; etiket: string; style: React.CSSProperties }) {
@@ -38,6 +39,8 @@ export function KopyaAlan({ deger, gosterim, etiket, style }: { deger: string; g
 }
 
 const sonKullanim = (t: string | null) => (t ? `Son kullanım ${gunAy(Date.parse(t))}` : 'Hiç kullanılmadı');
+/** Anahtar süresi (MK-1): yeni anahtarlar 90 gün; eskilerde süre yok */
+const sureMetni = (k: any) => (k.suresi_doldu ? 'süresi doldu' : k.son_gecerlilik ? `${gunAy(Date.parse(k.son_gecerlilik))}'e kadar` : null);
 
 const BOLUMLER = ['ben', 'ekip', 'baglantilar', 'gorunum'] as const;
 type Bolum = typeof BOLUMLER[number];
@@ -60,12 +63,16 @@ export function Ayarlar() {
   const [yeni, setYeni] = useState(false);
   const [roller, setRoller] = useState(false);
   const [politikaAcik, setPolitikaAcik] = useState(false);
+  const [kaldir, setKaldir] = useState<BagliIstemci | null>(null);
+  // bağlı uygulamalar (OAuth izinleri) yalnız e-postayla girişte; anahtarla girişte Supabase oturumu yok
+  const ist = useQuery({ queryKey: ['istemciler'], queryFn: () => kimlik.istemciler(), enabled: !!ben?.eposta, retry: false });
+  const U: BagliIstemci[] = ist.data || [];
   const pol = useQuery({ queryKey: ['politika'], queryFn: () => api.get<any>('/politika'), enabled: sahip });
   const [hareket, setHareket] = useState(hareketSecimi());
   const geri = () => (history.length > 1 ? history.back() : git('/'));
   const sira = (k: any) => (k.ben ? 0 : k.kisi === ben?.kisi ? 1 : 2) + (k.iptal ? 3 : 0);
   const L: any[] = [...(an.data?.anahtarlar || [])].sort((a, b) => sira(a) - sira(b) || String(a.olusturuldu).localeCompare(String(b.olusturuldu)));
-  const son = L.map((k) => k.son_kullanim).filter(Boolean).sort().pop() as string | undefined;
+  const son = [...L.map((k) => k.son_kullanim), ben?.mcp_son_kullanim].filter(Boolean).sort().pop() as string | undefined;
   const sayi = ekipSayilari(uy.data?.uyeler || [], uy.data?.davetler || [], an.data?.anahtarlar);
   const ikili = ship(38 - 20, 337 - 304, -12, 'insan', 'S', '#9EE6CF', .62, { flame: false }) + ship(52 - 20, 344 - 304, 0, 'dis', '', '#F2B8D8', .6);
 
@@ -74,9 +81,11 @@ export function Ayarlar() {
   bY.ekip = hesapYuksekligi(ben, bY.ben + 14, false) + 46;
   const ekipSon = bY.ekip + 14 + 66 + (sahip ? 2 * 74 : 0);
   bY.baglantilar = ekipSon + 46;
-  const anahtarY = bY.baglantilar + 128;
+  const uygY = bY.baglantilar + (sahip ? 128 : 14 + 66 + 46);
+  const uygSon = U.length ? uygY + 14 + U.length * 68 : uygY - 46;
+  const anahtarY = uygSon + 46;
   const yY = anahtarY + 14 + L.length * 68 + 8;
-  bY.gorunum = (sahip ? yY + 50 : bY.baglantilar + 14 + 66) + 46;
+  bY.gorunum = (sahip ? yY + 50 : uygSon) + 46;
   const gY = bY.gorunum + 14;
   const satirY = gY + 100;
   const cikisY = satirY + 3 * 74 + 10;
@@ -115,11 +124,11 @@ export function Ayarlar() {
           <KopyaAlan deger={MCP_TABAN()} gosterim={kisaMcp(MCP_TABAN())} etiket="MCP adresi" style={{ top: bY.baglantilar + 14 }} />
           <Svg w={14} h={14} x={27} y={bY.baglantilar + 81} svg={`<circle cx="34" cy="${bY.baglantilar + 88}" r="6" fill="url(#pLit2)"/>`} />
           <Metin y={bY.baglantilar + 92} x={48} fs={12.5} lh={16} agirlik={600} renk="ink2" className="tek-satir">{son ? `Claude bağlı · son çağrı ${gunAy(Date.parse(son))} ${saat(Date.parse(son))}` : 'Claude henüz bağlanmadı'}</Metin>
-          <h3 className="bolum-baslik" style={{ top: anahtarY - 12 }}>ANAHTARLAR</h3>
+          <h3 className="bolum-baslik" style={{ top: anahtarY - 12 }}>ANAHTARLAR · CLAUDE CODE VE BETİKLER</h3>
           {L.map((k, i) => {
             const el = (
               <SatirKart key={k.id} y={anahtarY + 14 + i * 68} h={60} ikon={kisiGemi(k.kisi, k.rol, k.rol === 'sahip', 26, k.rol === 'dis' ? 31 : 30, k.rol === 'dis' ? .73 : .82)} ust={k.kisi}
-                alt={k.iptal ? 'iptal edildi' : `${rolAdi(k.rol)}${k.rol === 'dis' && k.kapsam ? ` · ${k.kapsam}` : ''}${k.rol === 'ekip' && akisErisimi(k.kapsam) ? ` · ${akisErisimi(k.kapsam)!.length} akış` : ''} · ${sonKullanim(k.son_kullanim)}`}
+                alt={k.iptal ? 'iptal edildi' : `${k.onek ? `${k.onek}… · ` : ''}${rolAdi(k.rol)}${k.rol === 'dis' && k.kapsam ? ` · ${k.kapsam}` : ''}${k.rol === 'ekip' && akisErisimi(k.kapsam) ? ` · ${akisErisimi(k.kapsam)!.length} akış` : ''} · ${sureMetni(k) || sonKullanim(k.son_kullanim)}`}
                 sag={k.iptal ? <span /> : k.ben ? <span className="satir-not">bu cihaz</span> : <button type="button" className="satir-eylem mercan" onClick={() => setIptal(k)} aria-label={`${k.kisi} anahtarını iptal et`}>İptal</button>}
               />
             );
@@ -127,7 +136,15 @@ export function Ayarlar() {
           })}
           <Dugme tur="ikincil" ton="altin" yukseklik={50} fs={15} style={{ top: yY }} ikonX={128 - 20} kayma={8} onClick={() => setYeni(true)}
             ikon={<svg aria-hidden width="14" height="14" viewBox="-7 -7 14 14"><path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" strokeWidth="2" strokeLinecap="round" /></svg>}>Yeni anahtar</Dugme>
-        </> : <SatirKart y={bY.baglantilar + 14} h={66} ikon={kisiGemi(ben?.kisi || '', ben?.rol || 'ekip', false, 26, 33, .82)} ust="Claude’a bağla" alt="Kendi anahtarınla MCP adresi" onClick={() => git('/bagla')} />}
+        </> : <SatirKart y={bY.baglantilar + 14} h={66} ikon={kisiGemi(ben?.kisi || '', ben?.rol || 'ekip', false, 26, 33, .82)} ust="Claude’a bağla" alt="Adresi ekle, e-postanla onayla" onClick={() => git('/bagla')} />}
+        {U.length > 0 && <>
+          <h3 className="bolum-baslik" style={{ top: uygY - 12 }}>BAĞLI UYGULAMALAR</h3>
+          {U.map((u, i) => (
+            <SatirKart key={u.id} y={uygY + 14 + i * 68} h={60} ikon={ozelIkon('<circle r="6" fill="url(#pLit2)"/>')} ust={u.ad}
+              alt={`senin adına yazar · ${gunAy(Date.parse(u.tarih))} izin verildi`}
+              sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(u)} aria-label={`${u.ad} iznini kaldır`}>Kaldır</button>} />
+          ))}
+        </>}
 
         {baslik('gorunum', 'GÖRÜNÜM VE BİLDİRİMLER')}
         <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: gY - 2 }}>Hareket</span>
@@ -150,6 +167,7 @@ export function Ayarlar() {
       </AltSayfa>
       {politikaAcik && <KararPolitikasi ak={pol.data?.politika?.agent_karari} kapat={() => setPolitikaAcik(false)} />}
       {iptal && <AnahtarIptal k={iptal} kapat={() => setIptal(null)} />}
+      {kaldir && <IzinKaldir u={kaldir} kapat={() => setKaldir(null)} />}
       {yeni && <YeniAnahtar kapat={() => setYeni(false)} />}
     </>
   );
@@ -209,6 +227,23 @@ function AnahtarIptal({ k, kapat }: { k: any; kapat: () => void }) {
   );
 }
 
+/** OAuth iznini kaldırır: istemcinin oturumları ve yenileme jetonları geçersiz olur. */
+function IzinKaldir({ u, kapat }: { u: BagliIstemci; kapat: () => void }) {
+  const m = useMutation({ mutationFn: () => kimlik.istemciKaldir(u.id), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['istemciler'] }); kapat(); } });
+  const y0 = 560, P = (y: number) => y - (y0 + 28);
+  return (
+    <AltSayfa acik kapat={kapat} baslik={`${u.ad} izni kaldırılsın mı?`} yukseklik={y0} duraklar={['orta']} guclu>
+      <div className="karar-panel" style={{ height: 260 }}>
+        <Metin y={P(y0 + 58)} fs={23} lh={28} serif agirlik={700} as="h2" className="tek-satir">İzin kaldırılsın mı?</Metin>
+        <Metin y={P(y0 + 96)} fs={17} lh={22} serif renk="ink2">{u.ad} senin adına artık yazamaz.</Metin>
+        <Dugme tur="tehlike" style={{ top: P(y0 + 122) }} mesgul={m.isPending} onClick={() => m.mutate()}>Kaldır</Dugme>
+        <Dugme tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 188) }} onClick={kapat}>Vazgeç</Dugme>
+        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 242) }}>{(m.error as Error).message}</p>}
+      </div>
+    </AltSayfa>
+  );
+}
+
 function YeniAnahtar({ kapat }: { kapat: () => void }) {
   const [kisi, setKisi] = useState('');
   const [rol, setRol] = useState(0);
@@ -221,9 +256,9 @@ function YeniAnahtar({ kapat }: { kapat: () => void }) {
       <form className="karar-panel" style={{ height: 470 }} onSubmit={(e) => { e.preventDefault(); if (kisi.trim()) m.mutate(); }}>
         <Metin y={P(y0 + 54)} fs={24} lh={30} serif agirlik={700} as="h2">Yeni anahtar</Metin>
         {r ? <>
-          <Metin y={P(y0 + 92)} fs={17} lh={22} serif renk="ink2">{r.anahtar.kisi} bu adresi Claude’a bağlayıcı olarak ekler.</Metin>
-          <KopyaAlan deger={r.mcp_adresi} gosterim={kisaMcp(r.mcp_adresi)} etiket="MCP adresi" style={{ top: P(y0 + 118) }} />
-          <Metin y={P(y0 + 192)} fs={12} lh={16} renk="ink3">Adres yalnız şimdi görünür; kaybolursa yenisini üret.</Metin>
+          <Metin y={P(y0 + 92)} fs={17} lh={22} serif renk="ink2">{r.anahtar.kisi} Claude Code ya da betikte başlık olarak ekler.</Metin>
+          <KopyaAlan deger={r.baslik} gosterim={`Bearer ${r.token.slice(0, 7)} •••• ${r.token.slice(-4)}`} etiket="Authorization başlığı" style={{ top: P(y0 + 118) }} />
+          <Metin y={P(y0 + 192)} fs={12} lh={16} renk="ink3">Yalnız şimdi görünür, 90 gün geçerli. Claude ve ChatGPT’de anahtar gerekmez.</Metin>
           <Dugme type="button" tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 214) }} onClick={kapat}>Tamam</Dugme>
         </> : <>
           <label className="dis-alan" style={{ top: P(y0 + 96) - 26 }}><span className="alan-etiket">Kişi</span><input className="alan" value={kisi} onChange={(e) => setKisi(e.target.value)} placeholder="Ör. Selin" /></label>

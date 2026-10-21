@@ -5,5 +5,7 @@ export interface Davet { id: string; eposta: string; kisi: string | null; rol: R
 export interface Ben {
   ok: true; eposta?: string; acik_kayit?: boolean; uyelikler?: Uyelik[]; bekleyen_davetler?: Davet[]; kayit_gerekli?: boolean;
   kisi?: string; rol?: Rol; kapsam?: string | null; calisma_alani?: { id: string; ad: string };
+  /** OAuth ile bağlı istemcinin (Claude, ChatGPT) son MCP çağrısı */
+  mcp_son_kullanim?: string | null;
 }
 export interface OzetParca { tur: 'metin' | 'kisi' | 'adim' | 'akis' | 'sure' | 'tarih' | 'uyari'; metin: string; ref?: { akis?: string; no?: number; tarih?: string } }

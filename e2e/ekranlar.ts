@@ -31,7 +31,10 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'A1c-giris-aciliyor', yol: '/giris?code=sahte-berkin:berkin@ornek.com', once: async (p) => { await sonEposta('berkin@ornek.com')(p); await p.clock.install(); } },
   { ad: 'A1d-baglanti-gecersiz', yol: '/giris?error_code=otp_expired', once: sonEposta('berkin@ornek.com') },
   { ad: 'A2-bos-evren', yol: '/?senaryo=bos' },
-  { ad: 'A3-claudea-bagla', yol: '/bagla?senaryo=berkin', hazirla: async (p) => { await p.getByText('dv_', { exact: false }).first().waitFor(); } },
+  { ad: 'A3-claudea-bagla', yol: '/bagla?senaryo=berkin', hazirla: async (p) => { await p.getByText('devir-mcp', { exact: false }).first().waitFor(); } },
+  { ad: 'A4-oauth-onay', yol: '/oauth/onay?authorization_id=istek1&senaryo=berkin', hazirla: async (p) => { await p.getByRole('button', { name: 'İzin ver' }).waitFor(); } },
+  { ad: 'A4b-oauth-gecersiz', yol: '/oauth/onay?authorization_id=gecersiz&senaryo=berkin', hazirla: async (p) => { await p.getByText('Bağlantı kurulamadı').waitFor(); } },
+  { ad: 'A4c-oauth-giris', yol: '/oauth/onay?authorization_id=istek1&senaryo=berkin&oturum=yok', hazirla: async (p) => { await p.getByText('Giriş bağlantısı gönder').waitFor(); } },
   { ad: 'A4-davet-kabul', yol: '/?senaryo=davetli' },
   { ad: 'A5-davet-yok', yol: '/?senaryo=davetsiz&kayit=kapali' },
   { ad: 'A5-alan-ac', yol: '/?senaryo=davetsiz' }, // açık kayıt (tasarımda PNG yok)

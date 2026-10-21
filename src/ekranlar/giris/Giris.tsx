@@ -90,8 +90,19 @@ export function AnahtarSayfasi({ acik, kapat }: { acik: boolean; kapat: () => vo
 
 function sayac(sn: number) { return `${Math.floor(sn / 60)}:${String(sn % 60).padStart(2, '0')}`; }
 
-/** A1 · Giriş ve A1b · E-postanı kontrol et */
-export function Giris() {
+/** Girişten sonra açılacak yol (OAuth onayı): e-posta bağlantısı başka tarayıcıda açılırsa adresteki ?sonra= taşır, aynı tarayıcıda bu da yeter. */
+export const girisSonrasi = {
+  koy(yol: string) { try { localStorage.setItem('devir:giris-sonrasi', yol); } catch { /* gizli pencere */ } },
+  al(adres: string | null): string {
+    let y = adres;
+    try { y ||= localStorage.getItem('devir:giris-sonrasi'); localStorage.removeItem('devir:giris-sonrasi'); } catch { /* gizli pencere */ }
+    // yalnız uygulama içi yol (açık yönlendirme olmasın)
+    return y && y.startsWith('/') && !y.startsWith('//') ? y : '/';
+  },
+};
+
+/** A1 · Giriş ve A1b · E-postanı kontrol et. sonra: girişten sonra açılacak uygulama içi yol */
+export function Giris({ sonra }: { sonra?: string } = {}) {
   const [eposta, setEposta] = useState(sonEposta.al);
   const [hata, setHata] = useState<string | null>(null);
   const [mesgul, setMesgul] = useState(false);
@@ -113,7 +124,8 @@ export function Giris() {
     setHata(null); setMesgul(true);
     const temiz = eposta.trim().toLowerCase();
     sonEposta.koy(temiz);
-    await kimlik.girisBaglantisi(temiz);
+    if (sonra) girisSonrasi.koy(sonra);
+    await kimlik.girisBaglantisi(temiz, sonra);
     setMesgul(false);
     setGonderildi(Date.now());
   };
