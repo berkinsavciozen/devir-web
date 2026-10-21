@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -24,7 +24,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   const ef = m.pl.EF.get(s.no);
   const grup = altAdimi(akis, s.no);
   const v: any = {
-    no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
+    no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
     aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
     karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
     son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
@@ -158,8 +158,8 @@ async function akisV(ctx: Ctx, kod: string) {
   const vis = steps.filter((s: any) => stepInScope(ctx, s));
   const sahipler = new Map<string, any>();
   for (const s of vis) {
-    const k = `${s.sahip_tip}|${norm(s.sahip)}`;
-    const o = sahipler.get(k) || { ad: s.sahip, tip: s.sahip_tip, adimlar: [], acik: 0, bekleyen_saat: 0, siradaki: null };
+    const k = s.sahip_kisi_id || `${s.sahip_tip}|${norm(s.sahip)}`;
+    const o = sahipler.get(k) || { ad: s.sahip, kisi_id: s.sahip_kisi_id || null, tip: s.sahip_tip, adimlar: [], acik: 0, bekleyen_saat: 0, siradaki: null };
     o.adimlar.push(s.no);
     if (!DONE(s)) o.acik++;
     if (s.durum === "hazir" || s.durum === "engelli") { o.bekleyen_saat = Math.round((o.bekleyen_saat + (m.tl.get(s.no)!.simdi / HOUR)) * 10) / 10; if (o.siradaki == null) o.siradaki = s.no; }
@@ -214,8 +214,12 @@ async function tekrarV(ctx: Ctx, akis: any, steps: any[]) {
 }
 
 const kararV = (k: any) => ({ id: k.id, varlik: k.varlik, karar: k.karar, kisa: k.kisa || null, kapsam: k.kapsam || null, istisna: k.istisna || null, kim: k.kim || null, konu: k.konu || null, tarih: k.created_at, durum: k.durum });
-const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac || null, tip: e.veri?.tur || e.tip, adim_no: e.adim_no, ozet: e.ozet, ...(e.veri?.to ? { durum: e.veri.to } : {}) });
-const katilimciV = (k: any, base: string | null) => ({ id: k.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k) : {}) });
+// kanal (0.13.0): kaydın geldiği yol (mcp, oturum, anahtar, baglanti). Boşsa kimliği doğrulanmamış eski kayıttır.
+const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac || null, kanal: e.kanal || e.veri?.kanal_kayit || null, tip: e.veri?.tur || e.tip, adim_no: e.adim_no, ozet: e.ozet, ...(e.veri?.to ? { durum: e.veri.to } : {}) });
+const kisiV = (k: any) => ({ id: k.id, ad: k.ad, tip: k.tip });
+export const POLITIKA_VARSAYILAN = { sahip: "insan", ekip: "insan", dis: "beyan" };
+const politikaV = (ws: any) => ({ agent_karari: { ...POLITIKA_VARSAYILAN, ...(ws?.politika?.agent_karari || {}) } });
+const katilimciV = (k: any, base: string | null) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k) : {}) });
 function linkV(base: string, k: any) {
   const link = `${base}/l/${k.link_token}`;
   return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Merhaba ${k.ad}, senden beklenen adımlar burada: ${link}`)}` };
@@ -390,7 +394,7 @@ const ARAC = "Devir web";
 function govdeAl(b: any) { return b && typeof b === "object" ? b : {}; }
 async function arac(ctx: Ctx, ad: string, a: any) {
   try { return await callTool(ad, { arac: ARAC, kim_tip: "insan", ...a }, ctx); }
-  catch (e) { throw new ApiHata(400, (e as Error).message); }
+  catch (e) { throw new ApiHata(e instanceof DevirHata ? e.durum : 400, (e as Error).message); }
 }
 
 function sahipMi(ctx: Ctx) { if (ctx.key.rol !== "sahip") throw new ApiHata(403, "Bunu yalnızca çalışma alanının sahibi yapabilir."); }
@@ -410,7 +414,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "akislar" && r1 === "detay" && !r2) {
       const kodlar = (q.get("kodlar") || "").split(",").map((x) => x.trim()).filter(Boolean).slice(0, 30);
       const out: Record<string, unknown> = {};
-      for (const k of kodlar) { try { out[k] = await akisV(ctx, k); } catch (e) { if (!(e instanceof ApiHata) && !/bulunamad|kapsamında değil/i.test(String((e as Error).message))) throw e; } }
+      for (const k of kodlar) { try { out[k] = await akisV(ctx, k); } catch (e) { if (!(e instanceof ApiHata) && !(e instanceof DevirHata && (e.durum === 403 || e.durum === 404))) throw e; } }
       return { akislar: out };
     }
     if (r0 === "gorevler" && !r1) return gorevlerV(ctx, q);
@@ -438,7 +442,9 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       const L = await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id }, "created_at");
       return { anahtarlar: L.map((k: any) => ({ id: k.id, kisi: k.kisi, rol: k.rol, kapsam: k.kapsam || null, olusturuldu: k.created_at, son_kullanim: k.son_kullanim || null, iptal: String(k.token_hash || "").startsWith(IPTAL), ben: k.id === ctx.key.id })) };
     }
-    if (r0 === "ben" && !r1) return { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { ad: ctx.ws.ad } };
+    if (r0 === "kisiler" && !r1) { ekipMi(ctx); return { kisiler: (await ctx.db.many("kisi", { ws_id: ctx.ws.id }, "ad")).map(kisiV) }; }
+    if (r0 === "politika" && !r1) { ekipMi(ctx); return { politika: politikaV(ctx.ws) }; }
+    if (r0 === "ben" && !r1) return { kisi: ctx.key.kisi, kisi_id: ctx.key.kisi_id || null, kanal: ctx.kanal || null, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { ad: ctx.ws.ad } };
     throw new ApiHata(404, "Böyle bir uç yok.");
   }
   if (method === "POST") {
@@ -467,9 +473,11 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       const ak = await getAkis(ctx, r1);
       const ad = String(b.ad || "").trim();
       if (!ad) throw new ApiHata(400, "ad gerekli: bağlantıyı alacak kişinin adı (adımlarda sahip olarak yazılan ad).");
-      const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => norm(k.ad) === norm(ad));
-      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad, rol: b.rol || null, iletisim: b.iletisim || null }]))[0];
-      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => adEslesir(s.sahip, ad));
+      // kişi seçiciden kisi_id gelir; yoksa ad bu alandaki kişiye çözülür. Bir akışta bir kişiye bir bağlantı.
+      const kisi = b.kisi_id ? await kisiAl(ctx, b.kisi_id) : await kisiCoz(ctx, ad, "dis");
+      const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => kisi && k.kisi_id ? k.kisi_id === kisi.id : norm(k.ad) === norm(ad));
+      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: kisi?.ad || ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}) }]))[0];
+      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => kisi && s.sahip_kisi_id ? s.sahip_kisi_id === kisi.id : adEslesir(s.sahip, ad));
       return { katilimci: katilimciV(k, taban.link), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
     }
     if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
@@ -481,6 +489,31 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       await ctx.db.update("katilimci", { id: k.id }, { link_token: t });
       return { katilimci: katilimciV({ ...k, link_token: t }, taban.link), not: "Eski bağlantı artık açılmıyor." };
     }
+    // kişi adını değiştir (yalnız sahip): kimlik aynı kalır, adımlar ve bağlantılar yeni adı gösterir
+    if (r0 === "kisi" && r1 && !r2) {
+      sahipMi(ctx);
+      const k = await kisiAl(ctx, r1);
+      const ad = String(b.ad || "").trim().slice(0, 80);
+      if (!ad) throw new ApiHata(400, "ad gerekli.");
+      await ctx.db.update("kisi", { id: k.id }, { ad, ad_norm: norm(ad), updated_at: new Date(ctx.now).toISOString() });
+      for (const ak of await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at")) {
+        for (const s of await ctx.db.many("adim", { akis_id: ak.id, sahip_kisi_id: k.id }, "no")) await ctx.db.update("adim", { id: s.id }, { sahip: ad });
+        for (const x of await ctx.db.many("katilimci", { akis_id: ak.id, kisi_id: k.id }, "created_at")) await ctx.db.update("katilimci", { id: x.id }, { ad });
+      }
+      return { kisi: kisiV({ ...k, ad }) };
+    }
+    // karar politikası (MK-3): agent üzerinden verilen karar kullanıcı tipine göre insan kararı mı, beyan mı
+    if (r0 === "politika" && !r1) {
+      sahipMi(ctx);
+      const ak: Record<string, string> = { ...politikaV(ctx.ws).agent_karari };
+      for (const rol of ["sahip", "ekip", "dis"]) if (b.agent_karari?.[rol] != null) {
+        if (!["insan", "beyan"].includes(b.agent_karari[rol])) throw new ApiHata(400, "agent_karari değerleri insan ya da beyan olmalı.");
+        ak[rol] = b.agent_karari[rol];
+      }
+      const politika = { ...(ctx.ws.politika || {}), agent_karari: ak };
+      await ctx.db.update("kullanici", { id: ctx.ws.id }, { politika });
+      return { politika: politikaV({ ...ctx.ws, politika }) };
+    }
     // anahtar yönetimi (yalnızca sahip)
     if (r0 === "anahtar" && !r1) {
       sahipMi(ctx);
@@ -489,7 +522,10 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       if (!kisi) throw new ApiHata(400, "kisi gerekli.");
       if (rol === "dis" && !String(b.kapsam || kisi).trim()) throw new ApiHata(400, "dış katılımcı için kapsam gerekli.");
       const token = yeniToken("dv_");
-      const [k] = await ctx.db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi, rol, kapsam: rol === "dis" ? String(b.kapsam || kisi).trim() : (b.kapsam || null), token_hash: await sha256(token) }]);
+      // aynı adlı üye varsa anahtar ona bağlanır (N-4): üyelik biterse anahtar da geçmez
+      const uye = (await ctx.db.many("uye", { kullanici_id: ctx.ws.id }, "created_at")).find((u: any) => b.uye_id ? u.id === b.uye_id : norm(u.kisi) === norm(kisi));
+      const kk = await kisiAlani(ctx, rol === "dis" ? String(b.kapsam || kisi).trim() : kisi, rol === "dis" ? "dis" : "insan");
+      const [k] = await ctx.db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi, rol: uye ? uye.rol : rol, kapsam: rol === "dis" ? String(b.kapsam || kisi).trim() : (b.kapsam || null), token_hash: await sha256(token), ...(uye ? { uye_id: uye.id } : {}), ...kk }]);
       return { anahtar: { id: k.id, kisi, rol, kapsam: k.kapsam || null }, token, mcp_adresi: `${taban.fn}/${token}`, not: "Anahtar yalnızca şimdi gösterilir; kaybolursa yenisini üret." };
     }
     if (r0 === "anahtar" && r1 && r2 === "iptal" && !r3) {
@@ -514,7 +550,7 @@ export async function baglantiCtx(db: DB, token: string, now: number, ua: string
   const akis = await db.one("akis", { id: k.akis_id });
   if (!akis) throw new ApiHata(404, "Akış bulunamadı.");
   const ws = await db.one("kullanici", { id: akis.sahip_id });
-  const ctx: Ctx = { db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad }, ua: ua || "Devir bağlantı", now, kanal: "baglanti", depo };
+  const ctx: Ctx = await kimlikBagla({ db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad, kisi_id: k.kisi_id || null }, ua: ua || "Devir bağlantı", now, kanal: "baglanti", depo } as Ctx, "katilimci", k.id);
   return { ctx, k, akis };
 }
 
@@ -542,7 +578,7 @@ export async function baglantiV(db: DB, token: string, now: number, ua: string) 
   else if (bekle.length) { A("Şu an senden bir şey beklenmiyor. Sıradaki adımın "); A(bekle[0].ad, "adim", { no: bekle[0].no }); A(`, ${bekle[0].bekledigi.map((x: any) => `"${x.ad}"`).join(", ")} bitince açılacak.`); }
   else if (adimlar.length) A("Sana düşen adımların hepsi bitti, teşekkürler.");
   else A("Bu bağlantıda sana atanmış bir adım görünmüyor.");
-  await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
+  await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", kanal: "baglanti", ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}), tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
   const sahipUye = await db.one("uye", { kullanici_id: akis.sahip_id, rol: "sahip" }).catch(() => null);
   return {
     kisi: k.ad, akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length } },

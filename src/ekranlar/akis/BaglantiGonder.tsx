@@ -18,15 +18,16 @@ export function kisaBaglanti(link: string): string {
 }
 
 /** G1 · Dış katılımcıya bağlantı: kişisel bağlantı, WhatsApp, kopyala, yenile (§5 G1). */
-export function BaglantiGonder({ kod, kisi, adimSayisi, kapat }: { kod: string; kisi: string; adimSayisi: number; kapat: () => void }) {
+export function BaglantiGonder({ kod, kisi, kisiId, adimSayisi, kapat }: { kod: string; kisi: string; kisiId?: string | null; adimSayisi: number; kapat: () => void }) {
   const qc = useQueryClient();
   const q = useQuery({ queryKey: ['katilimcilar', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/katilimcilar`) });
-  const k = (q.data?.katilimcilar || []).find((x: any) => x.ad.toLocaleLowerCase('tr') === kisi.toLocaleLowerCase('tr'));
+  // bağlantı kişiye kimlikle bağlıdır (0.13.0); kimliği olmayan eski kayıtta ad eşleşmesi
+  const k = (q.data?.katilimcilar || []).find((x: any) => kisiId && x.kisi_id ? x.kisi_id === kisiId : x.ad.toLocaleLowerCase('tr') === kisi.toLocaleLowerCase('tr'));
   const [iletisim, setIletisim] = useState('');
   const [kopyalandi, setKopyalandi] = useState(false);
   const [onay, setOnay] = useState(false);
   const tazele = () => qc.invalidateQueries({ queryKey: ['katilimcilar', kod] });
-  const olustur = useMutation({ mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/katilimci`, { ad: kisi, rol: 'dis', iletisim: iletisim.trim() || undefined }), onSuccess: tazele });
+  const olustur = useMutation({ mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/katilimci`, { ad: kisi, kisi_id: kisiId || undefined, rol: 'dis', iletisim: iletisim.trim() || undefined }), onSuccess: tazele });
   const yenile = useMutation({ mutationFn: () => api.post<any>(`/katilimci/${k.id}/yenile`, {}), onSuccess: () => { setOnay(false); void tazele(); } });
   const kopyala = async () => { try { await navigator.clipboard.writeText(k.link); setKopyalandi(true); setTimeout(() => setKopyalandi(false), 1600); } catch { /* izin yok */ } };
   const y0 = 330, P = (y: number) => y - (y0 + 28);

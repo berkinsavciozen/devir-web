@@ -374,7 +374,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
             aria-label={`${u.ad} yolu: ${n} adım, ${k} tamam. Başlangıç ${gunAy(u.t0)}.`} onClick={() => kisiSec(u.ad)} />;
         })}
       </div>
-      {gonder && <><BaglantiGonder kod={kod} kisi={gonder} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
+      {gonder && <><BaglantiGonder kod={kod} kisi={gonder} kisiId={(d.sahipler || []).find((x: any) => x.ad === gonder)?.kisi_id} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
     </>
   );
 
