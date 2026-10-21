@@ -51,4 +51,4 @@ Durum: `açık` · `kısmen` (bir kısmı bu PR'da, kalanı sonraki pakette) · 
 |---|---|---|---|---|
 | P0-0 hızlı sertleştirme | 0.12.1 | #17 | sunucu 151 ✓ (yeni `guvenlik.test.ts` 25), vitest 59 ✓, build ✓, e2e 101 ✓ | 21 Eki yüklendi |
 | P0-A kişi kimliği, aktör, yetki | 0.13.0 | #18 | sunucu 173 ✓ (yeni `kimlik.test.ts` 22), vitest 59 ✓, build ✓, e2e 101 ✓ | M2 21 Eki 11:20, kod 11:26 yüklendi |
-| P0-B1 OAuth, başlık anahtarı, süre | 0.14.0 | (bu PR) | sunucu 198 ✓ (yeni `oauth.test.ts` 26), vitest 59 ✓, build ✓, sır taraması ✓, e2e 104 ✓ (zamanlama testi tam koşuda bir kez yavaş, tek başına geçti) | yüklenmedi; önce panel ayarı + M3, sonra kod (README) |
+| P0-B1 OAuth, başlık anahtarı, süre | 0.14.0 | (bu PR) | sunucu 198 ✓ (yeni `oauth.test.ts` 26), vitest 59 ✓, build ✓, sır taraması ✓, e2e 104 ✓ (zamanlama testi tam koşuda bir kez yavaş, tek başına geçti) | M3 21 Eki 11:44 canlıda; panel ayarı ve kod bekleniyor |
