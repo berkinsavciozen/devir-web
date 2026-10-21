@@ -39,8 +39,8 @@ const llm = async (req: any) => {
   if (req.tool.name === "ders_yaz") return { input: { dersler: [{ i: 0, metin: "Ege Bank bilgi güvenliği canlıya çıkıştan önce güncel sızma testi raporu istiyor.", kapsam: "varlik", tetik: ["banka", "entegrasyon", "sızma testi"], gecerli: true }] }, model: "sahte", ms: 5 };
   throw new Error("bilinmeyen araç " + req.tool.name);
 };
-const ws = { id: "w1" }; const key = { id: "k1", kisi: "Berkin", rol: "ekip" };
-const ctx = () => ({ db, ws, key, ua: "test", now: NOW, llm, gom });
+const ws = { id: "w1" }; const key = { id: "k1", kisi: "Berkin", rol: "sahip" };
+const ctx = () => ({ db, ws, key, ua: "test", now: NOW, kanal: "oturum", llm, gom }); // insan web oturumu
 const kisa = (s: string) => s.split("\n").filter((l) => !/aç:/.test(l)).join("\n");
 
 async function tur(n: number, cumle: string) {

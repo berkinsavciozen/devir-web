@@ -26,7 +26,7 @@ export async function oturumCtx(db: DB, ot: Oturum, secim: string | null, now: n
   if (!u) return { ctx: null as Ctx | null, uyelikler };
   const ws = await db.one("kullanici", { id: u.kullanici_id });
   db.update("uye", { id: u.id }, { son_giris: new Date(now).toISOString() }).catch(() => {});
-  const ctx: Ctx = { db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam }, ua: ua || "Devir web", now, ...ek } as Ctx;
+  const ctx: Ctx = { db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam }, ua: ua || "Devir web", now, ...ek, kanal: "oturum" } as Ctx;
   return { ctx, uyelikler };
 }
 

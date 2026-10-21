@@ -10,7 +10,7 @@ const db: any = {
   async insert(t: string, rows: any[]) { T[t] = T[t] || []; const now = new Date(NOW).toISOString(); const out = rows.map((r) => ({ id: ["adim", "akis", "taslak"].includes(t) ? crypto.randomUUID() : idc++, created_at: now, durum_at: now, ...(DEF[t] || {}), ...r })); T[t].push(...out); return out.map((r) => ({ ...r })); },
   async update(t: string, w: any, p: any) { for (const r of T[t] || []) if (match(r, w)) Object.assign(r, p); },
 };
-const ctx = () => ({ db, ws: { id: "w1" }, key: { id: "k1", kisi: "Berkin", rol: "ekip" }, ua: "test", now: NOW } as any);
+const ctx = () => ({ db, ws: { id: "w1" }, key: { id: "k1", kisi: "Berkin", rol: "ekip" }, ua: "test", now: NOW, kanal: "oturum" } as any); // insan web oturumu: karar adımlarını tamamlayabilir
 const kisa = (s: string) => s.split("\n").filter((l) => !/aç:|açmak için/.test(l)).join("\n");
 const ok = (c: boolean, m: string) => { console.log((c ? "✓ " : "✗ ") + m); if (!c) process.exitCode = 1; };
 const call = async (n: string, a: any) => { NOW += 36e5; return callTool(n, a, ctx()); };

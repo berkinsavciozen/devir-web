@@ -189,9 +189,34 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'olcek30') halOtuz(T);
 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
-  if (o.hal === 'karar') await halKarar(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
-  if (o.hal === 'uydu') await halUydu(async (an, yol, govde) => { saat = Date.parse(an); const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); return r.json(); });
-  if (o.hal === 'gecikme') await halGecikme(async (an, yol, govde) => { saat = Date.parse(an); await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${BERKIN_ANAHTAR}`, 'content-type': 'application/json' }, body: JSON.stringify(govde) }), db as any, saat, { taban: TABAN, depo }); });
+  // Yazan kişi kimlik bilgisinden belirlenir (S-C1): başka kişinin yazması o kişinin ekip anahtarıyla,
+  // agent yazması MCP üzerinden Berkin'in anahtarıyla gider ("Claude (Berkin adına)").
+  const anahtarlar = new Map<string, string>();
+  const anahtarOf = async (kisi: string) => {
+    if (!kisi || kisi === 'Berkin') return BERKIN_ANAHTAR;
+    let t = anahtarlar.get(kisi);
+    if (!t) {
+      t = `dv_sahte${anahtarlar.size + 1}`;
+      anahtarlar.set(kisi, t);
+      T.anahtar.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, kisi, rol: 'ekip', kapsam: null, token_hash: await sha256(t), created_at: '2026-10-12T14:31:16Z' });
+    }
+    return t;
+  };
+  const yaz: Yaz = async (an, yol, govde: any) => {
+    saat = Date.parse(an);
+    const { kim, kim_tip, ...g } = govde || {};
+    const m = /^\/api\/v1\/akis\/([^/]+)\/adim\/(\d+)$/.exec(yol);
+    if (kim_tip === 'agent' && m) {
+      const body = { jsonrpc: '2.0', id: 1, method: 'tools/call', params: { name: 'devir_adim_guncelle', arguments: { akis: m[1], no: Number(m[2]), ...g } } };
+      const r = await handle(new Request(`${TABAN}/${BERKIN_ANAHTAR}`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Claude' }, body: JSON.stringify(body) }), db as any, saat, { taban: TABAN, depo });
+      return r.json();
+    }
+    const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${await anahtarOf(kim)}`, 'content-type': 'application/json' }, body: JSON.stringify(g) }), db as any, saat, { taban: TABAN, depo });
+    return r.json();
+  };
+  if (o.hal === 'karar') await halKarar(yaz);
+  if (o.hal === 'uydu') await halUydu(yaz);
+  if (o.hal === 'gecikme') await halGecikme(yaz);
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   const kimlik = async (jwt: string) => {
@@ -219,7 +244,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
 const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
-const AJAN = { kim: 'Hazırlık agent\'ı', kim_tip: 'agent', arac: 'Claude' };
+const AJAN = { kim_tip: 'agent', arac: 'Claude' };
 
 const GUNMS = 864e5;
 const kayIso = (t: string | null | undefined, d: number) => (t ? new Date(Date.parse(t) + d).toISOString() : t);
@@ -278,7 +303,7 @@ async function halKarar(yaz: Yaz) {
   await yaz('2026-11-03T12:00:00+03:00', a(7), { durum: 'tamam', kim: 'Çiftçi', not: 'Belgeler geldi; Çayeli vergi kaydı bekleniyor' });
   await yaz('2026-11-05T16:00:00+03:00', a(8), { durum: 'tamam', ...AJAN, not: 'Özçay organik sertifikası geçerli' });
   await yaz('2026-11-06T18:30:00+03:00', a(9), {
-    kim: 'Claude', kim_tip: 'agent', arac: 'Claude',
+    kim_tip: 'agent', arac: 'Claude',
     karar: {
       tur: 'çiftçi',
       secenekler: [
@@ -297,7 +322,7 @@ async function halKarar(yaz: Yaz) {
 async function halGecikme(yaz: Yaz) {
   const a = (no: number) => `/api/v1/akis/RTD5/adim/${no}`;
   await yaz('2026-10-17T12:00:00+03:00', a(3), { durum: 'tamam', not: 'TestFlight bağlantısı gönderildi' });
-  await yaz('2026-10-21T15:00:00+03:00', a(6), { durum: 'tamam', kim: 'Claude', kim_tip: 'agent', arac: 'Claude', cikti: { ad: 'Post görseli', ozet: 'Kapak ve 3 tarif slaytı' } });
+  await yaz('2026-10-21T15:00:00+03:00', a(6), { durum: 'tamam', kim_tip: 'agent', arac: 'Claude', cikti: { ad: 'Post görseli', ozet: 'Kapak ve 3 tarif slaytı' } });
   await yaz('2026-10-23T11:00:00+03:00', a(7), { durum: 'tamam', not: 'Görsel onaylandı' });
   // App Store incelemesi 31 Eki'de başladı (tasarım: en erken 7 Kas)
   await yaz('2026-10-31T10:00:00+03:00', a(4), { durum: 'suruyor', not: 'İncelemeye gönderildi' });
