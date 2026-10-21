@@ -57,7 +57,7 @@ const sonOlay = (no: number) => [...T.olay].reverse().find((e) => e.adim_no === 
   // dış kapsam: bağlantı ve dış anahtar yalnız tam adla eşleşen adımı görür
   let x = await api("POST", `/api/v1/akis/${kod}/katilimci`, { ad: "Ali" });
   ok(x.j.adim_sayisi === 2, "bağlantı 'Ali': yalnız Ali'nin 2 adımı (Mehmet Ali'nin değil)");
-  const l = await api("GET", `/l/${x.j.katilimci.link.split("/l/")[1]}`, undefined, "");
+  const l = await api("GET", `/l/${x.j.katilimci.link.split("/l#")[1]}`, undefined, "");
   ok(l.st === 200 && l.j.adimlar.every((a: any) => a.sahip !== "Mehmet Ali") && !l.j.adimlar.some((a: any) => a.no === 2), "bağlantı sayfasında Mehmet Ali'nin adımı yok");
   x = await api("POST", `/api/v1/akis/${kod}/katilimci`, { ad: "Sevgili" });
   ok(x.j.adim_sayisi === 0 && /adım yok/.test(x.j.uyari || ""), "bağlantı 'Sevgili': 0 adım ve uyarı");

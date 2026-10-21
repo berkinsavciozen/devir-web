@@ -40,8 +40,9 @@ export const alanSecimi = {
   koy(id: string | null) { try { if (id) localStorage.setItem(ALAN, id); else localStorage.removeItem(ALAN); } catch { /* yok */ } },
 };
 
-async function gonder(method: 'GET' | 'POST', yol: string, govde?: unknown, o: { kimliksiz?: boolean } = {}): Promise<Response> {
+async function gonder(method: 'GET' | 'POST', yol: string, govde?: unknown, o: { kimliksiz?: boolean; baglanti?: string } = {}): Promise<Response> {
   const h: Record<string, string> = { accept: 'application/json' };
+  if (o.baglanti) h['x-devir-baglanti'] = o.baglanti;
   if (govde !== undefined) h['content-type'] = 'application/json';
   if (!o.kimliksiz) {
     const b = await kimlik.belirtec();
@@ -76,7 +77,7 @@ async function cozumle<T>(r: Response): Promise<T> {
   return j as T;
 }
 
-export async function istek<T = any>(method: 'GET' | 'POST', yol: string, govde?: unknown, o: { kimliksiz?: boolean } = {}): Promise<T> {
+export async function istek<T = any>(method: 'GET' | 'POST', yol: string, govde?: unknown, o: { kimliksiz?: boolean; baglanti?: string } = {}): Promise<T> {
   let r: Response;
   try { r = await gonder(method, yol, govde, o); } catch { throw new ApiHatasi(0, 'Bağlantı yok; son görülen hal.'); }
   if (r.status === 401 && !o.kimliksiz) {
@@ -94,11 +95,11 @@ export async function istek<T = any>(method: 'GET' | 'POST', yol: string, govde?
 export const api = {
   get: <T = any>(yol: string) => istek<T>('GET', '/api/v1' + yol),
   post: <T = any>(yol: string, govde: unknown = {}) => istek<T>('POST', '/api/v1' + yol, govde),
-  /** Dış katılımcı bağlantısı (anahtarsız) */
+  /** Dış katılımcı bağlantısı (anahtarsız). Belirteç başlıkta gider, adres yolunda değil (N-3). */
   baglanti: {
-    get: <T = any>(token: string) => istek<T>('GET', `/l/${encodeURIComponent(token)}`, undefined, { kimliksiz: true }),
-    post: <T = any>(token: string, govde: unknown) => istek<T>('POST', `/l/${encodeURIComponent(token)}`, govde, { kimliksiz: true }),
+    get: <T = any>(token: string) => istek<T>('GET', '/l', undefined, { kimliksiz: true, baglanti: token }),
+    post: <T = any>(token: string, govde: unknown) => istek<T>('POST', '/l', govde, { kimliksiz: true, baglanti: token }),
     /** yükleme adresi (F2b): yalnız kişinin kendi adımı */
-    dosya: <T = any>(token: string, govde: unknown) => istek<T>('POST', `/l/${encodeURIComponent(token)}/dosya`, govde, { kimliksiz: true }),
+    dosya: <T = any>(token: string, govde: unknown) => istek<T>('POST', '/l/dosya', govde, { kimliksiz: true, baglanti: token }),
   },
 };

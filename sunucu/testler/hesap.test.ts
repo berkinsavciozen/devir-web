@@ -42,9 +42,9 @@ const EK: any = {
     async sil(L: string[]) { for (const y of L) { KOVA.delete(y); SILINEN.push(y); } },
   },
 };
-async function link(method: string, path: string, body?: any) {
+async function link(method: string, path: string, body?: any, baslik?: string) {
   NOW += 36e5;
-  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined }), db, NOW, EK);
+  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(baslik ? { "x-devir-baglanti": baslik } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, EK);
   return { st: r.status, j: await r.json() };
 }
 const AUTH_BERKIN = "jwt:11111111-1111-4111-8111-111111111111:berkin@ornek.com";
@@ -155,6 +155,15 @@ const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
   const lt = T.katilimci[0].link_token;
   x = await link("GET", `/l/${lt}`);
   ok(x.j.adimlar[0].girdiler[0]?.dosya_id === d1, "bağlantıda girdi dosyası görünüyor");
+  // N-3: belirteç başlıkta, yolda değil
+  x = await link("GET", "/l", undefined, lt);
+  ok(x.st === 200 && x.j.adimlar[0].girdiler[0]?.dosya_id === d1, "bağlantı belirteci başlıkla açılır (adres yolunda belirteç yok)");
+  x = await link("GET", `/l/dosya/${d1}`, undefined, lt);
+  ok(x.j.ok && x.j.url.includes("sign"), "başlıkla bağlantıdan dosya indirilir");
+  x = await link("GET", `/l/dosya/${d3}`, undefined, lt);
+  ok(x.st === 403, "başlıkla da ekibe özel dosya açılmaz");
+  x = await link("GET", "/l", undefined, "yanlis-belirtec");
+  ok(x.st === 404, "yanlış belirteç başlıkla da açılmaz");
   x = await link("GET", `/l/${lt}/dosya/${d1}`);
   ok(x.j.ok && x.j.url.includes("sign"), "bağlantıdan girdi dosyası indirildi");
   x = await link("GET", `/l/${lt}/dosya/${d3}`);

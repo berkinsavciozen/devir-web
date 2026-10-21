@@ -64,7 +64,7 @@ const sonOlay = () => T.olay[T.olay.length - 1];
 
   // yeniden_adlandirma: bağlantı kimliğe bağlı; ad değişince aynı adımları görür, eski adla açılan yeni adıma geçmez
   x = await api("POST", `/api/v1/akis/${kod}/katilimci`, { ad: "Ali" });
-  const link = x.j.katilimci.link.split("/l/")[1], aliId = x.j.katilimci.kisi_id;
+  const link = x.j.katilimci.link.split("/l#")[1], aliId = x.j.katilimci.kisi_id;
   ok(x.j.adim_sayisi === 1 && aliId === adim(3).sahip_kisi_id, "bağlantı kişiye bağlandı");
   x = await api("POST", `/api/v1/kisi/${aliId}`, { ad: "Ali Veli" });
   ok(x.st === 200 && adim(3).sahip === "Ali Veli", "kişi adı değişince adımın sahibi yeni adı gösterir");

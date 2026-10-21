@@ -116,6 +116,8 @@ export function App() {
   if (yol === '/_iskelet') ekran = <><Gok tohum={21} yildiz={330} /><Iskelet /></>;
   else if (yol === '/giris') ekran = <GirisDonus />;
   else if (yol === '/oauth/onay') ekran = <OauthOnay />;
+  // dış bağlantı: belirteç # parçasında (/l#…, N-3); eski /l/<belirteç> biçimi de açılır
+  else if (yol === '/l' && location.hash.length > 1) ekran = <Baglanti token={decodeURIComponent(location.hash.slice(1))} />;
   else if (eslestir('/l/:token', yol)) ekran = <Baglanti token={eslestir('/l/:token', yol)!.token} />;
   else ekran = <Uygulama yol={yol} />;
   return (

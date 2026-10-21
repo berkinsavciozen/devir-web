@@ -9,11 +9,11 @@ import { ship } from '../../cizim/ortak.js';
 import { kopyaIkon } from '../../cizim/ekran';
 import { ozelEk, tarihEk } from '../../metin/turkce';
 
-/** Görünen bağlantı: "alan.adı/l/k7Q2…wP9" (tam adres kopyalanır). */
+/** Görünen bağlantı: "alan.adı/l#k7Q2…wP9" (tam adres kopyalanır). Eski biçim /l/<belirteç> de okunur. */
 export function kisaBaglanti(link: string): string {
   try {
-    const u = new URL(link), t = u.pathname.split('/l/')[1] || '';
-    return `${u.host}/l/${t.length > 9 ? `${t.slice(0, 4)}…${t.slice(-3)}` : t}`;
+    const u = new URL(link), t = u.hash.slice(1) || u.pathname.split('/l/')[1] || '';
+    return `${u.host}/l#${t.length > 9 ? `${t.slice(0, 4)}…${t.slice(-3)}` : t}`;
   } catch { return link; }
 }
 
@@ -54,7 +54,8 @@ export function BaglantiGonder({ kod, kisi, kisiId, adimSayisi, kapat }: { kod: 
             <Metin y={P(y0 + 356)} fs={12} lh={16} renk="ink3" hiza="orta">Yenilersen eski bağlantı artık açılmaz.</Metin>
           </> : <>
             <label className="dis-alan" style={{ top: P(y0 + 122) - 21 }}><span className="alan-etiket">İletişim (isteğe bağlı)</span><input className="alan" value={iletisim} onChange={(e) => setIletisim(e.target.value)} placeholder="Telefon ya da e-posta" /></label>
-            <Dugme style={{ top: P(y0 + 214) }} fs={16} mesgul={olustur.isPending} onClick={() => olustur.mutate()}>Bağlantı oluştur</Dugme>
+            {/* bağlantı var ama gösterilemiyor (şifre anahtarı değişti): yalnız yenilenebilir */}
+            <Dugme style={{ top: P(y0 + 214) }} fs={16} mesgul={olustur.isPending} onClick={() => (k ? setOnay(true) : olustur.mutate())}>{k ? 'Bağlantıyı yenile' : 'Bağlantı oluştur'}</Dugme>
             {olustur.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 280) }}>{(olustur.error as Error).message}</p>}
           </>}
         </div>

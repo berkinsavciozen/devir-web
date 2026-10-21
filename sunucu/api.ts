@@ -8,6 +8,7 @@ import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dos
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { ANAHTAR_OMRU } from "./hesap.ts";
+import { belirtecAc, belirtecAlanlari, belirtecBul, yeniBelirtec } from "./baglanti.ts";
 
 type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string } };
 type Parca = { tur: "metin" | "kisi" | "adim" | "akis" | "sure" | "tarih" | "uyari"; metin: string; ref?: Record<string, unknown> };
@@ -220,9 +221,11 @@ const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip:
 const kisiV = (k: any) => ({ id: k.id, ad: k.ad, tip: k.tip });
 export const POLITIKA_VARSAYILAN = { sahip: "insan", ekip: "insan", dis: "beyan" };
 const politikaV = (ws: any) => ({ agent_karari: { ...POLITIKA_VARSAYILAN, ...(ws?.politika?.agent_karari || {}) } });
-const katilimciV = (k: any, base: string | null) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k) : {}) });
-function linkV(base: string, k: any) {
-  const link = `${base}/l/${k.link_token}`;
+const katilimciV = (k: any, base: string | null, belirtec?: string | null) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k, belirtec) : {}) });
+function linkV(base: string, k: any, belirtec: string | null | undefined) {
+  if (!belirtec) return { link: null, whatsapp: null }; // çözülemeyen şifreli belirteç: sahip yeniler
+  // belirteç # parçasında (N-3): tarayıcı onu sunucuya göndermez, Workers loglarına düşmez
+  const link = `${base}/l#${belirtec}`;
   return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Merhaba ${k.ad}, senden beklenen adımlar burada: ${link}`)}` };
 }
 
@@ -421,7 +424,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "gorevler" && !r1) return gorevlerV(ctx, q);
     if (r0 === "olaylar" && !r1) return olaylarV(ctx, q);
     if (r0 === "akis" && r1 && r2 === "adim" && r3 && !r4) return adimDetayV(ctx, r1, Number(r3));
-    if (r0 === "akis" && r1 && r2 === "katilimcilar" && !r3) { ekipMi(ctx); const ak = await getAkis(ctx, r1); return { katilimcilar: (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).map((k: any) => katilimciV(k, taban.link)) }; }
+    if (r0 === "akis" && r1 && r2 === "katilimcilar" && !r3) { ekipMi(ctx); const ak = await getAkis(ctx, r1); return { katilimcilar: await Promise.all((await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).map(async (k: any) => katilimciV(k, taban.link, await belirtecAc(k, ctx.sifre)))) }; }
     if (r0 === "cikti" && r1) {
       const ak = await getAkis(ctx, q.get("akis"));
       const c = await ctx.db.one("cikti", { id: Number(r1), akis_id: ak.id });
@@ -477,18 +480,19 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       // kişi seçiciden kisi_id gelir; yoksa ad bu alandaki kişiye çözülür. Bir akışta bir kişiye bir bağlantı.
       const kisi = b.kisi_id ? await kisiAl(ctx, b.kisi_id) : await kisiCoz(ctx, ad, "dis");
       const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => kisi && k.kisi_id ? k.kisi_id === kisi.id : norm(k.ad) === norm(ad));
-      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: kisi?.ad || ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}) }]))[0];
+      const yeni = var0 ? null : yeniBelirtec();
+      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: kisi?.ad || ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}), ...(await belirtecAlanlari(yeni!, ctx.sifre)) }]))[0];
       const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => kisi && s.sahip_kisi_id ? s.sahip_kisi_id === kisi.id : adEslesir(s.sahip, ad));
-      return { katilimci: katilimciV(k, taban.link), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
+      return { katilimci: katilimciV(k, taban.link, yeni || await belirtecAc(k, ctx.sifre)), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
     }
     if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
       ekipMi(ctx);
       const k = await ctx.db.one("katilimci", { id: r1 });
       const ak = k ? await ctx.db.one("akis", { id: k.akis_id, sahip_id: ctx.ws.id }) : null;
       if (!k || !ak) throw new ApiHata(404, "Katılımcı yok.");
-      const t = yeniToken("", 24).toLowerCase();
-      await ctx.db.update("katilimci", { id: k.id }, { link_token: t });
-      return { katilimci: katilimciV({ ...k, link_token: t }, taban.link), not: "Eski bağlantı artık açılmıyor." };
+      const t = yeniBelirtec();
+      await ctx.db.update("katilimci", { id: k.id }, await belirtecAlanlari(t, ctx.sifre));
+      return { katilimci: katilimciV(k, taban.link, t), not: "Eski bağlantı artık açılmıyor." };
     }
     // kişi adını değiştir (yalnız sahip): kimlik aynı kalır, adımlar ve bağlantılar yeni adı gösterir
     if (r0 === "kisi" && r1 && !r2) {
@@ -548,7 +552,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
 // ---------- dış katılımcı bağlantısı (anahtarsız; yalnızca kendi adımları ve dört eylem) ----------
 export async function baglantiCtx(db: DB, token: string, now: number, ua: string, depo?: Depo) {
   if (!/^[a-z0-9]{16,64}$/i.test(token)) throw new ApiHata(404, "Bağlantı geçersiz.");
-  const k = await db.one("katilimci", { link_token: token });
+  const k = await belirtecBul(db, token);
   if (!k) throw new ApiHata(404, "Bağlantı geçersiz ya da yenilenmiş. Gönderen kişiden yenisini iste.");
   const akis = await db.one("akis", { id: k.akis_id });
   if (!akis) throw new ApiHata(404, "Akış bulunamadı.");
