@@ -4,6 +4,8 @@ import { type DB, type Ctx, kimlikBagla, norm } from "./core.ts";
 
 export type Oturum = { auth_id: string; eposta: string };
 export type KimlikFn = (jwt: string) => Promise<{ id: string; email: string } | null>;
+/** Yeni anahtarın ömrü (MK-1): 90 gün */
+export const ANAHTAR_OMRU = 90 * 864e5;
 export interface Posta { girisBaglantisi(eposta: string, yonlendir: string | null): Promise<void> }
 
 export class HesapHata extends Error { constructor(public durum: number, m: string) { super(m); } }
@@ -19,14 +21,15 @@ const uyeV = (u: any, ws?: any) => ({ id: u.id, eposta: u.eposta, kisi: u.kisi, 
 const davetV = (d: any, ws?: any) => ({ id: d.id, eposta: d.eposta, kisi: d.kisi || null, rol: d.rol, kapsam: d.kapsam || null, davet_eden: d.davet_eden || null, tarih: d.created_at, ...(ws ? { alan_id: ws.id, alan: ws.ad } : {}) });
 
 // Oturumdan bağlam: seçili çalışma alanı (x-devir-alan başlığı ya da ?alan=), yoksa ilk üyelik.
-export async function oturumCtx(db: DB, ot: Oturum, secim: string | null, now: number, ua: string, ek: Record<string, unknown> = {}) {
+// kanal "mcp": OAuth ile bağlanmış istemci (Claude, ChatGPT) kişinin adına yazar; aktör agent olur.
+export async function oturumCtx(db: DB, ot: Oturum, secim: string | null, now: number, ua: string, ek: Record<string, unknown> = {}, kanal: "oturum" | "mcp" = "oturum") {
   const uyelikler = await db.many("uye", { auth_id: ot.auth_id }, "created_at");
   let u = secim ? uyelikler.find((x: any) => x.kullanici_id === secim) : uyelikler[0];
   if (secim && !u) throw new HesapHata(403, "Bu çalışma alanına üye değilsin.");
   if (!u) return { ctx: null as Ctx | null, uyelikler };
   const ws = await db.one("kullanici", { id: u.kullanici_id });
-  db.update("uye", { id: u.id }, { son_giris: new Date(now).toISOString() }).catch(() => {});
-  const ctx: Ctx = await kimlikBagla({ db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam, kisi_id: u.kisi_id || null }, ua: ua || "Devir web", now, ...ek, kanal: "oturum" } as Ctx, "uye", u.id);
+  db.update("uye", { id: u.id }, { [kanal === "mcp" ? "mcp_son_kullanim" : "son_giris"]: new Date(now).toISOString() }).catch(() => {});
+  const ctx: Ctx = await kimlikBagla({ db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam, kisi_id: u.kisi_id || null }, ua: ua || "Devir web", now, ...ek, kanal } as Ctx, "uye", u.id);
   return { ctx, uyelikler };
 }
 
@@ -51,7 +54,7 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
     for (const d of await bekleyenDavetler(db, ot.eposta)) if (!uyelikler.some((u: any) => u.kullanici_id === d.kullanici_id)) davetler.push(davetV(d, await db.one("kullanici", { id: d.kullanici_id })));
     return {
       eposta: ot.eposta, uyelikler: alanlar, bekleyen_davetler: davetler, acik_kayit: await acikKayit(db),
-      ...(ctx ? { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { id: ctx.ws.id, ad: ctx.ws.ad } } : { kayit_gerekli: true }),
+      ...(ctx ? { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { id: ctx.ws.id, ad: ctx.ws.ad }, mcp_son_kullanim: uyelikler.find((u: any) => u.id === ctx.key.uye_id)?.mcp_son_kullanim || null } : { kayit_gerekli: true }),
     };
   }
   if (method === "POST" && r0 === "kayit" && !r1) return kayit(db, ot, uyelikler, b, now);
@@ -59,8 +62,10 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
     if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");
     const token = yeniToken("dv_");
     // üyeye bağlı (N-4): üyelik biterse ya da rol değişirse anahtar da ona uyar
-    const [k] = await db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, token_hash: await sha256(token), uye_id: ctx.key.uye_id, ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}) }]);
-    return { anahtar: { id: k.id, kisi: k.kisi, rol: k.rol }, token, mcp_adresi: `${taban.fn}/${token}`, not: "Bu adresi Claude ya da ChatGPT'de bağlayıcı olarak ekle. Anahtar yalnızca şimdi gösterilir." };
+    const son = new Date(now + ANAHTAR_OMRU).toISOString();
+    const [k] = await db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, token_hash: await sha256(token), onek: token.slice(0, 7), son_gecerlilik: son, uye_id: ctx.key.uye_id, ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}) }]);
+    // anahtar adrese gömülmez (S-B1): yalnız Authorization başlığında
+    return { anahtar: { id: k.id, kisi: k.kisi, rol: k.rol, onek: k.onek, son_gecerlilik: son }, token, mcp_adresi: taban.fn, baslik: `Authorization: Bearer ${token}`, not: "Claude Code ve betikler için: adresi ve Authorization başlığını ekle. Anahtar yalnızca şimdi gösterilir, 90 gün geçerli." };
   }
   return undefined;
 }

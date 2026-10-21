@@ -44,7 +44,7 @@ const db: DB = {
   },
 };
 
-// E-postayla giriş: arayüz Supabase Auth ile oturum açar, oturum belirteci burada doğrulanır.
+// E-postayla giriş ve OAuth (MK-1): web oturumu da Claude/ChatGPT erişim jetonu da Supabase Auth jetonudur; burada doğrulanır.
 const kimlik: KimlikFn = async (jwt) => {
   const { data, error } = await sb.auth.getUser(jwt);
   return error || !data?.user ? null : { id: data.user.id, email: data.user.email || "" };
@@ -119,5 +119,5 @@ Deno.serve(async (req) => {
   const om = testBasliklari ? req.headers.get("x-devir-openai-model") : null;
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
   const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : m.ikisi;
-  return handle(req, db, Date.now(), { llm, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, kimlik, posta, depo });
+  return handle(req, db, Date.now(), { llm, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo });
 });

@@ -4,6 +4,7 @@
  *    PKCE'den vazgeçildi (20 Eki): PKCE doğrulayıcısı bağlantıyı isteyen tarayıcıda durur; e-posta başka tarayıcıda
  *    (telefondaki posta uygulaması, başka profil) açılınca kod değiştirilemiyor ve kullanıcı "süresi dolmuş" görüyordu.
  *  - Devir anahtarı (`dv_…`): web'de yalnız oturum süresince (sessionStorage) tutulur.
+ *  - OAuth onayı (MK-1): Claude/ChatGPT bağlayıcısı Supabase Auth'a gelir, kişi /oauth/onay'da izin verir.
  * Sahte kipte Supabase'e gidilmez; oturum senaryodan kurulur.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -15,13 +16,24 @@ export interface Kimlik {
   belirtec(): Promise<string | null>;
   /** 401 sonrası bir kez: oturumu yenile; yenilenemezse false */
   yenile(): Promise<boolean>;
-  girisBaglantisi(eposta: string): Promise<void>;
+  /** sonra: girişten sonra açılacak yol (ör. OAuth onayı) */
+  girisBaglantisi(eposta: string, sonra?: string): Promise<void>;
   /** /giris dönüşü (#access_token=…, ?token_hash=…&type=… ya da eski ?code=) → oturum */
   donusIsle(d: Donus): Promise<{ eposta: string }>;
   eposta(): Promise<string | null>;
   anahtarlaGir(anahtar: string): void;
   cikis(): Promise<void>;
+  /** OAuth onay isteği: onay gerekiyorsa istemci bilgisi, daha önce izin verildiyse doğrudan dönüş adresi */
+  oauthAyrinti(id: string): Promise<OauthAyrinti>;
+  /** Onay ya da ret; istemcinin dönüş adresi */
+  oauthKarar(id: string, onay: boolean): Promise<string>;
+  /** İzin verilmiş istemciler (Claude, ChatGPT, Claude Code) */
+  istemciler(): Promise<BagliIstemci[]>;
+  istemciKaldir(id: string): Promise<void>;
 }
+
+export type OauthAyrinti = { tur: 'onay'; istemci: string; site: string | null; eposta: string } | { tur: 'yonlen'; adres: string };
+export interface BagliIstemci { id: string; ad: string; site: string | null; tarih: string }
 
 /** /giris adresinin taşıdığı giriş bilgisi; hangisi geldiyse o dolu. */
 export type Donus =
@@ -48,9 +60,10 @@ function gercekKimlik(): Kimlik {
       const { data, error } = await (await al()).auth.refreshSession();
       return !error && !!data.session;
     },
-    async girisBaglantisi(eposta) {
+    async girisBaglantisi(eposta, sonra) {
       // Kayıt herkese açık (15 Eki kararı): yeni e-postaya da bağlantı gider; hata dönse de ekran ilerler (e-posta varlığı sızmasın)
-      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: tamAdres('/giris'), shouldCreateUser: true } }).catch(() => undefined);
+      const donus = tamAdres('/giris') + (sonra ? `?sonra=${encodeURIComponent(sonra)}` : '');
+      await (await al()).auth.signInWithOtp({ email: eposta, options: { emailRedirectTo: donus, shouldCreateUser: true } }).catch(() => undefined);
     },
     async donusIsle(d) {
       const auth = (await al()).auth;
@@ -69,6 +82,27 @@ function gercekKimlik(): Kimlik {
     },
     anahtarlaGir(anahtar) { yaz(ANAHTAR_YERI, anahtar.trim()); },
     async cikis() { yaz(ANAHTAR_YERI, null); await (await al()).auth.signOut().catch(() => undefined); },
+    async oauthAyrinti(id) {
+      const { data, error } = await (await al()).auth.oauth.getAuthorizationDetails(id);
+      if (error || !data) throw new Error(error?.message || 'Bağlantı isteği bulunamadı.');
+      if (!('authorization_id' in data)) return { tur: 'yonlen', adres: data.redirect_url };
+      return { tur: 'onay', istemci: data.client.name || 'Bir uygulama', site: data.client.uri || null, eposta: data.user.email };
+    },
+    async oauthKarar(id, onay) {
+      const o = (await al()).auth.oauth;
+      const { data, error } = onay ? await o.approveAuthorization(id, { skipBrowserRedirect: true }) : await o.denyAuthorization(id, { skipBrowserRedirect: true });
+      if (error || !data) throw new Error(error?.message || 'İstek tamamlanamadı.');
+      return data.redirect_url;
+    },
+    async istemciler() {
+      const { data, error } = await (await al()).auth.oauth.listGrants();
+      if (error) throw new Error(error.message);
+      return (data || []).map((g) => ({ id: g.client.id, ad: g.client.name || 'Adsız uygulama', site: g.client.uri || null, tarih: g.granted_at }));
+    },
+    async istemciKaldir(id) {
+      const { error } = await (await al()).auth.oauth.revokeGrant({ clientId: id });
+      if (error) throw new Error(error.message);
+    },
   };
 }
 
@@ -81,7 +115,7 @@ const SAHTE_KISI: Record<string, string> = {
   davetli: 'sahte-emre:emre@ornek.com', davetsiz: 'sahte-davetsiz:emre.k@ornek.com',
 };
 function sahteKimlik(): Kimlik {
-  const OTURUM = 'devir:sahte-oturum', CIKTI = 'devir:sahte-cikti';
+  const OTURUM = 'devir:sahte-oturum', CIKTI = 'devir:sahte-cikti', ISTEMCI = 'devir:sahte-istemci';
   const q = arama();
   if (q.get('oturum') === 'yok') yaz(CIKTI, '1');
   const senaryoKisi = () => SAHTE_KISI[q.get('senaryo') || oku('devir:senaryo') || 'berkin'] || SAHTE_KISI.berkin;
@@ -101,6 +135,22 @@ function sahteKimlik(): Kimlik {
     async eposta() { return okuL()?.split(':')[2] ?? null; },
     anahtarlaGir(anahtar) { yaz(ANAHTAR_YERI, anahtar.trim()); yaz(CIKTI, null); },
     async cikis() { yaz(ANAHTAR_YERI, null); yaz(OTURUM, null); yaz(CIKTI, '1'); },
+    // sahte OAuth: istek kimliği "yonlen" ise daha önce izin verilmiş sayılır
+    async oauthAyrinti(id) {
+      if (id === 'yonlen') return { tur: 'yonlen', adres: tamAdres('/') };
+      if (!id || id === 'gecersiz') throw new Error('Bağlantı isteği bulunamadı ya da süresi doldu.');
+      return { tur: 'onay', istemci: 'Claude', site: 'https://claude.ai', eposta: okuL()?.split(':')[2] || '' };
+    },
+    async oauthKarar(_id, onay) {
+      if (onay) yaz(ISTEMCI, JSON.stringify([{ id: 'sahte-claude', ad: 'Claude', site: 'https://claude.ai', tarih: new Date().toISOString() }]));
+      return tamAdres(onay ? '/?oauth=onaylandi' : '/?oauth=reddedildi');
+    },
+    async istemciler() {
+      const k = oku(ISTEMCI);
+      if (k) { try { return JSON.parse(k); } catch { return []; } }
+      return q.get('senaryo') === 'bos' ? [] : [{ id: 'sahte-claude', ad: 'Claude', site: 'https://claude.ai', tarih: '2026-10-21T08:30:00.000Z' }];
+    },
+    async istemciKaldir(id) { const l = (await this.istemciler()).filter((x: BagliIstemci) => x.id !== id); yaz(ISTEMCI, JSON.stringify(l)); },
   };
 }
 

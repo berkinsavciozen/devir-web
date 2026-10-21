@@ -7,6 +7,7 @@ import {
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
+import { ANAHTAR_OMRU } from "./hesap.ts";
 
 type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string } };
 type Parca = { tur: "metin" | "kisi" | "adim" | "akis" | "sure" | "tarih" | "uyari"; metin: string; ref?: Record<string, unknown> };
@@ -440,7 +441,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "anahtarlar" && !r1) {
       sahipMi(ctx);
       const L = await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id }, "created_at");
-      return { anahtarlar: L.map((k: any) => ({ id: k.id, kisi: k.kisi, rol: k.rol, kapsam: k.kapsam || null, olusturuldu: k.created_at, son_kullanim: k.son_kullanim || null, iptal: String(k.token_hash || "").startsWith(IPTAL), ben: k.id === ctx.key.id })) };
+      return { anahtarlar: L.map((k: any) => ({ id: k.id, kisi: k.kisi, rol: k.rol, kapsam: k.kapsam || null, olusturuldu: k.created_at, son_kullanim: k.son_kullanim || null, onek: k.onek || null, son_gecerlilik: k.son_gecerlilik || null, suresi_doldu: !!k.son_gecerlilik && Date.parse(k.son_gecerlilik) <= ctx.now, iptal: String(k.token_hash || "").startsWith(IPTAL), ben: k.id === ctx.key.id })) };
     }
     if (r0 === "kisiler" && !r1) { ekipMi(ctx); return { kisiler: (await ctx.db.many("kisi", { ws_id: ctx.ws.id }, "ad")).map(kisiV) }; }
     if (r0 === "politika" && !r1) { ekipMi(ctx); return { politika: politikaV(ctx.ws) }; }
@@ -525,8 +526,10 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       // aynı adlı üye varsa anahtar ona bağlanır (N-4): üyelik biterse anahtar da geçmez
       const uye = (await ctx.db.many("uye", { kullanici_id: ctx.ws.id }, "created_at")).find((u: any) => b.uye_id ? u.id === b.uye_id : norm(u.kisi) === norm(kisi));
       const kk = await kisiAlani(ctx, rol === "dis" ? String(b.kapsam || kisi).trim() : kisi, rol === "dis" ? "dis" : "insan");
-      const [k] = await ctx.db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi, rol: uye ? uye.rol : rol, kapsam: rol === "dis" ? String(b.kapsam || kisi).trim() : (b.kapsam || null), token_hash: await sha256(token), ...(uye ? { uye_id: uye.id } : {}), ...kk }]);
-      return { anahtar: { id: k.id, kisi, rol, kapsam: k.kapsam || null }, token, mcp_adresi: `${taban.fn}/${token}`, not: "Anahtar yalnızca şimdi gösterilir; kaybolursa yenisini üret." };
+      const son = new Date(ctx.now + ANAHTAR_OMRU).toISOString();
+      const [k] = await ctx.db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi, rol: uye ? uye.rol : rol, kapsam: rol === "dis" ? String(b.kapsam || kisi).trim() : (b.kapsam || null), token_hash: await sha256(token), onek: token.slice(0, 7), son_gecerlilik: son, ...(uye ? { uye_id: uye.id } : {}), ...kk }]);
+      // anahtar adrese gömülmez (S-B1): yalnız Authorization başlığında
+      return { anahtar: { id: k.id, kisi, rol, kapsam: k.kapsam || null, onek: k.onek, son_gecerlilik: son }, token, mcp_adresi: taban.fn, baslik: `Authorization: Bearer ${token}`, not: "Anahtar yalnızca şimdi gösterilir, 90 gün geçerli. Claude ve ChatGPT'de anahtar gerekmez: kişi adresi ekleyip e-postasıyla onaylar." };
     }
     if (r0 === "anahtar" && r1 && r2 === "iptal" && !r3) {
       sahipMi(ctx);

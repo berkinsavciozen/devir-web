@@ -88,7 +88,7 @@ const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
   x = await api("GET", "/api/v1/ozet", null, AUTH_BERKIN);
   ok(x.j.ok && x.j.rol === "sahip" && x.j.akislar?.length === 1, "oturumla ana ekran açıldı");
   x = await api("POST", "/api/v1/ben/anahtar", {}, AUTH_BERKIN);
-  ok(x.j.ok && x.j.token?.startsWith("dv_") && x.j.mcp_adresi.endsWith(x.j.token), "oturumdan MCP anahtarı üretildi");
+  ok(x.j.ok && x.j.token?.startsWith("dv_") && !x.j.mcp_adresi.includes("dv_") && !!x.j.anahtar.son_gecerlilik, "oturumdan anahtar üretildi: adreste değil, süreli");
   const yeniTok = x.j.token;
   x = await api("GET", "/api/v1/ben", null, yeniTok);
   ok(x.j.kisi === "Berkin" && x.j.rol === "sahip", "üretilen anahtar çalışıyor");

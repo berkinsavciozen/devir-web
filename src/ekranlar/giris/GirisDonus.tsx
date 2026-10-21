@@ -6,7 +6,7 @@ import { Metin, Sahne } from '../../bilesen/Sahne';
 import { zarf } from '../../cizim/ekran';
 import { f, tower } from '../../cizim/ortak.js';
 import { git, arama, TABAN } from '../../yonlendirme';
-import { AnahtarSayfasi, EpostaAlani, epostaGecerli, Giris, sonEposta } from './Giris';
+import { AnahtarSayfasi, EpostaAlani, epostaGecerli, Giris, girisSonrasi, sonEposta } from './Giris';
 
 // A1c süsleri: dönen altın yay ayrı katmanda (1.2 sn'de bir tur)
 const A1C_CIZIM =
@@ -66,7 +66,7 @@ export function GirisDonus() {
       if (r.eposta) sonEposta.koy(r.eposta);
       kod.current = null;
       oturumDegisti();
-      git('/', { yerine: true });
+      git(girisSonrasi.al(arama().get('sonra')), { yerine: true });
     } catch (e) {
       const m = (e as Error).message || '';
       setHal(/sure|fetch|network|ağ/i.test(m) ? { tur: 'ag' } : { tur: 'gecersiz' });

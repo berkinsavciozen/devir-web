@@ -20,3 +20,5 @@ jobs:
         run: npm test
       - name: Tür denetimi ve derleme
         run: npm run build
+      - name: Sır taraması (S-B1)
+        run: node scripts/sir-tarama.mjs

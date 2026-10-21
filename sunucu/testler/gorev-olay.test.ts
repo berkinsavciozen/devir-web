@@ -75,5 +75,5 @@ async function mcp(name: string, args: any) {
   // toplu detay
   const d = (await api("GET", `/api/v1/akislar/detay?kodlar=${kod},${kod2},YOKK`)).j;
   ok(Object.keys(d.akislar).sort().join() === [kod, kod2].sort().join() && d.akislar[kod].adimlar.length === 3, "toplu detay: var olanlar döner, olmayan atlanır");
-  ok((await api("GET", "/api/v1/durum", undefined, "")).j.surum === "0.13.0", "sürüm 0.13.0");
+  ok((await api("GET", "/api/v1/durum", undefined, "")).j.surum === "0.14.0", "sürüm 0.14.0");
 })();

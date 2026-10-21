@@ -76,7 +76,7 @@ async function mcp(name: string, args: any) {
   ok(x.j.varliklar[0]?.kararlar[0]?.karar === "Komisyon %12", "karar adımı insan tamamlayınca karar kaydı");
   // anahtarlar
   x = await api("POST", "/api/v1/anahtar", { kisi: "Ayten", rol: "dis", kapsam: "Mali müşavir Ayten" });
-  ok(x.j.token?.startsWith("dv_") && x.j.mcp_adresi.endsWith(x.j.token), "anahtar üretildi");
+  ok(x.j.token?.startsWith("dv_") && !x.j.mcp_adresi.includes("dv_") && x.j.baslik === "Authorization: Bearer " + x.j.token, "anahtar üretildi, adreste değil başlıkta (S-B1)");
   const disTok = x.j.token, disId = x.j.anahtar.id;
   let d = await api("GET", `/api/v1/akis/${kod}`, undefined, disTok);
   ok(d.st === 200 && d.j.adimlar.length === 1 && d.j.gizli_adim_sayisi === 4 && !d.j.kararlar, "dış anahtar yalnızca kendi adımını görür");

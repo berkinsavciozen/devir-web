@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.13.0";
+export const SURUM = "0.14.0";
 import type { Depo } from "./dosya.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -12,7 +12,7 @@ const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Expose-Headers": "mcp-session-id",
+  "Access-Control-Expose-Headers": "mcp-session-id, www-authenticate",
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
 
@@ -21,19 +21,38 @@ async function sha256(s: string) {
   return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join("");
 }
 
-function tokenOf(req: Request, url: URL) {
+/** Devir anahtarı: önce Authorization başlığı. Adreste (yol ya da ?k=) anahtar yalnız ayar.mcp_yol_anahtari kapalı değilken geçer (S-B1, T4). */
+function tokenOf(req: Request, url: URL, yolAcik: boolean) {
+  const bearer = /^Bearer\s+(dv_[\w-]+)$/i.exec(req.headers.get("authorization") || "");
+  if (bearer) return bearer[1];
+  if (!yolAcik) return null;
   const seg = url.pathname.split("/").filter(Boolean);
   const i = seg.indexOf("devir-mcp");
   const fromPath = i >= 0 ? seg[i + 1] : seg[seg.length - 1];
-  const auth = req.headers.get("authorization") || "";
-  const bearer = /^Bearer\s+(dv_[\w-]+)$/i.exec(auth);
-  return url.searchParams.get("k") || (fromPath && fromPath.startsWith("dv_") ? fromPath : null) || (bearer ? bearer[1] : null);
+  return url.searchParams.get("k") || (fromPath && fromPath.startsWith("dv_") ? fromPath : null);
+}
+/** Adreste anahtar taşıyan istek mi (kapalıyken veri dönmeden 401 alır) */
+const adresteAnahtar = (url: URL) => url.searchParams.has("k") || url.pathname.split("/").some((p) => p.startsWith("dv_"));
+async function yolAnahtariAcik(db: DB) {
+  const d = String((await db.one("ayar", { anahtar: "mcp_yol_anahtari" }).catch(() => null))?.deger ?? "acik").toLowerCase();
+  return !["kapali", "kapalı", "hayir", "false", "0"].includes(d);
+}
+/** dv_ dışındaki Bearer: Supabase oturum ya da OAuth erişim jetonu */
+const jwtOf = (req: Request) => /^Bearer\s+(?!dv_)(\S+)$/i.exec(req.headers.get("authorization") || "")?.[1] || null;
+/** Doğrulanmış jetonun OAuth istemcisi (client_id); web oturumunda yoktur. İmza kimlik() ile doğrulanır, burada yalnız okunur. */
+export function jetonIstemcisi(jwt: string): string | null {
+  try {
+    const p = jwt.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const o = JSON.parse(atob(p + "=".repeat((4 - (p.length % 4)) % 4)));
+    return typeof o.client_id === "string" && o.client_id ? o.client_id : null;
+  } catch { return null; }
 }
 
 /** Anahtar ve çalışma alanı. Üyeye bağlı anahtarda rol, kapsam ve kişi üyelikten gelir; üyelik bittiyse anahtar geçmez (N-4). */
 async function anahtarCoz(db: DB, token: string | null, now: number) {
   const k0 = token ? await db.one("anahtar", { token_hash: await sha256(token) }) : null;
   if (!k0) return null;
+  if (k0.son_gecerlilik && Date.parse(k0.son_gecerlilik) <= now) return null; // süresi dolmuş anahtar
   let key = k0;
   if (k0.uye_id) {
     const u = await db.one("uye", { id: k0.uye_id });
@@ -46,7 +65,11 @@ async function anahtarCoz(db: DB, token: string | null, now: number) {
   return { key, ws };
 }
 
-type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo };
+type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string };
+
+/** Korunan kaynak belgesi (RFC 9728): MCP istemcisi yetkilendirme sunucusunu buradan bulur (MK-1). */
+const kaynakBelgesi = (fn: string, ek: Ek) => ({ resource: fn, authorization_servers: ek.yetki ? [ek.yetki] : [], bearer_methods_supported: ["header"], resource_name: "Devir" });
+const kaynakAdresi = (fn: string) => `${fn}/.well-known/oauth-protected-resource`;
 
 // JSON uçları: /api/v1/... (Devir anahtarıyla) ve /l/<bağlantı> (dış katılımcı, anahtarsız)
 async function web(req: Request, url: URL, yol: string[], db: DB, now: number, ek: Ek): Promise<Response> {
@@ -70,13 +93,15 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     taban.link = web || taban.fn;
     const rota = yol.slice(2);
     const arka = { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, depo: ek.depo };
-    const token = tokenOf(req, url);
-    const jwt = !token ? /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") || "")?.[1] : null;
+    const token = tokenOf(req, url, await yolAnahtariAcik(db));
+    const jwt = !token ? jwtOf(req) : null;
     let ctx: any;
     if (jwt && ek.kimlik) {
       // e-postayla giriş: Supabase oturumu
       const u = await ek.kimlik(jwt).catch(() => null);
       if (!u || !u.email) throw new ApiHata(401, "Oturum geçersiz ya da süresi dolmuş. Yeniden giriş yap.");
+      // OAuth jetonu Claude/ChatGPT'nindir: web uçlarında insan oturumu sayılmaz (S-C1)
+      if (jetonIstemcisi(jwt)) throw new ApiHata(403, "Bu jeton yalnız MCP bağlantısı için geçerli.");
       const ot = { auth_id: u.id, eposta: String(u.email).toLowerCase() };
       const o = await oturumCtx(db, ot, req.headers.get("x-devir-alan") || url.searchParams.get("alan"), now, ua, arka);
       const r = await oturumYonlendir(db, ot, o.ctx, o.uyelikler, req.method, rota, body, taban, now);
@@ -106,20 +131,43 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   const seg = url.pathname.split("/").filter(Boolean);
   const yol = seg.indexOf("devir-mcp") >= 0 ? seg.slice(seg.indexOf("devir-mcp") + 1) : seg;
   if (yol[0] === "api" || yol[0] === "l") return web(req, url, yol, db, now, ek);
+  const fn = ek.taban || `${url.origin}/functions/v1/devir-mcp`;
+  if (yol[0] === ".well-known" && yol[1] === "oauth-protected-resource" && req.method === "GET") return json(kaynakBelgesi(fn, ek));
   if (req.method === "GET") {
     if ((req.headers.get("accept") || "").includes("text/event-stream")) return new Response(null, { status: 405, headers: CORS });
-    return json({ ad: "Devir MCP", surum: SURUM, durum: "çalışıyor", kullanim: "MCP istemcisine bu adresi anahtarınla ekle. Arayüz uçları: /api/v1/ (Authorization: Bearer dv_… ya da e-postayla giriş oturumu), dış katılımcı: /l/<bağlantı>." });
+    return json({ ad: "Devir MCP", surum: SURUM, durum: "çalışıyor", kullanim: "Bu adresi Claude ya da ChatGPT'de bağlayıcı olarak ekle; Devir'de e-postanla onaylarsın. Betik ve Claude Code: Authorization: Bearer dv_… başlığı. Arayüz uçları: /api/v1/, dış katılımcı: /l/<bağlantı>." });
   }
   if (req.method !== "POST") return new Response(null, { status: 405, headers: CORS });
 
   let body: any;
   try { body = await req.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400); }
 
-  const token = tokenOf(req, url);
-  const a = await anahtarCoz(db, token, now);
-  if (!a) return json({ jsonrpc: "2.0", id: Array.isArray(body) ? null : body?.id ?? null, error: { code: -32001, message: "Geçersiz, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı. Bağlantı adresinin sonunda kişisel anahtarın olmalı." } }, 401);
-  const { ws, key } = a;
   const ua = req.headers.get("user-agent") || "";
+  const rpcId = Array.isArray(body) ? null : body?.id ?? null;
+  // Kimliksiz ya da geçersiz istek: 401 + korunan kaynak belgesinin adresi; istemci OAuth akışını buradan başlatır (MK-1)
+  const yetkisiz = (mesaj: string, gecersiz: boolean) => new Response(JSON.stringify({ jsonrpc: "2.0", id: rpcId, error: { code: -32001, message: mesaj } }), {
+    status: 401,
+    headers: { ...CORS, "Content-Type": "application/json", "WWW-Authenticate": `Bearer resource_metadata="${kaynakAdresi(fn)}"${gecersiz ? ', error="invalid_token"' : ""}` },
+  });
+  const yolAcik = await yolAnahtariAcik(db);
+  const token = tokenOf(req, url, yolAcik);
+  const jwt = !token ? jwtOf(req) : null;
+  let ctx0: Ctx;
+  if (token) {
+    const a = await anahtarCoz(db, token, now);
+    if (!a) return yetkisiz("Geçersiz, süresi dolmuş, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı.", true);
+    ctx0 = { db, ws: a.ws, key: a.key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller } as Ctx;
+  } else if (jwt && ek.kimlik) {
+    // OAuth: jeton Supabase Auth'tan; kişi üyelikten, yazan agent (kanal mcp)
+    const u = await ek.kimlik(jwt).catch(() => null);
+    if (!u) return yetkisiz("Oturum geçersiz ya da süresi dolmuş; bağlayıcıyı yeniden bağla.", true);
+    const o = await oturumCtx(db, { auth_id: u.id, eposta: String(u.email || "").toLowerCase() }, req.headers.get("x-devir-alan"), now, ua, { llm: ek.llm, gom: ek.gom, modeller: ek.modeller }, "mcp");
+    if (!o.ctx) return json({ jsonrpc: "2.0", id: rpcId, error: { code: -32003, message: "Bu e-postayla bir Devir çalışma alanına üye değilsin." } }, 403);
+    ctx0 = o.ctx;
+  } else {
+    return yetkisiz(adresteAnahtar(url) ? "Adreste anahtar artık kabul edilmiyor. Bağlayıcıyı anahtarsız adresle yeniden ekle ya da Authorization: Bearer başlığı kullan." : "Kimlik gerekli. Bağlayıcıyı ekleyince Devir'de e-postanla onayla.", false);
+  }
+  const { key } = ctx0;
 
   const msgs = Array.isArray(body) ? body : [body];
   const out: any[] = [];
@@ -140,7 +188,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
       case "tools/call": {
         const name = m.params?.name;
         try {
-          const ctx = await kimlikBagla({ db, ws, key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller } as Ctx, "anahtar", key.id);
+          const ctx = key.id ? await kimlikBagla(ctx0, "anahtar", key.id) : ctx0;
           const text = await callTool(name, m.params?.arguments || {}, ctx);
           ok({ content: [{ type: "text", text }] });
         } catch (e) {

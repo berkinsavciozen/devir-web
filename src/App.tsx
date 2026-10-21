@@ -16,6 +16,7 @@ import { ClaudeaBagla } from './ekranlar/evren/ClaudeaBagla';
 import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
 import { GirisDonus } from './ekranlar/giris/GirisDonus';
+import { OauthOnay } from './ekranlar/giris/OauthOnay';
 import { Iskelet } from './ekranlar/Iskelet';
 import { Galaksi } from './ekranlar/akis/Galaksi';
 import { Adim } from './ekranlar/akis/Adim';
@@ -114,6 +115,7 @@ export function App() {
   let ekran;
   if (yol === '/_iskelet') ekran = <><Gok tohum={21} yildiz={330} /><Iskelet /></>;
   else if (yol === '/giris') ekran = <GirisDonus />;
+  else if (yol === '/oauth/onay') ekran = <OauthOnay />;
   else if (eslestir('/l/:token', yol)) ekran = <Baglanti token={eslestir('/l/:token', yol)!.token} />;
   else ekran = <Uygulama yol={yol} />;
   return (
