@@ -11,10 +11,10 @@ Durum: `açık` · `kısmen` (bir kısmı bu PR'da, kalanı sonraki pakette) · 
 | Bulgu | Önem | Paket | Durum | Kanıt / not |
 |---|---|---|---|---|
 | S-B1 MCP anahtarı URL'de ve loglarda | Blocker | P0-B | açık | 21 Eki: hiç kullanılmamış 2 anahtar (Selin ekip, Emre dış) iptal edildi (T1). 0.12.1'de değişmedi. OAuth + başlıkla anahtar + anahtar yenileme (T1–T7) P0-B'de. |
-| S-B2 Dış kapsam ad alt dizgesiyle | Blocker | P0-0 → P0-A | kısmen | 0.12.1: tam ad / "Ad (kurum)" eşleşmesi (`adEslesir`), katılımcı bağlantısı da aynı kuralla. Test: `guvenlik.test.ts` ali_mehmet_ali, parantezli_sahip, turkce_karakter. Kişi kimliğiyle (kisi_id) eşleşme P0-A. |
-| S-C1 Aktör kimliği / insan kararı taklit edilebilir | Critical | P0-0 → P0-A | kısmen | 0.12.1: `kim`/`kim_tip` argümanı yok sayılır, aktör kanaldan (mcp=agent, oturum/anahtar=insan, bağlantı=dış). Agent kararı yalnız `devir_karar_ver` ile, sahip/ekip için "insan kararı", dış için reddedilir. Test: `guvenlik.test.ts`. Kalan: web'e anahtarla gelen istek hâlâ insan sayılır (P0-B'de anahtar MCP'ye özel olur); alan ayarında karar matrisi P0-A. |
+| S-B2 Dış kapsam ad alt dizgesiyle | Blocker | P0-0 → P0-A | kapandı (kod) | 0.12.1 (canlı): tam ad / "Ad (kurum)" eşleşmesi (`adEslesir`). 0.13.0: `kisi` tablosu; kapsam `sahip_kisi_id` eşitliğiyle, kimliği olmayan eski satırda tam ad eşleşmesine düşer. Aynı adlı iki kişi birbirinin adımını görmez, ad değişince bağlar kopmaz. Test: `kimlik.test.ts` (iki Ayşe, yeniden adlandırma). Canlı: M2 migration onayı bekliyor. |
+| S-C1 Aktör kimliği / insan kararı taklit edilebilir | Critical | P0-0 → P0-A | kısmen | 0.12.1: `kim`/`kim_tip` argümanı yok sayılır, aktör kanaldan (mcp=agent, oturum/anahtar=insan, bağlantı=dış). Agent kararı yalnız `devir_karar_ver` ile, sahip/ekip için "insan kararı", dış için reddedilir. Test: `guvenlik.test.ts`. 0.13.0: karar politikası (sahip/ekip/dış × insan kararı/beyan, Ayarlar → Agent kararları, yalnız sahip değiştirir); beyanda adım kapanmaz, karar öneri olarak kalır. Her olay `kanal` ve `kisi_id` taşır; kanalı olmayan eski olay "doğrulanmamış eski kayıt" görünür. Test: `kimlik.test.ts` politika bloğu. Kalan: web'e anahtarla gelen istek insan sayılır (P0-B). |
 | S-C2 Eksik süre gizlice 1 gün | Critical | P1-A | açık | Tarih aralığı + "süre eksik" uyarısı. Canlıda 3 aktif akışta 7 açık adım süresiz. |
-| S-C3 Ekip rolü fazla yetkili | Critical | P0-0 | kapandı (kod) | 0.12.1: çalışma alanı kararı, standart süreç, ders onay/ret, bitmemiş akışı zorla kapatma yalnız sahip (`needOwner`). Test: `guvenlik.test.ts` S-C3 bloğu. |
+| S-C3 Ekip rolü fazla yetkili | Critical | P0-0 | kapandı (kod) | 0.12.1 canlıda (21 Eki, `/durum` sürümü doğrulandı; davranış canlıda ayrıca denenmedi): çalışma alanı kararı, standart süreç, ders onay/ret, bitmemiş akışı zorla kapatma yalnız sahip (`needOwner`). Test: `guvenlik.test.ts` S-C3 bloğu. |
 | S-C4 Idempotency ve hız sınırı yok | Critical | P1-B | açık | |
 | M-C1 / D-M3 Kritik yol görünmüyor | Critical / Major | P1-A | açık | |
 | D-C1 Dış paylaşım keşfedilemiyor | Critical | P1-C | açık | |
@@ -33,20 +33,21 @@ Durum: `açık` · `kısmen` (bir kısmı bu PR'da, kalanı sonraki pakette) · 
 
 | Bulgu | Önem | Paket | Durum | Kanıt / not |
 |---|---|---|---|---|
-| N-1 LLM anahtarları `ayar` tablosunda düz metin | P0 | P0-0 (canlı) | açık | 21 Eki onaylandı. Berkin secret'ları girince `ayar` satırları silinecek. Kod zaten secret'a düşüyor. |
+| N-1 LLM anahtarları `ayar` tablosunda düz metin | P0 | P0-0 (canlı) | kısmen | 21 Eki: anahtarlar Edge secret'ında; `ayar` satırları `yedek_` önekiyle yeniden adlandırıldı, kod artık okumuyor. Anthropic kredisi yüklenip bir taslak Claude'dan gelince yedek satırlar silinecek. |
 | N-2 anon/authenticated tam tablo yetkisi | P0 | P0-0 (canlı) | kapandı | 21 Eki 10:34 Berkin onayıyla canlıda (`20261021103435_p00_istemci_rollerinden_yetki_kaldir`). Doğrulama: kalan yetki 0, service_role 147; `/api/v1/durum` 200. |
 | N-3 Dış bağlantı belirteci düz metin + logda | P0 | P0-B | açık | |
-| N-4 Üye çıkarma anahtarı iptal etmiyor | P0 | P0-A | açık | |
+| N-4 Üye çıkarma anahtarı iptal etmiyor | P0 | P0-A | kapandı (kod) | 0.13.0: anahtar üyeye bağlı (`anahtar.uye_id`, rol ve kişi üyeden okunur); üye çıkınca anahtarları iptal edilir, üyeliği bitmiş anahtar 401. Test: `kimlik.test.ts` üye anahtarı bloğu. Canlı: M2 bekliyor. |
 | N-5 Test başlıkları herkese açık | P0 | P0-0 | kapandı (kod) | 0.12.1: `x-devir-motor` / `x-devir-openai-model` yalnız `ayar.test_basliklari = 'acik'` iken dinlenir (`sunucu/index.ts`). Deno girişi birim testte yok; canlıda başlıkla istek atıp motorun değişmediği doğrulanacak. |
 | N-6 Migration'lar depoda yok | P0 | P0-0 → P0-C | kısmen | 0.12.1: 12 migration canlı `schema_migrations` kaydından `supabase/migrations/` altına alındı; canlı sütunlarla karşılaştırıldı, fark yok. SQL davranış testi P0-C. |
 | N-7 Talimatlar agent'a kim_tip=insan öğretiyor | P0 | P0-0 | kapandı (kod) | 0.12.1: talimat ve araç şemalarından `kim`/`kim_tip` çıktı; karar için `devir_karar_ver` (geri alınamaz işaretli). Test: "araç şemalarında kim_tip yok". |
 | N-8 İki ön yüz ve elle Edge yüklemesi | P1 | P1-D, P2-C | açık | |
-| N-9 Hata → HTTP kodu regex'le | P1 | P0-A | açık | |
-| N-10 Dış adımlar sahip_tip=insan | P1 | P0-A, P1-C | açık | |
-| N-11 `dbg.tmp.mjs` depoda | P2 | P0-0 | kapandı (kod) | 0.12.1 PR'ında silindi. |
+| N-9 Hata → HTTP kodu regex'le | P1 | P0-A | kapandı (kod) | 0.13.0: `DevirHata` (403 `yetkiYok`, 404 `bulunamadi`); regex kalktı, tipsiz hata 400. Test: `kimlik.test.ts` 403/404. |
+| N-10 Dış adımlar sahip_tip=insan | P1 | P0-A, P1-C | açık | 0.13.0'da veri değişikliği yapılmadı: canlıda Şampirellam alanındaki satırlara dokunur, ayrı onay gerekir. |
+| N-11 `dbg.tmp.mjs` depoda | P2 | P0-0 | kapandı | 0.12.1 PR'ında silindi. |
 
 ## Paket geçmişi
 
 | Paket | Sürüm | PR | Testler | Canlı |
 |---|---|---|---|---|
-| P0-0 hızlı sertleştirme | 0.12.1 | (bu PR) | sunucu 151 ✓ (yeni `guvenlik.test.ts` 25), vitest 59 ✓, build ✓, e2e 101 ✓ | yüklenmedi |
+| P0-0 hızlı sertleştirme | 0.12.1 | #17 | sunucu 151 ✓ (yeni `guvenlik.test.ts` 25), vitest 59 ✓, build ✓, e2e 101 ✓ | 21 Eki yüklendi |
+| P0-A kişi kimliği, aktör, yetki | 0.13.0 | (bu PR) | sunucu 173 ✓ (yeni `kimlik.test.ts` 22), vitest 59 ✓, build ✓, e2e 101 ✓ | yüklenmedi; önce M2 migration (`20261021120000_p0a_kisi_kimligi`), sonra kod |

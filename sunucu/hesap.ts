@@ -1,6 +1,6 @@
 // E-postayla giriş (Supabase Auth, sihirli bağlantı) ve davet. Oturum açan kişi bir ya da birkaç çalışma alanına
 // "uye" olarak bağlanır; rol ve kapsam anahtar tablosundakiyle aynı anlamdadır, böylece bütün uçlar aynı kurallarla çalışır.
-import { type DB, type Ctx } from "./core.ts";
+import { type DB, type Ctx, kimlikBagla, norm } from "./core.ts";
 
 export type Oturum = { auth_id: string; eposta: string };
 export type KimlikFn = (jwt: string) => Promise<{ id: string; email: string } | null>;
@@ -26,7 +26,7 @@ export async function oturumCtx(db: DB, ot: Oturum, secim: string | null, now: n
   if (!u) return { ctx: null as Ctx | null, uyelikler };
   const ws = await db.one("kullanici", { id: u.kullanici_id });
   db.update("uye", { id: u.id }, { son_giris: new Date(now).toISOString() }).catch(() => {});
-  const ctx: Ctx = { db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam }, ua: ua || "Devir web", now, ...ek, kanal: "oturum" } as Ctx;
+  const ctx: Ctx = await kimlikBagla({ db, ws, key: { id: null, uye_id: u.id, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam, kisi_id: u.kisi_id || null }, ua: ua || "Devir web", now, ...ek, kanal: "oturum" } as Ctx, "uye", u.id);
   return { ctx, uyelikler };
 }
 
@@ -58,7 +58,8 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
   if (method === "POST" && r0 === "ben" && r1 === "anahtar" && !r2) {
     if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");
     const token = yeniToken("dv_");
-    const [k] = await db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, token_hash: await sha256(token) }]);
+    // üyeye bağlı (N-4): üyelik biterse ya da rol değişirse anahtar da ona uyar
+    const [k] = await db.insert("anahtar", [{ kullanici_id: ctx.ws.id, kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, token_hash: await sha256(token), uye_id: ctx.key.uye_id, ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}) }]);
     return { anahtar: { id: k.id, kisi: k.kisi, rol: k.rol }, token, mcp_adresi: `${taban.fn}/${token}`, not: "Bu adresi Claude ya da ChatGPT'de bağlayıcı olarak ekle. Anahtar yalnızca şimdi gösterilir." };
   }
   return undefined;
@@ -144,8 +145,11 @@ export async function ekipYonlendir(ctx: Ctx, method: string, yol: string[], bod
     if (r2 === "cikar") {
       if (u.rol === "sahip" && sahipler <= 1) throw new HesapHata(400, "Çalışma alanının tek sahibi çıkarılamaz.");
       if (!ctx.db.delete) throw new HesapHata(503, "Üye çıkarma bu sunucuda kapalı.");
+      // üyeye bağlı anahtarlar iptal (N-4); bağlı olmayan eski anahtarlar ad eşiyle bulunur
+      const anahtarlar = (await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id }, "created_at")).filter((k: any) => !String(k.token_hash).startsWith("iptal:") && (k.uye_id === u.id || (!k.uye_id && norm(k.kisi) === norm(u.kisi))));
+      for (const k of anahtarlar) await ctx.db.update("anahtar", { id: k.id }, { token_hash: "iptal:" + crypto.randomUUID() });
       await ctx.db.delete("uye", { id: u.id });
-      return { cikarildi: true, not: "Kişinin bu alanda ürettiği MCP anahtarları ayrıca iptal edilmeli (POST /api/v1/anahtar/:id/iptal)." };
+      return { cikarildi: true, iptal_edilen_anahtar: anahtarlar.length };
     }
   }
   throw new HesapHata(404, "Böyle bir uç yok.");

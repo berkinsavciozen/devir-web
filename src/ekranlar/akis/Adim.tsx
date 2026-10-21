@@ -430,7 +430,9 @@ function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: stri
     .filter((e: any) => !(e.tip === 'guncelleme' && !olayMetni(e).cikti && ham.some((x: any) => x.tip === 'durum' && Math.abs(x._t - e._t) < 2000)))
     .sort((x: any, y: any) => (Math.abs(x._t - y._t) < 2000 ? Number(y.tip === 'durum') - Number(x.tip === 'durum') : y._t - x._t));
   const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/>` + ship(0, 0, 0, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim_tip === 'agent' ? e.arac || e.kim : e.kim || '?')[0], e.kim_tip === 'agent' ? C.lilac : C.peach, .42, { flame: false }) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
-  const kim = (e: any) => e.kim_tip === 'agent' ? e.arac || e.kim : e.kim;
+  // agent kaydı kimin adına yazıldığını gösterir; kanalı olmayan (0.13.0 öncesi) kayıt doğrulanmamış eski kayıttır
+  const kim = (e: any) => e.kim_tip === 'agent' ? `${e.arac || 'AI'} (${kisaAd(e.kim)} adına)` : e.kim;
+  const eski = (e: any) => (e.kim_tip !== 'sistem' && !e.kanal ? ' · doğrulanmamış eski kayıt' : '');
   const ilkHazir: number | null = (a.bekledigi || []).find((b: any) => b.durum === 'tamam')?.no ?? null;
   const sistemHazir = (e: any) => { const h = (a.bekledigi || []).filter((b: any) => b.durum === 'tamam').map((b: any) => adimAdi(by.get(b.no) || b)); return h.length ? `Sırası geldi; ${h.map((x: string, i: number) => (i || true) && /^[A-ZÇĞİÖŞÜ][^A-ZÇĞİÖŞÜ]*$/.test(x.split(' ')[0]) ? x[0].toLocaleLowerCase('tr') + x.slice(1) : x).join(', ').replace(/, ([^,]+)$/, ' ve $1')} hazır` : olayBasligi(e); };
   return (
@@ -441,7 +443,7 @@ function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: stri
         {olaylar.map((e: any) => {
           const { metin, cikti } = olayMetni(e);
           const z = Date.parse(e.zaman);
-          return <Satir key={e.id} ikon={ikonOf(e)} ust={`${gunAy(z)} ${saat(z)} · ${e.kim_tip === 'sistem' ? 'Devir' : kim(e)}`} baslik={e.kim_tip === 'sistem' && e.durum === 'hazir' ? sistemHazir(e) : olayBasligi(e)} metin={metin} cikti={cikti} cizgi="dolu" git={e.kim_tip === 'sistem' && e.durum === 'hazir' && ilkHazir ? adimaGit(ilkHazir) : undefined} />;
+          return <Satir key={e.id} ikon={ikonOf(e)} ust={`${gunAy(z)} ${saat(z)} · ${e.kim_tip === 'sistem' ? 'Devir' : kim(e)}${eski(e)}`} baslik={e.kim_tip === 'sistem' && e.durum === 'hazir' ? sistemHazir(e) : olayBasligi(e)} metin={metin} cikti={cikti} cizgi="dolu" git={e.kim_tip === 'sistem' && e.durum === 'hazir' && ilkHazir ? adimaGit(ilkHazir) : undefined} />;
         })}
       </ol>
       {olaylar.length >= 60 && <p className="gecmis-not">Son 60 kayıt gösteriliyor.</p>}

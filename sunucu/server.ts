@@ -1,10 +1,10 @@
-import { callTool, INSTRUCTIONS, TOOLS, type DB } from "./core.ts";
+import { callTool, INSTRUCTIONS, TOOLS, kimlikBagla, type DB, type Ctx } from "./core.ts";
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.12.1";
+export const SURUM = "0.13.0";
 import type { Depo } from "./dosya.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -28,6 +28,22 @@ function tokenOf(req: Request, url: URL) {
   const auth = req.headers.get("authorization") || "";
   const bearer = /^Bearer\s+(dv_[\w-]+)$/i.exec(auth);
   return url.searchParams.get("k") || (fromPath && fromPath.startsWith("dv_") ? fromPath : null) || (bearer ? bearer[1] : null);
+}
+
+/** Anahtar ve çalışma alanı. Üyeye bağlı anahtarda rol, kapsam ve kişi üyelikten gelir; üyelik bittiyse anahtar geçmez (N-4). */
+async function anahtarCoz(db: DB, token: string | null, now: number) {
+  const k0 = token ? await db.one("anahtar", { token_hash: await sha256(token) }) : null;
+  if (!k0) return null;
+  let key = k0;
+  if (k0.uye_id) {
+    const u = await db.one("uye", { id: k0.uye_id });
+    if (!u || u.kullanici_id !== k0.kullanici_id) return null;
+    key = { ...k0, kisi: u.kisi, rol: u.rol, kapsam: u.rol === "dis" ? u.kapsam || u.kisi : u.kapsam, kisi_id: u.kisi_id || k0.kisi_id || null };
+  }
+  const ws = await db.one("kullanici", { id: key.kullanici_id });
+  if (!ws) return null;
+  db.update("anahtar", { id: key.id }, { son_kullanim: new Date(now).toISOString() }).catch(() => {});
+  return { key, ws };
 }
 
 type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo };
@@ -68,11 +84,9 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
       if (!o.ctx) throw new ApiHata(403, "Henüz bir çalışma alanına üye değilsin. Davetin varsa POST /api/v1/kayit ile katıl.");
       ctx = o.ctx;
     } else {
-      const key = token ? await db.one("anahtar", { token_hash: await sha256(token) }) : null;
-      if (!key) throw new ApiHata(401, "Geçersiz ya da eksik Devir anahtarı. Authorization: Bearer dv_… başlığıyla gönder.");
-      const ws = await db.one("kullanici", { id: key.kullanici_id });
-      db.update("anahtar", { id: key.id }, { son_kullanim: new Date(now).toISOString() }).catch(() => {});
-      ctx = { db, ws, key, ua: ua || "Devir web", now, kanal: "anahtar", ...arka };
+      const a = await anahtarCoz(db, token, now);
+      if (!a) throw new ApiHata(401, "Geçersiz, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı. Authorization: Bearer dv_… başlığıyla gönder.");
+      ctx = await kimlikBagla({ db, ws: a.ws, key: a.key, ua: ua || "Devir web", now, kanal: "anahtar", ...arka } as Ctx, "anahtar", a.key.id);
     }
     const e = await ekipYonlendir(ctx, req.method, rota, body, { link: taban.link, web }, ek.posta);
     if (e !== undefined) return json({ ok: true, ...e });
@@ -80,7 +94,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     return json({ ok: true, ...data });
   } catch (e) {
     const m = (e as Error).message || String(e);
-    const st = typeof (e as any)?.durum === "number" ? (e as any).durum : /bulunamadı|numaralı adım yok|taslağı yok|Çıktı yok|Anahtar yok|Katılımcı yok/i.test(m) ? 404 : /kapsamında değil|atanmamış|yalnızca ekip/i.test(m) ? 403 : 400;
+    const st = typeof (e as any)?.durum === "number" ? (e as any).durum : 400; // tipli hatalar (DevirHata, ApiHata, HesapHata, DosyaHata) durumunu taşır (N-9)
     if (typeof (e as any)?.durum !== "number") console.warn("api:", m);
     return json({ ok: false, hata: m }, st);
   }
@@ -102,10 +116,9 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   try { body = await req.json(); } catch { return json({ jsonrpc: "2.0", id: null, error: { code: -32700, message: "Parse error" } }, 400); }
 
   const token = tokenOf(req, url);
-  const key = token ? await db.one("anahtar", { token_hash: await sha256(token) }) : null;
-  if (!key) return json({ jsonrpc: "2.0", id: Array.isArray(body) ? null : body?.id ?? null, error: { code: -32001, message: "Geçersiz ya da eksik Devir anahtarı. Bağlantı adresinin sonunda kişisel anahtarın olmalı." } }, 401);
-  const ws = await db.one("kullanici", { id: key.kullanici_id });
-  db.update("anahtar", { id: key.id }, { son_kullanim: new Date(now).toISOString() }).catch(() => {});
+  const a = await anahtarCoz(db, token, now);
+  if (!a) return json({ jsonrpc: "2.0", id: Array.isArray(body) ? null : body?.id ?? null, error: { code: -32001, message: "Geçersiz, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı. Bağlantı adresinin sonunda kişisel anahtarın olmalı." } }, 401);
+  const { ws, key } = a;
   const ua = req.headers.get("user-agent") || "";
 
   const msgs = Array.isArray(body) ? body : [body];
@@ -127,7 +140,8 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
       case "tools/call": {
         const name = m.params?.name;
         try {
-          const text = await callTool(name, m.params?.arguments || {}, { db, ws, key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller });
+          const ctx = await kimlikBagla({ db, ws, key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller } as Ctx, "anahtar", key.id);
+          const text = await callTool(name, m.params?.arguments || {}, ctx);
           ok({ content: [{ type: "text", text }] });
         } catch (e) {
           ok({ content: [{ type: "text", text: "Hata: " + ((e as Error).message || String(e)) }], isError: true });

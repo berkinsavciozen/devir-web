@@ -59,6 +59,8 @@ export function Ayarlar() {
   const [iptal, setIptal] = useState<any>(null);
   const [yeni, setYeni] = useState(false);
   const [roller, setRoller] = useState(false);
+  const [politikaAcik, setPolitikaAcik] = useState(false);
+  const pol = useQuery({ queryKey: ['politika'], queryFn: () => api.get<any>('/politika'), enabled: sahip });
   const [hareket, setHareket] = useState(hareketSecimi());
   const geri = () => (history.length > 1 ? history.back() : git('/'));
   const sira = (k: any) => (k.ben ? 0 : k.kisi === ben?.kisi ? 1 : 2) + (k.iptal ? 3 : 0);
@@ -70,7 +72,7 @@ export function Ayarlar() {
   // dikey yerleşim: her grup başlığı G, satırlar G+14'ten
   const bY: Record<Bolum, number> = { ben: 150, ekip: 0, baglantilar: 0, gorunum: 0 };
   bY.ekip = hesapYuksekligi(ben, bY.ben + 14, false) + 46;
-  const ekipSon = bY.ekip + 14 + 66 + (sahip ? 74 : 0);
+  const ekipSon = bY.ekip + 14 + 66 + (sahip ? 2 * 74 : 0);
   bY.baglantilar = ekipSon + 46;
   const anahtarY = bY.baglantilar + 128;
   const yY = anahtarY + 14 + L.length * 68 + 8;
@@ -106,6 +108,7 @@ export function Ayarlar() {
         {baslik('ekip', 'EKİP', <button type="button" className="ayar-yardim" style={{ top: bY.ekip - 26 }} aria-label="Roller ve yetkiler" onClick={() => setRoller(true)}>?</button>)}
         <SatirKart y={bY.ekip + 14} h={66} ikon={alanIkon(26, 33, '#FFD27A')} ust={alanAdi(ben?.calisma_alani?.ad || '', ben?.kisi)} alt={`çalışma alanı · senin rolün ${rolAdi(ben?.rol || '')}${ben?.rol === 'ekip' && akisErisimi(ben?.kapsam) ? ` · ${akisErisimi(ben?.kapsam)!.length} akış` : ''}`} />
         {sahip && <SatirKart y={bY.ekip + 14 + 74} h={66} ikon={ikili} ust="Üyeler ve davetler" alt={uy.isPending ? '…' : ekipOzeti(sayi)} onClick={() => git('/ayarlar/ekip')} />}
+        {sahip && <SatirKart y={bY.ekip + 14 + 148} h={66} ikon={ozelIkon('<path d="M-6,1 L-2,5 L6,-5" fill="none" stroke="#9EE6CF" stroke-width="1.8" stroke-linecap="round"/>')} ust="Agent kararları" alt={pol.isPending ? '…' : politikaOzeti(pol.data?.politika?.agent_karari)} onClick={() => setPolitikaAcik(true)} />}
 
         {baslik('baglantilar', 'BAĞLANTILAR')}
         {sahip ? <>
@@ -145,9 +148,48 @@ export function Ayarlar() {
           <RolTablosu y={70} vurgu={ben?.rol} />
         </div>
       </AltSayfa>
+      {politikaAcik && <KararPolitikasi ak={pol.data?.politika?.agent_karari} kapat={() => setPolitikaAcik(false)} />}
       {iptal && <AnahtarIptal k={iptal} kapat={() => setIptal(null)} />}
       {yeni && <YeniAnahtar kapat={() => setYeni(false)} />}
     </>
+  );
+}
+
+const POL_ROLLER = [['sahip', 'Sahip'], ['ekip', 'Ekip'], ['dis', 'Dış katılımcı']] as const;
+const POL_VARSAYILAN: Record<string, string> = { sahip: 'insan', ekip: 'insan', dis: 'beyan' };
+/** "Sahip ve ekip insan kararı · dış beyan" gibi tek satır. */
+export function politikaOzeti(ak?: Record<string, string>) {
+  const p = { ...POL_VARSAYILAN, ...(ak || {}) };
+  const ins = POL_ROLLER.filter(([r]) => p[r] === 'insan').map(([, a]) => a.toLocaleLowerCase('tr'));
+  const bey = POL_ROLLER.filter(([r]) => p[r] !== 'insan').map(([, a]) => a.toLocaleLowerCase('tr'));
+  const bir = (L: string[]) => L.join(' ve ');
+  return [ins.length ? `${bir(ins)}: insan kararı` : '', bey.length ? `${bir(bey)}: beyan` : ''].filter(Boolean).join(' · ').replace(/^./, (c) => c.toLocaleUpperCase('tr'));
+}
+
+/**
+ * MK-3 · Agent kararları: kişinin kendi Claude'u üzerinden verdiği karar, kullanıcı tipine göre insan kararı sayılır
+ * ya da beyan kalır (adım kapanmaz, kişi Devir'de onaylar). Her kayıtta kanal görünür.
+ */
+function KararPolitikasi({ ak, kapat }: { ak?: Record<string, string>; kapat: () => void }) {
+  const [p, setP] = useState<Record<string, string>>({ ...POL_VARSAYILAN, ...(ak || {}) });
+  const m = useMutation({ mutationFn: () => api.post<any>('/politika', { agent_karari: p }), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['politika'] }); kapat(); } });
+  const y0 = 260, P = (y: number) => y - (y0 + 28);
+  return (
+    <AltSayfa acik kapat={kapat} baslik="Agent kararları" yukseklik={y0} duraklar={['orta', 'yuksek']}>
+      <div className="karar-panel" style={{ height: 560 }}>
+        <Metin y={P(y0 + 54)} fs={24} lh={30} serif agirlik={700} as="h2">Agent kararları</Metin>
+        <Metin y={P(y0 + 90)} fs={15} lh={20} serif renk="ink2" style={{ right: 22 }}>Bir kişi kararı kendi Claude’u ya da ChatGPT’si üzerinden verirse ne sayılsın?</Metin>
+        {POL_ROLLER.map(([r, ad], i) => (
+          <div key={r}>
+            <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: P(y0 + 158 + i * 92) - 20 }}>{ad}</span>
+            <div className="dis-segment" style={{ top: P(y0 + 166 + i * 92) }}><Segment secenekler={['İnsan kararı', 'Beyan']} aktif={p[r] === 'insan' ? 0 : 1} sec={(j) => setP({ ...p, [r]: j ? 'beyan' : 'insan' })} /></div>
+          </div>
+        ))}
+        <Metin y={P(y0 + 440)} fs={12.5} lh={17} renk="ink3" style={{ right: 22 }}>Beyan: adım kapanmaz, karar öneri olarak kalır; kişi Devir’de onaylar. Her kayıtta hangi yoldan geldiği görünür.</Metin>
+        <Dugme style={{ top: P(y0 + 486) }} fs={16} mesgul={m.isPending} onClick={() => m.mutate()}>Kaydet</Dugme>
+        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 548) }}>{(m.error as Error).message}</p>}
+      </div>
+    </AltSayfa>
   );
 }
 

@@ -15,6 +15,11 @@ export interface DB {
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
 export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any };
 
+/** Tipli hata (N-9): HTTP durumu mesajdan değil hatadan gelir. 403 yetki, 404 yok, 400 geçersiz. */
+export class DevirHata extends Error { constructor(public durum: number, m: string) { super(m); } }
+const yetkiYok = (m: string) => new DevirHata(403, m);
+const bulunamadi = (m: string) => new DevirHata(404, m);
+
 export const DAY = 864e5;
 export const HOUR = 36e5;
 export const DONE = (s: any) => s.durum === "tamam" || s.durum === "atlandi" || s.durum === "ertelendi";
@@ -67,13 +72,16 @@ function actor(ctx: Ctx, a: any) {
   const kim_tip = ctx.kanal === "oturum" || ctx.kanal === "anahtar" || ctx.kanal === "baglanti" ? (isDis(ctx) ? "dis" : "insan") : "agent";
   return { kim: ctx.key.kisi, kim_tip, arac };
 }
-// Agent üzerinden verilen karar (MK-3): kullanıcı tipine göre insan kararı sayılır ya da beyan kalır. Alan ayarı P0-A'da; şimdilik varsayılanlar.
+// Agent üzerinden verilen karar (MK-3): kullanıcı tipine göre insan kararı sayılır ya da beyan kalır.
+// Sahip Ayarlar'da kullanıcı tipi başına seçer (kullanici.politika.agent_karari); seçilmemişse varsayılan.
 const AGENT_KARARI: Record<string, "insan" | "beyan"> = { sahip: "insan", ekip: "insan", dis: "beyan" };
-const kararDuzeyi = (ctx: Ctx, act: any): "insan" | "beyan" => act.kim_tip !== "agent" ? "insan" : AGENT_KARARI[ctx.key.rol] || "beyan";
+export const kararDuzeyi = (ctx: Ctx, act: any): "insan" | "beyan" => act.kim_tip !== "agent" ? "insan" : ({ ...AGENT_KARARI, ...(ctx.ws?.politika?.agent_karari || {}) } as any)[ctx.key.rol] === "insan" ? "insan" : "beyan";
 const who = (o: any) => o.kim_tip === "agent" ? `${o.arac || "AI"} (${o.kim} adına)` : o.kim_tip === "sistem" ? "Devir" : o.kim;
 
 async function log(ctx: Ctx, akisId: string, no: number | null, act: any, tip: string, ozet: string, veri: any = {}) {
-  await ctx.db.insert("olay", [{ akis_id: akisId, adim_no: no, kim: act.kim, kim_tip: act.kim_tip, arac: act.arac || null, tip, ozet, veri: { ...veri, ua: ctx.ua.slice(0, 120) } }]);
+  // kanal ve kişi kimliği (0.13.0): kayıt kimin kimlik bilgisiyle, hangi yoldan geldi; sistem olayında boş
+  const kimlik = act.kim_tip === "sistem" ? {} : { kanal: ctx.kanal || "mcp", ...(ctx.key?.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}) };
+  await ctx.db.insert("olay", [{ akis_id: akisId, adim_no: no, kim: act.kim, kim_tip: act.kim_tip, arac: act.arac || null, tip, ozet, veri: { ...veri, ua: ctx.ua.slice(0, 120) }, ...kimlik }]);
 }
 const SYS = { kim: "Devir", kim_tip: "sistem", arac: null };
 
@@ -87,7 +95,12 @@ export function adEslesir(sahip: string, kisi: string) {
   const tam = String(sahip || ""), m = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(tam);
   return norm(tam) === k || (!!m && (norm(m[1]) === k || norm(m[2]) === k));
 }
-export function stepInScope(ctx: Ctx, s: any) { return !isDis(ctx) || adEslesir(s.sahip, kapsam(ctx)); }
+/** Dış kapsam (P0-A): iki tarafta da kişi kimliği varsa yalnız kimlik eşitliği; ad yalnız gösterimdir. Kimliği olmayan eski kayıtta tam ad eşleşmesi. */
+export function stepInScope(ctx: Ctx, s: any) {
+  if (!isDis(ctx)) return true;
+  if (ctx.key.kisi_id && s.sahip_kisi_id) return s.sahip_kisi_id === ctx.key.kisi_id;
+  return adEslesir(s.sahip, kapsam(ctx));
+}
 /** Ekip üyesinin akış kapsamı (0.11.0): uye.kapsam "akis:KOD1,KOD2" ise yalnız o akışlar (ve alt akışları) ile kendi adımı olan akışlar. */
 export function akisKapsami(ctx: Ctx): Set<string> | null {
   if (ctx.key.rol !== "ekip") return null;
@@ -99,15 +112,52 @@ export function flowInScope(ctx: Ctx, akis: any, steps: any[]) {
   if (ak) { const b = norm(ctx.key.kisi || ""); return ak.has(String(akis.kisa_kod).toUpperCase()) || ak.has(String(akis.baglam?.ust_kod || "").toUpperCase()) || (!!b && steps.some((s) => norm(s.sahip) === b)); }
   if (!isDis(ctx)) return true;
   const k = kapsam(ctx);
-  return (!!k && norm(akis.baglam?.musteri || "") === k) || steps.some((s) => adEslesir(s.sahip, k));
+  return (!!k && norm(akis.baglam?.musteri || "") === k) || steps.some((s) => stepInScope(ctx, s));
 }
 function needTeam(ctx: Ctx, what: string) {
-  if (isDis(ctx)) throw new Error(`${what} yalnızca ekip üyeleri yapabilir. Senin anahtarın dış katılımcı (${ctx.key.kisi}) içindir; yalnızca sana atanan adımları görüp güncelleyebilirsin.`);
+  if (isDis(ctx)) throw yetkiYok(`${what} yalnızca ekip üyeleri yapabilir. Senin anahtarın dış katılımcı (${ctx.key.kisi}) içindir; yalnızca sana atanan adımları görüp güncelleyebilirsin.`);
 }
 // Yüksek etkili eylemler (çalışma alanı kararı, standart süreç, ders, zorla kapatma) yalnız sahipte (S-C3).
 function needOwner(ctx: Ctx, what: string) {
   needTeam(ctx, what);
-  if (ctx.key.rol !== "sahip") throw new Error(`${what} yalnızca çalışma alanının sahibi yapabilir; ekip rolü bunu yapamaz.`);
+  if (ctx.key.rol !== "sahip") throw yetkiYok(`${what} yalnızca çalışma alanının sahibi yapabilir; ekip rolü bunu yapamaz.`);
+}
+
+// ---------- kişi kimliği (P0-A) ----------
+// Her çalışma alanında bir kişi bir satır: insan, dış kişi ya da agent. Adım, katılımcı, üye ve anahtar kişiye kimlikle bağlanır.
+// Ad yalnız gösterimdir; ad değişse de kapsam aynı kalır. Yeni ad ilk görüldüğünde aynı alandaki tam ad eşi aranır, yoksa yeni kişi açılır.
+const kisiTipi = (t: unknown) => (t === "dis" ? "dis" : t === "agent" ? "agent" : "insan");
+export async function kisiCoz(ctx: Ctx, ad: unknown, tip?: unknown): Promise<any | null> {
+  const a = String(ad || "").trim(), n = norm(a);
+  if (!n) return null;
+  const onbellek: Map<string, any> = ((ctx as any)._kisi ||= new Map());
+  if (onbellek.has(n)) return onbellek.get(n);
+  try {
+    let k = (await ctx.db.many("kisi", { ws_id: ctx.ws.id, ad_norm: n }, "created_at"))[0];
+    if (!k) [k] = await ctx.db.insert("kisi", [{ ws_id: ctx.ws.id, ad: a, ad_norm: n, tip: kisiTipi(tip) }]);
+    onbellek.set(n, k);
+    return k;
+  } catch (e) { console.warn("kişi çözülemedi (kisi tablosu yok mu?):", (e as Error).message); return null; } // şema yüklenmeden de eski yol çalışır
+}
+/** Kimlik bilgisinin (anahtar, üye, bağlantı) kişisini bağlar; kaynak satırda yoksa bir kez çözüp yazar. */
+export async function kimlikBagla(ctx: Ctx, tablo: "anahtar" | "uye" | "katilimci", id: unknown) {
+  if (ctx.key.kisi_id) return ctx;
+  const k = await kisiCoz(ctx, isDis(ctx) ? ctx.key.kapsam || ctx.key.kisi : ctx.key.kisi, isDis(ctx) ? "dis" : "insan");
+  if (k) { ctx.key = { ...ctx.key, kisi_id: k.id }; if (id) await ctx.db.update(tablo, { id }, { kisi_id: k.id }).catch(() => {}); }
+  return ctx;
+}
+/** Verilen kişi kimliği bu çalışma alanında mı? (kişi seçiciden gelen sahip_kisi_id için) */
+export async function kisiAl(ctx: Ctx, id: unknown) {
+  const k = /^[0-9a-f-]{36}$/i.test(String(id || "")) ? await ctx.db.one("kisi", { id: String(id), ws_id: ctx.ws.id }) : null;
+  if (!k) throw bulunamadi("Kişi bu çalışma alanında yok.");
+  return k;
+}
+/** { kisi_id } ya da çözülemezse boş nesne (şema yoksa sütun hiç yazılmaz). */
+export async function kisiAlani(ctx: Ctx, ad: unknown, tip?: unknown, alan = "kisi_id") { const k = await kisiCoz(ctx, ad, tip); return k ? { [alan]: k.id } : {}; }
+/** Adım satırlarına sahip kimliğini yazar (yalnız eksik olanlara). */
+async function sahipBagla(ctx: Ctx, rows: any[]) {
+  for (const r of rows) if (!r.sahip_kisi_id && r.sahip) { const k = await kisiCoz(ctx, r.sahip, r.sahip_tip); if (k) r.sahip_kisi_id = k.id; }
+  return rows;
 }
 
 // ---------- graf ----------
@@ -227,13 +277,13 @@ export async function getAkis(ctx: Ctx, ref: unknown) {
   if (!r) throw new Error("akis parametresi gerekli (ör. K7M2). devir_akislar ile listeleyebilirsin.");
   const where = /^[0-9a-f-]{36}$/i.test(r) ? { id: r } : { kisa_kod: r.toUpperCase() };
   const akis = await ctx.db.one("akis", { ...where, sahip_id: ctx.ws.id });
-  if (!akis) throw new Error(`'${r}' kodlu akış bulunamadı. devir_akislar ile akışları listele.`);
+  if (!akis) throw bulunamadi(`'${r}' kodlu akış bulunamadı. devir_akislar ile akışları listele.`);
   return akis;
 }
 export async function loadFlow(ctx: Ctx, akis: any) {
   const steps = (await ctx.db.many("adim", { akis_id: akis.id }, "no")).map(fixStep);
   const events = await ctx.db.many("olay", { akis_id: akis.id }, "id");
-  if (!flowInScope(ctx, akis, steps)) throw new Error(`'${akis.kisa_kod}' akışı senin kapsamında değil.`);
+  if (!flowInScope(ctx, akis, steps)) throw yetkiYok(`'${akis.kisa_kod}' akışı senin kapsamında değil.`);
   return { steps, events };
 }
 export function fixStep(s: any) { s.bagimli = (s.bagimli || []).map(Number); s.ciktilar = s.ciktilar || []; return s; }
@@ -632,7 +682,7 @@ export async function callTool(name: string, a: any, ctx: Ctx): Promise<string> 
     case "devir_akis": return akisDetay(a, ctx);
     case "devir_adim_oku": return adimOku(a, ctx);
     case "devir_adim_guncelle": return adimGuncelle(a, ctx);
-    case "devir_karar_ver": return adimGuncelle({ akis: a.akis, no: a.no, durum: "tamam", not: a.not, cikti: a.cikti, ...(Array.isArray(a.secim) && a.secim.length ? { karar_secimi: a.secim } : {}) }, ctx, { kararAraci: true });
+    case "devir_karar_ver": if (kararDuzeyi(ctx, actor(ctx, a)) !== "insan") return kararBeyan(a, ctx); return adimGuncelle({ akis: a.akis, no: a.no, durum: "tamam", not: a.not, cikti: a.cikti, ...(Array.isArray(a.secim) && a.secim.length ? { karar_secimi: a.secim } : {}) }, ctx, { kararAraci: true });
     case "devir_adim_ekle": return adimEkle(a, ctx);
     case "devir_akis_kapat": return kapat(a, ctx);
     case "devir_cikti_oku": return ciktiOku(a, ctx);
@@ -701,7 +751,7 @@ async function olustur(a: any, ctx: Ctx) {
   let L: ReturnType<typeof learnings>;
   if (a.taslak) {
     tk = await ctx.db.one("taslak", { kisa_kod: String(a.taslak).trim().toUpperCase(), ws_id: ctx.ws.id });
-    if (!tk) throw new Error(`'${a.taslak}' taslağı bulunamadı. Önce devir_tasla ile taslak çıkar.`);
+    if (!tk) throw bulunamadi(`'${a.taslak}' taslağı bulunamadı. Önce devir_tasla ile taslak çıkar.`);
     if (tk.durum && tk.durum !== "acik") throw new Error(`Bu taslaktan zaten akış kuruldu. devir_akislar ile bak.`);
     const t = tk.taslak, S = tk.sorular || {};
     const kk = await kararlar(ctx, baglam.musteri || tk.baglam?.musteri || t.anahtar_varlik?.ad || null);
@@ -803,9 +853,9 @@ async function olustur(a: any, ctx: Ctx) {
     kaynak: s._kod || tk ? "sablon" : "plan", tur_kod: s._tur,
     kosul: s._kosul, capa_soru: s._capaSoru, cevap_soru: s._cevapSoru, tarih_sabit: !!s._capa || !!s._sabit, capa_tarih: s._capa && isDate(s._capa) ? s._capa : null,
   }));
-  const inserted = (await ctx.db.insert("adim", rows)).map(fixStep).sort((x: any, y: any) => x.no - y.no);
+  const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
   if (Array.isArray(a.katilimcilar) && a.katilimcilar.length)
-    await ctx.db.insert("katilimci", a.katilimcilar.filter((k: any) => k && k.ad).map((k: any) => ({ akis_id: akis.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null })));
+    for (const k of a.katilimcilar.filter((k: any) => k && k.ad)) await ctx.db.insert("katilimci", [{ akis_id: akis.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, ...(await kisiAlani(ctx, k.ad, "dis")) }]);
   const act = actor(ctx, a);
   await log(ctx, akis.id, null, act, "akis_olustu", `Akış kuruldu: ${steps.length} adım${tk ? `, taslak ${tk.kisa_kod}` : sab ? `, şablon ${sab.kod}` : ""}`, { sablon: turKod, fark, ogrenim: [...L.musteri] });
   if (tk) {
@@ -1178,11 +1228,11 @@ async function adimOku(a: any, ctx: Ctx) {
   const akis = await getAkis(ctx, a.akis);
   const { steps, events } = await loadFlow(ctx, akis);
   const s = steps.find((x: any) => x.no === Number(a.no));
-  if (!s) throw new Error(`Bu akışta ${a.no} numaralı adım yok (1–${steps.length}).`);
+  if (!s) throw bulunamadi(`Bu akışta ${a.no} numaralı adım yok (1–${steps.length}).`);
   const act = actor(ctx, a);
   if (!stepInScope(ctx, s)) {
     await log(ctx, akis.id, s.no, act, "ret", `Kapsam dışı adım okuma isteği reddedildi`, {});
-    throw new Error(`Adım ${s.no} sana atanmamış; rolün gereği ayrıntısı gizli.`);
+    throw yetkiYok(`Adım ${s.no} sana atanmamış; rolün gereği ayrıntısı gizli.`);
   }
   const m = metrics(akis, steps, events, ctx.now);
   const by = new Map(steps.map((x: any) => [x.no, x]));
@@ -1243,36 +1293,46 @@ async function adimOku(a: any, ctx: Ctx) {
   return out.join("\n");
 }
 
+/** Politika "beyan" ise agent'ın kararı adımı kapatmaz: öneri olarak yazılır, kişi Devir'de (web ya da bağlantı) onaylar. */
+async function kararBeyan(a: any, ctx: Ctx) {
+  const akis = await getAkis(ctx, a.akis);
+  const secim = (Array.isArray(a.secim) ? a.secim : []).map(String);
+  await adimGuncelle({ akis: a.akis, no: a.no, karar: { oneri: { secim, ozet: a.not ? String(a.not) : secim.join(", ") || "Agent üzerinden bildirilen karar", gerekce: "beyan: kişinin onayı bekleniyor" } } }, ctx);
+  const act = actor(ctx, a);
+  await log(ctx, akis.id, Number(a.no), act, "ret", `Karar ${act.arac} üzerinden bildirildi; beyan sayıldı, ${act.kim}'in onayı bekleniyor`, { tur: "karar_beyani", secim });
+  return `Kararı öneri olarak kaydettim; adım kapanmadı. Bu çalışma alanında ${ctx.key.kisi} adına agent üzerinden verilen karar beyan sayılıyor. ${ctx.key.kisi} kararı Devir web'de ya da kişisel bağlantısında onaylamalı.`;
+}
 /** Agent'ın karar adımını tamamlaması: yalnız devir_karar_ver aracıyla ve kullanıcı tipinin politikası "insan kararı say" ise. */
 async function kararIzni(ctx: Ctx, akis: any, act: any, s: any, op: { kararAraci?: boolean }) {
   const ret = (neden: string) => log(ctx, akis.id, s.no, act, "ret", `Karar adımını agent tamamlamak istedi; reddedildi (${neden})`, { istek: "tamam", arac_karar: !!op.kararAraci });
-  if (!op.kararAraci) { await ret("devir_karar_ver kullanılmadı"); throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı. Kullanıcıya özetini ve önerini göster${s.karar_kriteri ? ` (karar kriteri: ${s.karar_kriteri})` : ""}; kullanıcı kararı bu konuşmada açıkça verirse devir_karar_ver ile kaydet. Kararı sen verme.`); }
-  if (kararDuzeyi(ctx, act) !== "insan") { await ret("agent kararı bu kullanıcı için beyan"); throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı; ${ctx.key.kisi} adına agent üzerinden verilen karar bu çalışma alanında yalnız beyan sayılıyor. Kararı Devir'de (web ya da kişisel bağlantı) vermesi gerekiyor.`); }
+  if (!op.kararAraci) { await ret("devir_karar_ver kullanılmadı"); throw yetkiYok(`Adım ${s.no} (${s.ad}) bir karar adımı. Kullanıcıya özetini ve önerini göster${s.karar_kriteri ? ` (karar kriteri: ${s.karar_kriteri})` : ""}; kullanıcı kararı bu konuşmada açıkça verirse devir_karar_ver ile kaydet. Kararı sen verme.`); }
+  if (kararDuzeyi(ctx, act) !== "insan") { await ret("agent kararı bu kullanıcı için beyan"); throw yetkiYok(`Adım ${s.no} (${s.ad}) bir karar adımı; ${ctx.key.kisi} adına agent üzerinden verilen karar bu çalışma alanında yalnız beyan sayılıyor. Kararı Devir'de (web ya da kişisel bağlantı) vermesi gerekiyor.`); }
 }
 async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {}) {
   const akis = await getAkis(ctx, a.akis);
   if (akis.durum !== "aktif") throw new Error(`Akış ${akis.durum}; güncellenemez.`);
   const { steps } = await loadFlow(ctx, akis);
   const s = steps.find((x: any) => x.no === Number(a.no));
-  if (!s) throw new Error(`Bu akışta ${a.no} numaralı adım yok (1–${steps.length}).`);
+  if (!s) throw bulunamadi(`Bu akışta ${a.no} numaralı adım yok (1–${steps.length}).`);
   const act = actor(ctx, a);
   if (!stepInScope(ctx, s)) {
     await log(ctx, akis.id, s.no, act, "ret", `Kapsam dışı adımı güncelleme isteği reddedildi`, {});
-    throw new Error(`Adım ${s.no} sana atanmamış; yalnızca kendi adımlarını güncelleyebilirsin.`);
+    throw yetkiYok(`Adım ${s.no} sana atanmamış; yalnızca kendi adımlarını güncelleyebilirsin.`);
   }
   const by = new Map(steps.map((x: any) => [x.no, x]));
   const out: string[] = [];
   const warn: string[] = [];
   const patch: Record<string, unknown> = {};
   if (a.ilerleme) patch.ilerleme = String(a.ilerleme);
-  if (a.sahip && !isDis(ctx)) patch.sahip = String(a.sahip);
+  if (a.sahip_kisi_id && !isDis(ctx)) { const k = await kisiAl(ctx, a.sahip_kisi_id); patch.sahip = k.ad; patch.sahip_kisi_id = k.id; }
+  else if (a.sahip && !isDis(ctx)) { patch.sahip = String(a.sahip); Object.assign(patch, await kisiAlani(ctx, a.sahip, a.sahip_tip, "sahip_kisi_id")); }
   if (!isDis(ctx)) {
     let yeniTip: string | null = ["insan", "agent", "dis"].includes(a.sahip_tip) ? a.sahip_tip : null;
     if (!yeniTip && patch.sahip && s.sahip_tip === "dis" && norm(String(patch.sahip)) === norm(ctx.key.kisi)) yeniTip = "insan"; // kullanıcı adımı kendine aldı
     if (yeniTip === "agent" && (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s)) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı; sahibi agent olamaz.`);
     if (yeniTip && yeniTip !== s.sahip_tip) patch.sahip_tip = yeniTip;
   }
-  if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw new Error("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; patch.tarih_sabit = true; }
+  if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw yetkiYok("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; patch.tarih_sabit = true; }
   const cikti: any[] = (a.cikti == null ? [] : Array.isArray(a.cikti) ? a.cikti : [a.cikti]).filter(Boolean).map((c: any) => {
     if (typeof c === "string") { const t = c.trim(); try { if (t.startsWith("{")) c = JSON.parse(t); else return { ad: t }; } catch { return { ad: t }; } }
     const o: any = { ad: String(c.ad || c.baslik || "").trim(), ozet: c.ozet ? String(c.ozet) : null, icerik: c.icerik ? String(c.icerik) : null, url: c.url ? String(c.url) : null, kaynak: c.kaynak ? String(c.kaynak) : null, durum: ["taslak", "onaylandi", "yayinda"].includes(c.durum) ? c.durum : "taslak", paylasim: c.paylasim === "dis" ? "dis" : "ekip" };
@@ -1421,7 +1481,7 @@ async function adimEkle(a: any, ctx: Ctx) {
     } catch (e) { console.warn("adim_turu eşleştirilemedi:", (e as Error).message); }
   }
   if (!boyut) boyut = "genel";
-  const [row] = await ctx.db.insert("adim", [{ akis_id: akis.id, no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: v.bagimli, kaynak: "sonradan", tur_kod: turKod, tarih_sabit: !!v.son_tarih }]);
+  const [row] = await ctx.db.insert("adim", await sahipBagla(ctx, [{ akis_id: akis.id, no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: v.bagimli, kaynak: "sonradan", tur_kod: turKod, tarih_sabit: !!v.son_tarih }]));
   if (akis.sablon_kod || akis.taslak_id) await ctx.db.insert("soru_kaydi", [{ ws_id: ctx.ws.id, taslak_id: akis.taslak_id || null, akis_id: akis.id, is_turu: akis.sablon_kod, tip: "kacan", boyut, soru: v.ad, cevap: String(a.neden), kaynak: "adim_ekle", etki: { eklenen: [turKod] }, etki_puan: 1 }]);
   fixStep(row);
   for (const b of bekleyen) { const t = steps.find((s: any) => s.no === b); t.bagimli = [...t.bagimli, no]; await ctx.db.update("adim", { id: t.id }, { bagimli: t.bagimli }); }
@@ -1669,7 +1729,7 @@ async function altAkis(a: any, ctx: Ctx) {
     const nolar = [...new Set(a.adimlar.map(Number))].sort((x: any, y: any) => x - y) as number[];
     for (const n of nolar) {
       const st = steps.find((x: any) => x.no === n);
-      if (!st) throw new Error(`Bu akışta ${n} numaralı adım yok.`);
+      if (!st) throw bulunamadi(`Bu akışta ${n} numaralı adım yok.`);
       if (DONE(st) || st.durum === "suruyor" || st.durum === "engelli") throw new Error(`Adım ${n} (${st.ad}) başlamış ya da bitmiş; tekrarlanacak adımlar henüz başlamamış olmalı.`);
       if (altAdimi(akis, n)) throw new Error(`Adım ${n} zaten bir tekrar grubunda.`);
     }
@@ -1700,7 +1760,7 @@ async function altAkis(a: any, ctx: Ctx) {
       const kendi = kalemSahibi.has(st.no) || (!!tur && st.sahip_tip === "dis" && norm(st.sahip).includes(tur));
       return { akis_id: cocuk.id, no: yeniNo.get(st.no), ad: sub(st.ad), aciklama: st.aciklama ? sub(st.aciklama) : null, sahip: kendi ? kalem : sub(st.sahip), sahip_tip: st.sahip_tip, arac: st.arac, kriter: sub(st.kriter), beklenen_cikti: st.beklenen_cikti, karar_kriteri: st.karar_kriteri, son_tarih: st.son_tarih, sure_tahmin_gun: st.sure_tahmin_gun, bagimli: st.bagimli.filter((n: number) => yeniNo.has(n)).map((n: number) => yeniNo.get(n)), kaynak: "plan", tur_kod: st.tur_kod, kosul: st.kosul || null, tarih_sabit: !!st.tarih_sabit, capa_tarih: st.capa_tarih || null };
     });
-    const ins = (await ctx.db.insert("adim", rows)).map(fixStep);
+    const ins = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep);
     await log(ctx, cocuk.id, null, act, "akis_olustu", `Alt akış kuruldu: ${akis.kisa_kod} akışının "${kalem}" için tekrarı, ${rows.length} adım`, { ust_akis: akis.kisa_kod, grup: g.id, kalem });
     await recalc(ctx, cocuk, ins);
     g.kalemler.push({ ad: kalem, akis_id: cocuk.id, kod: cocuk.kisa_kod });
@@ -1832,7 +1892,7 @@ async function dersler(a: any, ctx: Ctx) {
     needOwner(ctx, "Dersleri onaylamayı ya da reddetmeyi");
     const id = Number(String(a.ders || "").replace(/[^0-9]/g, ""));
     const x = id ? await ctx.db.one("ders", { id, ws_id: ctx.ws.id }) : null;
-    if (!x) throw new Error(`'${a.ders}' dersi bulunamadı. devir_dersler ile listele.`);
+    if (!x) throw bulunamadi(`'${a.ders}' dersi bulunamadı. devir_dersler ile listele.`);
     const durum = islem === "onayla" ? "kesin" : "reddedildi";
     await ctx.db.update("ders", { id: x.id }, { durum, guven: islem === "onayla" ? Math.max(0.8, Number(x.guven) || 0) : 0, updated_at: new Date(ctx.now).toISOString() });
     return islem === "onayla" ? `✓ D${x.id} onaylandı; artık kanıtlı ve benzer işlerde uygulanacak: ${x.metin}` : `D${x.id} reddedildi; bir daha önerilmeyecek: ${x.metin}`;
