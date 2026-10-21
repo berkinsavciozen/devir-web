@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -469,7 +469,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       if (!ad) throw new ApiHata(400, "ad gerekli: bağlantıyı alacak kişinin adı (adımlarda sahip olarak yazılan ad).");
       const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => norm(k.ad) === norm(ad));
       const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad, rol: b.rol || null, iletisim: b.iletisim || null }]))[0];
-      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => norm(s.sahip).includes(norm(ad)));
+      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => adEslesir(s.sahip, ad));
       return { katilimci: katilimciV(k, taban.link), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
     }
     if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
@@ -514,7 +514,7 @@ export async function baglantiCtx(db: DB, token: string, now: number, ua: string
   const akis = await db.one("akis", { id: k.akis_id });
   if (!akis) throw new ApiHata(404, "Akış bulunamadı.");
   const ws = await db.one("kullanici", { id: akis.sahip_id });
-  const ctx: Ctx = { db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad }, ua: ua || "Devir bağlantı", now, depo };
+  const ctx: Ctx = { db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad }, ua: ua || "Devir bağlantı", now, kanal: "baglanti", depo };
   return { ctx, k, akis };
 }
 

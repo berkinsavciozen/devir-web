@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.12.0";
+export const SURUM = "0.12.1";
 import type { Depo } from "./dosya.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
@@ -72,7 +72,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
       if (!key) throw new ApiHata(401, "Geçersiz ya da eksik Devir anahtarı. Authorization: Bearer dv_… başlığıyla gönder.");
       const ws = await db.one("kullanici", { id: key.kullanici_id });
       db.update("anahtar", { id: key.id }, { son_kullanim: new Date(now).toISOString() }).catch(() => {});
-      ctx = { db, ws, key, ua: ua || "Devir web", now, ...arka };
+      ctx = { db, ws, key, ua: ua || "Devir web", now, kanal: "anahtar", ...arka };
     }
     const e = await ekipYonlendir(ctx, req.method, rota, body, { link: taban.link, web }, ek.posta);
     if (e !== undefined) return json({ ok: true, ...e });
@@ -127,7 +127,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
       case "tools/call": {
         const name = m.params?.name;
         try {
-          const text = await callTool(name, m.params?.arguments || {}, { db, ws, key, ua, now, llm: ek.llm, gom: ek.gom, modeller: ek.modeller });
+          const text = await callTool(name, m.params?.arguments || {}, { db, ws, key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller });
           ok({ content: [{ type: "text", text }] });
         } catch (e) {
           ok({ content: [{ type: "text", text: "Hata: " + ((e as Error).message || String(e)) }], isError: true });

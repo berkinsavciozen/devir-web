@@ -98,12 +98,12 @@ async function mcp(name: string, args: any) {
   ok(x.st === 200, "karar seçimi yazıldı");
   x = await api("GET", `/api/v1/akis/${kod}/adim/3`);
   ok(x.j.adim.karar.secim?.secim[0] === "%12" && x.j.adim.karar.secim.kim === "Berkin", "karar seçimi adımda");
-  m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar_secimi: ["%10"], kim_tip: "agent" });
-  ok(/yalnızca insan/.test(m), "agent karar seçemez");
+  m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar_secimi: ["%10"], kim_tip: "insan" }); // kim_tip artık yok sayılır: MCP agent kanalıdır
+  ok(/devir_karar_ver/.test(m) && !/kaydedildi/.test(m), "agent karar seçemez (kim_tip=insan sahtesi de)");
   x = await api("GET", "/api/v1/yok");
   ok(x.st === 404, "bilinmeyen uç 404");
   x = await api("GET", "/api/v1/ozet", undefined, "dv_yanlis");
   ok(x.st === 401, "yanlış anahtar 401");
   const mcpList = await handle(new Request(B + "/dv_sahip", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }), db, NOW, {});
-  ok((await mcpList.json()).result.tools.length === 15, "MCP: 15 araç");
+  ok((await mcpList.json()).result.tools.length === 16, "MCP: 16 araç (devir_karar_ver dahil)");
 })();

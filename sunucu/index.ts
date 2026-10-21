@@ -96,10 +96,12 @@ const OPENAI_MODELLER = {
 
 let motorlar: { claude?: LlmFn; openai?: LlmFn; ikisi?: LlmFn; gom?: GomFn; openaiKey: string } | null = null;
 let hazirlandi = 0;
+let testBasliklari = false; // x-devir-motor / x-devir-openai-model yalnız ayar.test_basliklari = "acik" iken dinlenir
 async function hazirla() {
   if (motorlar && Date.now() - hazirlandi < 10 * 60_000) return motorlar; // anahtar değişirse en geç 10 dk'da alınır
   // önce ayar tablosu (işletmecinin yönettiği yer), yoksa Edge secret
   const oku = async (k: string) => ((await db.one("ayar", { anahtar: k }).catch(() => null))?.deger as string) || "";
+  testBasliklari = (await oku("test_basliklari")) === "acik";
   const claudeKey = (await oku("anthropic_api_key")) || Deno.env.get("ANTHROPIC_API_KEY") || "";
   const openaiKey = (await oku("openai_api_key")) || Deno.env.get("OPENAI_API_KEY") || "";
   const claude = claudeKey ? anthropicLlm(claudeKey, modeller.taslak) : undefined;
@@ -113,8 +115,8 @@ Deno.serve(async (req) => {
   // if (req.method === "POST" && new URL(req.url).pathname.endsWith("/kiyas")) return kiyasHandle(req, sb); // Faz 1.5.0 kıyas düzeneği (ayrı anahtarla)
   const m = await hazirla();
   // test kancası: x-devir-motor: openai | claude ile tek motor zorlanır; x-devir-openai-model ile OpenAI taslak modeli denenir
-  const zorla = (req.headers.get("x-devir-motor") || "").toLowerCase();
-  const om = req.headers.get("x-devir-openai-model");
+  const zorla = testBasliklari ? (req.headers.get("x-devir-motor") || "").toLowerCase() : "";
+  const om = testBasliklari ? req.headers.get("x-devir-openai-model") : null;
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
   const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : m.ikisi;
   return handle(req, db, Date.now(), { llm, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, kimlik, posta, depo });
