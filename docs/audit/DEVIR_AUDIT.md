@@ -52,4 +52,4 @@ Durum: `açık` · `kısmen` (bir kısmı bu PR'da, kalanı sonraki pakette) · 
 | P0-0 hızlı sertleştirme | 0.12.1 | #17 | sunucu 151 ✓ (yeni `guvenlik.test.ts` 25), vitest 59 ✓, build ✓, e2e 101 ✓ | 21 Eki yüklendi |
 | P0-A kişi kimliği, aktör, yetki | 0.13.0 | #18 | sunucu 173 ✓ (yeni `kimlik.test.ts` 22), vitest 59 ✓, build ✓, e2e 101 ✓ | M2 21 Eki 11:20, kod 11:26 yüklendi |
 | P0-B1 OAuth, başlık anahtarı, süre | 0.14.0 | #19 | sunucu 198 ✓ (yeni `oauth.test.ts` 26), vitest 59 ✓, build ✓, sır taraması ✓, e2e 104 ✓ (zamanlama testi tam koşuda bir kez yavaş, tek başına geçti) | M3 11:44, kod 11:46; T3 11:49, T4–T5 11:52 |
-| P0-B2 bağlantı belirteci | 0.15.0 | (bu PR) | sunucu 216 ✓ (yeni `baglanti.test.ts` 14), vitest 59 ✓, build ✓, sır taraması ✓, e2e 104 ✓ | yüklenmedi; önce M4 + secret, sonra kod |
+| P0-B2 bağlantı belirteci | 0.15.0 | (bu PR) | sunucu 216 ✓ (yeni `baglanti.test.ts` 14), vitest 59 ✓, build ✓, sır taraması ✓, e2e 104 ✓ | M4 21 Eki 12:00 canlıda (7 satır karmalı); secret ve kod bekleniyor |
