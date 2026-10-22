@@ -7,6 +7,7 @@ import { AltSayfa } from '../../bilesen/AltSayfa';
 import { CarpiIkon, CopIkon, DosyaSatiri, YukleIkon } from '../../bilesen/DosyaSatiri';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
+import { KararSeridi } from '../../bilesen/KararSeridi';
 import { Ikon } from '../../bilesen/Svg';
 import { iconCloud, logoIsaret } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
@@ -104,6 +105,7 @@ export function Baglanti({ token }: { token: string }) {
       <Sahne gok={GOK_F1} cizim={svg} etiket={v.akis?.baslik || 'Devir'}>
         <UstSatir kisi={v.kisi} />
         <Metin y={116} fs={20} lh={26} serif as="h1" style={{ fontWeight: 400, whiteSpace: 'nowrap' }}>{satir.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+        <KararSeridi oz={v.akis?.karar_ozeti} style={{ left: 20, right: 20, top: 104 + satir.length * 26 }} />
         {a && <>
           <Metin y={kart + 48} x={100} fs={21} lh={26} serif agirlik={700} as="h2" className="tek-satir" style={{ right: 32 }}>{a.ad}</Metin>
           <Metin y={kart + 70} x={100} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 32 }}>{alt}</Metin>

@@ -5,6 +5,7 @@ import { simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
+import { hedefParcasi, KararSeridi } from '../../bilesen/KararSeridi';
 import { Zil } from '../../bilesen/Zil';
 import { Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { iconCloud, iconRings, TAKVIM1 } from '../../cizim/ekran';
@@ -29,13 +30,10 @@ export function bitenOrani(k: any, d?: any) {
 }
 const boncukRenk = (d: string) => (BITTI(d) && d !== 'atlandi' ? ['#FFE29A', 2.4] : d === 'atlandi' ? ['#FFE29A', 2.4] : d === 'engelli' ? ['#FF8A78', 1.8] : d === 'hazir' || d === 'suruyor' ? ['#E9C8FF', 1.8] : ['#4B4380', 1.8]) as [string, number];
 
-/** "5 akış sürüyor; en dar pay Test Bank’te: 6 gün." */
+/** "5 akış sürüyor; Test Bank’te hedef riskte." */
 export function listeCumlesi(kartlar: any[]): string {
-  const n = kartlar.length;
-  const dar = kartlar.filter((k) => k.pay_saat != null).sort((a, b) => a.pay_saat - b.pay_saat)[0];
-  if (!dar) return `${n} akış sürüyor.`;
-  if (dar.pay_saat < 0) return `${n} akış sürüyor; ${ozelEk(akisAdi(dar), 'de')} hedef ${paySure(dar.pay_saat)} geçiyor.`;
-  return `${n} akış sürüyor; en dar pay ${ozelEk(akisAdi(dar), 'de')}: ${paySure(dar.pay_saat)}.`;
+  const p = hedefParcasi(kartlar);
+  return `${kartlar.length} akış sürüyor${p ? '; ' + p : ''}.`;
 }
 
 /** B2 · Akışlar: akış kartları pay sırasına göre, kapananlar sonda; taslak ve Arşiv satırı (§5 B2, §3.19). */
@@ -115,6 +113,7 @@ export function Akislar({ ben }: { ben: Ben }) {
                 <span className="akis-satir-ad" style={{ top: metinUst(28, 15, 18) }}>{akisAdi(k)}</span>
                 {t?.kalemler?.length ? <span className="akis-satir-kalem" style={{ top: metinUst(28, 12, 16) }}>{t.kalemler.length} kalem</span> : null}
               </button>
+              <KararSeridi oz={k.karar_ozeti} kisa className="akis-satir-serit" style={{ left: 94, top: 52, width: 'min(260px, calc(100vw - 122px))' }} />
             </li>
           );
         })}
