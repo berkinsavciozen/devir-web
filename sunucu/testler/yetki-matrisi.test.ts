@@ -106,6 +106,8 @@ const IZ = "GIZLIA"; // A alanına ait her metinde geçer; B'nin hiçbir yanıt�
   let r = await handle(new Request(B + "/l", { headers: { "x-devir-baglanti": linkA } }), db, NOW, ek);
   let j: any = await r.json();
   ok(r.status === 200 && j.adimlar?.length === 1 && j.adimlar[0].no === 3, "bağlantı yalnız kendi adımını gösterir");
+  const ko = JSON.stringify(j.akis?.karar_ozeti || {});
+  ok(!!j.akis?.karar_ozeti?.bitis && !/aday listesi|belge topla|komisyona/.test(ko), "bağlantının karar özeti başka adımların adını taşımaz");
   for (const no of [1, 2, 4]) {
     NOW += 6e4;
     r = await handle(new Request(B + "/l", { method: "POST", headers: { "content-type": "application/json", "x-devir-baglanti": linkA }, body: JSON.stringify({ no, eylem: "tamam" }) }), db, NOW, ek);
