@@ -90,6 +90,10 @@ function olaySatiri(ctx: Ctx, akisId: string, no: number | null, act: any, tip: 
 async function log(ctx: Ctx, akisId: string, no: number | null, act: any, tip: string, ozet: string, veri: any = {}) {
   await ctx.db.insert("olay", [olaySatiri(ctx, akisId, no, act, tip, ozet, veri)]);
 }
+/** Web uçlarından olay (P1-C): yazan, isteğin kimliği. */
+export async function olayYaz(ctx: Ctx, akisId: string, no: number | null, tip: string, ozet: string, veri: any = {}) {
+  await log(ctx, akisId, no, actor(ctx, {}), tip, ozet, veri);
+}
 /**
  * Adım durumu ve durum olayı (P1-B, S-C4): Postgres'te tek işlemde (adim_durum_yaz); biri yazılıp öbürü kalamaz.
  * Durum bu arada başkası tarafından değiştiyse 409. rpc yoksa (bellek DB'si) eski sırayla iki yazım.

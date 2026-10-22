@@ -14,6 +14,7 @@ import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { C, f, planet, rng, ship, sparkle } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, doluSatir, gunAyUzun, ozelEk, tarihEk } from '../../metin/turkce';
 import { Segment } from '../akis/Adim';
+import { git } from '../../yonlendirme';
 
 const GOK_F1 = { tohum: 47, yildiz: 240, bulutsu: [[60, 300, 260, 'neb2'], [360, 200, 220, 'neb1'], [200, 760, 260, 'neb3']] as [number, number, number, string][] };
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
@@ -42,14 +43,16 @@ function UstSatir({ kisi }: { kisi?: string }) {
 }
 
 /** F · Dış katılımcının bağlantı sayfası (/l/:token): yalnız kendi adımları, dört eylem, teslim (§5 F1–F4). */
-export function Baglanti({ token }: { token: string }) {
+export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: string; kod: string } }) {
   const qc = useQueryClient();
   // eski biçim (/l/<belirteç>): adres çubuğunda belirteç # parçasına taşınır, paylaşılırsa da loglara düşmez (N-3)
   useEffect(() => {
     const ek = '/l/' + encodeURIComponent(token);
     if (location.pathname.endsWith(ek)) history.replaceState(null, '', location.pathname.slice(0, -ek.length) + '/l' + location.search + '#' + encodeURIComponent(token));
   }, [token]);
-  const q = useQuery({ queryKey: ['baglanti', token], queryFn: () => api.baglanti.get<any>(token), retry: (n, e) => !(e instanceof ApiHatasi && e.durum === 404) && n < 1 });
+  // önizleme (P1-C): sahip katılımcının göreceğini görür; açılış sayılmaz, düğmeler çalışmaz
+  const anahtar = onizleme ? 'o:' + onizleme.id : token;
+  const q = useQuery({ queryKey: ['baglanti', anahtar], queryFn: () => (onizleme ? api.get<any>(`/katilimci/${encodeURIComponent(onizleme.id)}/onizleme`) : api.baglanti.get<any>(token)), retry: (n, e) => !(e instanceof ApiHatasi && (e.durum === 404 || e.durum === 410)) && n < 1 });
   const [secili, setSecili] = useState<number | null>(null);
   const [sayfa, setSayfa] = useState<null | 'teslim' | 'engel' | 'not'>(null);
   const [tesekkur, setTesekkur] = useState<{ no: number; v: any } | null>(null);
@@ -60,8 +63,8 @@ export function Baglanti({ token }: { token: string }) {
   const a = adimlar.find((x) => x.no === secili) || simdiki || adimlar[0] || null;
 
   const eylem = useMutation({
-    mutationFn: (g: any) => api.baglanti.post<any>(token, { no: a!.no, ...g }),
-    onSuccess: (r, g) => { qc.setQueryData(['baglanti', token], r); setSayfa(null); if (g.eylem === 'tamam') setTesekkur({ no: a!.no, v: r }); },
+    mutationFn: (g: any) => (onizleme ? Promise.reject(new Error('Önizlemede düğmeler çalışmaz.')) : api.baglanti.post<any>(token, { no: a!.no, ...g })),
+    onSuccess: (r, g) => { qc.setQueryData(['baglanti', anahtar], r); setSayfa(null); if (g.eylem === 'tamam') setTesekkur({ no: a!.no, v: r }); },
   });
 
   const cizim = useMemo(() => {
@@ -72,7 +75,7 @@ export function Baglanti({ token }: { token: string }) {
   }, [v, a, NOW]);
 
   if (q.isPending) return <Sahne gok={GOK_F1} etiket="Devir"><UstSatir /></Sahne>;
-  if (q.isError) return <GecersizBaglanti ag={!(q.error instanceof ApiHatasi && q.error.durum === 404)} yeniden={() => void q.refetch()} />;
+  if (q.isError) return <GecersizBaglanti ag={!(q.error instanceof ApiHatasi && (q.error.durum === 404 || q.error.durum === 410))} suresi={q.error instanceof ApiHatasi && q.error.durum === 410 ? q.error.message : undefined} yeniden={() => void q.refetch()} />;
   if (tesekkur) return <Tesekkur v={tesekkur.v} no={tesekkur.no} kapat={() => setTesekkur(null)} bak={(no) => { setSecili(no); setTesekkur(null); }} />;
 
   // cümle: "{adım} {hazır tarihi}'den beri sende; son tarih {son_tarih}." (yoksa API özeti)
@@ -99,6 +102,7 @@ export function Baglanti({ token }: { token: string }) {
     : beklemede && a.bekledigi?.length ? `Önce ${a.bekledigi.map((x: any) => x.ad).join(', ')} bitmeli`
     : [a.son_tarih ? `Son ${gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00'))}` : null, a.bekleme_saat ? `${bekleme(a.bekleme_saat)} ${a.durum === 'engelli' ? 'engelli' : 'bekliyor'}` : null].filter(Boolean).join(' · ')) : '';
   const hata = eylem.isError ? (eylem.error as Error).message : null;
+  const ac = (x: 'teslim' | 'engel' | 'not') => { if (!onizleme) setSayfa(x); };
 
   return (
     <>
@@ -110,24 +114,25 @@ export function Baglanti({ token }: { token: string }) {
           <Metin y={kart + 48} x={100} fs={21} lh={26} serif agirlik={700} as="h2" className="tek-satir" style={{ right: 32 }}>{a.ad}</Metin>
           <Metin y={kart + 70} x={100} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 32 }}>{alt}</Metin>
           {ey.includes('basladim') && (
-            <Dugme yukseklik={56} fs={17} style={{ top: b1, left: 36, right: 36 }} ikonX={74} mesgul={eylem.isPending && eylem.variables?.eylem === 'basladim'} onClick={() => eylem.mutate({ eylem: 'basladim' })}
+            <Dugme yukseklik={56} fs={17} style={{ top: b1, left: 36, right: 36 }} ikonX={74} mesgul={eylem.isPending && eylem.variables?.eylem === 'basladim'} disabled={!!onizleme} onClick={() => eylem.mutate({ eylem: 'basladim' })}
               ikon={<svg aria-hidden width="40" height="40" viewBox="-20 -20 40 40" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -10, 'dis', '', '#E8738A', .7) }} />}>Başladım</Dugme>
           )}
           {ey.includes('tamam') && (
-            <Dugme tur="ikincil" ton="altin" yukseklik={52} fs={16} style={{ top: ey.includes('basladim') ? b2 : b1, left: 36, right: 36 }} ikonX={84} onClick={() => setSayfa('teslim')}
+            <Dugme tur="ikincil" ton="altin" yukseklik={52} fs={16} style={{ top: ey.includes('basladim') ? b2 : b1, left: 36, right: 36 }} ikonX={84} onClick={() => ac('teslim')} disabled={!!onizleme}
               ikon={<svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><circle r="9" fill="url(#pLit2)" /><path d="M-4,0 L-1,3 L4,-3" stroke="#2A1D4F" strokeWidth="1.8" fill="none" strokeLinecap="round" /></svg>}>Tamam</Dugme>
           )}
           {ey.includes('engel') && (
-            <Dugme tur="ikincil" ton="mercan" yukseklik={48} style={{ top: b3, left: 36, right: 201 }} ikonX={32} kayma={10} onClick={() => setSayfa('engel')}
+            <Dugme tur="ikincil" ton="mercan" yukseklik={48} style={{ top: b3, left: 36, right: 201 }} ikonX={32} kayma={10} onClick={() => ac('engel')} disabled={!!onizleme}
               ikon={<svg aria-hidden width="24" height="24" viewBox="-12 -12 24 24" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: iconCloud(0, -2, .5) }} />}>Engel var</Dugme>
           )}
           {ey.includes('not') && (
-            <Dugme tur="ikincil" ton="lila" yukseklik={48} style={ey.length === 1 ? { top: b1, left: 36, right: 36 } : { top: b3, left: 201, right: 36 }} ikonX={ey.length === 1 ? undefined : 31} kayma={ey.length === 1 ? 0 : 10} onClick={() => setSayfa('not')}
+            <Dugme tur="ikincil" ton="lila" yukseklik={48} style={ey.length === 1 ? { top: b1, left: 36, right: 36 } : { top: b3, left: 201, right: 36 }} ikonX={ey.length === 1 ? undefined : 31} kayma={ey.length === 1 ? 0 : 10} onClick={() => ac('not')} disabled={!!onizleme}
               ikon={<svg aria-hidden width="16" height="20" viewBox="-8 -10 16 20"><path d="M-5,6 L-5,-4 Q-5,-8 -1,-8 Q3,-8 3,-4 L3,4 Q3,6 1,6 Q-1,6 -1,4 L-1,-3" stroke="#D9CCFF" strokeWidth="1.6" fill="none" strokeLinecap="round" /></svg>}>Not ekle</Dugme>
           )}
           {hata && !sayfa && <p className="canli-hata" role="alert" style={{ top: b3 + 60 }}>{hata}</p>}
         </>}
         {!a && <Metin y={520} fs={17} lh={22} serif renk="ink2" hiza="orta">Bu bağlantıda sana atanmış bir adım görünmüyor.</Metin>}
+        {onizleme && <div className="onizleme-serit" role="status"><span>Önizleme · {kisiAdi(v.kisi)} bağlantıyı açınca bunu görür</span><button type="button" onClick={() => (history.length > 1 ? history.back() : git(`/akis/${encodeURIComponent(onizleme.kod)}`))}>Kapat</button></div>}
         {sonraki && (
           <Kutu as="button" x={16} y={774} w={358} h={46} className="dis-sonra" onClick={() => setSecili(sonraki.no)} aria-label={`Sonra: ${sonraki.ad}`}>
             Sonra: {adimAdi(sonraki)}{digerleri.length > 1 ? ` · +${digerleri.length - 1} adım` : ''}
@@ -270,7 +275,7 @@ function Tesekkur({ v, no, kapat, bak }: { v: any; no: number; kapat: () => void
 }
 
 /** F4 · Geçersiz ya da yenilenmiş bağlantı (ağ hatasında aynı ekran, başka cümle). */
-export function GecersizBaglanti({ ag, yeniden }: { ag?: boolean; yeniden: () => void }) {
+export function GecersizBaglanti({ ag, suresi, yeniden }: { ag?: boolean; suresi?: string; yeniden: () => void }) {
   const cizim = useMemo(() => {
     let s = `<rect width="390" height="844" fill="#07051A" opacity=".35"/><circle cx="195" cy="300" r="110" fill="url(#glowLilac)" opacity=".5"/>`;
     for (let i = 0; i < 9; i++) { const a0 = i * 40 + 6, a1 = a0 + 16, r = 92, p = (t: number) => [195 + Math.cos(t * Math.PI / 180) * r, 300 + Math.sin(t * Math.PI / 180) * r]; const [x0, y0] = p(a0), [x1, y1] = p(a1); s += `<path d="M${f(x0)},${f(y0)} A${r},${r} 0 0 1 ${f(x1)},${f(y1)}" fill="none" stroke="#8E80D6" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`; }
@@ -280,8 +285,8 @@ export function GecersizBaglanti({ ag, yeniden }: { ag?: boolean; yeniden: () =>
   return (
     <Sahne gok={{ tohum: 13, yildiz: 160, parilti: 2 }} cizim={cizim} etiket="Bağlantı">
       <UstSatir />
-      <Metin y={472} fs={26} lh={32} serif agirlik={700} hiza="orta" as="h1">{ag ? 'Şu an açılamadı.' : 'Bu bağlantı artık açılmıyor.'}</Metin>
-      <Metin y={506} fs={17.5} lh={23} serif renk="ink2" hiza="orta">{ag ? <>Bağlantı kurulamadı;<br />biraz sonra yeniden dene.</> : <>Gönderen kişi yeni bir bağlantı gönderdi ya da<br />bunu kapattı; yenisini ondan iste.</>}</Metin>
+      <Metin y={472} fs={26} lh={32} serif agirlik={700} hiza="orta" as="h1">{ag ? 'Şu an açılamadı.' : suresi ? 'Bu bağlantının süresi doldu.' : 'Bu bağlantı artık açılmıyor.'}</Metin>
+      <Metin y={506} fs={17.5} lh={23} serif renk="ink2" hiza="orta">{ag ? <>Bağlantı kurulamadı;<br />biraz sonra yeniden dene.</> : suresi ? <>{suresi.replace(/; bağlantı.*$/, '.')}<br />Bir şey gerekirse gönderen kişiye yaz.</> : <>Gönderen kişi yeni bir bağlantı gönderdi ya da<br />bunu kapattı; yenisini ondan iste.</>}</Metin>
       <Dugme tur="ikincil" ton="lila" yukseklik={50} fs={15} style={{ top: 600 }} onClick={yeniden}>Yeniden dene</Dugme>
     </Sahne>
   );

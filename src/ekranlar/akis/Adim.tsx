@@ -16,6 +16,7 @@ import { adimAdi, adimEtiketi, akisAdi, ikiSatir, ozelEk } from '../../metin/tur
 import { git, arama } from '../../yonlendirme';
 import { haritaCumlesi, useAkis } from './Galaksi';
 import { Karar } from './Karar';
+import { BaglantiGonder } from './BaglantiGonder';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const ajanMi = (ad: string, tip?: string) => tip === 'agent' || /agent|Claude/i.test(ad);
@@ -357,6 +358,9 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
     onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['akis', kod] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['adim', kod, a.no] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); },
   });
   const claude = a.linkler?.claude;
+  // dış katılımcının adımı (P1-C): bağlantı adımın içinden gönderilir
+  const [paylas, setPaylas] = useState(false);
+  const disGonder = sahipDis && !BITTI(a.durum);
   return (
     <div className="adim-durum">
       <svg className="panel-cizim" aria-hidden width="390" height="480" viewBox={`0 ${28} 390 480`} dangerouslySetInnerHTML={{ __html: svg }} />
@@ -381,12 +385,16 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
             {claude && <Dugme tur="ikincil" ton="lila" yukseklik={54} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
             <Dugme mesgul={bitir.isPending} onClick={() => (a.karar_adimi ? git(`/akis/${encodeURIComponent(kod)}/karar/${a.no}`) : bitir.mutate())}>{a.karar_adimi ? 'Kararı ver' : 'Bitti olarak işaretle'}</Dugme>
           </>
+        ) : disGonder ? (
+          <Dugme ikonX={56} kayma={14} onClick={() => setPaylas(true)}
+            ikon={<svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 1, 0, 'dis', '', '#2A1D4F', .75) }} />}>{`${ozelEk(kisaAd(a.sahip), 'e')} bağlantı gönder`}</Dugme>
         ) : claude ? (
           <Dugme ikonX={106} kayma={10} onClick={() => window.open(claude, '_blank', 'noopener')}
             ikon={<svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -12, 'insan', '✦', '#E8738A', .75, { flame: false }) }} />}>Claude’da aç</Dugme>
         ) : null}
       </div>
       {bitir.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 534) }}>{(bitir.error as Error).message}</p>}
+      {paylas && <BaglantiGonder kod={kod} kisi={a.sahip} kisiId={a.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === a.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === a.sahip).length} kapat={() => setPaylas(false)} />}
     </div>
   );
 }
