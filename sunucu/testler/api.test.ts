@@ -100,6 +100,16 @@ async function mcp(name: string, args: any) {
   ok(x.j.adim.karar.secim?.secim[0] === "%12" && x.j.adim.karar.secim.kim === "Berkin", "karar seçimi adımda");
   m = await mcp("devir_adim_guncelle", { akis: kod, no: 3, karar_secimi: ["%10"], kim_tip: "insan" }); // kim_tip artık yok sayılır: MCP agent kanalıdır
   ok(/devir_karar_ver/.test(m) && !/kaydedildi/.test(m), "agent karar seçemez (kim_tip=insan sahtesi de)");
+  // P1-A (MK-5, MK-8): kart, akış ve MCP aynı karar cümlesini taşır; bitiş aralık olarak
+  x = await api("GET", `/api/v1/akis/${kod}`);
+  const ko = x.j.akis.karar_ozeti, bt = x.j.bitis;
+  ok(typeof ko?.cumle === "string" && ko.cumle.includes("Kritik yol") && Array.isArray(ko.bitis.aralik) && ko.bitis.aralik[0] <= ko.bitis.aralik[1], "akış: karar özeti ve bitiş aralığı");
+  ok(x.j.akis.en_erken_bitis === ko.bitis.aralik[0], "aralığın alt ucu eski en_erken_bitis ile aynı");
+  ok(Array.isArray(bt?.varsayimlar) && bt.varsayimlar.length > 0 && Array.isArray(bt.adimlar) && bt.zincir.length > 0, "bu tarih neden: varsayımlar, adım kaynakları, zincir");
+  const kartlar = (await api("GET", "/api/v1/akislar")).j.akislar;
+  ok(kartlar[0].karar_ozeti?.cumle === ko.cumle, "liste kartı aynı cümle");
+  m = await mcp("devir_akis", { akis: kod });
+  ok(m.split("\n")[1] === ko.cumle, "MCP devir_akis aynı cümleyle başlar");
   x = await api("GET", "/api/v1/yok");
   ok(x.st === 404, "bilinmeyen uç 404");
   x = await api("GET", "/api/v1/ozet", undefined, "dv_yanlis");

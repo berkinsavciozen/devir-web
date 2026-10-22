@@ -1,5 +1,6 @@
 // Devir MCP çekirdeği. Saf mantık: veri erişimi DB arayüzü üzerinden gelir (Supabase ya da test için bellek).
 
+import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
@@ -1189,6 +1190,10 @@ async function akisDetay(a: any, ctx: Ctx) {
   if (akis.baglam?.ust_akis) out.push(`Alt akış: ${akis.baglam.ust_kod} akışının "${akis.baglam.kalem}" için tekrarı.`);
   const ctxLine = Object.entries(akis.baglam || {}).filter(([k, v]) => !["ust_akis", "ust_kod", "grup", "kalem"].includes(k) && k !== "sablon_farki" && k !== "cevaplar" && k !== "kalici_kodlar" && k !== "bekleyen" && k !== "cevaplanan" && (v == null || typeof v !== "object")).map(([k, v]) => `${k}: ${v}`).join(" · ");
   if (ctxLine) out.push(ctxLine);
+  // MK-8: MCP yanıtı ekrandaki karar şeridiyle aynı cümleyle başlar
+  const vis0 = steps.filter((s: any) => stepInScope(ctx, s));
+  const { bitis: bt, karar_ozeti: ko } = akisKarari(akis, steps, events.filter((e: any) => e.tip !== "okuma"), ctx.now, await gecmisYukle(ctx), { dis: isDis(ctx), vis: vis0 });
+  if (ko.cumle) out.splice(1, 0, ko.cumle);
   if (isDis(ctx)) {
     out.push(`İlerleme: ${steps.filter(DONE).length}/${steps.length} adım tamam${akis.hedef_tarih ? ` · hedef ${fmtD(akis.hedef_tarih)}` : ""}`, "", "Sana atanan adımlar:");
     for (const s of steps.filter((s: any) => stepInScope(ctx, s))) out.push(stepLine(s, m.tl, m.pl, { sahipGizle: true }));
@@ -1200,6 +1205,7 @@ async function akisDetay(a: any, ctx: Ctx) {
     `Süre: ${dur(m.sure)}${akis.hedef_tarih ? ` · hedef ${fmtD(akis.hedef_tarih)} · en erken bitiş ${fmtMs(m.pl.end)}${m.pay != null ? (m.pay >= 0 ? ` (${dur(m.pay)} pay)` : ` ⚠ ${dur(-m.pay)} gecikme riski`) : ""}` : ""}`,
     speedLine(m),
     `Kritik yol: ${m.pl.chain.join(" → ")}`,
+    ...(bt.aralik && !akis.kapandi_at ? [`Bitiş aralığı: ${aralikMetni(bt.aralik)} (${bt.guven === "kesin" ? "kesin" : bt.guven === "eksik" ? "süresi eksik adım var" : "tahmini"})${bt.varsayimlar.length ? " · " + bt.varsayimlar.join("; ") : ""}`] : []),
     "",
   );
   for (const s of steps) out.push(stepLine(s, m.tl, m.pl) + (altAdimi(akis, s.no) ? ` · tekrarlı: ${s.ilerleme || "alt akışlarda"}` : ""));
