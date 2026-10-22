@@ -646,3 +646,37 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .ayar-yardim { position: absolute; right: 20px; width: 44px; height: 44px; border: 0; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-kart) 55%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); color: var(--renk-metin-ink2); font-size: 17px; font-weight: 700; cursor: pointer; }
 .ayar-yardim:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
 .satir-kart > .satir-gemi { position: absolute; right: 12px; top: calc(50% - 14px); overflow: visible; }
+/* Karar şeridi (P1-A2): sunucunun karar özeti; parçalar bütün kalır, sığmayan alt satıra geçer, ad kesilmez */
+.karar-seridi { position: absolute; display: block; margin: 0; padding: 0; min-width: 0; font: 600 13px/18px var(--font-sans); color: var(--renk-metin-ink2); text-align: left; overflow-wrap: anywhere; }
+.karar-seridi.statik { position: static; }
+button.karar-seridi { border: 0; background: none; cursor: pointer; }
+button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-seridi .ks-neden:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; border-radius: 6px; }
+.karar-seridi .ks-parca:not(:last-child)::after { content: '\00a0· '; color: var(--renk-metin-ink3); font-weight: 500; white-space: pre-wrap; }
+.karar-seridi .ks-onek { color: var(--renk-metin-ink); font-weight: 750; }
+.karar-seridi .ks-darbogaz, .karar-seridi .ks-dis { color: var(--renk-metin-mercan); }
+.karar-seridi .ks-kritik { color: var(--renk-metin-ink); }
+.karar-seridi .ks-tarih { color: var(--renk-metin-altin); font-weight: 750; }
+.karar-seridi.ton-riskte .ks-hedef { color: var(--renk-metin-altin); }
+.karar-seridi.ton-geciyor .ks-hedef { color: var(--renk-metin-mercan); }
+.karar-seridi.ton-pay .ks-hedef { color: var(--renk-metin-ink2); }
+.karar-seridi .ks-adim, .karar-seridi .ks-neden { border: 0; padding: 0; background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+@media (hover: hover) { .karar-seridi .ks-adim:hover { text-decoration: underline; text-underline-offset: 3px; } }
+.karar-seridi .ks-adim.ks-darbogaz { color: var(--renk-metin-mercan); }
+.karar-seridi .ks-adim.ks-kritik { color: var(--renk-metin-ink); }
+.karar-seridi .ks-neden { color: var(--renk-dosya-turu-diger); font-weight: 650; text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 45%, transparent); text-underline-offset: 3px; }
+.karar-seridi.kisa { font-size: 12px; line-height: 16px; }
+/* "Bu tarih neden?" paneli */
+.tarih-neden { padding: 4px 20px 28px; }
+.tarih-neden h2 { margin: 6px 0 4px; font-family: var(--font-serif); font-size: 22px; line-height: 28px; font-weight: 700; color: var(--renk-metin-ink); }
+.tarih-neden .tn-aralik { margin: 0; font: 750 18px/24px var(--font-sans); color: var(--renk-metin-altin); }
+.tarih-neden .tn-not { margin: 2px 0 0; font: 500 13px/18px var(--font-sans); color: var(--renk-metin-ink2); }
+.tarih-neden h3 { margin: 18px 0 6px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 750; color: var(--renk-metin-ink3); }
+.tarih-neden ul, .tarih-neden ol { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.tarih-neden li { font: 500 13.5px/19px var(--font-sans); color: var(--renk-metin-ink); }
+.tarih-neden li small { display: block; font-size: 12px; line-height: 16px; color: var(--renk-metin-ink3); }
+.tarih-neden ol li { display: grid; grid-template-columns: 24px 1fr; column-gap: 8px; }
+.tarih-neden ol li > i { font-style: normal; font-weight: 750; color: var(--renk-metin-altin); }
+.tarih-neden .tn-yuk { color: var(--renk-metin-mercan); }
+.galaksi-ust { position: absolute; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; pointer-events: none; }
+.galaksi-ust > * { pointer-events: auto; max-width: 100%; }
+.akis-satir-serit { pointer-events: none; }

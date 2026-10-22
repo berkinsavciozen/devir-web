@@ -9,25 +9,28 @@ import { useOlaylar } from '../../bilesen/Zil';
 import { saat } from '../../cizim/yol.js';
 import { adimAdi, olayFiili, topla } from '../bildirimler/model';
 import { PANO_AD, type Pano as PanoV, type PanoTur } from './pano';
+import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 
 const SATIR = 60, ARA = 8, EN = 6;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
 /** Bölümün yerleşimi: cümle satırları, süzgeç, satırlar ve alt bağlantılar. */
-export function panoYerlesimi(P: PanoV, n: number, y0: number, hareket = 0) {
+export function panoYerlesimi(P: PanoV, n: number, y0: number, hareket = 0, seritH = 0) {
   const cumle = doluSatir(P.cumle, 350, '17.5px Caladea', 4);
-  const cY = y0 + 66, sY = cY + (cumle.length - 1) * 23 + 22, lY = sY + (P.suzgecler.length ? 56 : 0);
+  // karar şeridi cümlenin altında (yüksekliği ölçülür; ölçülmeden önce tahmin)
+  const cY = y0 + 66, kY = cY - 9 + cumle.length * 23, sY = cY + (cumle.length - 1) * 23 + 22 + (seritH ? seritH + 10 : 0), lY = sY + (P.suzgecler.length ? 56 : 0);
   const satir = Math.min(n, EN), aY = lY + (satir ? satir * (SATIR + ARA) : 40) + 8;
   // son hareketler (el notu 4): başlık, en çok üç satır, Bildirimler bağlantısı
   const hY = aY + 72, hSon = hareket ? hY + 30 + hareket * (SATIR + ARA) + 44 : aY + 44;
-  return { cumle, cY, sY, lY, aY, hY, son: hSon };
+  return { cumle, cY, kY, sY, lY, aY, hY, son: hSon };
 }
 
 export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; ben: string; kartlar: any[]; goster: PanoTur | null; secili: PanoTur | null; sec: (t: PanoTur | null) => void }>(
   function EvrenPano({ P, y0, ben, kartlar, goster, secili, sec }, ref) {
     const liste = goster ? P.adimlar[goster] : [];
     const H = sonHareketler(useOlaylar().data?.olaylar);
-    const Y = panoYerlesimi(P, liste.length, y0, H.length);
+    const ak = oncelikliAkis(kartlar);
+    const Y = panoYerlesimi(P, liste.length, y0, H.length, ak ? seritYuksekligi(ak.karar_ozeti, sutunEni(), { onek: akisAdi(ak) }) : 0);
     const ad = (kod: string) => { const k = kartlar.find((x) => x.kod === kod); return k ? akisAdi(k) : kod; };
     const benimN = P.adimlar.sende.length;
     return (
@@ -36,6 +39,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
         <Metin y={Y.cY} x={20} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: Y.cumle.length > 1 ? 'nowrap' : undefined }}>
           {Y.cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
         </Metin>
+        {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdi(ak)} ac={() => git(`/akis/${encodeURIComponent(ak.kod)}`)} style={{ left: 20, right: 20, top: Y.kY }} />}
         {P.suzgecler.length > 0 && (
           <div className="pano-cipler" role="group" aria-label="Duruma göre süz; haritada da süzer" style={{ top: Y.sY }}>
             {P.suzgecler.map((s) => (

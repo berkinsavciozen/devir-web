@@ -24,6 +24,8 @@ import { useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
 import { akilliCumle, basliktaCipler, type Cip } from './ozet';
 import { BaslikCipleri } from './Cipler';
+import { KararSeridi } from '../../bilesen/KararSeridi';
+import { TarihNeden } from './TarihNeden';
 import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
@@ -130,6 +132,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const [lejant, setLejant] = useState(false);
   const [menu, setMenu] = useState(false);
   const [gonder, setGonder] = useState<string | null>(null);
+  const [neden, setNeden] = useState(false);
   // şerit kaydırma (madde 13): sürgüyü izler (yumuşak geçişle); elle sürüklenince sürgü yeniden oynayana dek elle kalır
   const [elle, setElle] = useState<number | null>(null);
   const [takipK, setTakipK] = useState(0);
@@ -264,6 +267,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const ham = odak && Math.abs(birakildi - NOW) < 36e5 ? [odakCumlesi(d, odak)] : Math.abs(birakildi - NOW) < 36e5 ? (soruCumlesi(d) ? [soruCumlesi(d)!] : tekrarCumlesi(d) ? [tekrarCumlesi(d)!] : [akilliCumle(d)]) : zamanCumlesi(d, M, Y.G, birakildi, NOW);
   const soruC = !odak && Math.abs(birakildi - NOW) < 36e5 ? soruCumlesi(d) : null;
   const gecC = !odak && !soruC && Math.abs(birakildi - NOW) < 36e5 ? gecikmeCumlesi(d, NOW) : null;
+  // karar şeridi (P1-A2): bugünde, kişi odağı, açık soru ve alt akış cümlesi yokken başlık cümlesinin yerinde; aynı şeyi alt uçla söyleyen kural cümlesi gizlenir
+  const serit = !odak && !soruC && !tekrarCumlesi(d) && Math.abs(birakildi - NOW) < 36e5 && !!d.akis.karar_ozeti?.cumle;
   const cumle = soruC ? doluSatir(soruC, 330, '17px Caladea', 5) : gecC ? doluSatir(gecC, 300, '17px Caladea', 5) : ham && ham.filter(Boolean).length ? ikiSatir(ham.filter(Boolean).join(' ')) : null;
   const surguEtiket = Math.abs(X - NOW) < 36e5 ? `Bugün, ${gunAyUzun(X)}` : `${gunAyHafta(X)}${X > NOW ? ', tahmin' : ''}`;
 
@@ -391,12 +396,16 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
         <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} />
-        <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: U.cumleX, top: U.cumleY + (U.tekSatir ? 18 : 40), maxWidth: GD.PX - U.cumleX - 80 }} />
-        {cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+        {serit ? <div className="galaksi-ust" style={{ left: U.cumleX, top: U.cumleY - 14, width: GD.PX - U.cumleX - 80 }}>
+          <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
+          <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ position: 'static' }} />
+        </div> : <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: U.cumleX, top: U.cumleY + (U.tekSatir ? 18 : 40), maxWidth: GD.PX - U.cumleX - 80 }} />}
+        {!serit && cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
         {kontroller}
         {tam && <GenisKart K={GD.kart} d={d} a={tam} kod={kod} ben={sahip} />}
+        <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
       </GenisSahne>
     );
   }
@@ -407,16 +416,20 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
       <Kutu as="button" x={326} y={40} w={44} h={44} className="akis-menu" aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></Kutu>
-      {cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+      {!serit && cumle && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined} id="harita-cumle" as="p">{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
       </div>
 
       {kontroller}
-      <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: 20, top: 142, maxWidth: 300 }} />
+      {serit ? <div className="galaksi-ust" style={{ left: 20, right: 64, top: 92 }}>
+        <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
+        <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ position: 'static', maxWidth: 300 }} />
+      </div> : <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: 20, top: 142, maxWidth: 300 }} />}
       <button type="button" className="bolum-ipucu" style={{ top: 812 }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: BOLUM_Y }}>{ad}</h2>
       {B.dugum}
       <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} bolumAc={bolumAc} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} />
+      <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
     </Sahne>
   );
 }

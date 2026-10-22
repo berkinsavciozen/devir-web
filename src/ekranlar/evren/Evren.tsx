@@ -25,6 +25,7 @@ import { Lejant, SoruIkon } from '../akis/Lejant';
 import { hareketAz } from '../../ayar/hareket';
 import { PANO_AD, pano, type PanoTur } from './pano';
 import { EvrenPano, panoYerlesimi, sonHareketler } from './Pano';
+import { aralikMetni, hedefEtiketi, hedefParcasi, KararSeridi, oncelikliAkis, seritYuksekligi } from '../../bilesen/KararSeridi';
 
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
 /** Bu sayıdan çok aktif akışta evren ölçek düzenine geçer (J1). */
@@ -291,7 +292,7 @@ export function Evren({ ben }: { ben: Ben }) {
   });
   const tum = [...kartlar, ...kapanan];
   const goster = suz ?? P.varsayilan;
-  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length);
+  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54);
   const panoAc = () => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' });
 
   return (
@@ -319,10 +320,9 @@ export function Evren({ ben }: { ben: Ben }) {
 /** J1 cümlesi: "16 akış sürüyor; 3 karar seni bekliyor. En dar pay Test Bank’te: 6 gün." */
 export function olcekCumlesi(kartlar: any[], detay: Record<string, any>): string {
   const karar = kartlar.filter((k) => detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor'))).length;
-  const dar = kartlar.filter((k) => k.pay_saat != null).sort((a, b) => a.pay_saat - b.pay_saat)[0];
   const bir = `${kartlar.length} akış sürüyor${karar ? `; ${karar} karar seni bekliyor` : ''}.`;
-  if (!dar) return bir;
-  return `${bir} ${dar.pay_saat >= 0 ? `En dar pay ${ozelEk(akisAdi(dar), 'de')}: ${paySure(dar.pay_saat)}.` : `${ozelEk(akisAdi(dar), 'de')} hedef ${paySure(dar.pay_saat)} geçiyor.`}`;
+  const p = hedefParcasi(kartlar);
+  return p ? `${bir} ${p[0].toLocaleUpperCase('tr')}${p.slice(1)}.` : bir;
 }
 
 type PanoOz = { P: ReturnType<typeof pano>; suz: PanoTur | null; setSuz: (t: PanoTur | null) => void; soluk: Set<string> | null };
@@ -333,7 +333,7 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
   const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now, undefined, soluk);
   const panoRef = useRef<HTMLHeadingElement>(null);
   const olaylar = useOlaylar();
-  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length);
+  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54);
   return (
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
@@ -361,7 +361,8 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
   // pano (el notu 3): tutanak + durum süzgeci; seçilen süzgeç haritayı da süzer
   const goster = suz ?? P.varsayilan, bekl = (goster ? P.adimlar[goster] : []).slice(0, 5), benimN = P.adimlar.sende.length;
   const tutanak = doluSatir(P.cumle, PW - 48, '15px Caladea', 3);
-  const cipY = 128 + tutanak.length * 20 + 8, lY = cipY + 50;
+  const ak = oncelikliAkis(kartlar);
+  const kY = 128 + tutanak.length * 20 + 6, cipY = kY + (ak ? seritYuksekligi(ak.karar_ozeti, PW - 48, { onek: akisAdi(ak) }) + 10 : 2), lY = cipY + 50;
   const akY = lY + Math.max(1, bekl.length) * 64 + 26;
   const [lejant, setLejant] = useState(false);
   const B: Bolge = useMemo(() => ({ x: 0, y: 190, w: X, h: H - 190 }), [X, H]);
@@ -402,6 +403,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       <h2 className="genis-bolum" style={{ left: X + 24, top: 118 - 12 }}>PANO</h2>
       <button type="button" className="genis-hepsi" style={{ left: X + PW - 24 - 110, top: 118 - 26, width: 110 }} onClick={() => git('/gorevler')}>{benimN ? `Görevler (${benimN})` : 'Görevler'}</button>
       <Metin y={140} x={X + 24} fs={15} lh={20} serif as="p" style={{ right: 'auto', width: PW - 48, whiteSpace: tutanak.length > 1 ? 'nowrap' : undefined }}>{tutanak.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+      {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdi(ak)} ac={() => git(`/akis/${encodeURIComponent(ak.kod)}`)} style={{ left: X + 24, top: kY, width: PW - 48 }} />}
       {P.suzgecler.length > 0 && <div className="pano-cipler" role="group" aria-label="Duruma göre süz; haritada da süzer" style={{ top: cipY, left: X + 4, right: 'auto', width: PW - 8 }}>
         {P.suzgecler.map((c) => <button key={c.tur} type="button" className="filtre-cip" aria-pressed={goster === c.tur} onClick={() => setSuz(suz === c.tur ? null : c.tur)}>{PANO_AD[c.tur]} {c.n}</button>)}
       </div>}
@@ -416,8 +418,12 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
         const y = akY + 14 + i * 66; if (y + 58 > H - 8) return null;
         const n = say(a.kod) || [a.ilerleme?.tamam ?? 0, a.ilerleme?.toplam ?? 0];
         return <button key={a.kod} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 58, background: 'none', boxShadow: 'none' }} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}`)}>
-          <span className="satir-metin" style={{ left: 66, right: 90 }}><b>{akisAdi(a)}</b><small>{n[0]}/{n[1]} adım{a.hedef_tarih ? ` · hedef ${gunAy(tarihMs(a.hedef_tarih))}` : ''}</small></span>
-          {a.pay_saat != null && <span className="satir-not" style={{ right: 20, color: 'var(--renk-metin-altin)', fontSize: 12.5 }}>{a.pay_saat >= 0 ? `${Math.round(a.pay_saat / 24)} g pay` : `${Math.round(-a.pay_saat / 24)} g geç`}</span>}
+          <span className="satir-metin" style={{ left: 66, right: 76 }}><b>{akisAdi(a)}</b><small>{n[0]}/{n[1]} adım{a.karar_ozeti?.bitis?.aralik ? ` · ${aralikMetni(a.karar_ozeti.bitis.aralik)}` : ''}{a.hedef_tarih ? ` · hedef ${gunAy(tarihMs(a.hedef_tarih))}` : ''}</small></span>
+          {(() => {
+            // hedef etiketi şeritle aynı hesaptan (üst uç); eski sunucuda alt uca göre pay
+            const e = hedefEtiketi(a.karar_ozeti) ?? (a.pay_saat == null ? null : a.pay_saat >= 0 ? `${Math.round(a.pay_saat / 24)} g pay` : `${Math.round(-a.pay_saat / 24)} g geç`);
+            return e && <span className="satir-not" style={{ right: 20, color: a.karar_ozeti?.hedef?.durum === 'geciyor' ? 'var(--renk-metin-mercan)' : 'var(--renk-metin-altin)', fontSize: 12.5 }}>{e}</span>;
+          })()}
         </button>;
       })}
     </GenisSahne>
