@@ -4,13 +4,14 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.14.0";
+export const SURUM = "0.15.0";
 import type { Depo } from "./dosya.ts";
+import { bekleyenleriSifrele, type Sifre } from "./baglanti.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan",
+  "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan, x-devir-baglanti",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Expose-Headers": "mcp-session-id, www-authenticate",
 };
@@ -65,7 +66,7 @@ async function anahtarCoz(db: DB, token: string | null, now: number) {
   return { key, ws };
 }
 
-type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string };
+type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string; sifre?: Sifre | null };
 
 /** Korunan kaynak belgesi (RFC 9728): MCP istemcisi yetkilendirme sunucusunu buradan bulur (MK-1). */
 const kaynakBelgesi = (fn: string, ek: Ek) => ({ resource: fn, authorization_servers: ek.yetki ? [ek.yetki] : [], bearer_methods_supported: ["header"], resource_name: "Devir" });
@@ -79,10 +80,13 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     let body: any = null;
     if (req.method === "POST") { const t = await req.text(); if (t.trim()) { try { body = JSON.parse(t); } catch { throw new ApiHata(400, "Gövde JSON olmalı."); } } }
     if (yol[0] === "l") {
-      if (yol[2] === "dosya") return json({ ok: true, ...(await baglantiDosya(db, yol[1] || "", now, ua, req.method, yol[3], body, ek.depo)) });
-      if (yol[2]) throw new ApiHata(404, "Böyle bir uç yok.");
-      if (req.method === "GET") return json({ ok: true, ...(await baglantiV(db, yol[1] || "", now, ua)) });
-      if (req.method === "POST") return json({ ok: true, ...(await baglantiEylem(db, yol[1] || "", now, ua, body, ek.depo)) });
+      // belirteç başlıkta (N-3): adres yoluna, dolayısıyla Edge loglarına düşmez. /l/<belirteç> eski uygulama sürümleri için.
+      const bas = req.headers.get("x-devir-baglanti");
+      const [tok, ...kalan] = bas ? [bas, ...yol.slice(1)] : yol.slice(1);
+      if (kalan[0] === "dosya") return json({ ok: true, ...(await baglantiDosya(db, tok || "", now, ua, req.method, kalan[1], body, ek.depo)) });
+      if (kalan[0]) throw new ApiHata(404, "Böyle bir uç yok.");
+      if (req.method === "GET") return json({ ok: true, ...(await baglantiV(db, tok || "", now, ua)) });
+      if (req.method === "POST") return json({ ok: true, ...(await baglantiEylem(db, tok || "", now, ua, body, ek.depo)) });
       throw new ApiHata(405, "Yöntem desteklenmiyor.");
     }
     if (yol[1] !== "v1") throw new ApiHata(404, "Uçlar /api/v1/ altında.");
@@ -92,7 +96,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     const web = webAdres ? String(webAdres).replace(/\/$/, "") : null;
     taban.link = web || taban.fn;
     const rota = yol.slice(2);
-    const arka = { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, depo: ek.depo };
+    const arka = { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, depo: ek.depo, sifre: ek.sifre };
     const token = tokenOf(req, url, await yolAnahtariAcik(db));
     const jwt = !token ? jwtOf(req) : null;
     let ctx: any;
@@ -125,8 +129,11 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
   }
 }
 
+// N-3: anahtar tanımlıysa düz kalan bağlantı belirteçleri sunucu örneği başına bir kez şifrelenir
+let sifrelendi = false;
 export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  if (ek.sifre && !sifrelendi) { sifrelendi = true; await bekleyenleriSifrele(db, ek.sifre).catch((e) => { sifrelendi = false; console.warn("şifreleme:", (e as Error).message); }); }
   const url = new URL(req.url);
   const seg = url.pathname.split("/").filter(Boolean);
   const yol = seg.indexOf("devir-mcp") >= 0 ? seg.slice(seg.indexOf("devir-mcp") + 1) : seg;
@@ -156,12 +163,12 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   if (token) {
     const a = await anahtarCoz(db, token, now);
     if (!a) return yetkisiz("Geçersiz, süresi dolmuş, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı.", true);
-    ctx0 = { db, ws: a.ws, key: a.key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller } as Ctx;
+    ctx0 = { db, ws: a.ws, key: a.key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre } as Ctx;
   } else if (jwt && ek.kimlik) {
     // OAuth: jeton Supabase Auth'tan; kişi üyelikten, yazan agent (kanal mcp)
     const u = await ek.kimlik(jwt).catch(() => null);
     if (!u) return yetkisiz("Oturum geçersiz ya da süresi dolmuş; bağlayıcıyı yeniden bağla.", true);
-    const o = await oturumCtx(db, { auth_id: u.id, eposta: String(u.email || "").toLowerCase() }, req.headers.get("x-devir-alan"), now, ua, { llm: ek.llm, gom: ek.gom, modeller: ek.modeller }, "mcp");
+    const o = await oturumCtx(db, { auth_id: u.id, eposta: String(u.email || "").toLowerCase() }, req.headers.get("x-devir-alan"), now, ua, { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre }, "mcp");
     if (!o.ctx) return json({ jsonrpc: "2.0", id: rpcId, error: { code: -32003, message: "Bu e-postayla bir Devir çalışma alanına üye değilsin." } }, 403);
     ctx0 = o.ctx;
   } else {

@@ -53,8 +53,8 @@ async function mcp(name: string, args: any) {
   console.log("  akis ozet:", x.j.akis.ozet);
   // katılımcı bağlantısı
   x = await api("POST", `/api/v1/akis/${kod}/katilimci`, { ad: "Mali müşavir Ayten", rol: "muhasebe" });
-  ok(x.st === 200 && x.j.katilimci.link.includes("/l/") && x.j.katilimci.whatsapp.startsWith("https://wa.me/"), "katılımcı bağlantısı + WhatsApp");
-  const link = x.j.katilimci.link.split("/l/")[1];
+  ok(x.st === 200 && x.j.katilimci.link.includes("/l#") && x.j.katilimci.whatsapp.startsWith("https://wa.me/"), "katılımcı bağlantısı + WhatsApp");
+  const link = x.j.katilimci.link.split("/l#")[1];
   let l = await api("GET", `/l/${link}`, undefined, "");
   ok(l.st === 200 && l.j.adimlar.length === 1 && l.j.adimlar[0].eylemler.includes("basladim"), "bağlantı: yalnızca kendi adımı ve eylemler");
   console.log("  bağlantı özeti:", l.j.ozet);

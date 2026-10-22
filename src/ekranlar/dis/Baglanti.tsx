@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
@@ -43,6 +43,11 @@ function UstSatir({ kisi }: { kisi?: string }) {
 /** F · Dış katılımcının bağlantı sayfası (/l/:token): yalnız kendi adımları, dört eylem, teslim (§5 F1–F4). */
 export function Baglanti({ token }: { token: string }) {
   const qc = useQueryClient();
+  // eski biçim (/l/<belirteç>): adres çubuğunda belirteç # parçasına taşınır, paylaşılırsa da loglara düşmez (N-3)
+  useEffect(() => {
+    const ek = '/l/' + encodeURIComponent(token);
+    if (location.pathname.endsWith(ek)) history.replaceState(null, '', location.pathname.slice(0, -ek.length) + '/l' + location.search + '#' + encodeURIComponent(token));
+  }, [token]);
   const q = useQuery({ queryKey: ['baglanti', token], queryFn: () => api.baglanti.get<any>(token), retry: (n, e) => !(e instanceof ApiHatasi && e.durum === 404) && n < 1 });
   const [secili, setSecili] = useState<number | null>(null);
   const [sayfa, setSayfa] = useState<null | 'teslim' | 'engel' | 'not'>(null);

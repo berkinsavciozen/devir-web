@@ -3,6 +3,7 @@
 import type { LlmFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
+import { belirtecAlanlari, yeniBelirtec, type Sifre } from "./baglanti.ts";
 
 export interface DB {
   one(table: string, where: Record<string, unknown>): Promise<any | null>;
@@ -13,7 +14,7 @@ export interface DB {
 }
 /** kanal: isteğin geldiği yol. Aktör türü buradan türetilir, araç argümanından değil (S-C1). */
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
-export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any };
+export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null };
 
 /** Tipli hata (N-9): HTTP durumu mesajdan değil hatadan gelir. 403 yetki, 404 yok, 400 geçersiz. */
 export class DevirHata extends Error { constructor(public durum: number, m: string) { super(m); } }
@@ -855,7 +856,7 @@ async function olustur(a: any, ctx: Ctx) {
   }));
   const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
   if (Array.isArray(a.katilimcilar) && a.katilimcilar.length)
-    for (const k of a.katilimcilar.filter((k: any) => k && k.ad)) await ctx.db.insert("katilimci", [{ akis_id: akis.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, ...(await kisiAlani(ctx, k.ad, "dis")) }]);
+    for (const k of a.katilimcilar.filter((k: any) => k && k.ad)) await ctx.db.insert("katilimci", [{ akis_id: akis.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, ...(await kisiAlani(ctx, k.ad, "dis")), ...(await belirtecAlanlari(yeniBelirtec(), ctx.sifre)) }]);
   const act = actor(ctx, a);
   await log(ctx, akis.id, null, act, "akis_olustu", `Akış kuruldu: ${steps.length} adım${tk ? `, taslak ${tk.kisa_kod}` : sab ? `, şablon ${sab.kod}` : ""}`, { sablon: turKod, fark, ogrenim: [...L.musteri] });
   if (tk) {

@@ -6,6 +6,7 @@ import { anthropicLlm, openaiLlm, yedekli, type LlmFn } from "./llm.ts";
 import { openaiGomme, type GomFn } from "./bellek.ts";
 import { KOVA, type Depo } from "./dosya.ts";
 import type { KimlikFn, Posta } from "./hesap.ts";
+import { sifreKur } from "./baglanti.ts";
 // Kıyas düzeneği (Faz 1.5.0) koşulacağı zaman: import { kiyasHandle } from "./kiyas-uc.ts"; ve aşağıdaki satırı aç; kiyas.ts, kiyas-uc.ts, senaryolar.ts da dağıtıma eklenir.
 
 const sb = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
@@ -59,6 +60,8 @@ const posta: Posta = {
     if (r.error) throw new Error(r.error.message);
   },
 };
+// Dış bağlantı belirteçlerinin şifresi (N-3): 32 baytlık anahtarın base64'ü; yoksa belirteç düz kalır
+const sifre = sifreKur(Deno.env.get("DEVIR_BAGLANTI_ANAHTARI"));
 // Gizli kova: yalnızca imzalı adreslerle
 const kova = () => sb.storage.from(KOVA);
 const depo: Depo = {
@@ -119,5 +122,5 @@ Deno.serve(async (req) => {
   const om = testBasliklari ? req.headers.get("x-devir-openai-model") : null;
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
   const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : m.ikisi;
-  return handle(req, db, Date.now(), { llm, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo });
+  return handle(req, db, Date.now(), { llm, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre });
 });
