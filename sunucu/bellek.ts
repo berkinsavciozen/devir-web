@@ -328,6 +328,19 @@ export async function deneyimKaydet(ctx: BCtx, d: any, uygulanan: { id: number; 
   return { deneyim: kayit, notlar, yeni, guclenen };
 }
 
+// akış iptal ya da mükerrer kapanınca (P1-B): deneyim yazılmaz; bu akışa uygulanan dersler "bu işte uymadı" sayılır
+export async function dersUymadi(ctx: BCtx, uygulanan: { id: number }[]) {
+  const notlar: string[] = [];
+  for (const u of uygulanan) {
+    const x = await ctx.db.one("ders", { id: u.id, ws_id: ctx.ws.id });
+    if (!x || x.durum === "reddedildi") continue;
+    const guven = Math.max(0, (Number(x.guven) || 0.5) - 0.2);
+    await ctx.db.update("ders", { id: x.id }, { atlandi: (x.atlandi || 0) + 1, guven, durum: guven < 0.25 ? "zayif" : x.durum, updated_at: new Date(ctx.now).toISOString() });
+    notlar.push(`D${x.id} bu işte uymadı; güveni düştü${guven < 0.25 ? " ve artık önerilmeyecek" : ""}: ${x.metin}`);
+  }
+  return notlar;
+}
+
 // eski sablon.ogrenimler kaydını deneyim biçimine çevirir (tek seferlik taşıma)
 export function ogrenimdenDeneyim(o: any, isTuru: string) {
   const atl = (o.atlanan || []).map((a: any) => (typeof a === "string" ? { ad: a, neden: null } : a));

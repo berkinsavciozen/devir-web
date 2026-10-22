@@ -4,18 +4,22 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.16.0";
+export const SURUM = "0.18.0";
 import type { Depo } from "./dosya.ts";
 import { bekleyenleriSifrele, type Sifre } from "./baglanti.ts";
+import { ANAHTAR_MS, TEKRAR_MS, birKez, hizSiniri, karma, llmButcesi, sirali, yazanArac } from "./islem.ts";
 
 const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan, x-devir-baglanti",
+  "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan, x-devir-baglanti, idempotency-key",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
-  "Access-Control-Expose-Headers": "mcp-session-id, www-authenticate",
+  "Access-Control-Expose-Headers": "mcp-session-id, www-authenticate, idempotent-replayed, retry-after",
 };
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json" } });
+const ISLEM_ID = { type: "string", description: "İsteğe bağlı işlem kimliği. Aynı çağrıyı yeniden denerken (zaman aşımı, bağlantı kopması) aynı değeri ver: Devir ikinci kez yazmaz, ilk sonucu döner." };
+/** Yazan araçlara islem_id (P1-B); okuma araçları olduğu gibi. */
+const ARACLAR = TOOLS.map((t: any) => (yazanArac(t.name, { islem: true }) ? { ...t, inputSchema: { ...t.inputSchema, properties: { ...(t.inputSchema.properties || {}), islem_id: ISLEM_ID } } } : t));
+const json = (body: unknown, status = 200, ek: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json", ...ek } });
 
 async function sha256(s: string) {
   const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
@@ -117,15 +121,24 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
       if (!a) throw new ApiHata(401, "Geçersiz, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı. Authorization: Bearer dv_… başlığıyla gönder.");
       ctx = await kimlikBagla({ db, ws: a.ws, key: a.key, ua: ua || "Devir web", now, kanal: "anahtar", ...arka } as Ctx, "anahtar", a.key.id);
     }
-    const e = await ekipYonlendir(ctx, req.method, rota, body, { link: taban.link, web }, ek.posta);
-    if (e !== undefined) return json({ ok: true, ...e });
-    const data: any = await apiYonlendir(ctx, req.method, rota, url.searchParams, body, taban);
-    return json({ ok: true, ...data });
+    ctx.llm = llmButcesi(ctx, ctx.llm);
+    const yurut = async () => {
+      const e = await ekipYonlendir(ctx, req.method, rota, body, { link: taban.link, web }, ek.posta);
+      return (e !== undefined ? e : await apiYonlendir(ctx, req.method, rota, url.searchParams, body, taban)) as any;
+    };
+    if (req.method === "GET") return json({ ok: true, ...(await yurut()) });
+    // yazan istek (P1-B): hız sınırı; Idempotency-Key varsa aynı istek ikinci kez yazmaz, ilk sonuç döner
+    await hizSiniri(ctx, "api");
+    const anahtar = (req.headers.get("idempotency-key") || "").trim();
+    if (!anahtar) return json({ ok: true, ...(await yurut()) });
+    if (anahtar.length > 200) throw new ApiHata(400, "Idempotency-Key en çok 200 karakter olmalı.");
+    const r = await birKez(ctx, `api:${anahtar}`, await karma(`${req.method} ${rota.join("/")} ${sirali(body)}`), ANAHTAR_MS, yurut);
+    return json({ ok: true, ...r.sonuc }, 200, r.tekrar ? { "Idempotent-Replayed": "true" } : {});
   } catch (e) {
     const m = (e as Error).message || String(e);
     const st = typeof (e as any)?.durum === "number" ? (e as any).durum : 400; // tipli hatalar (DevirHata, ApiHata, HesapHata, DosyaHata) durumunu taşır (N-9)
     if (typeof (e as any)?.durum !== "number") console.warn("api:", m);
-    return json({ ok: false, hata: m }, st);
+    return json({ ok: false, hata: m }, st, (e as any)?.yeniden ? { "Retry-After": String((e as any).yeniden) } : {});
   }
 }
 
@@ -189,14 +202,26 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
         break;
       }
       case "ping": ok({}); break;
-      case "tools/list": ok({ tools: TOOLS }); break;
+      case "tools/list": ok({ tools: ARACLAR }); break;
       case "resources/list": ok({ resources: [] }); break;
       case "prompts/list": ok({ prompts: [] }); break;
       case "tools/call": {
         const name = m.params?.name;
         try {
           const ctx = key.id ? await kimlikBagla(ctx0, "anahtar", key.id) : ctx0;
-          const text = await callTool(name, m.params?.arguments || {}, ctx);
+          await hizSiniri(ctx, "mcp");
+          ctx.llm = llmButcesi(ctx, ctx.llm);
+          const args = m.params?.arguments || {};
+          let text: string;
+          if (yazanArac(name, args)) {
+            // aynı işlem ikinci kez yazılmaz (P1-B): islem_id verildiyse 24 saat, verilmediyse aynı argümanla 10 dk
+            const { islem_id, ...arg } = args;
+            const oz = await karma(`${name} ${sirali(arg)}`);
+            const r = islem_id
+              ? await birKez(ctx, `mcp:${String(islem_id).slice(0, 200)}`, oz, ANAHTAR_MS, () => callTool(name, arg, ctx))
+              : await birKez(ctx, `dogal:${oz}`, oz, TEKRAR_MS, () => callTool(name, arg, ctx));
+            text = r.tekrar ? `(Bu işlem ${islem_id ? "bu islem_id ile" : "son 10 dakikada aynı argümanlarla"} zaten yapılmıştı; ikinci kez yazılmadı, önceki sonuç aşağıda.)\n\n${r.sonuc}` : r.sonuc;
+          } else text = await callTool(name, args, ctx);
           ok({ content: [{ type: "text", text }] });
         } catch (e) {
           ok({ content: [{ type: "text", text: "Hata: " + ((e as Error).message || String(e)) }], isError: true });
