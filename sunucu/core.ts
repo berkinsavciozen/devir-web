@@ -3,7 +3,7 @@
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
-import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
+import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAlanlari, yeniBelirtec, type Sifre } from "./baglanti.ts";
 
 export interface DB {
@@ -1073,7 +1073,7 @@ async function tasla(a: any, ctx: Ctx) {
   } catch (e) { console.warn("denetim yapılamadı:", (e as Error).message); }
   // kesin dersler motor ya da denetçi atlamış olsa da uygulanır; ardından kurallı doğrulayıcı
   t._ders_notlari = derslerUygula(t, h.ders);
-  t._kural = kuralDenetimi(t);
+  t._kural = [...kuralDenetimi(t), ...turDogrula(t, turler, cumle)];
   const tur = slug(t.is_turu?.kod || t.baslik || "is");
   const varlik = baglam.musteri || t.anahtar_varlik?.ad || null;
   const gecmis = varlik ? await gecmisCevaplar(ctx, tur, varlik) : {};

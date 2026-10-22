@@ -145,6 +145,8 @@ export const DENETCI_SISTEM = `Sen Devir'in akış denetçisisin. Sana bir akı�
 4. Sahiplik: bir şeyi toplayan, isteyen kişi o adımın sahibidir; karar, onay, ödeme insandadır. Sahiplik hatası yama değil, not olarak yaz.
 5. Dersler ve kartlar: kesin dersler ve bu işe uyan kartlar taslakta uygulanmış mı? Uygulanmamışsa adim_ekle ya da soru_ekle ile uygula ve dayanak alanına kodunu yaz.
 6. Sorular: akışı değiştirecek ama sorulmayan kritik bir bilinmeyen varsa (en fazla 2) soru_ekle.
+7. Dallar: her seçim sorusunun cevabı en az bir adımı değiştirmeli. Bir cevapta gereksiz kalacak adımlara kosul_ekle ile koşul ekle (ör. şirket türü şahıs ise ana sözleşme, noter ve sermaye adımları yalnızca ltd|as ise).
+Eklediğin adımın adı insanın okuyacağı kısa bir cümle olsun, kod değil. Bir soruyla cevaplanacak bir seçimi adım yapma; soru zaten varsa ekleme. Bekleme süresi ya da yasal süre yalnızca kartta ya da derste açıkça yazıyorsa adım olur; "X gün içinde yapılır" bir bekleme değildir.
 Var olan adımları ve bağımlılıkları kaldırma, döngü kurma, tartışmalı yama önerme. Emin değilsen önerme. Türkçe ve kısa yaz.`;
 export const DENETCI_ARACI: LlmTool = {
   name: "denetim_yaz",
@@ -155,6 +157,7 @@ export const DENETCI_ARACI: LlmTool = {
       bagimlilik: { type: "array", items: { type: "object", required: ["id", "bekledigi", "neden"], properties: { id: { type: "string", description: "Bekleyecek adımın id'si" }, bekledigi: { type: "array", items: { type: "string" } }, neden: { type: "string" } } } },
       adim_ekle: { type: "array", items: { type: "object", required: ["ad", "tur_kod", "sahip_rol", "kriter", "sure_tahmin_gun", "bagimli", "neden"], properties: { ad: { type: "string" }, tur_kod: { type: "string" }, sahip_rol: { type: "string" }, kriter: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "string" } }, bekleyen: { type: "array", items: { type: "string" }, description: "Bu yeni adımı beklemesi gereken mevcut adımların id'leri" }, boyut: { type: "string" }, kosul: { type: ["object", "null"], properties: { soru: { type: "string" }, deger: { type: "string" } } }, neden: { type: "string" }, dayanak: { type: "array", items: { type: "string" } } } } },
       soru_ekle: { type: "array", items: { type: "object", required: ["kod", "boyut", "soru", "neden", "tip", "varsayilan", "guven", "etki"], properties: { kod: { type: "string" }, boyut: { type: "string", enum: Object.keys(BOYUTLAR) }, soru: { type: "string" }, neden: { type: "string" }, tip: { type: "string", enum: ["secim", "tarih", "metin"] }, secenekler: { type: "array", items: { type: "object", properties: { deger: { type: "string" }, etiket: { type: "string" } } } }, varsayilan: { type: "string" }, guven: { type: "number" }, etki: { type: "number" }, dayanak: { type: "array", items: { type: "string" } } } } },
+      kosul_ekle: { type: "array", items: { type: "object", required: ["id", "soru", "deger", "neden"], properties: { id: { type: "string", description: "Koşul eklenecek adımın id'si" }, soru: { type: "string", description: "Var olan bir seçim sorusunun kodu" }, deger: { type: "string", description: "Adımın gerektiği seçenek değerleri, | ile (ör. ltd|as)" }, neden: { type: "string" } } } },
       notlar: { type: "array", items: { type: "string" }, description: "Yama olarak uygulanamayan uyarılar (sahiplik, tarih)." },
     },
   },
@@ -171,9 +174,19 @@ export function denetimUygula(t: any, d: any) {
   const adimlar: any[] = t.adimlar;
   const roller = new Set((t.roller || []).map((r: any) => r.kod));
   const ids = new Set(adimlar.map((s) => String(s.id)));
+  const red: string[] = [];
+  const soruKok = (t.sorular || []).map((q: any) => [q.kod, harf(q.kod)]).filter(([, k]: any) => k.length >= 5);
   let n = 0;
   for (const e of (Array.isArray(d?.adim_ekle) ? d.adim_ekle : []).slice(0, 3)) {
     if (!e?.ad || adimlar.some((s) => s.tur_kod === e.tur_kod || nv(s.ad) === nv(e.ad))) continue;
+    // denetçi yamaları da doğrulanır: ham kod adı, soruyu adım yapma, uzun bekleme, hiçbir şeye bağlanmayan adım
+    const ad = String(e.ad).trim();
+    if (KOD_AD.test(ad)) { red.push(`Denetçinin önerdiği "${ad}" adımı eklenmedi: ad kod olarak geldi.`); continue; }
+    const soru = soruKok.find(([, k]: any) => harf(`${e.tur_kod || ""}${ad}`).includes(k));
+    if (soru) { red.push(`Denetçinin önerdiği "${ad}" adımı eklenmedi: bu seçim zaten [${soru[0]}] sorusuyla soruluyor.`); continue; }
+    if (Number(e.sure_tahmin_gun) > DENETCI_AZAMI_GUN) { red.push(`Denetçinin önerdiği "${ad}" adımı eklenmedi: ${e.sure_tahmin_gun} günlük ek adım denetimden gelmez; gerekiyorsa elle ekle.`); continue; }
+    const bagli = (e.bagimli || []).map(String).some((x: string) => ids.has(x)) || (e.bekleyen || []).map(String).some((x: string) => ids.has(x));
+    if (!bagli) { red.push(`Denetçinin önerdiği "${ad}" adımı eklenmedi: hiçbir adıma bağlanmıyor.`); continue; }
     const id = `den${++n}`;
     const rol = roller.has(e.sahip_rol) ? e.sahip_rol : (t.roller || []).find((r: any) => r.tip === "insan")?.kod || (t.roller || [])[0]?.kod;
     adimlar.push({ id, tur_kod: slug(e.tur_kod || e.ad), ad: String(e.ad), sahip_rol: rol, kriter: e.kriter || `${e.ad} tamam`, sure_tahmin_gun: Number(e.sure_tahmin_gun) > 0 ? Number(e.sure_tahmin_gun) : 1, bagimli: (e.bagimli || []).map(String).filter((x: string) => ids.has(x)), boyut: e.boyut && e.boyut in BOYUTLAR ? e.boyut : "genel", kosul: e.kosul?.soru ? e.kosul : null, dayanak: Array.isArray(e.dayanak) ? e.dayanak.map(String) : [], _denetim: true });
@@ -190,7 +203,32 @@ export function denetimUygula(t: any, d: any) {
     sorular.push({ ...q, cikarilabilir: false, genel: false, kalici: false, ne_zaman: "simdi", _denetim: true });
     sEk.push(`[${q.kod}] ${q.soru}`);
   }
-  return { adim: notlar, bagimlilik: bag, soru: sEk, not: (d?.notlar || []).map(String).slice(0, 4) };
+  const kosul: string[] = [];
+  const secimler = new Map<string, any>((t.sorular || []).filter((q: any) => q.tip === "secim" && Array.isArray(q.secenekler) && q.secenekler.length).map((q: any) => [q.kod, q]));
+  for (const k of (Array.isArray(d?.kosul_ekle) ? d.kosul_ekle : []).slice(0, 8)) {
+    const s = adimlar.find((x) => String(x.id) === String(k?.id)), q = secimler.get(k?.soru);
+    if (!s || !q || s.kosul?.soru) continue;
+    const degerler = String(k.deger || "").split("|").map((x) => x.trim()).filter((x) => q.secenekler.some((o: any) => nv(o.deger) === nv(x)));
+    if (!degerler.length || degerler.length >= q.secenekler.length) continue; // bilinmeyen seçenek ya da her seçenekte gerekli: koşul anlamsız
+    s.kosul = { soru: q.kod, deger: degerler.join("|") };
+    kosul.push(`"${s.ad}" yalnızca ${q.kod}=${s.kosul.deger} ise${k.neden ? `: ${k.neden}` : ""}`);
+  }
+  return { adim: notlar, bagimlilik: bag, soru: sEk, not: [...kosul, ...red, ...(d?.notlar || []).map(String).slice(0, 4)] };
+}
+const KOD_AD = /^[a-z0-9]+(?:[-_][a-z0-9]+)+$/; // "sirket-turu-sec" gibi: boşluksuz, küçük harf, tireli
+const DENETCI_AZAMI_GUN = 5;
+const harf = (x: string) => slug(x).replace(/-/g, "");
+// iş türü etiketi doğrulaması: motor var olan bir türü seçtiyse işin cümlesiyle ortak kökü olmalı; yoksa yeni tür açılır
+const kokSet = (x: string) => new Set(slug(x).split("-").filter((w) => w.length > 3).map((w) => w.slice(0, 5)));
+export function turDogrula(t: any, turler: any[], cumle: string) {
+  const kod = slug(t.is_turu?.kod || "");
+  const tur = kod && turler.find((x: any) => x.kod === kod);
+  if (!tur) return [];
+  const A = kokSet(`${cumle} ${t.baslik || ""}`), B = kokSet(`${tur.ad || ""} ${tur.kod}`);
+  if ([...B].some((w) => A.has(w))) return [];
+  const yeni = slug(t.baslik || cumle);
+  t.is_turu = { kod: yeni, ad: t.baslik || yeni, mevcut: false, _onceki: kod };
+  return [`İş türü "${tur.ad || kod}" bu işle ortak bir şey taşımıyor; yeni tür açıldı: ${yeni}.`];
 }
 // kurallı doğrulayıcı: bilinmeyen bağımlılık, kendine bağımlılık, döngü, bilinmeyen rol, koşulun bilinmeyen soruya bağlanması
 export function kuralDenetimi(t: any) {
@@ -219,6 +257,14 @@ export function kuralDenetimi(t: any) {
     renk.set(id, 2);
   };
   for (const id of by.keys()) if (!renk.get(id)) gez(id);
+  // etkisiz soru: hiçbir adımın koşulunda ya da tarih çapasında geçmeyen seçim sorusu sorulmaz; cevabı yok sayılacak bir soru yanıltır
+  const kullanilan = new Set(adimlar.flatMap((s) => [s.kosul?.soru, s.tarih_capasi?.soru]).filter(Boolean));
+  for (const q of t.sorular || []) {
+    if (q.tip !== "secim" || ["hedef_tarih", "ekip", "iliski"].includes(q.kod) || q.ne_zaman === "sonra" || kullanilan.has(q.kod) || (q.dayanak || []).length) continue; // dersten gelen soru öğrenmek için sorulur
+    q._etkisiz = true;
+    const o = (q.secenekler || []).find((x: any) => nv(x.deger) === nv(q.varsayilan));
+    notlar.push(`[${q.kod}] sorusu hiçbir adımı değiştirmiyor; sorulmadı, "${o?.etiket || q.varsayilan}" varsayıldı. Yanlışsa ilgili adımları kurmadan önce düzelt.`);
+  }
   return notlar;
 }
 
@@ -248,7 +294,7 @@ export function kullaniciMesaji(o: { cumle: string; bugun: string; kisi: string;
 
 export type Stat = { n: number; ort: number; kacan: number };
 export function sec(t: any, stats: Map<string, Stat>, kacanBoyut: Map<string, number>, gecmisCevap: Record<string, string>, bilinen: Record<string, string> = {}, yanlis: Map<string, number> = new Map()) {
-  const sorular: any[] = Array.isArray(t.sorular) ? t.sorular : [];
+  const sorular: any[] = (Array.isArray(t.sorular) ? t.sorular : []).map(bilinmiyorDuzelt);
   const secilen: any[] = [], varsayim: any[] = [], olu: string[] = [];
   const puanli = sorular.map((q) => {
     const st = stats.get(q.kod);
@@ -275,6 +321,7 @@ export function sec(t: any, stats: Map<string, Stat>, kacanBoyut: Map<string, nu
     if (q.kod === "ekip" && !kisisizRol) { varsayim.push({ ...q, cevap: q.varsayilan, kaynak: "varsayilan" }); continue; } // adı geçmeyen iş rolü yoksa ekip sorusu gereksiz
     // geçmiş cevap yalnızca kalıcı sorularda ve hiç yanlış çıkmamışsa taşınır
     if (q.kod in gecmisCevap && q.tip !== "tarih" && q.kalici === true && !yanlisN) { varsayim.push({ ...q, cevap: gecmisCevap[q.kod], kaynak: "gecmis" }); continue; }
+    if (q._etkisiz && !yanlisN) { olu.push(q.kod); varsayim.push({ ...q, cevap: q.varsayilan, kaynak: "olu" }); continue; }
     if (yanlisN) q.neden = `${q.neden ? q.neden + " " : ""}(Bu varsayım daha önce ${yanlisN} kez yanlış çıktı.)`;
     if (isOlu) olu.push(q.kod);
     const yer = secilen.length < 3 ? puan >= 0.3 : secilen.length < ust && puan >= 1;
@@ -285,6 +332,17 @@ export function sec(t: any, stats: Map<string, Stat>, kacanBoyut: Map<string, nu
   return { secilen, varsayim, olu, sonra };
 }
 
+// "bilinmiyor" bir seçenek ya da varsayılan değildir: tek biçime ("bilmiyorum", sonda) indirilir; bilinmeyen varsayılan yerine soru sorulur
+function bilinmiyorDuzelt(q: any) {
+  if (q?.tip !== "secim" || !Array.isArray(q.secenekler)) return q;
+  const gercek = q.secenekler.filter((o: any) => !BILMIYORUM.test(nv(o.deger)) && !BILMIYORUM.test(nv(o.etiket)));
+  if (!gercek.length) return q;
+  const vardi = gercek.length !== q.secenekler.length;
+  const vBilinmez = !q.varsayilan || BILMIYORUM.test(nv(q.varsayilan));
+  const y = { ...q, secenekler: vardi ? [...gercek, { deger: "bilmiyorum", etiket: "Bilmiyorum" }] : q.secenekler };
+  if (vBilinmez) { y.varsayilan = String(gercek[0].deger); y.guven = Math.min(Number(q.guven) || 0.3, 0.3); }
+  return y;
+}
 // cevaplar → adım listesi (validateSteps girdisi) ve soru etkileri
 const ONAYCI = /(onay|yönetici|ortak|danışman|direktör|kurul|müdür|yatırımcı|avukat|hukuk|müşavir|denetçi|sponsor)/i;
 export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record<string, unknown>, sahip: string, haric: Set<string> = new Set(), sonraSorular: any[] = []) {

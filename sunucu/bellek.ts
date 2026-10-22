@@ -37,7 +37,7 @@ export function benzer(q: Iz, x: Iz) {
   return kelimeBenzer(q.kok, x.kok) * 0.85;
 }
 // eşikler: 256 boyutlu text-embedding-3-small için ilgisiz işler ~0.1–0.25, benzer işler 0.4 üstü
-export const ESIK = { deneyim: 0.32, ders: 0.3, kart: 0.33, standart: 0.45, zorunlu: 0.5 };
+export const ESIK = { deneyim: 0.32, ders: 0.3, kart: 0.33, standart: 0.45, zorunlu: 0.5, kaynak: 0.6 };
 
 export function openaiGomme(apiKey: string, model = "text-embedding-3-small"): GomFn {
   return async (metinler) => {
@@ -100,7 +100,8 @@ export async function hatirla(ctx: BCtx, o: { cumle: string; varlik?: string | n
   const deneyim = dR.map((d: any) => ({ d, puan: benzer(q, iz(d, deneyimMetni)) + (vn && d.varlik_norm === vn ? 0.15 : 0) + (o.iliski && d.iliski === o.iliski ? 0.03 : 0) }))
     .filter((x: any) => x.puan >= ESIK.deneyim).sort((a: any, b: any) => b.puan - a.puan).slice(0, 5)
     .map((x: any) => ({ ...x.d, _puan: Math.round(x.puan * 100) / 100 }));
-  const benzerKod = new Set(deneyim.map((d: any) => d.akis_kod).filter(Boolean));
+  // dersin kaynağı sayılmak için kaynak iş bu işe gerçekten yakın olmalı; uzak benzerlik dersi zorunlu yapmaz
+  const benzerKod = new Set(deneyim.filter((d: any) => d._puan >= ESIK.kaynak).map((d: any) => d.akis_kod).filter(Boolean));
 
   const ders = xR.map((x: any) => {
     if (x.kapsam === "varlik" && x.varlik_norm && x.varlik_norm !== vn) return null; // başka varlığın dersi
