@@ -14,7 +14,7 @@ jobs:
         run: npm run tokens && git diff --exit-code src/stil/tokens.css src/stil/tokens.ts
       - name: Geometri testi (galaksi-geometri --test)
         run: npm run geometri:test
-      - name: Sunucu testleri (sahte API'nin dayandığı gerçek sunucu kodu)
+      - name: Sunucu testleri (sahte API'nin dayandığı gerçek sunucu kodu; P0-C yetki matrisi dahil)
         run: npm run sunucu:test
       - name: Birim testleri (yol uzunluğu, kaynakla eşdeğerlik)
         run: npm test
@@ -22,3 +22,18 @@ jobs:
         run: npm run build
       - name: Sır taraması (S-B1)
         run: node scripts/sir-tarama.mjs
+  sql:
+    # P0-C (S-M1, N-6): migration'lar boş Postgres'e sırayla uygulanır, sonra yetki ve bütünlük SQL testleri
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: postgres, LANG: en_US.utf8 }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env: { PGHOST: localhost, PGUSER: postgres, PGPASSWORD: postgres }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Migration'lar ve SQL testleri
+        run: scripts/sql-test.sh
