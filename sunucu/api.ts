@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -231,12 +231,60 @@ const olayV = (e: any) => ({ id: e.id, zaman: e.created_at, kim: e.kim, kim_tip:
 const kisiV = (k: any) => ({ id: k.id, ad: k.ad, tip: k.tip });
 export const POLITIKA_VARSAYILAN = { sahip: "insan", ekip: "insan", dis: "beyan" };
 const politikaV = (ws: any) => ({ agent_karari: { ...POLITIKA_VARSAYILAN, ...(ws?.politika?.agent_karari || {}) } });
-const katilimciV = (k: any, base: string | null, belirtec?: string | null) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k, belirtec) : {}) });
-function linkV(base: string, k: any, belirtec: string | null | undefined) {
-  if (!belirtec) return { link: null, whatsapp: null }; // çözülemeyen şifreli belirteç: sahip yeniler
+const katilimciV = (k: any, base: string | null, belirtec?: string | null, baslik?: string) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k, belirtec, baslik) : {}) });
+function linkV(base: string, k: any, belirtec: string | null | undefined, baslik?: string) {
+  if (!belirtec) return { link: null, whatsapp: null, mesaj: null }; // iptal ya da çözülemeyen şifreli belirteç: sahip yeniler
   // belirteç # parçasında (N-3): tarayıcı onu sunucuya göndermez, Workers loglarına düşmez
   const link = `${base}/l#${belirtec}`;
-  return { link, whatsapp: `https://wa.me/?text=${encodeURIComponent(`Merhaba ${k.ad}, senden beklenen adımlar burada: ${link}`)}` };
+  const mesaj = `Merhaba ${k.ad.replace(/\s*\(.*\)$/, "")}, ${baslik ? `${baslik} için ` : ""}senden beklenen adımlar burada: ${link}`;
+  return { link, mesaj, whatsapp: `https://wa.me/?text=${encodeURIComponent(mesaj)}` };
+}
+
+/**
+ * Dış bağlantının süresi (P1-C, plan v2: PIN yok, akış kapanınca 30 gün). Açık akışta süresiz; kapanan akışta
+ * kapanıştan 30 gün sonra, arşivlenen (vazgeçilen) akışta hemen kapanır. null: süre işlemiyor.
+ */
+export const BAGLANTI_GUN = 30;
+export function baglantiSonu(akis: any): number | null {
+  if (akis.durum === "aktif") return null;
+  if (akis.durum !== "kapandi") return 0;
+  const t = Date.parse(akis.kapandi_at || "");
+  return Number.isFinite(t) ? t + BAGLANTI_GUN * 864e5 : 0;
+}
+const iptalMi = (k: any) => !k.link_hash && !k.link_token;
+/** Sahibin listesi: bağlantı, durum (acik | iptal | suresi_doldu), geçerlilik, son açılış ve adım sayısı. */
+async function katilimcilarV(ctx: Ctx, ak: any, base: string) {
+  const ks = await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at");
+  if (!ks.length) return [];
+  const acilis = (await ctx.db.many("olay", { akis_id: ak.id, tip: "okuma" }, "created_at")).filter((e: any) => e.kanal === "baglanti" && e.adim_no == null);
+  const steps = await ctx.db.many("adim", { akis_id: ak.id }, "no");
+  const son = baglantiSonu(ak);
+  return Promise.all(ks.map(async (k: any) => {
+    const benim = (e: any) => (k.kisi_id && e.kisi_id ? e.kisi_id === k.kisi_id : norm(e.kim) === norm(k.ad));
+    const ac = acilis.filter(benim);
+    const adim = steps.filter((s: any) => (k.kisi_id && s.sahip_kisi_id ? s.sahip_kisi_id === k.kisi_id : adEslesir(s.sahip, k.ad)));
+    const durum = iptalMi(k) ? "iptal" : son != null && ctx.now >= son ? "suresi_doldu" : "acik";
+    return {
+      ...katilimciV(k, durum === "acik" ? base : null, durum === "acik" ? await belirtecAc(k, ctx.sifre) : null, ak.baslik),
+      ...(durum === "acik" ? {} : { link: null, whatsapp: null, mesaj: null }),
+      durum, gecerlilik: son ? iso(son) : null, son_acilis: ac.length ? ac[ac.length - 1].created_at : null, acilis_sayisi: ac.length,
+      adim_sayisi: adim.length, acik_adim: adim.filter((s: any) => !DONE(s)).length,
+      akis: { kod: ak.kisa_kod, baslik: ak.baslik, durum: ak.durum },
+    };
+  }));
+}
+/** Kişi bu alanın üyesi ya da anahtar sahibi mi (alanın sahibi dahil)? */
+async function ekipKisisi(ctx: Ctx, kisi: any) {
+  if (norm(kisi.ad) === norm(ctx.key.kisi) && !isDis(ctx)) return true;
+  if (await ctx.db.one("uye", { kullanici_id: ctx.ws.id, kisi_id: kisi.id })) return true;
+  return (await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id, kisi_id: kisi.id }, "created_at")).some((a: any) => a.rol !== "dis");
+}
+async function katilimciSahipli(ctx: Ctx, id: string) {
+  const k = /^[0-9a-f-]{36}$/i.test(id) ? await ctx.db.one("katilimci", { id }) : null;
+  const ak = k ? await ctx.db.one("akis", { id: k.akis_id, sahip_id: ctx.ws.id }) : null;
+  if (!k || !ak) throw new ApiHata(404, "Katılımcı yok.");
+  await getAkis(ctx, ak.kisa_kod); // ekip üyesinin kapsamı
+  return { k, ak };
 }
 
 async function adimDetayV(ctx: Ctx, kod: string, no: number) {
@@ -434,7 +482,27 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "gorevler" && !r1) return gorevlerV(ctx, q);
     if (r0 === "olaylar" && !r1) return olaylarV(ctx, q);
     if (r0 === "akis" && r1 && r2 === "adim" && r3 && !r4) return adimDetayV(ctx, r1, Number(r3));
-    if (r0 === "akis" && r1 && r2 === "katilimcilar" && !r3) { ekipMi(ctx); const ak = await getAkis(ctx, r1); return { katilimcilar: await Promise.all((await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).map(async (k: any) => katilimciV(k, taban.link, await belirtecAc(k, ctx.sifre)))) }; }
+    if (r0 === "akis" && r1 && r2 === "katilimcilar" && !r3) { ekipMi(ctx); const ak = await getAkis(ctx, r1); return { katilimcilar: await katilimcilarV(ctx, ak, taban.link) }; }
+    // bütün akışların dış katılımcıları (P1-C, Pano): açık ve süresi işleyen bağlantılar, son açılış
+    if (r0 === "katilimcilar" && !r1) {
+      ekipMi(ctx);
+      const out: any[] = [];
+      for (const ak of await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at")) {
+        const son = baglantiSonu(ak);
+        if (son != null && ctx.now >= son) continue;
+        if (!(await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).length) continue;
+        try { await getAkis(ctx, ak.kisa_kod); } catch (e) { if (e instanceof DevirHata && (e.durum === 403 || e.durum === 404)) continue; throw e; }
+        out.push(...(await katilimcilarV(ctx, ak, taban.link)));
+      }
+      return { katilimcilar: out };
+    }
+    // "ne görecek" önizlemesi (P1-C): bağlantı sayfası katılımcının kapsamıyla, açılış kaydı yazılmadan
+    if (r0 === "katilimci" && r1 && r2 === "onizleme" && !r3) {
+      ekipMi(ctx);
+      const { k, ak } = await katilimciSahipli(ctx, r1);
+      const dctx = await disCtx(ctx.db, k, ak, ctx.now, "Devir önizleme");
+      return { onizleme: true, ...(await baglantiGorunum(dctx, k, ak, false)) };
+    }
     if (r0 === "cikti" && r1) {
       const ak = await getAkis(ctx, q.get("akis"));
       const c = await ctx.db.one("cikti", { id: Number(r1), akis_id: ak.id });
@@ -501,16 +569,32 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       const yeni = var0 ? null : yeniBelirtec();
       const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: kisi?.ad || ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}), ...(await belirtecAlanlari(yeni!, ctx.sifre)) }]))[0];
       const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => kisi && s.sahip_kisi_id ? s.sahip_kisi_id === kisi.id : adEslesir(s.sahip, ad));
-      return { katilimci: katilimciV(k, taban.link, yeni || await belirtecAc(k, ctx.sifre)), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
+      // N-10: bağlantı alan kişi ekipte değilse dış kişidir; "insan" yazılmış adımları "dış" olur (agent adımı değişmez)
+      if (kisi && kisi.tip !== "agent" && !(await ekipKisisi(ctx, kisi))) {
+        if (kisi.tip !== "dis") await ctx.db.update("kisi", { id: kisi.id }, { tip: "dis" });
+        for (const s of steps) if (s.sahip_tip === "insan") await ctx.db.update("adim", { id: s.id }, { sahip_tip: "dis" });
+      }
+      return { katilimci: katilimciV(k, taban.link, yeni || await belirtecAc(k, ctx.sifre), ak.baslik), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
     }
     if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
       ekipMi(ctx);
-      const k = await ctx.db.one("katilimci", { id: r1 });
-      const ak = k ? await ctx.db.one("akis", { id: k.akis_id, sahip_id: ctx.ws.id }) : null;
-      if (!k || !ak) throw new ApiHata(404, "Katılımcı yok.");
+      const { k, ak } = await katilimciSahipli(ctx, r1);
+      const son = baglantiSonu(ak);
+      if (son != null && ctx.now >= son) throw new ApiHata(409, ak.durum === "kapandi" ? `Akış ${BAGLANTI_GUN} günden önce kapandı; bağlantı yenilenmez.` : "Akış arşivde; bağlantı yenilenmez.");
       const t = yeniBelirtec();
       await ctx.db.update("katilimci", { id: k.id }, await belirtecAlanlari(t, ctx.sifre));
-      return { katilimci: katilimciV(k, taban.link, t), not: "Eski bağlantı artık açılmıyor." };
+      await olayYaz(ctx, ak.id, null, "guncelleme", `${k.ad} için bağlantı ${iptalMi(k) ? "yeniden açıldı" : "yenilendi"}`, { tur: "baglanti_yenile", katilimci_id: k.id });
+      return { katilimci: (await katilimcilarV(ctx, ak, taban.link)).find((x: any) => x.id === k.id), not: iptalMi(k) ? "Yeni bağlantı üretildi." : "Eski bağlantı artık açılmıyor." };
+    }
+    // bağlantıyı kapat (P1-C): belirteç silinir, sayfa açılmaz; "Yenile" yeni bağlantı üretir
+    if (r0 === "katilimci" && r1 && r2 === "iptal" && !r3) {
+      ekipMi(ctx);
+      const { k, ak } = await katilimciSahipli(ctx, r1);
+      if (!iptalMi(k)) {
+        await ctx.db.update("katilimci", { id: k.id }, { link_hash: null, link_sifreli: null, link_token: null });
+        await olayYaz(ctx, ak.id, null, "guncelleme", `${k.ad} için bağlantı kapatıldı`, { tur: "baglanti_iptal", katilimci_id: k.id });
+      }
+      return { katilimci: (await katilimcilarV(ctx, ak, taban.link)).find((x: any) => x.id === k.id) };
     }
     // kişi adını değiştir (yalnız sahip): kimlik aynı kalır, adımlar ve bağlantılar yeni adı gösterir
     if (r0 === "kisi" && r1 && !r2) {
@@ -568,19 +652,31 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
 }
 
 // ---------- dış katılımcı bağlantısı (anahtarsız; yalnızca kendi adımları ve dört eylem) ----------
+async function disCtx(db: DB, k: any, akis: any, now: number, ua: string, depo?: Depo) {
+  const ws = await db.one("kullanici", { id: akis.sahip_id });
+  return kimlikBagla({ db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad, kisi_id: k.kisi_id || null }, ua: ua || "Devir bağlantı", now, kanal: "baglanti", depo } as Ctx, "katilimci", k.id);
+}
+
 export async function baglantiCtx(db: DB, token: string, now: number, ua: string, depo?: Depo) {
   if (!/^[a-z0-9]{16,64}$/i.test(token)) throw new ApiHata(404, "Bağlantı geçersiz.");
   const k = await belirtecBul(db, token);
   if (!k) throw new ApiHata(404, "Bağlantı geçersiz ya da yenilenmiş. Gönderen kişiden yenisini iste.");
   const akis = await db.one("akis", { id: k.akis_id });
   if (!akis) throw new ApiHata(404, "Akış bulunamadı.");
-  const ws = await db.one("kullanici", { id: akis.sahip_id });
-  const ctx: Ctx = await kimlikBagla({ db, ws, key: { id: null, kisi: k.ad, rol: "dis", kapsam: k.ad, kisi_id: k.kisi_id || null }, ua: ua || "Devir bağlantı", now, kanal: "baglanti", depo } as Ctx, "katilimci", k.id);
+  const son = baglantiSonu(akis);
+  if (son != null && now >= son) throw new ApiHata(410, akis.durum === "kapandi" ? "Bu iş kapandı; bağlantının süresi doldu." : "Bu iş artık sürmüyor; bağlantı kapandı.");
+  const ctx: Ctx = await disCtx(db, k, akis, now, ua, depo);
   return { ctx, k, akis };
 }
 
 export async function baglantiV(db: DB, token: string, now: number, ua: string) {
   const { ctx, k, akis } = await baglantiCtx(db, token, now, ua);
+  return baglantiGorunum(ctx, k, akis, true);
+}
+
+/** Bağlantı sayfasının verisi; okuma: açılış kaydı yazılır (önizlemede yazılmaz). */
+async function baglantiGorunum(ctx: Ctx, k: any, akis: any, okuma: boolean) {
+  const db = ctx.db, now = ctx.now;
   const { steps, events } = await loadFlow(ctx, akis).catch(() => ({ steps: [], events: [] } as any));
   const ev = events.filter((e: any) => e.tip !== "okuma");
   const m = metrics(akis, steps, ev, now);
@@ -603,10 +699,10 @@ export async function baglantiV(db: DB, token: string, now: number, ua: string) 
   else if (bekle.length) { A("Şu an senden bir şey beklenmiyor. Sıradaki adımın "); A(bekle[0].ad, "adim", { no: bekle[0].no }); A(`, ${bekle[0].bekledigi.map((x: any) => `"${x.ad}"`).join(", ")} bitince açılacak.`); }
   else if (adimlar.length) A("Sana düşen adımların hepsi bitti, teşekkürler.");
   else A("Bu bağlantıda sana atanmış bir adım görünmüyor.");
-  await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", kanal: "baglanti", ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}), tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
+  if (okuma) await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", kanal: "baglanti", ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}), tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
   const sahipUye = await db.one("uye", { kullanici_id: akis.sahip_id, rol: "sahip" }).catch(() => null);
   return {
-    kisi: k.ad, akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length }, karar_ozeti: akisKarari(akis, steps, ev, now, await gecmisYukle(ctx), { dis: true, vis: benim }).karar_ozeti },
+    kisi: k.ad, ...(akis.durum === "kapandi" ? { gecerlilik: iso(baglantiSonu(akis)) } : {}), akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length }, karar_ozeti: akisKarari(akis, steps, ev, now, await gecmisYukle(ctx), { dis: true, vis: benim }).karar_ozeti },
     ozet: yaz(p), ozet_parcalar: p, adimlar,
     // sisli harita (0.10.0): öteki adımlar adsız; sahipler yalnız rol harfiyle (yol geometrisi için)
     harita: haritaDis(ctx, akis, steps, m),

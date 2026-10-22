@@ -690,3 +690,12 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .veri-durumu.hata { color: var(--renk-metin-mercan); }
 .veri-durumu .metin-baglanti { min-height: 44px; padding: 0 4px; }
 .satir-eylem.baslik-eylem { position: static; margin-right: 12px; }
+/* P1-C önizleme şeridi: sahip katılımcının sayfasını görürken */
+.onizleme-serit { position: fixed; top: 0; left: 0; right: 0; z-index: 30; height: 40px; padding: 0 4px 0 16px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12.5px; font-weight: 650; color: var(--renk-metin-ink); background: color-mix(in srgb, var(--renk-vurgu-lila) 32%, var(--renk-zemin-gok-0)); box-shadow: 0 1px 0 color-mix(in srgb, var(--renk-vurgu-lila) 60%, transparent); }
+.onizleme-serit span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.onizleme-serit button { flex: none; min-width: 64px; height: 40px; border: 0; background: none; font: inherit; font-weight: 700; color: var(--renk-metin-altin); cursor: pointer; }
+.baglanti-durum { position: absolute; left: 20px; right: 20px; height: 48px; padding: 6px 14px; display: flex; flex-direction: column; justify-content: center; gap: 2px; border-radius: 16px; background: color-mix(in srgb, var(--renk-vurgu-nane) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-nane) 45%, transparent); }
+.baglanti-durum b { font-size: 13.5px; font-weight: 700; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.baglanti-durum small { font-size: 12px; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.baglanti-durum.iptal, .baglanti-durum.suresi_doldu { background: color-mix(in srgb, var(--renk-vurgu-mercan) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 45%, transparent); }
+.paylasim-metin textarea.alan { height: 92px; resize: none; line-height: 19px; padding-top: 10px; }

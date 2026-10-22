@@ -82,6 +82,8 @@ function Uygulama({ yol }: { yol: string }) {
   if (tk) return <Kalemler key={tk.kod + tk.no} kod={tk.kod} no={Number(tk.no)} ben={b.kisi || ''} />;
   const bl = eslestir('/akis/:kod/bilgi', yol);
   if (bl) return <AkisBilgi key={bl.kod} kod={bl.kod} ben={b.kisi || ''} />;
+  const oz = eslestir('/akis/:kod/onizleme/:id', yol);
+  if (oz) return <Baglanti key={oz.id} token="" onizleme={{ id: oz.id, kod: oz.kod }} />;
   const ks = eslestir('/akis/:kod/kisi/:ad', yol);
   if (ks) return <KisiSayfasi key={ks.kod + ks.ad} kod={ks.kod} ad={ks.ad} ben={b.kisi || ''} />;
   const kr = eslestir('/akis/:kod/karar/:no', yol);

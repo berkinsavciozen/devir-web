@@ -24,7 +24,7 @@ import { bos, type Daire } from '../akis/katman';
 import { Lejant, SoruIkon } from '../akis/Lejant';
 import { hareketAz } from '../../ayar/hareket';
 import { PANO_AD, pano, type PanoTur } from './pano';
-import { EvrenPano, panoYerlesimi, sonHareketler } from './Pano';
+import { EvrenPano, panoYerlesimi, sonHareketler, useDisBekleyen } from './Pano';
 import { DurumNotu, veriDurumu, type VeriDurumu } from '../../bilesen/VeriDurumu';
 import { aralikMetni, hedefEtiketi, hedefParcasi, KararSeridi, oncelikliAkis, seritYuksekligi } from '../../bilesen/KararSeridi';
 
@@ -277,6 +277,7 @@ export function Evren({ ben }: { ben: Ben }) {
   const soluk = useMemo(() => suz ? new Set(kartlar.map((k) => k.kod).filter((kod) => !P.adimlar[suz].some((a) => a.kod === kod))) : null, [suz, P]); // eslint-disable-line react-hooks/exhaustive-deps
   const panoRef = useRef<HTMLHeadingElement>(null);
   const olaylar = useOlaylar();
+  const disN = useDisBekleyen().length;
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const E = useEvrenGezinme(EVREN_BOLGE, cizim && !cizim.olcek ? cizim : null, detay, kisi, NOW, undefined, soluk);
   // evren dili (madde 2, 3): "?" ile; ilk açılışta bir kez kendiliğinden tanıtılır
@@ -307,7 +308,7 @@ export function Evren({ ben }: { ben: Ben }) {
   });
   const tum = [...kartlar, ...kapanan];
   const goster = suz ?? P.varsayilan;
-  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54);
+  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54, disN);
   const panoAc = () => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' });
 
   return (
@@ -348,7 +349,8 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
   const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now, undefined, soluk);
   const panoRef = useRef<HTMLHeadingElement>(null);
   const olaylar = useOlaylar();
-  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54);
+  const disN = useDisBekleyen().length;
+  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54, disN);
   return (
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, 452, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
