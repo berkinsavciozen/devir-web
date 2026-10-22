@@ -115,6 +115,11 @@ export function bitis(akis: any, steps: any[], events: any[], now: number, gecmi
   if (tahmin) v.push(`${tahmin} süre tahmin; en çok %${Math.round((TAHMIN_CARPAN - 1) * 100)} uzayabilir`);
   if (gecmisN) v.push(`${gecmisN} sürede benzer geçmiş işlerin gerçek süresi kullanıldı`);
   for (const y of yuk) v.push(`${y.kisi} aynı dönemde ${y.adimlar.length} iş taşıyor; sırayla yaparsa +${y.gecikme_gun} gün`);
+  // boşluk ufkun yarısından büyükse süreler eksik tahmin edilmiş olabilir (P1-E madde 9, J2LU: 45 günlük iş 7 aylık ufukta)
+  if (akis.hedef_tarih) {
+    const hedef = eod(akis.hedef_tarih), ufuk = hedef - ts(akis.created_at), bosluk = hedef - Math.max(u.end, a.end);
+    if (ufuk >= 14 * DAY && bosluk > ufuk / 2) v.push(`Plan hedeften ${Math.round(bosluk / DAY)} gün önce bitiyor; süreler eksik tahmin edilmiş olabilir`);
+  }
   const guven: Guven = eksik ? "eksik" : tahmin || gecmisN || yuk.length ? "tahmin" : "kesin";
   return {
     en_erken: todayIst(a.end), aralik: [todayIst(a.end), todayIst(Math.max(u.end, a.end))], guven, eksik_sure: eksik, varsayimlar: v, yuk_uyarilari: yuk,

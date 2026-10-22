@@ -15,6 +15,7 @@ const db: any = {
 const gom = async (m: string[]) => m.map((x) => { const v = new Array(256).fill(0); for (const k of kokler(x)) { let h = 0; for (const c of k) h = (h * 31 + c.charCodeAt(0)) >>> 0; v[h % 256] += 1; } return v; });
 let SON_USER = "";
 let TASLAK_ADIM_SIZMA = false; // motor dersi uygulasın mı
+let TASLAK_MODEL = "sahte"; // P1-E madde 11: yedek motor etiketi
 const plan = () => ({
   is_turu: { kod: "banka-entegrasyonu", ad: "Banka entegrasyonu", mevcut: false }, baslik: "Ege Bank ödeme entegrasyonu", hedef_tarih: null, anahtar_varlik: { tur: "sirket", ad: "Ege Bank" },
   roller: [{ kod: "ben", ad: "Berkin", tip: "insan", kisi: "Berkin" }, { kod: "banka", ad: "Ege Bank BT", tip: "dis" }, { kod: "dev", ad: "Geliştirici agent", tip: "agent" }],
@@ -33,7 +34,7 @@ const plan = () => ({
   ],
 });
 const llm = async (req: any) => {
-  if (req.tool.name === "taslak_yaz") { SON_USER = req.user; return { input: plan(), model: "sahte", ms: 10 }; }
+  if (req.tool.name === "taslak_yaz") { SON_USER = req.user; return { input: plan(), model: TASLAK_MODEL, ms: 10 }; }
   if (req.tool.name === "denetim_yaz") return { input: { bagimlilik: [{ id: "a5", bekledigi: ["a3"], neden: "zaten dolaylı" }], adim_ekle: [{ ad: "Canlı geçiş onayı al", tur_kod: "canli-onay", sahip_rol: "ben", kriter: "onay", sure_tahmin_gun: 1, bagimli: ["a4"], bekleyen: ["a5"], neden: "kapı eksik" }], soru_ekle: [], notlar: [] }, model: "sahte", ms: 5 };
   if (req.tool.name === "adim_turu") return { input: { tur_kod: "sizma-testi-raporu", boyut: "kapi" }, model: "sahte", ms: 5 };
   if (req.tool.name === "ders_yaz") return { input: { dersler: [{ i: 0, metin: "Ege Bank bilgi güvenliği canlıya çıkıştan önce güncel sızma testi raporu istiyor.", kapsam: "varlik", tetik: ["banka", "entegrasyon", "sızma testi"], gecerli: true }] }, model: "sahte", ms: 5 };
@@ -83,3 +84,10 @@ console.log("\n[standart blok motorda]", /Standart süreç \(ekip/.test(SON_USER
 // gömmesiz (kelime benzerliği) yol
 const r9 = await callTool("devir_tasla", { cumle: "Ege Bank entegrasyonu için canlıya çıkış", baglam: { varlik: "Ege Bank" } }, { db, ws, key, ua: "t", now: NOW, llm } as any);
 console.log("[gömmesiz] dersler geldi:", /D\d+\]/.test(SON_USER), "benzer geldi:", /Benzer geçmiş/.test(SON_USER));
+// P1-E madde 11: yedek motorla üretilen taslak çıktıda söylenir
+const r0 = await callTool("devir_tasla", { cumle: "Ege Bank için havale entegrasyonu yapmam lazım", baglam: { varlik: "Ege Bank" } }, ctx() as any);
+TASLAK_MODEL = "openai:gpt-4.1 (yedek; birincil: kredi bitti)";
+const ry = await callTool("devir_tasla", { cumle: "Ege Bank için havale entegrasyonu yapmam lazım", baglam: { varlik: "Ege Bank" } }, ctx() as any);
+const yedekOk = /yedek motorla \(OpenAI gpt-4\.1\) üretildi/.test(ry) && !/yedek motor/.test(r0);
+console.log((yedekOk ? "✓ " : "✗ ") + "yedek motorla üretilen taslak etiketlenir, birincil etiketlenmez");
+if (!yedekOk) process.exitCode = 1;

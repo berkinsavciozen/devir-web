@@ -7,7 +7,7 @@ import { C, planet, shareRing } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
 import { adimAdi, ikiSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
-import { adimCumlesi, isPayi, sureKisa, tuttuklari } from './Adim';
+import { adimCumlesi, IHLAL_IPUCU, isPayi, sureKisa, takvimIhlali, tarihSayisi, tuttuklari } from './Adim';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 
@@ -114,8 +114,9 @@ export function GenisKart({ K, d, a, kod, ben }: { K: KartDuzen; d: any; a: any;
   const sayilar: [string, string][] = [
     [a.durum === 'engelli' || a.durum === 'hazir' || a.durum === 'suruyor' ? sureKisa(a.bekleme_saat) : BITTI(a.durum) ? gunAy(Date.parse(a.durum_at)) : '–', a.durum === 'engelli' ? 'engelli' : a.durum === 'hazir' ? 'bekliyor' : a.durum === 'suruyor' ? 'sürüyor' : a.durum_etiket || a.durum],
     [`${tut.length} adım`, 'tutuyor'],
-    a.son_tarih ? [gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00')), 'son tarih'] : a.en_erken_bitis ? [gunAy(Date.parse(a.en_erken_bitis)), 'en erken'] : ['–', 'son tarih'],
+    tarihSayisi(a),
   ];
+  const ihlal = takvimIhlali(a);
   const cumle = ikiSatir(adimCumlesi(a, ben), K.cumle.w, `${K.cumle.fs}px Caladea`);
   const zincir = [bek.length ? `Bekliyor: ${bek.map((b: any) => adimAdi(b)).join(' · ')}` : '', tut.length ? `Tutuyor: ${tut.slice(0, 3).map((n) => adimAdi(by.get(n))).join(' → ')}` : ''].filter(Boolean).join('   ·   ');
   const benim = a.sahip === ben && !BITTI(a.durum);
@@ -131,7 +132,7 @@ export function GenisKart({ K, d, a, kod, ben }: { K: KartDuzen; d: any; a: any;
       <button type="button" className="genis-baslik" style={{ left: K.x + K.baslik.dx, top: K.y + K.baslik.dy - K.baslik.fs * 1.02, fontSize: K.baslik.fs, lineHeight: `${Math.round(K.baslik.fs * 1.25)}px` }} onClick={ayrinti} aria-label={`${adimAdi(a)}: ayrıntılar, geçmiş ve çıktılar`}>{adimAdi(a)}</button>
       <Metin y={K.y + K.meta.dy} x={K.x + K.baslik.dx} fs={K.meta.fs} renk="ink3" className="tek-satir">{kisaAd(a.sahip)} · {a.durum_etiket || a.durum}{a.son_tarih ? ` · son ${gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00'))}` : ''}</Metin>
       <Metin y={K.y + K.cumle.dy} x={K.x + K.cumle.dx} fs={K.cumle.fs} lh={K.cumle.lh} serif renk="ink2" style={{ whiteSpace: 'nowrap' }}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
-      {sayilar.map(([b, k], i) => <div key={k} className="sayi-kutusu" style={{ position: 'absolute', left: K.x + K.chip.dx + i * K.chip.ara, top: K.y + K.chip.dy, width: K.chip.w }}><b>{b}</b><small>{k}</small></div>)}
+      {sayilar.map(([b, k], i) => <div key={k} className={`sayi-kutusu${i === 2 && ihlal ? ' ihlal' : ''}`} title={i === 2 && ihlal ? IHLAL_IPUCU : undefined} style={{ position: 'absolute', left: K.x + K.chip.dx + i * K.chip.ara, top: K.y + K.chip.dy, width: K.chip.w }}><b>{b}</b><small>{k}</small></div>)}
       {zincir && <Metin y={K.y + K.bek.dy} x={K.x + K.bek.dx} fs={K.bek.fs} agirlik={600} renk="ink2" className="tek-satir" style={{ whiteSpace: 'pre' }}>{zincir}</Metin>}
       <div className="genis-kart-eylem" style={{ left: K.x + B.dx, top: K.y + B.dy, width: B.w }}>
         {benim ? <>
