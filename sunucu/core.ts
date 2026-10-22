@@ -2,7 +2,7 @@
 
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn } from "./llm.ts";
-import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
+import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAlanlari, yeniBelirtec, type Sifre } from "./baglanti.ts";
 
@@ -12,6 +12,8 @@ export interface DB {
   insert(table: string, rows: any[]): Promise<any[]>;
   update(table: string, where: Record<string, unknown>, patch: Record<string, unknown>): Promise<void>;
   delete?(table: string, where: Record<string, unknown>): Promise<void>;
+  /** Postgres işlevi (P1-B: adim_durum_yaz, sayac_artir). Yoksa (bellek DB'si) aynı iş tablo çağrılarıyla yapılır. */
+  rpc?(fn: string, args: Record<string, unknown>): Promise<any>;
 }
 /** kanal: isteğin geldiği yol. Aktör türü buradan türetilir, araç argümanından değil (S-C1). */
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
@@ -80,10 +82,26 @@ const AGENT_KARARI: Record<string, "insan" | "beyan"> = { sahip: "insan", ekip: 
 export const kararDuzeyi = (ctx: Ctx, act: any): "insan" | "beyan" => act.kim_tip !== "agent" ? "insan" : ({ ...AGENT_KARARI, ...(ctx.ws?.politika?.agent_karari || {}) } as any)[ctx.key.rol] === "insan" ? "insan" : "beyan";
 const who = (o: any) => o.kim_tip === "agent" ? `${o.arac || "AI"} (${o.kim} adına)` : o.kim_tip === "sistem" ? "Devir" : o.kim;
 
-async function log(ctx: Ctx, akisId: string, no: number | null, act: any, tip: string, ozet: string, veri: any = {}) {
+function olaySatiri(ctx: Ctx, akisId: string, no: number | null, act: any, tip: string, ozet: string, veri: any = {}) {
   // kanal ve kişi kimliği (0.13.0): kayıt kimin kimlik bilgisiyle, hangi yoldan geldi; sistem olayında boş
   const kimlik = act.kim_tip === "sistem" ? {} : { kanal: ctx.kanal || "mcp", ...(ctx.key?.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}) };
-  await ctx.db.insert("olay", [{ akis_id: akisId, adim_no: no, kim: act.kim, kim_tip: act.kim_tip, arac: act.arac || null, tip, ozet, veri: { ...veri, ua: ctx.ua.slice(0, 120) }, ...kimlik }]);
+  return { akis_id: akisId, adim_no: no, kim: act.kim, kim_tip: act.kim_tip, arac: act.arac || null, tip, ozet, veri: { ...veri, ua: ctx.ua.slice(0, 120) }, ...kimlik };
+}
+async function log(ctx: Ctx, akisId: string, no: number | null, act: any, tip: string, ozet: string, veri: any = {}) {
+  await ctx.db.insert("olay", [olaySatiri(ctx, akisId, no, act, tip, ozet, veri)]);
+}
+/**
+ * Adım durumu ve durum olayı (P1-B, S-C4): Postgres'te tek işlemde (adim_durum_yaz); biri yazılıp öbürü kalamaz.
+ * Durum bu arada başkası tarafından değiştiyse 409. rpc yoksa (bellek DB'si) eski sırayla iki yazım.
+ */
+async function durumYaz(ctx: Ctx, akisId: string, adim: { id: string; no: number }, from: string, to: string, act: any, ozet: string, patch: Record<string, unknown>) {
+  const olay = olaySatiri(ctx, akisId, adim.no, act, "durum", ozet, { from, to });
+  if (!ctx.db.rpc) { await ctx.db.update("adim", { id: adim.id }, patch); await ctx.db.insert("olay", [olay]); return; }
+  try { await ctx.db.rpc("adim_durum_yaz", { p_adim: adim.id, p_patch: patch, p_onceki: from, p_olay: olay }); }
+  catch (e) {
+    if (/durum_degisti|40001/.test(String((e as Error).message))) throw new DevirHata(409, `Adım ${adim.no} bu arada başka biri tarafından güncellendi. Akışı yeniden oku ve gerekiyorsa tekrar dene.`);
+    throw e;
+  }
 }
 const SYS = { kim: "Devir", kim_tip: "sistem", arac: null };
 
@@ -292,8 +310,7 @@ export function fixStep(s: any) { s.bagimli = (s.bagimli || []).map(Number); s.c
 
 async function setDurum(ctx: Ctx, akis: any, s: any, to: string, act: any, ozet: string, extra: Record<string, unknown> = {}) {
   const from = s.durum, at = new Date(ctx.now).toISOString();
-  await ctx.db.update("adim", { id: s.id }, { durum: to, durum_at: at, ...extra });
-  await log(ctx, akis.id, s.no, act, "durum", ozet, { from, to });
+  await durumYaz(ctx, akis.id, s, from, to, act, ozet, { durum: to, durum_at: at, ...extra });
   Object.assign(s, { durum: to, durum_at: at }, extra);
 }
 async function recalc(ctx: Ctx, akis: any, steps: any[]) {
@@ -514,6 +531,7 @@ export const TOOLS = [
         degiskenler: { type: "object", description: "Şablondaki {musteri}, {donem} gibi yer tutucuların değerleri." },
         baglam: { type: "object", description: "Akışı tanımlayan anahtarlar; ör. { varlik: 'Yıldız Kafe', iliski: 'musteri', donem: '2026-09' }. Öğrenimler varlığa göre eşleşir." },
         kurallar: { type: "object", description: "ör. { karar_insanda: true, veri_ozet: true }" },
+        ayni_varlik_onay: { type: "boolean", description: "Aynı varlık için son 24 saatte kurulmuş aktif akış varken yine de kurmak için true. Önce kullanıcıya sor: mükerrer olabilir." },
         adimlar: {
           type: "array", description: "Şablonsuz kurulumda adımlar. bagimli, bu listedeki 1'den başlayan sıra numaralarıdır.",
           items: { type: "object", required: ["ad", "sahip", "kriter"], properties: {
@@ -629,8 +647,8 @@ export const TOOLS = [
   },
   {
     name: "devir_akis_kapat",
-    description: "Biten akışı kapatır; toplam süre, bekleme, sonradan eklenen ve atlanan adımlar, yanlış çıkan varsayımlar deneyim olarak ekibin belleğine yazılır ve derslere dönüşür. Benzer bir sonraki işte hatırlanır.",
-    inputSchema: { type: "object", required: ["akis"], properties: { akis: { type: "string" }, degerlendirme: { type: "string" }, zorla: { type: "boolean" } } },
+    description: "Biten akışı kapatır (neden: tamamlandi; yapılmayacak iş için iptal, kopya akış için mukerrer); toplam süre, bekleme, sonradan eklenen ve atlanan adımlar, yanlış çıkan varsayımlar deneyim olarak ekibin belleğine yazılır ve derslere dönüşür. Benzer bir sonraki işte hatırlanır.",
+    inputSchema: { type: "object", required: ["akis"], properties: { akis: { type: "string" }, degerlendirme: { type: "string" }, zorla: { type: "boolean" }, neden: { type: "string", enum: ["tamamlandi", "iptal", "mukerrer"], description: "Varsayılan tamamlandi. iptal (iş yapılmayacak) ve mukerrer (başka akışın kopyası) deneyim yazmaz; bu akışa uygulanan dersler 'bu işte uymadı' sayılır." } } },
   },
   {
     name: "devir_sabitle",
@@ -754,6 +772,7 @@ async function olustur(a: any, ctx: Ctx) {
   if (a.taslak) {
     tk = await ctx.db.one("taslak", { kisa_kod: String(a.taslak).trim().toUpperCase(), ws_id: ctx.ws.id });
     if (!tk) throw bulunamadi(`'${a.taslak}' taslağı bulunamadı. Önce devir_tasla ile taslak çıkar.`);
+    if (tk.durum === "iptal") throw new DevirHata(409, `${tk.kisa_kod} taslağından vazgeçildi${tk.akis_id ? " (aynı varlık için elle akış kuruldu)" : ""}. Gerekirse devir_tasla ile yeni taslak çıkar.`);
     if (tk.durum && tk.durum !== "acik") throw new Error(`Bu taslaktan zaten akış kuruldu. devir_akislar ile bak.`);
     const t = tk.taslak, S = tk.sorular || {};
     const kk = await kararlar(ctx, baglam.musteri || tk.baglam?.musteri || t.anahtar_varlik?.ad || null);
@@ -810,6 +829,11 @@ async function olustur(a: any, ctx: Ctx) {
     }
   }
   if (!baslik) throw new Error("baslik gerekli.");
+  // aynı varlıkta son 24 saatte kurulmuş aktif akış varsa önce onay (P1-B, J2LU: aynı iş iki kez kuruldu)
+  if (baglam.musteri && !baglam.ust_akis && a.ayni_varlik_onay !== true) {
+    const yakin = (await varlikAkislari(ctx, baglam.musteri)).filter((f: any) => f.durum === "aktif" && !f.baglam?.ust_akis && ctx.now - ts(f.created_at) < DAY);
+    if (yakin.length) throw new DevirHata(409, `${baglam.musteri} için son 24 saatte kurulmuş aktif akış var: ${yakin.map((f: any) => `${f.kisa_kod} · ${f.baslik}`).join("; ")}. Aynı iş olabilir; kullanıcıya sor. Ayrı bir işse ayni_varlik_onay=true ile yeniden çağır.`);
+  }
   // öğrenimden adım ekle (şablon ve taslak yolu)
   if (!(Array.isArray(a.adimlar) && a.adimlar.length)) {
     const kelime = (x: string) => new Set(norm(x).split(" ").filter((w) => w.length > 3));
@@ -867,6 +891,11 @@ async function olustur(a: any, ctx: Ctx) {
       ...((tk.sorular?.varsayim || []) as any[]).map((q: any) => ({ ws_id: ctx.ws.id, taslak_id: tk.id, akis_id: akis.id, is_turu: turKod, tip: "varsayim", soru_kod: q.kod, boyut: q.boyut, soru: q.soru, cevap: String(q.cevap ?? q.varsayilan ?? ""), kaynak: q.kaynak, etki: {}, etki_puan: 0 })),
     ];
     if (kayit.length) await ctx.db.insert("soru_kaydi", kayit);
+  } else if (baglam.musteri && !baglam.ust_akis) {
+    // elle kurulan akış aynı varlığın açık taslağını kapatır; yoksa sonradan o taslaktan ikinci akış kurulabiliyor (P1-B)
+    const acik = (await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at")).filter((x: any) => norm(x.baglam?.musteri || x.taslak?.anahtar_varlik?.ad || "") === norm(baglam.musteri));
+    for (const x of acik) await ctx.db.update("taslak", { id: x.id }, { durum: "iptal", akis_id: akis.id });
+    if (acik.length) notes.push(`${baglam.musteri} için açık taslak${acik.length > 1 ? "lar" : ""} (${acik.map((x: any) => x.kisa_kod).join(", ")}) bu akış kurulduğu için iptal edildi.`);
   }
   const ready = await recalc(ctx, akis, inserted);
   const events = await ctx.db.many("olay", { akis_id: akis.id }, "id");
@@ -1423,8 +1452,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (to === "tamam" && s.tur_kod && akis.baglam?.musteri) {
     for (const x of await acikIsler(ctx, akis.baglam.musteri)) {
       if (x.akis_id === akis.id || x.tur_kod !== s.tur_kod) continue;
-      await ctx.db.update("adim", { id: x.id }, { durum: "tamam", durum_at: new Date(ctx.now).toISOString() });
-      await log(ctx, x.akis_id, x.no, act, "durum", `Ertelenmiş iş ${akis.kisa_kod} akışında tamamlandı`, { from: "ertelendi", to: "tamam" });
+      await durumYaz(ctx, x.akis_id, x, "ertelendi", "tamam", act, `Ertelenmiş iş ${akis.kisa_kod} akışında tamamlandı`, { durum: "tamam", durum_at: new Date(ctx.now).toISOString() });
       warn.push(`${x.akis_kod} akışında ertelenmiş "${x.ad}" işi de kapandı.`);
     }
   }
@@ -1639,8 +1667,11 @@ async function kapat(a: any, ctx: Ctx) {
   needTeam(ctx, "Akış kapatmayı");
   const akis = await getAkis(ctx, a.akis);
   if (akis.durum !== "aktif") throw new Error(`Akış zaten ${akis.durum}.`);
+  const neden = a.neden == null || a.neden === "" ? "tamamlandi" : String(a.neden);
+  if (!["tamamlandi", "iptal", "mukerrer"].includes(neden)) throw new Error("neden: tamamlandi, iptal ya da mukerrer olmalı.");
   const { steps, events } = await loadFlow(ctx, akis);
   const open = steps.filter((s: any) => !DONE(s));
+  if (neden !== "tamamlandi") return vazgec(ctx, a, akis, neden, open.length);
   if (open.length && !a.zorla) throw new Error(`Bitmemiş adımlar var: ${open.map((s: any) => `${s.no}. ${s.ad} (${LBL[s.durum]})`).join("; ")}. Yine de kapatmak için zorla=true.`);
   if (open.length) needOwner(ctx, "Bitmemiş adımı olan akışı kapatmayı");
   const m = metrics(akis, steps, events, ctx.now);
@@ -1696,6 +1727,23 @@ async function kapat(a: any, ctx: Ctx) {
   if (isabet != null) out.push(`İlk taslak isabeti: %${Math.round(isabet * 100)} (ilk plandaki adımların ne kadarı sonuna kadar geçerli kaldı).`);
   if (bellekNotlari.length) { out.push("", "Devir bu işten öğrendikleri:"); for (const x of bellekNotlari.slice(0, 6)) out.push(`- ${x}`); }
   out.push("Deneyim ekibin belleğine yazıldı; benzer bir sonraki işte (iş türü farklı olsa da) hatırlanır. Başka ekipler görmez.");
+  return out.join("\n");
+}
+
+// iptal ya da mükerrer kapanış (P1-B): akış arşive gider, deneyim yazılmaz; uygulanan dersler bu işte uymadı sayılır
+async function vazgec(ctx: Ctx, a: any, akis: any, neden: string, acik: number) {
+  if (acik) needOwner(ctx, "Bitmemiş adımı olan akışı iptal etmeyi");
+  const at = new Date(ctx.now).toISOString(), act = actor(ctx, a), ad = neden === "iptal" ? "iptal edildi" : "mükerrer diye kapandı";
+  await ctx.db.update("akis", { id: akis.id }, { durum: "arsiv", kapandi_at: at, baglam: { ...(akis.baglam || {}), kapanis_nedeni: neden } });
+  await log(ctx, akis.id, null, act, "akis_kapandi", `Akış ${ad}${a.degerlendirme ? `: ${a.degerlendirme}` : ""}`, { neden, degerlendirme: a.degerlendirme || null });
+  const cocuklar = altGruplar(akis).flatMap((g) => g.kalemler);
+  if (cocuklar.length) for (const f of await ctx.db.many("akis", { id: cocuklar.map((k) => k.akis_id), durum: "aktif" }, "created_at")) {
+    await ctx.db.update("akis", { id: f.id }, { durum: "arsiv", kapandi_at: at, baglam: { ...(f.baglam || {}), kapanis_nedeni: neden } });
+    await log(ctx, f.id, null, act, "akis_kapandi", `Üst akış ${akis.kisa_kod} ile birlikte ${ad}`, { neden });
+  }
+  const notlar = akis.baglam?.ust_akis ? [] : await dersUymadi(ctx, Array.isArray(akis.baglam?.dersler) ? akis.baglam.dersler : []);
+  const out = [`■ ${akis.kisa_kod} · ${akis.baslik} ${ad}; arşive taşındı.`, "Deneyim yazılmadı: bu akış benzer işlerde örnek alınmaz."];
+  if (notlar.length) { out.push("", "Bu akışa uygulanan dersler:"); for (const x of notlar.slice(0, 6)) out.push(`- ${x}`); }
   return out.join("\n");
 }
 

@@ -43,6 +43,12 @@ const db: DB = {
     const { error } = await apply(sb.from(t).delete(), where);
     if (error) throw new Error(error.message);
   },
+  // P1-B: adim_durum_yaz (durum + olay tek işlemde), sayac_artir (hız sınırı, yapay zekâ bütçesi)
+  async rpc(fn, args) {
+    const { data, error } = await sb.rpc(fn, args);
+    if (error) throw new Error(`${error.code || ""} ${error.message}`);
+    return data;
+  },
 };
 
 // E-postayla giriş ve OAuth (MK-1): web oturumu da Claude/ChatGPT erişim jetonu da Supabase Auth jetonudur; burada doğrulanır.

@@ -115,9 +115,11 @@ async function akislarV(ctx: Ctx, durum: string, altlar = false) {
   return out;
 }
 
+const TASLAK_OMRU = 7 * 24 * HOUR;
 async function taslaklarV(ctx: Ctx) {
   if (isDis(ctx)) return [];
-  const t = await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at");
+  // 7 günden eski açık taslak listeden düşer (P1-B); kodla açılabilir, kurulabilir ya da iptal edilebilir
+  const t = (await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at")).filter((x: any) => ctx.now - Date.parse(x.created_at) < TASLAK_OMRU);
   return t.reverse().slice(0, 30).map((x: any) => ({
     kod: x.kisa_kod, cumle: x.cumle, baslik: x.taslak?.baslik || null, varlik: x.baglam?.musteri || x.taslak?.anahtar_varlik?.ad || null, is_turu: x.is_turu_ad || x.is_turu || null,
     soru_sayisi: (x.sorular?.secilen || []).length, adim_sayisi: (x.taslak?.adimlar || []).length, olusturuldu: x.created_at,
@@ -478,6 +480,14 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "karar" && !r1) { const mesaj = await arac(ctx, "devir_karar", b); return { mesaj, ...(await kararlarV(ctx, b.varlik || null)) }; }
     if (r0 === "ders" && r1 && (r2 === "onayla" || r2 === "reddet")) { const mesaj = await arac(ctx, "devir_dersler", { islem: r2, ders: r1 }); return { mesaj }; }
     if (r0 === "tasla" && !r1) { const mesaj = await arac(ctx, "devir_tasla", b); const kod = /Taslak (T\w+)/.exec(mesaj)?.[1] || /\b(T[A-Z0-9]{3,})\b/.exec(mesaj)?.[1]; return { mesaj, ...(kod ? { taslak: await taslakV(ctx, kod) } : {}) }; }
+    if (r0 === "taslak" && r1 && r2 === "iptal" && !r3) {
+      ekipMi(ctx);
+      const t = await ctx.db.one("taslak", { kisa_kod: String(r1).toUpperCase(), ws_id: ctx.ws.id });
+      if (!t) throw new ApiHata(404, "Taslak yok.");
+      if (t.durum === "kuruldu") throw new ApiHata(409, "Bu taslaktan akış kuruldu; akışı kapatmak için akışın kendisini iptal et.");
+      if (t.durum !== "iptal") await ctx.db.update("taslak", { id: t.id }, { durum: "iptal" });
+      return { taslak: { kod: t.kisa_kod, durum: "iptal" }, taslaklar: await taslaklarV(ctx) };
+    }
     if (r0 === "taslak" && r1 && r2 === "kur" && !r3) { const mesaj = await arac(ctx, "devir_akis_olustur", { ...b, taslak: r1 }); const kod = /oluşturuldu: (\w+)/.exec(mesaj)?.[1]; return { mesaj, ...(kod ? await akisV(ctx, kod) : {}) }; }
     // dış katılımcı bağlantısı
     if (r0 === "akis" && r1 && r2 === "katilimci" && !r3) {
