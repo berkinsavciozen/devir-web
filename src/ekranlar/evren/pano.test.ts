@@ -24,6 +24,12 @@ describe('evren panosu', () => {
     expect(P.adimlar.sende[0].tuttugu).toBe(2);
   });
   it('detayı gelmemiş akış kart ilerlemesiyle sayılır', () => {
-    expect(pano([{ kod: 'C', ilerleme: { tamam: 3, toplam: 3 } }], {}, 'Berkin').cumle).toBe('1 aktif akışta toplam 3 adım: hepsi bitti.');
+    expect(pano([{ kod: 'C', ilerleme: { tamam: 3, toplam: 3 } }], {}, 'Berkin').cumle).toBe('1 aktif akışta toplam 3 adım: hepsi bitti; işler yükleniyor.');
+  });
+  it('yüklenirken eksik akış sayılır ve cümle bunu söyler (M-M3)', () => {
+    const Q = pano([kart('A'), kart('B'), { kod: 'C', ilerleme: { tamam: 1, toplam: 4 } }], detay, 'Berkin');
+    expect(Q.eksik).toBe(1);
+    expect(Q.cumle.endsWith('; 1 akışın işleri yükleniyor.')).toBe(true);
+    expect(P.eksik).toBe(0);
   });
 });
