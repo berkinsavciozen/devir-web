@@ -10,6 +10,7 @@ import { saat } from '../../cizim/yol.js';
 import { adimAdi, olayFiili, topla } from '../bildirimler/model';
 import { PANO_AD, type Pano as PanoV, type PanoTur } from './pano';
 import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
+import { DurumNotu, type VeriDurumu } from '../../bilesen/VeriDurumu';
 
 const SATIR = 60, ARA = 8, EN = 6;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
@@ -25,8 +26,8 @@ export function panoYerlesimi(P: PanoV, n: number, y0: number, hareket = 0, seri
   return { cumle, cY, kY, sY, lY, aY, hY, son: hSon };
 }
 
-export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; ben: string; kartlar: any[]; goster: PanoTur | null; secili: PanoTur | null; sec: (t: PanoTur | null) => void }>(
-  function EvrenPano({ P, y0, ben, kartlar, goster, secili, sec }, ref) {
+export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; ben: string; kartlar: any[]; goster: PanoTur | null; secili: PanoTur | null; sec: (t: PanoTur | null) => void; durum?: VeriDurumu; yeniden?: () => void }>(
+  function EvrenPano({ P, y0, ben, kartlar, goster, secili, sec, durum = 'hazir', yeniden }, ref) {
     const liste = goster ? P.adimlar[goster] : [];
     const H = sonHareketler(useOlaylar().data?.olaylar);
     const ak = oncelikliAkis(kartlar);
@@ -60,7 +61,9 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
               <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{a.ad}</b><small>{alt}</small></span>
             </button>
           );
-        }) : <Metin y={Y.lY + 22} x={20} fs={14} renk="ink3">Şu an bekleyen iş yok.</Metin>}
+        }) : durum === 'kismi' || durum === 'hata' || durum === 'yukleniyor'
+          ? <DurumNotu durum={durum} y={Y.lY + 6} yeniden={yeniden} />
+          : <Metin y={Y.lY + 22} x={20} fs={14} renk="ink3">Şu an bekleyen iş yok.</Metin>}
         <button type="button" className="metin-baglanti pano-baglanti" style={{ left: 20, top: Y.aY }} onClick={() => git('/gorevler')}>
           {benimN ? `Görevler (${benimN})` : 'Görevler'}
         </button>

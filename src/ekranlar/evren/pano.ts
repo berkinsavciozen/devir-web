@@ -19,16 +19,17 @@ const UYAR: Record<PanoTur, (a: any, ben: string) => boolean> = {
 };
 
 export interface PanoAdim { kod: string; no: number; ad: string; sahip: string; durum: string; karar: boolean; tuttugu: number; son?: string | null }
-export interface Pano { cumle: string; suzgecler: { tur: PanoTur; n: number }[]; adimlar: Record<PanoTur, PanoAdim[]>; varsayilan: PanoTur | null }
+/** eksik: detayı henüz gelmemiş akış sayısı; listeler ve sayılar o akışlar gelmeden eksiktir (M-M3). */
+export interface Pano { cumle: string; eksik: number; suzgecler: { tur: PanoTur; n: number }[]; adimlar: Record<PanoTur, PanoAdim[]>; varsayilan: PanoTur | null }
 
 /** kartlar: /ozet.akislar (aktif); detay: kod → GET /akis/:kod. */
 export function pano(kartlar: any[], detay: Record<string, any>, ben: string): Pano {
   const adimlar = {} as Record<PanoTur, PanoAdim[]>;
   for (const t of Object.keys(UYAR) as PanoTur[]) adimlar[t] = [];
-  let toplam = 0, biten = 0;
+  let toplam = 0, biten = 0, eksik = 0;
   for (const k of kartlar) {
     const A: any[] | undefined = detay[k.kod]?.adimlar;
-    if (!A) { toplam += k.ilerleme?.toplam || 0; biten += k.ilerleme?.tamam || 0; continue; }
+    if (!A) { toplam += k.ilerleme?.toplam || 0; biten += k.ilerleme?.tamam || 0; eksik++; continue; }
     toplam += A.length; biten += A.filter((a) => BITTI(a.durum)).length;
     for (const a of A) for (const t of Object.keys(UYAR) as PanoTur[]) {
       if (!UYAR[t](a, ben)) continue;
@@ -44,9 +45,9 @@ export function pano(kartlar: any[], detay: Record<string, any>, ben: string): P
     n('sende') && `${n('sende')} iş senden bekleniyor`,
   ].filter(Boolean);
   const cumle = kartlar.length
-    ? `${kartlar.length} aktif akışta toplam ${toplam} adım: ${parca.join(', ')}.`
+    ? `${kartlar.length} aktif akışta toplam ${toplam} adım: ${parca.join(', ')}${eksik ? `; ${eksik === kartlar.length ? 'işler' : `${eksik} akışın işleri`} yükleniyor` : ''}.`
     : 'Aktif akış yok.';
   const sira: PanoTur[] = ['sende', 'engel', 'karar', 'risk', 'sira'];
   const suzgecler = sira.filter((t) => n(t)).map((t) => ({ tur: t, n: n(t) }));
-  return { cumle, suzgecler, adimlar, varsayilan: suzgecler[0]?.tur ?? null };
+  return { cumle, eksik, suzgecler, adimlar, varsayilan: suzgecler[0]?.tur ?? null };
 }

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { api } from '../../api/istemci';
+import { api, ApiHatasi } from '../../api/istemci';
 import { sorguIstemcisi, useOzet } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
@@ -91,14 +91,18 @@ export function TaslakSorulari({ kod }: { kod: string }) {
     ...(t.varsayimlar || []).filter((v: any) => !ek.some((e) => e.kod === v.kod)).map((v: any) => ({ metin: v.soru, boyut: v.boyut || 'girdi', cevap: v.secenekler?.find((o: any) => String(o.deger) === String(v.cevap))?.etiket || v.cevap, soru: { kod: v.kod, soru: v.soru, tip: v.tip || 'secim', secenekler: v.secenekler } })),
   ], [t, ek]);
   const S: Soru[] = useMemo(() => [...(t?.sorular || []), ...ek], [t, ek]);
+  const [vazgec, setVazgec] = useState(false);
+  const [ayni, setAyni] = useState<AyniVarlik | null>(null);
+  const tazele = () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['akislar'] }); };
   const kur = useMutation({
-    mutationFn: () => api.post<any>(`/taslak/${encodeURIComponent(kod)}/kur`, { cevaplar: cevap }),
-    onSuccess: (r) => { void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['akislar'] }); git(r.akis?.kod ? `/akis/${encodeURIComponent(r.akis.kod)}` : '/'); },
+    mutationFn: (onay?: boolean) => api.post<any>(`/taslak/${encodeURIComponent(kod)}/kur`, { cevaplar: cevap, ...(onay ? { ayni_varlik_onay: true } : {}) }),
+    onSuccess: (r) => { setAyni(null); tazele(); git(r.akis?.kod ? `/akis/${encodeURIComponent(r.akis.kod)}` : '/'); },
+    onError: (e) => setAyni(ayniVarlik(e)),
   });
   const cizim = useMemo(() => (t ? koza(Math.max(1, (t.adimlar || []).length), V.map((v) => v.boyut), false) : koza(13, [], true)), [t, V]);
   const geri = () => (history.length > 1 ? history.back() : git('/'));
   if (!t) return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu>{q.isError && <Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta">{(q.error as Error).message}</Metin>}</Sahne>;
-  if (t.durum !== 'acik' && t.akis_id) return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu><Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta">Bu taslaktan akış kuruldu.</Metin></Sahne>;
+  if (t.durum !== 'acik') return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu><Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta" as="p">{t.durum === 'iptal' ? 'Bu taslaktan vazgeçildi.' : 'Bu taslaktan akış kuruldu.'}</Metin></Sahne>;
   const satirlar = sarSatir(`“${String(t.cumle).trim().replace(/'/g, '’')}”`, 320, 'italic 18.5px Caladea').slice(0, 4);
   const hepsi = S.every((s) => cevap[s.kod] != null && cevap[s.kod] !== '');
   const i = Math.min(sira, Math.max(0, S.length - 1)), s = S[i];
@@ -115,7 +119,7 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   return (
     <>
       <Sahne gok={GOK} cizim={cizim + (s ? `<rect x="16" y="${qy}" width="358" height="${kartH}" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>` : '')} etiket="Yeni iş">
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button>} /></Kutu>
         <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
         {V.slice(0, ACI.length).map((v, j) => { const [x, y] = rozetYeri(j); return <button key={j} type="button" className="varsayim-rozet" style={{ left: x - 22, top: y - 22 }} aria-label={`Varsayım: ${v.metin}`} onClick={() => setAcik(j)} />; })}
         {S.length > 0 && s && <section aria-label="Taslak soruları">
@@ -130,8 +134,8 @@ export function TaslakSorulari({ kod }: { kod: string }) {
             <Dugme type="submit" tur="ikincil" ton="altin" yukseklik={50} fs={15} style={{ top: qy + 172, left: 36, right: 36 }} disabled={!metin.trim()}>Tamam</Dugme>
           </form>}
         </section>}
-        <Dugme style={{ top: 756 }} yukseklik={50} fs={16} disabled={!hepsi} mesgul={kur.isPending} onClick={() => kur.mutate()}>Akışı kur</Dugme>
-        {kur.isError && <p className="canli-hata" role="alert" style={{ top: 812 }}>{(kur.error as Error).message}</p>}
+        <Dugme style={{ top: 756 }} yukseklik={50} fs={16} disabled={!hepsi} mesgul={kur.isPending} onClick={() => kur.mutate(false)}>Akışı kur</Dugme>
+        {kur.isError && !ayniVarlik(kur.error) && <p className="canli-hata" role="alert" style={{ top: 812 }}>{(kur.error as Error).message}</p>}
       </Sahne>
       <AltSayfa acik={vA != null} kapat={() => setAcik(null)} baslik="Varsayım" yukseklik={520} duraklar={['orta']}>
         {vA && <div className="karar-panel" style={{ height: 300 }}>
@@ -141,6 +145,48 @@ export function TaslakSorulari({ kod }: { kod: string }) {
             : <Dugme tur="ikincil" ton="lila" fs={15} style={{ top: 168 }} onClick={() => setAcik(null)}>Tamam</Dugme>}
         </div>}
       </AltSayfa>
+      {vazgec && <TaslakVazgec kod={kod} kapat={() => setVazgec(false)} bitti={() => { tazele(); git('/'); }} />}
+      {ayni && <AyniVarlikOnay a={ayni} kapat={() => setAyni(null)} mesgul={kur.isPending} kur={() => kur.mutate(true)} />}
     </>
+  );
+}
+
+/** Sunucunun "aynı varlık için son 24 saatte kurulmuş aktif akış" 409'u (P1-B, J2LU): var olan akışlar. */
+interface AyniVarlik { varlik: string; akislar: { kod: string; baslik: string }[] }
+export function ayniVarlik(e: unknown): AyniVarlik | null {
+  if (!(e instanceof ApiHatasi) || e.durum !== 409) return null;
+  const m = /^(.*) için son 24 saatte kurulmuş aktif akış var: (.*?)\. Aynı iş olabilir/s.exec(e.message);
+  if (!m) return null;
+  const akislar = m[2].split('; ').map((x) => { const [kod, ...b] = x.split(' · '); return { kod: kod.trim(), baslik: b.join(' · ').trim() }; }).filter((x) => x.kod);
+  return { varlik: m[1], akislar };
+}
+
+function AyniVarlikOnay({ a, kapat, kur, mesgul }: { a: AyniVarlik; kapat: () => void; kur: () => void; mesgul: boolean }) {
+  const y0 = 470, P = (y: number) => y - (y0 + 28), ilk = a.akislar[0];
+  return (
+    <AltSayfa acik kapat={kapat} baslik="Aynı iş olabilir" yukseklik={y0} duraklar={['orta']}>
+      <div className="karar-panel" style={{ height: 350 }}>
+        <Metin y={P(y0 + 58)} fs={23} lh={28} serif agirlik={700} as="h2" className="tek-satir">Aynı iş olabilir</Metin>
+        <Metin y={P(y0 + 96)} fs={17} lh={22} serif renk="ink2" as="p" style={{ right: 24 }}>{a.varlik} için son 24 saatte kurulmuş akış var: {a.akislar.map((x, j) => <span key={x.kod}>{j ? '; ' : ''}<b>{x.kod}</b> {x.baslik}</span>)}.</Metin>
+        {ilk && <Dugme tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 178) }} onClick={() => { kapat(); git(`/akis/${encodeURIComponent(ilk.kod)}`); }}>Var olan akışa git</Dugme>}
+        <Dugme tur="ikincil" ton="altin" fs={15} yukseklik={48} style={{ top: P(y0 + 238) }} mesgul={mesgul} onClick={kur}>Ayrı iş, yine de kur</Dugme>
+      </div>
+    </AltSayfa>
+  );
+}
+
+function TaslakVazgec({ kod, kapat, bitti }: { kod: string; kapat: () => void; bitti: () => void }) {
+  const m = useMutation({ mutationFn: () => api.post<any>(`/taslak/${encodeURIComponent(kod)}/iptal`, {}), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['taslak', kod] }); bitti(); } });
+  const y0 = 560, P = (y: number) => y - (y0 + 28);
+  return (
+    <AltSayfa acik kapat={kapat} baslik="Taslaktan vazgeçilsin mi?" yukseklik={y0} duraklar={['orta']} guclu>
+      <div className="karar-panel" style={{ height: 260 }}>
+        <Metin y={P(y0 + 58)} fs={23} lh={28} serif agirlik={700} as="h2" className="tek-satir">Taslaktan vazgeçilsin mi?</Metin>
+        <Metin y={P(y0 + 96)} fs={17} lh={22} serif renk="ink2">Akış kurulmaz; taslak listeden düşer.</Metin>
+        <Dugme tur="tehlike" style={{ top: P(y0 + 122) }} mesgul={m.isPending} onClick={() => m.mutate()}>Taslaktan vazgeç</Dugme>
+        <Dugme tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 188) }} onClick={kapat}>Kalsın</Dugme>
+        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 242) }}>{(m.error as Error).message}</p>}
+      </div>
+    </AltSayfa>
   );
 }

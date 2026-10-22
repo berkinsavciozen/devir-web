@@ -15,6 +15,7 @@ import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bil
 import { arama, git } from '../../yonlendirme';
 import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
+import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { alanAdi, SatirKart } from '../hesap/Hesap';
 import { bagIsareti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
 
@@ -100,7 +101,6 @@ export function Gorevler({ ben }: { ben: Ben }) {
   };
   const ogeler: Oge[] = [];
   for (const [ad, A] of gruplar(L)) ogeler.push({ tur: 'baslik', metin: `${ad} · ${A.length}` }, ...A.map(satir));
-  if (G.isError && !eski) ogeler.push({ tur: 'not', metin: 'Görevler alınamadı; birazdan yeniden dene.' });
   if (!L.length && (G.data || eski)) ogeler.push({ tur: 'not', metin: S.kisi === 'ben' && S.durum === 'acik' ? 'Yeni bir iş açınca senin adımların burada toplanır.' : 'Bu süzgeçte iş yok.' });
   // bekleyenler: görev değil; yalnız kendi görünümünde
   const taslaklar: any[] = ozet.data?.taslaklar || [];
@@ -142,6 +142,8 @@ export function Gorevler({ ben }: { ben: Ben }) {
           </div>
         </>}
         {Lst.dugum}
+        {/* M-M3: yüklenirken ve hatada boş liste "iş yok" sayılmaz */}
+        {!eski && (G.isPending || G.isError) && <DurumNotu durum={G.isError ? 'hata' : 'yukleniyor'} ne="Görevler" y={listeY + 6} yeniden={() => void G.refetch()} />}
         <AltGezinme aktif="bana" yeni={() => git('/yeni')} />
       </Sahne>
       <AltSayfa acik={sec != null} kapat={() => setSec(null)} baslik={sec === 'kisi' ? 'Kişi' : sec === 'akis' ? 'Akış' : 'Durum'} yukseklik={300} duraklar={['orta', 'yuksek']}>
