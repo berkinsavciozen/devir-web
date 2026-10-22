@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -340,6 +340,8 @@ async function taslakV(ctx: Ctx, kod: string) {
     varsayim_metinleri: (Array.isArray(t.varsayimlar) ? t.varsayimlar : tt.varsayimlar || []).map((v: any) => ({ boyut: v.boyut || null, metin: v.metin })),
     adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null })),
     roller: tt.roller || [], hatirlananlar: tt._hatira?.satirlar || [],
+    // P1-E madde 11: yedek motorla üretilen taslak arayüzde etiketlenir
+    motor: t.model ? { ad: motorAdi(t.model), yedek: yedekMotor(t.model) } : null,
   };
 }
 

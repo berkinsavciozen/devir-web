@@ -71,6 +71,15 @@ export function isPayi(olaylar: any[]) {
 }
 
 /** Geçişli bekleyenler */
+/** Takvim ihlali (P1-E madde 10): en erken bitiş son tarihi aşıyor; tarih kendiliğinden taşınmaz. */
+export const takvimIhlali = (a: any) => !!a.gec_risk && !!a.en_erken_bitis && !BITTI(a.durum);
+/** Üçüncü sayı kutusu: son tarih; ihlalde altında en erken bitiş. */
+export function tarihSayisi(a: any): [string, string] {
+  if (!a.son_tarih) return a.en_erken_bitis ? [gunAy(Date.parse(a.en_erken_bitis)), 'en erken'] : ['–', 'son tarih'];
+  return [gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00')), takvimIhlali(a) ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : 'son tarih'];
+}
+export const IHLAL_IPUCU = 'Takvim ihlali: bekledikleri ve süresiyle bu adım son tarihinden sonra biter.';
+
 export function tuttuklari(adimlar: any[], no: number): number[] {
   const g: number[] = [], q = [no];
   while (q.length) { const x = q.shift()!; for (const b of adimlar) if ((b.bagimli || []).includes(x) && !g.includes(b.no) && !BITTI(b.durum)) { g.push(b.no); q.push(b.no); } }
@@ -345,10 +354,11 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   });
   // tuttuğu ama doğrudan bağlı olmayanlar: "+n"
   const dolayli = tut.length - sonra.filter((z) => !BITTI(z.durum)).length;
+  const ihlal = takvimIhlali(a);
   const sayilar: [string, string][] = [
     [a.durum === 'engelli' || a.durum === 'hazir' || a.durum === 'suruyor' ? sureKisa(a.bekleme_saat) : BITTI(a.durum) ? gunAy(Date.parse(a.durum_at)) : '–', a.durum === 'engelli' ? 'engelli' : a.durum === 'hazir' ? 'bekliyor' : a.durum === 'suruyor' ? 'sürüyor' : a.durum_etiket || a.durum],
     [`${tut.length} adım`, 'tutuyor'],
-    a.son_tarih ? [gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00')), 'son tarih'] : a.en_erken_bitis ? [gunAy(Date.parse(a.en_erken_bitis)), 'en erken'] : ['–', 'son tarih'],
+    tarihSayisi(a),
   ];
   const benim = a.sahip === ben && !BITTI(a.durum);
   // ne yapılacak (madde 14): beklenen çıktı ya da kısaltılmış adın tamamı; bitmiş adımda yazılmaz
@@ -369,7 +379,7 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
         ? <>{bekledigi.map((n: number, i: number) => <span key={n}>{i ? ', ' : ''}<button type="button" className="metin-baglanti" aria-label={`${n}. adım: ${by.get(n)?.ad ?? ''}`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${n}`)}>{n}</button></span>)}. adım bitince başlar.</>
         : cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
       {sayilar.map(([b, k], i) => (
-        <div key={k} className="sayi-kutusu" style={{ left: 20 + i * 119, top: P(y0 + 276) }}><b>{b}</b><small>{k}</small></div>
+        <div key={k} className={`sayi-kutusu${i === 2 && ihlal ? ' ihlal' : ''}`} style={{ left: 20 + i * 119, top: P(y0 + 276) }} title={i === 2 && ihlal ? IHLAL_IPUCU : undefined}><b>{b}</b><small>{k}</small></div>
       ))}
       {(soldakiler.length > 0 || sonra.length > 0) && <>
         {soldakiler.length > 0 && <Metin y={P(ry - 30)} x={20} fs={11} agirlik={700} renk="ink3" style={{ width: 150, letterSpacing: '.6px' }}>ETKİLEYEN</Metin>}
