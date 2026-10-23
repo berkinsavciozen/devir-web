@@ -1,7 +1,8 @@
 // Haritanın zaman sürgüsü cümleleri (S1–S3): sürgü bırakılınca x anına göre kurulur; en fazla 2 cümle.
 import type { Galaksi } from '../../geometri/galaksi-geometri';
 import type { Model } from '../../cizim/yol.js';
-import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, paySure, sayiIyelik } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, sayiIyelik } from '../../metin/turkce';
+import { hedefPayi } from '../../bilesen/KararSeridi';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const SAYI = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on'];
@@ -36,8 +37,8 @@ export function zamanCumlesi(d: any, M: Model, G: Galaksi, X: number, NOW: numbe
   if (!kalan.length && biter.length) {
     // son adımdan sonra: "22 Ekim tahmini: rapor 21 Ekim’de biter; hedefe 11 gün pay kalır."
     const son = biter[biter.length - 1];
-    const pay = d.akis.pay_saat;
-    return [`${tarih} ${kucuk(et(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} biter;`, pay == null ? '' : pay >= 0 ? `hedefe ${paySure(pay)} pay kalır.` : `hedef ${paySure(pay)} geçer.`].filter(Boolean);
+    const pay = hedefPayi(d.akis);
+    return [`${tarih} ${kucuk(et(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} biter;`, pay ? (pay.startsWith('hedefe') ? pay + ' kalır.' : pay + '.') : ''].filter(Boolean);
   }
   // ileri: "17 Ekim tahmini: görsel ve onay biter, sıra App Store onayında."
   const kritik = new Set<number>(d.kritik_yol || []);

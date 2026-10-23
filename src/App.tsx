@@ -21,7 +21,6 @@ import { OauthOnay } from './ekranlar/giris/OauthOnay';
 import { Iskelet } from './ekranlar/Iskelet';
 import { Galaksi } from './ekranlar/akis/Galaksi';
 import { Adim } from './ekranlar/akis/Adim';
-import { Karar } from './ekranlar/akis/Karar';
 import { Kalemler } from './ekranlar/akis/Kalemler';
 import { Cevapla } from './ekranlar/akis/Cevapla';
 import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
@@ -93,10 +92,14 @@ function Uygulama({ yol }: { yol: string }) {
   const ks = eslestir('/akis/:kod/kisi/:ad', yol);
   if (ks) return panel(<KisiSayfasi key={ks.kod + ks.ad} kod={ks.kod} ad={ks.ad} ben={b.kisi || ''} />, 'Akış › Kişi');
   const kr = eslestir('/akis/:kod/karar/:no', yol);
-  if (kr) return panel(<Karar key={kr.kod + kr.no} kod={kr.kod} no={Number(kr.no)} ben={b.kisi || ''} />, 'Akış › Karar');
+  // ayrı karar sayfası kalktı (W2): karar, görev detayının bir bölümü
+  if (kr) return <Yonlen yol={`/akis/${encodeURIComponent(kr.kod)}/adim/${kr.no}${location.search}`} />;
   const ad = eslestir('/akis/:kod/adim/:no', yol);
-  // tablet yatay ve masaüstünde adım haritanın yanındaki panelde açılır; ?tam=1 tam ayrıntı (geçmiş, çıktılar)
-  if (ad && genis && !arama().has('tam')) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
+  // eski ?tam=1 (ayrı tam sayfa) kalktı: aynı detay, adres sadeleşir
+  // (yalnız sorgu değişir; yol aynı kaldığı için yönlendirme yerine adres yerinde sadeleşir)
+  if (ad && arama().has('tam')) { const q = arama(); q.delete('tam'); history.replaceState(history.state, '', yol + (q.toString() ? '?' + q : '')); }
+  // tablet yatay ve masaüstünde görev haritanın yanındaki panelde açılır (tek görev detayı)
+  if (ad && genis) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
   // adımlar arası geçişte sayfa yerinde kalır (geçmiş kaydı büyümez); içerik numarayla yenilenir
   if (ad) return <Adim key={ad.kod} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
   const ak = eslestir('/akis/:kod', yol);

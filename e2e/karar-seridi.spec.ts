@@ -48,11 +48,11 @@ test('galaksi: "Bu tarih neden?" varsayımları ve üst ucu belirleyen adımlar�
 test('galaksi · 1440: kritik yol parçası adımı seçer', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin', 1440, 900);
   // varsayılan seçim takılan adım (Post görseli); kritik yolun ilk açık adımı başka
-  const kart = page.locator('button.genis-baslik');
+  const kart = page.locator('.gd-kaydir h2');
   const once = await kart.textContent();
   await page.locator('.karar-seridi .ks-kritik').click();
   await expect(kart).not.toHaveText(once!);
-  await expect(kart).toHaveAttribute('aria-label', /TestFlight/);
+  await expect(kart).toHaveText(/TestFlight/);
 });
 
 test('dış bağlantı: şerit başka adımın adını taşımaz, "neden" paneli yok', async ({ page }) => {

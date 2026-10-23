@@ -4,13 +4,14 @@ import { expect, test } from '@playwright/test';
 test.describe('işlev', () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test('karar: seçimi değiştir, kararı ver → C2', async ({ page }) => {
+  test('karar: görev detayında seçimi değiştir, kararı ver → verilmiş karar', async ({ page }) => {
     await page.goto('/akis/XPVZ/adim/9?senaryo=berkin&hal=karar');
     await page.getByText('Kararı ver').waitFor();
     await page.getByLabel(/Çayeli Kadın Girişimi/).uncheck();
     await page.getByRole('button', { name: /Kararı ver/ }).click();
     await expect(page.getByText(/Verildi ·/)).toBeVisible();
-    await expect(page.getByText('4/5')).toBeVisible();
+    await expect(page.getByText(/4’sini kabul etti/)).toBeVisible();
+    await expect(page.getByRole('listitem').filter({ hasText: 'Çayeli Kadın Girişimi' })).toContainText('kabul edilmedi');
   });
   test('soru: dalı cevapla → seçilmeyen dal söner', async ({ page }) => {
     await page.goto('/akis/XPVZ?senaryo=berkin&hal=dal');
