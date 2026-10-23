@@ -42,7 +42,7 @@ export function pano(kartlar: any[], detay: Record<string, any>, ben: string): P
     toplam === biten ? 'hepsi bitti' : biten ? `${sayiIyelik(biten)} bitti` : 'henüz biten yok',
     n('engel') && `${n('engel')} adım takılı`,
     n('karar') && `${n('karar')} karar bekliyor`,
-    n('sende') && `${n('sende')} iş senden bekleniyor`,
+    n('sende') && `${n('sende')} görev senden bekleniyor`,
   ].filter(Boolean);
   const cumle = kartlar.length
     ? `${kartlar.length} aktif akışta toplam ${toplam} adım: ${parca.join(', ')}${eksik ? `; ${eksik === kartlar.length ? 'işler' : `${eksik} akışın işleri`} yükleniyor` : ''}.`

@@ -1,5 +1,6 @@
 import type { CSSProperties, ElementType, ReactNode } from 'react';
 import { Gok } from './Gok';
+import { usePanelIcinde } from './Kabuk';
 
 /**
  * Sahne: 390 × 844 tasarım karesine göre yerleşen ekran.
@@ -10,13 +11,16 @@ import { Gok } from './Gok';
 export interface GokAyar { tohum?: number; yildiz?: number; parilti?: number; bulutsu?: Array<[number, number, number, string]>; sakin?: [number, number, number] }
 
 export function Sahne({ gok, cizim, ortala, children, etiket, yukseklik, sinif = '' }: { gok: GokAyar; cizim?: string; ortala?: boolean; children?: ReactNode; etiket?: string; yukseklik?: number; sinif?: string }) {
+  // masaüstü kabuğunun panelinde gök kabuğun; sahne panelin içinde kayan bir bölüm olur
+  const panelde = usePanelIcinde();
+  const Ana = panelde ? 'section' : 'main';
   return (
     <>
-      <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} sakin={gok.sakin} />
-      <main className={`sahne ${ortala ? 'sahne-ortala' : ''} ${sinif}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
+      {!panelde && <Gok tohum={gok.tohum} yildiz={gok.yildiz} parilti={gok.parilti} bulutsu={gok.bulutsu} sakin={gok.sakin} />}
+      <Ana className={`sahne ${ortala && !panelde ? 'sahne-ortala' : ''} ${panelde ? 'sahne-panelde' : ''} ${sinif}`} aria-label={etiket} style={yukseklik && yukseklik > 844 ? { minHeight: yukseklik } : undefined}>
         {cizim && <svg className="sahne-cizim" aria-hidden width="390" height="844" viewBox="0 0 390 844" dangerouslySetInnerHTML={{ __html: cizim }} />}
         {children}
-      </main>
+      </Ana>
     </>
   );
 }

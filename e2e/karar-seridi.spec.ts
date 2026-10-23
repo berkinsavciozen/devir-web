@@ -13,7 +13,7 @@ const YUZEYLER: { ad: string; yol: string; once?: (p: Page, w: number) => Promis
   { ad: 'galaksi', yol: '/akis/RTD5?senaryo=berkin' },
   { ad: 'akışlar', yol: '/akislar?senaryo=berkin' },
   // telefonda Pano haritanın altındaki durak; masaüstünde sağ panelde
-  { ad: 'pano', yol: '/?senaryo=berkin', once: async (p, w) => { if (w < 1280) { await p.getByRole('button', { name: 'Pano ve bekleyen işler' }).click(); await p.waitForTimeout(300); } } },
+  { ad: 'pano', yol: '/?senaryo=berkin', once: async (p, w) => { if (w < 1024) { await p.getByRole('button', { name: 'Pano ve bekleyen işler' }).click(); await p.waitForTimeout(300); } } },
   { ad: 'görevler', yol: '/gorevler?senaryo=berkin' },
   { ad: 'dış bağlantı', yol: '/l/k7Q2emreTestBank00wP9?senaryo=berkin' },
 ];

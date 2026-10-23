@@ -1,3 +1,4 @@
+import { usePanelIcinde } from './Kabuk';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../api/istemci';
 import { git } from '../yonlendirme';
@@ -15,8 +16,11 @@ export function useOlaylar() {
  * dilinde küçük bir yıldız; okunmamış varsa altın çan ve şeftali rozet.
  */
 /** x verilmezse sağ kenara 8 px yaslanır (dar telefonda da görünür). */
-export function Zil({ x, y, stil }: { x?: number; y: number; stil?: React.CSSProperties }) {
+export function Zil({ x, y, stil, kabukta }: { x?: number; y: number; stil?: React.CSSProperties; kabukta?: boolean }) {
+  const panelde = usePanelIcinde();
   const n = useOlaylar().data?.okunmamis ?? 0;
+  // masaüstü panelinde zil üst çubukta bir kez (sayfanın kendi zili çizilmez)
+  if (panelde && !kabukta) return null;
   const r = n ? 'var(--renk-vurgu-altin)' : 'var(--renk-vurgu-lila)';
   return (
     <button type="button" className="zil-dugme" style={{ ...(x == null ? { right: 8 } : { left: x }), top: y, ...stil }} aria-label={n ? `Bildirimler: ${n} okunmamış` : 'Bildirimler'} onClick={() => git('/bildirimler')}>

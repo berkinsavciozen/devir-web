@@ -3,6 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <!-- ekranlar 390 px sütuna göre yerleşir; daha dar telefonda (360) sayfa 390 genişliğinde açılır ve sığacak kadar küçülür -->
+    <script>if (Math.min(screen.width, innerWidth || screen.width) < 390) document.querySelector('meta[name=viewport]').content = 'width=390, viewport-fit=cover';</script>
     <meta name="theme-color" content="#090619" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/ikon.svg" type="image/svg+xml" />

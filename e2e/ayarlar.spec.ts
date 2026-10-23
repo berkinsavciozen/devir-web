@@ -119,11 +119,11 @@ test('K1-hareket: Görünüm · Azalt kök öğeye yazılır ve kalır', async (
   await expect(page.locator('html')).toHaveAttribute('data-hareket', 'az');
 });
 
-test('M2-ayarlar: masaüstünde yan panelden Ayarlar ve Görevler', async ({ page }) => {
+test('M2-ayarlar: masaüstünde panel üstünden Ayarlar, yüzen gezinmeden Görevler', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', 1440, 900);
   await page.getByRole('button', { name: 'Ayarlar' }).waitFor();
   await cek(page, 'M2-ayarlar');
-  await page.getByRole('button', { name: /^Görevler/ }).click();
+  await page.getByRole('navigation', { name: 'Ana gezinme' }).getByRole('button', { name: 'Görevler' }).click();
   await expect(page).toHaveURL(/\/gorevler/);
   await page.goBack();
   await page.getByRole('button', { name: 'Ayarlar' }).click();

@@ -32,16 +32,16 @@ export function ozettenGorevler(benim: any[], kartlar: any[], ben: string) {
   });
 }
 
-/** "Sende 3 iş sırada; biri engelli." · "Selin'de 2 iş sırada." · "Seçilen işler bitti." */
+/** "Sende 3 görev sırada; biri engelli." · "Selin'de 2 görev sırada." · "Seçilen görevler bitti." */
 export function gorevCumlesi(G: any[], kisi: string, ben: string, durum: Durum): string {
   const kim = kisi === 'ben' || kisi === ben ? 'Sende' : kisi === 'hepsi' ? 'Bütün akışlarda' : ozelEk(kisa(kisi), 'de');
-  if (durum === 'bitti') return G.length ? `${kim} ${G.length} iş bitti.` : 'Henüz biten iş yok.';
+  if (durum === 'bitti') return G.length ? `${kim} ${G.length} görev bitti.` : 'Henüz biten görev yok.';
   const sira = G.filter((a) => a.durum === 'hazir').length, engel = G.filter((a) => a.durum === 'engelli').length, suren = G.filter((a) => a.durum === 'suruyor').length;
   const acik = G.filter((a) => !BITTI(a.durum)).length;
-  if (!acik) return kisi === 'ben' ? 'Şu an senden beklenen iş yok.' : 'Bu süzgeçte açık iş yok.';
-  if (!sira && !engel) return suren ? `${kim} ${suren} iş sürüyor.` : `${kim} ${acik} iş sırasını bekliyor.`;
-  const bas = sira ? `${kim} ${sira} iş sırada` : `${kim} ${engel} iş engelli`;
-  return `${bas}${sira && engel ? `; ${engel === 1 ? 'biri' : engel} engelli` : ''}${suren ? `, ${suren} iş sürüyor` : ''}.`;
+  if (!acik) return kisi === 'ben' ? 'Şu an senden beklenen görev yok.' : 'Bu süzgeçte açık görev yok.';
+  if (!sira && !engel) return suren ? `${kim} ${suren} görev sürüyor.` : `${kim} ${acik} görev sırasını bekliyor.`;
+  const bas = sira ? `${kim} ${sira} görev sırada` : `${kim} ${engel} görev engelli`;
+  return `${bas}${sira && engel ? `; ${engel === 1 ? 'biri' : engel} engelli` : ''}${suren ? `, ${suren} görev sürüyor` : ''}.`;
 }
 
 export type GrupAd = 'SIRASI GELEN' | 'ENGELLİ' | 'SÜRÜYOR' | 'SIRADA' | 'BİTTİ';

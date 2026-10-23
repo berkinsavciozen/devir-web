@@ -12,9 +12,9 @@ describe('görevler', () => {
     expect(suzgecAdresi(suzgecOku(new URLSearchParams()))).toBe('/gorevler');
   });
   it('cümle kişiye göre çekimlenir', () => {
-    expect(gorevCumlesi([g({}), g({}), g({ durum: 'engelli' })], 'ben', 'Berkin', 'acik')).toBe('Sende 2 iş sırada; biri engelli.');
-    expect(gorevCumlesi([g({ sahip: 'Selin' })], 'Selin', 'Berkin', 'acik')).toBe('Selin’de 1 iş sırada.');
-    expect(gorevCumlesi([], 'ben', 'Berkin', 'acik')).toBe('Şu an senden beklenen iş yok.');
+    expect(gorevCumlesi([g({}), g({}), g({ durum: 'engelli' })], 'ben', 'Berkin', 'acik')).toBe('Sende 2 görev sırada; biri engelli.');
+    expect(gorevCumlesi([g({ sahip: 'Selin' })], 'Selin', 'Berkin', 'acik')).toBe('Selin’de 1 görev sırada.');
+    expect(gorevCumlesi([], 'ben', 'Berkin', 'acik')).toBe('Şu an senden beklenen görev yok.');
   });
   it('gruplar ekran sırasında, boşlar atlanır', () => {
     expect(gruplar([g({ durum: 'tamam' }), g({}), g({ durum: 'sirada' })]).map(([a]) => a)).toEqual(['SIRASI GELEN', 'SIRADA', 'BİTTİ']);
