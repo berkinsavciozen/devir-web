@@ -3,6 +3,7 @@
 // kuralı dayatılmaz; çakışan iş yalnız aralığı genişletir ve uyarı olarak görünür. Süreler eksikse kesin tarih üretilmez.
 // MK-8: karar_ozeti, galaksi, Pano, Akışlar, Görevler, dış bağlantı ve MCP'nin aynı cümleyi göstermesi için tek kaynak.
 import { DAY, DONE, eod, fmtD, kararAdimi, norm, timeline, todayIst } from "./core.ts";
+import { adimKisaAdi } from "./ad.ts";
 
 export type Kaynak = "kullanici" | "tahmin" | "gecmis" | "eksik";
 export type Guven = "kesin" | "tahmin" | "eksik";
@@ -156,7 +157,7 @@ function tuttugu(steps: any[], no: number): number {
   while (q.length) { const x = q.pop()!; for (const b of steps) if ((b.bagimli || []).includes(x) && !g.has(b.no) && !DONE(b)) { g.add(b.no); q.push(b.no); } }
   return g.size;
 }
-const kisaAd = (akis: any, s: any) => akis.baglam?.kisa_adlar?.[String(s.no)] || (s.ad.length <= 40 ? s.ad : s.ad.slice(0, s.ad.lastIndexOf(" ", 39)).replace(/[,;:]$/, "") + "…");
+const kisaAd = (akis: any, s: any, steps: any[]) => adimKisaAdi(akis, steps, s.no) || s.ad;
 const gunFark = (a: string, b: string) => Math.round((Date.parse(a) - Date.parse(b)) / DAY);
 
 /** "28–31 Eki", aynı günse "28 Eki". */
@@ -197,9 +198,9 @@ export function kararOzeti(akis: any, steps: any[], b: Bitis, now: number, opts:
     const benimKritik = b.zincir.some((no) => opts.kapsam?.has(no) && !DONE(by.get(no)));
     if (benimKritik) p.push("Senin adımın kritik yolda");
   } else {
-    if (db) p.push(db.tur === "engel" ? `Takılan: ${kisaAd(akis, db.s)}${tuttugu(steps, db.s.no) ? ` (${tuttugu(steps, db.s.no)} adımı tutuyor)` : ""}` : db.tur === "karar" ? `Karar bekleniyor: ${kisaAd(akis, db.s)}` : `Son tarihini kaçırabilir: ${kisaAd(akis, db.s)}`);
+    if (db) p.push(db.tur === "engel" ? `Takılan: ${kisaAd(akis, db.s, steps)}${tuttugu(steps, db.s.no) ? ` (${tuttugu(steps, db.s.no)} adımı tutuyor)` : ""}` : db.tur === "karar" ? `Karar bekleniyor: ${kisaAd(akis, db.s, steps)}` : `Son tarihini kaçırabilir: ${kisaAd(akis, db.s, steps)}`);
     const z = b.zincir.map((no) => by.get(no)).filter((s) => s && !DONE(s));
-    if (z.length) p.push(`Kritik yol: ${z.slice(0, 3).map((s) => kisaAd(akis, s)).join(" → ")}${z.length > 3 ? " → …" : ""}`);
+    if (z.length) p.push(`Kritik yol: ${z.slice(0, 3).map((s) => kisaAd(akis, s, steps)).join(" → ")}${z.length > 3 ? " → …" : ""}`);
   }
   if (b.aralik) p.push(`${b.aralik[0] === b.aralik[1] ? "Bitiş" : "En erken"} ${aralikMetni(b.aralik)}${b.guven === "eksik" ? " (süresi eksik adım var)" : ""}`);
   if (hedef) p.push(hedef.durum === "pay" ? `hedefe ${hedef.pay_gun} gün pay` : hedef.durum === "riskte" ? "hedef aralığın içinde, riskte" : `hedef ${-gunFark(akis.hedef_tarih, b.aralik![0]) || 1} gün geçiyor`);

@@ -10,6 +10,7 @@ import type { GomFn } from "./bellek.ts";
 import { ANAHTAR_OMRU } from "./hesap.ts";
 import { belirtecAc, belirtecAlanlari, belirtecBul, yeniBelirtec } from "./baglanti.ts";
 import { akisKarari, gecmisYukle } from "./plan.ts";
+import { adimKisaAdi, akisKisaAdi } from "./ad.ts";
 
 type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string } };
 type Parca = { tur: "metin" | "kisi" | "adim" | "akis" | "sure" | "tarih" | "uyari"; metin: string; ref?: Record<string, unknown> };
@@ -27,7 +28,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   const ef = m.pl.EF.get(s.no);
   const grup = altAdimi(akis, s.no);
   const v: any = {
-    no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
+    no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
     aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
     karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
     son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
@@ -78,15 +79,15 @@ function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx,
   const vis = steps.filter((s: any) => stepInScope(ctx, s));
   // P1-A (MK-5, MK-8): bitiş aralığı ve karar özeti; dış kişide başka adımların adı yok
   const { bitis: b, karar_ozeti } = akisKarari(akis, steps, events, now, gecmis, { dis: isDis(ctx), vis });
-  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no), engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
+  const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no), engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
   const parca = akisOzeti(akis, isDis(ctx) ? vis : steps, m, now);
   const son = events.length ? events[events.length - 1].created_at : akis.created_at;
   return {
-    kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akis.baglam?.kisa_ad || null, durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
+    kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akisKisaAdi(akis), durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
     en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay), risk: m.pay != null && m.pay < 0,
     bitis: { en_erken: b.en_erken, aralik: b.aralik, guven: b.guven, eksik_sure: b.eksik_sure }, karar_ozeti,
     ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length, suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
-    sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip })),
+    sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip })),
     kritik_bekleme_saat: saat(m.kritikBekleme), toplam_bekleme_saat: saat(m.bekleme),
     ust: akis.baglam?.ust_akis ? { akis: akis.baglam.ust_kod, kalem: akis.baglam.kalem } : null,
     tekrar: altGruplar(akis).map((g) => ({ grup: g.id, kalem_turu: g.kalem_turu, kalem_sayisi: g.kalemler.length, adimlar: g.adimlar, ilerleme: steps.find((s: any) => g.adimlar.includes(s.no) && !DONE(s))?.ilerleme || null })),
@@ -382,8 +383,8 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
       if (durum === "bitti" && !DONE(s)) continue;
       const t = m.tl.get(s.no), ef = DONE(s) ? null : m.pl.EF.get(s.no);
       gorevler.push({
-        akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akis.baglam?.kisa_ad || null,
-        no: s.no, ad: s.ad, kisa_ad: akis.baglam?.kisa_adlar?.[String(s.no)] || null, sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum,
+        akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akisKisaAdi(akis),
+        no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum,
         engel: s.engel || null, karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s), kritik: !DONE(s) && m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no),
         // kimi bekliyor, kim bekliyor (doğrudan, açık olanlar): satırdaki bağımlılık işareti
         onceki: steps.filter((x: any) => s.bagimli.includes(x.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
@@ -399,7 +400,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
     suzgec: { kisi, akis: kodlar, durum },
     gorevler,
     kisiler: [...kisiler.values()].sort((a, b) => b.acik - a.acik || a.ad.localeCompare(b.ad, "tr")),
-    akislar: A.map(({ akis, steps }) => ({ kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akis.baglam?.kisa_ad || null, acik: steps.filter(ACIK).length })),
+    akislar: A.map(({ akis, steps }) => ({ kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akisKisaAdi(akis), acik: steps.filter(ACIK).length })),
   };
 }
 
@@ -433,8 +434,8 @@ async function olaylarV(ctx: Ctx, q: URLSearchParams) {
     const s = e.adim_no != null ? steps.find((x: any) => x.no === e.adim_no) : null;
     const sonraki = s ? steps.filter((x: any) => x.bagimli.includes(s.no)) : [];
     return {
-      ...olayV(e), akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akis.baglam?.kisa_ad || null,
-      adim_ad: s?.ad || null, adim_kisa_ad: s ? akis.baglam?.kisa_adlar?.[String(s.no)] || null : null,
+      ...olayV(e), akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akisKisaAdi(akis),
+      adim_ad: s?.ad || null, adim_kisa_ad: s ? adimKisaAdi(akis, steps, s.no) : null,
       ilgili: !!ben && !!s && (norm(s.sahip) === ben || sonraki.some((x: any) => norm(x.sahip) === ben)),
       okundu: e.id <= son,
     };

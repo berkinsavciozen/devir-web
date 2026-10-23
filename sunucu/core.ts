@@ -5,6 +5,7 @@ import type { LlmFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAlanlari, yeniBelirtec, type Sifre } from "./baglanti.ts";
+import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, KISA_AD_EN_COK } from "./ad.ts";
 
 export interface DB {
   one(table: string, where: Record<string, unknown>): Promise<any | null>;
@@ -560,6 +561,7 @@ export const TOOLS = [
       properties: {
         taslak: { type: "string", description: "devir_tasla'nın verdiği taslak kodu (ör. T7K2F)." },
         baslik: { type: "string" }, amac: { type: "string" },
+        kisa_ad: { type: "string", description: "Akışın listelerde görünen kısa adı: en çok 40 karakter (ör. 'Park aydınlatma ihalesi'). Verilmezse Devir üretir." },
         hedef_tarih: { type: "string", description: "YYYY-AA-GG; işin bitmesi gereken son gün." },
         sablon_kod: { type: "string" },
         cevaplar: { type: "object", description: "Soru kodu → cevap. Bilinmiyorsa \"bilmiyorum\" yaz; akış durmaz, netleştir adımı eklenir." },
@@ -570,7 +572,7 @@ export const TOOLS = [
         adimlar: {
           type: "array", description: "Şablonsuz kurulumda adımlar. bagimli, bu listedeki 1'den başlayan sıra numaralarıdır.",
           items: { type: "object", required: ["ad", "sahip", "kriter"], properties: {
-            ad: { type: "string" }, aciklama: { type: "string" }, sahip: { type: "string", description: "Kişi, ekip, dış katılımcı ya da agent adı." },
+            ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, aciklama: { type: "string" }, sahip: { type: "string", description: "Kişi, ekip, dış katılımcı ya da agent adı." },
             sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string", description: "Agent ya da kişinin kullandığı araç (Claude, ChatGPT, Figma...)." },
             kriter: { type: "string", description: "Adımın bitti sayılması için test." }, beklenen_cikti: { type: "string" }, karar_kriteri: { type: "string" },
             son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } } } },
@@ -619,6 +621,7 @@ export const TOOLS = [
         },
         sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"], description: "Sahip değişiyorsa yeni sahibin tipi. Kullanıcının kendisi ya da ekibi insan, ekip dışı biri dis." }, son_tarih: { type: "string" },
         arac: { type: "string", description: "Kullandığın araç adı, ör. Claude, ChatGPT." },
+        kisa_ad: { type: "string", description: "Kısa adı düzelt (yalnız ekip): en çok 40 karakter, akışta tekil." },
         zorla: { type: "boolean", description: "Bağımlılıklar bitmeden başlatmak için; not ile neden yaz." },
         cevap: { type: "string", description: "Bu adım bitince belli olan açık sorunun cevabı (adımda 'bitince cevaplanır' yazıyorsa). Devir akışı ona göre yeniden kurar." },
       },
@@ -645,7 +648,7 @@ export const TOOLS = [
     inputSchema: {
       type: "object", required: ["akis", "ad", "sahip", "kriter", "neden"],
       properties: {
-        akis: { type: "string" }, ad: { type: "string" }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
+        akis: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
         kriter: { type: "string" }, aciklama: { type: "string" }, son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" },
         bagimli: { type: "array", items: { type: "integer" }, description: "Bu adımın beklediği adım numaraları." },
         bekleyenler: { type: "array", items: { type: "integer" }, description: "Artık bu yeni adımı beklemesi gereken adım numaraları." },
@@ -901,6 +904,11 @@ async function olustur(a: any, ctx: Ctx) {
   const buyuk = steps.filter((s) => num(s.sure_tahmin_gun) > 90 || /\bher (bölge|müşteri|çiftçi|aday|kalem|okul|şube|ülke|ürün)/i.test(s.ad));
   if (buyuk.length) notes.push(`Bu iş tek akışa büyük geliyor (${buyuk.map((s) => `${s.no}. ${s.ad}`).join("; ")}). Tekrar eden kısmı ayrı akışlara bölmeyi düşün (ör. bölge ya da müşteri başına bir akış).`);
 
+  // P1-F: kısa adlar kurulurken yazılır (verilen ya da kural); arayüz adı kesmez
+  const kAkis = [a.kisa_ad, tk?.taslak?.kisa_ad].find(kisaAdGecerli);
+  baglam.kisa_ad = kAkis ? kAkis.trim() : kisaAkis(baslik);
+  const kAdim = tekillestir(steps.map((s, i) => { const k = [raw[i].kisa_ad].find(kisaAdGecerli); return k ? { no: s.no, kisa: k.trim(), sabit: true } : { no: s.no, kisa: kisaAdim(s.ad), ad: s.ad }; }));
+  baglam.kisa_adlar = Object.fromEntries([...kAdim].map(([no, k]) => [String(no), k]));
   let akis: any = null;
   for (let i = 0; i < 6 && !akis; i++) {
     try {
@@ -1407,6 +1415,15 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
     if (yeniTip && yeniTip !== s.sahip_tip) patch.sahip_tip = yeniTip;
   }
   if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw yetkiYok("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; patch.tarih_sabit = true; }
+  // P1-F: kısa ad düzeltmesi akışın baglam.kisa_adlar'ına yazılır; akış içinde tekil
+  let kisaAd: string | null = null;
+  if (a.kisa_ad != null && String(a.kisa_ad).trim()) {
+    if (isDis(ctx)) throw yetkiYok("Kısa adı yalnızca ekip değiştirebilir.");
+    kisaAd = String(a.kisa_ad).trim();
+    if (!kisaAdGecerli(kisaAd)) throw new Error(`kisa_ad en çok ${KISA_AD_EN_COK} karakter olmalı; üç nokta ya da bağlaçla bitmez. Ör. "Teminat mektubunu al".`);
+    const diger = [...adimKisaAdlari(akis, steps)].find(([n, v]) => n !== s.no && norm(v) === norm(kisaAd!));
+    if (diger) throw new Error(`"${kisaAd}" bu akışta ${diger[0]}. adımın kısa adı; ayırt edici bir ad ver.`);
+  }
   const cikti: any[] = (a.cikti == null ? [] : Array.isArray(a.cikti) ? a.cikti : [a.cikti]).filter(Boolean).map((c: any) => {
     if (typeof c === "string") { const t = c.trim(); try { if (t.startsWith("{")) c = JSON.parse(t); else return { ad: t }; } catch { return { ad: t }; } }
     const o: any = { ad: String(c.ad || c.baslik || "").trim(), ozet: c.ozet ? String(c.ozet) : null, icerik: c.icerik ? String(c.icerik) : null, url: c.url ? String(c.url) : null, kaynak: c.kaynak ? String(c.kaynak) : null, durum: ["taslak", "onaylandi", "yayinda"].includes(c.durum) ? c.durum : "taslak", paylasim: c.paylasim === "dis" ? "dis" : "ekip" };
@@ -1505,11 +1522,16 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (cikti.length) bits.push(`çıktı: ${cikti.map((c: any) => c.ad).join(", ")}`);
   if (patch.sahip || patch.sahip_tip) bits.push(`sahip → ${patch.sahip || s.sahip}${patch.sahip_tip ? ` (${patch.sahip_tip === "dis" ? "dış" : patch.sahip_tip})` : ""}`);
   if (patch.son_tarih) bits.push(`son tarih → ${fmtD(String(patch.son_tarih))}`);
+  if (kisaAd) {
+    akis.baglam = { ...(akis.baglam || {}), kisa_adlar: { ...(akis.baglam?.kisa_adlar || {}), [String(s.no)]: kisaAd } };
+    await ctx.db.update("akis", { id: akis.id }, { baglam: akis.baglam });
+    bits.push(`kısa ad → ${kisaAd}`);
+  }
   if (a.karar?.oneri) bits.push(`karar önerisi: ${a.karar.oneri.ozet || (a.karar.oneri.secim || []).join(", ")}`);
   else if (a.karar?.secenekler) bits.push(`karar seçenekleri: ${a.karar.secenekler.length}`);
   if (Array.isArray(a.karar_secimi)) bits.push(`seçim: ${a.karar_secimi.join(", ") || "hiçbiri"}`);
   if (bits.length || (a.not && !to)) await log(ctx, akis.id, s.no, act, a.not && !bits.length ? "not" : "guncelleme", bits.length ? `${bits.join(" · ")}${a.not && !to ? ` · ${a.not}` : ""}` : String(a.not), {});
-  if (!to && !bits.length && !a.not && !a.karar && !a.karar_secimi && !(a.cevap != null && String(a.cevap).trim())) throw new Error("Güncellenecek bir şey yok: durum, ilerleme, cikti, not, sahip ya da son_tarih ver.");
+  if (!to && !bits.length && !a.not && !a.karar && !a.karar_secimi && !(a.cevap != null && String(a.cevap).trim())) throw new Error("Güncellenecek bir şey yok: durum, ilerleme, cikti, not, sahip, son_tarih ya da kisa_ad ver.");
   if (!out.length) out.push(`Adım ${s.no} · ${s.ad}: not eklendi`);
   if (yazilan.length) out.push(`Çıktı kaydedildi: ${yazilan.map((c: any) => `[${c.id}] ${c.ad}${c.surum > 1 ? ` (v${c.surum})` : ""}`).join(", ")}. Sonraki adımlar bunu girdi olarak görür.`);
   const ready = await recalc(ctx, akis, steps);
@@ -1564,8 +1586,14 @@ async function adimEkle(a: any, ctx: Ctx) {
   const by = (n: number) => steps.find((s: any) => s.no === n);
   await log(ctx, akis.id, no, act, "adim_eklendi", `Sonradan eklendi: ${v.ad} (${a.neden})`, { neden: a.neden, tur_kod: turKod, boyut, bagimli_ad: v.bagimli.map((n: number) => by(n)?.ad).filter(Boolean), bekleyen_ad: bekleyen.map((n) => by(n)?.ad).filter(Boolean), bagimli_tur: v.bagimli.map((n: number) => by(n)?.tur_kod).filter(Boolean), bekleyen_tur: bekleyen.map((n) => by(n)?.tur_kod).filter(Boolean) });
   steps.push(row);
+  // P1-F: yeni adımın kısa adı (verilen ya da kural), akıştakilerden ayrı
+  const kayit: Record<string, string> = { ...(akis.baglam?.kisa_adlar || {}) };
+  if (kisaAdGecerli(a.kisa_ad)) kayit[String(no)] = a.kisa_ad.trim();
+  kayit[String(no)] = adimKisaAdlari({ baglam: { kisa_adlar: kayit } }, steps).get(no)!;
+  akis.baglam = { ...(akis.baglam || {}), kisa_adlar: kayit };
+  await ctx.db.update("akis", { id: akis.id }, { baglam: akis.baglam });
   const ready = await recalc(ctx, akis, steps);
-  const out = [`+ Adım ${no} eklendi: ${v.ad} — ${v.sahip}`, `Neden: ${a.neden}`];
+  const out = [`+ Adım ${no} eklendi: ${v.ad} — ${v.sahip} (kısa ad: ${kayit[String(no)]})`, `Neden: ${a.neden}`];
   if (bekleyen.length) out.push(`Artık bunu bekleyen adımlar: ${bekleyen.join(", ")}`);
   out.push(`Durum: ${LBL[row.durum]}${ready.some((r: any) => r.no === no) ? " (hemen başlayabilir)" : ""}`);
   if (boyut && boyut !== "genel") out.push(`Sorulmamış boyut: ${boyut}. Bir sonraki benzer işte bu boyuttaki soru öne çıkar.`);
