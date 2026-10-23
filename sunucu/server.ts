@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.24.0";
+export const SURUM = "0.25.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
 export const SEMA = "20261023100000_p1d_fk_indeks";
 async function semaDurumu(db: DB) {
