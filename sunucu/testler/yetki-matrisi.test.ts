@@ -18,7 +18,10 @@ let hata = 0;
 const ok = (c: boolean, m: string) => { if (!c) { console.log("✗ " + m); hata++; process.exitCode = 1; } };
 const B = "https://x.supabase.co/functions/v1/devir-mcp";
 const depo = { async yuklemeAdresi() { return { url: "https://depo/yukle", token: "t" }; }, async indirmeAdresi() { return "https://depo/indir"; }, async bilgi() { return { boyut: 10, tur: "application/pdf" }; }, async sil() {} };
-const ek = { taban: B, depo };
+// sahte Supabase oturumu: "jwt:<auth_id>:<eposta>"; rol matrisi insanın yolu olan e-postalı oturumla koşar (S-C1)
+const kimlik = async (j: string) => { const m = /^jwt:([\w-]+):(.+)$/.exec(j); return m ? { id: m[1], email: m[2] } : null; };
+const ek = { taban: B, depo, kimlik };
+const OT_S = "jwt:a-s:s@a", OT_E = "jwt:a-e:e@a", OT_D = "jwt:a-d:d@a";
 async function api(method: string, path: string, token: string, body?: any) {
   NOW += 6e4;
   const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", authorization: "Bearer " + token }, body: method === "GET" ? undefined : JSON.stringify(body || {}) }), db, NOW, ek);
@@ -41,6 +44,11 @@ const IZ = "GIZLIA"; // A alanına ait her metinde geçer; B'nin hiçbir yanıt�
     { kullanici_id: A.id, kisi: "Emre", rol: "dis", kapsam: "Emre", token_hash: await sha("dv_ad") },
     { kullanici_id: Bws.id, kisi: "Burak", rol: "sahip", token_hash: await sha("dv_b") },
   ]);
+  await db.insert("uye", [
+    { auth_id: "a-s", eposta: "s@a", kullanici_id: A.id, kisi: "Berkin", rol: "sahip" },
+    { auth_id: "a-e", eposta: "e@a", kullanici_id: A.id, kisi: "Zeynep", rol: "ekip" },
+    { auth_id: "a-d", eposta: "d@a", kullanici_id: A.id, kisi: "Emre", rol: "dis", kapsam: "Emre" },
+  ]);
   const m = await mcp("dv_a", "devir_akis_olustur", { baslik: `${IZ} hasat akışı`, hedef_tarih: "2026-12-01", baglam: { musteri: `${IZ} müşteri` }, adimlar: [
     { ad: `${IZ} aday listesi`, sahip: "Berkin", kriter: "liste", sure_tahmin_gun: 2 },
     { ad: `${IZ} belge topla`, sahip: "Zeynep", kriter: "belge", sure_tahmin_gun: 2 },
@@ -57,7 +65,7 @@ const IZ = "GIZLIA"; // A alanına ait her metinde geçer; B'nin hiçbir yanıt�
   const katilimci = T.katilimci.find((k) => k.akis_id === akis.id);
   const linkA = String(x.j.katilimci?.link || "").split("/l#")[1];
   x = await api("POST", "/api/v1/karar", "dv_a", { varlik: `${IZ} müşteri`, karar: `${IZ} komisyon yüzde 5` });
-  x = await api("POST", "/api/v1/anahtar", "dv_a", { kisi: "Selin", rol: "ekip" });
+  x = await api("POST", "/api/v1/anahtar", OT_S, { kisi: "Selin", rol: "ekip" });
   const anahtarA = x.j.anahtar?.id;
   const kisiA = T.kisi.find((k) => k.ws_id === A.id && k.ad === "Zeynep");
   const [dosyaA] = await db.insert("dosya", [{ ws_id: A.id, akis_id: akis.id, adim_no: 2, yol: `${A.id}/x.pdf`, ad: `${IZ}.pdf`, tur: "application/pdf", boyut: 10, durum: "yuklendi" }]);
@@ -142,12 +150,19 @@ const IZ = "GIZLIA"; // A alanına ait her metinde geçer; B'nin hiçbir yanıt�
     ["GET", `/api/v1/akis/${kod}/adim/3`, null, { s: true, e: true, d: true }],
     ["GET", `/api/v1/akis/${kod}/adim/1`, null, { s: true, e: true, d: false }],
   ];
-  for (const [mt, yol, b, izin] of rol) for (const [r, tok] of [["s", "dv_a"], ["e", "dv_ae"], ["d", "dv_ad"]] as const) {
+  for (const [mt, yol, b, izin] of rol) for (const [r, tok] of [["s", OT_S], ["e", OT_E], ["d", OT_D]] as const) {
     if (r === "s" && yol.includes("/iptal")) continue; // sahibin iptali satırı değiştirir; aşağıda ayrı
     const y = await api(mt, yol, tok, b ?? undefined);
     const gecti = ![401, 403, 404].includes(y.st) && y.st < 500;
     ok(gecti === izin[r], `rol ${r}: ${mt} ${yol} → ${y.st} (beklenen ${izin[r] ? "izin" : "ret"})`);
   }
+  // güven ayarları yalnız e-postalı oturumla: sahip anahtarı (agent) kendine yetki veremez (S-C1)
+  const guven: [string, any][] = [["/api/v1/anahtar", { kisi: "Can", rol: "ekip" }], [`/api/v1/anahtar/${anahtarA}/iptal`, {}], ["/api/v1/politika", { agent_karari: { dis: "insan" } }], ["/api/v1/davet", { eposta: "can@a" }], [`/api/v1/uye/${T.uye[1].id}`, { rol: "sahip" }]];
+  for (const [yol, b] of guven) {
+    const y = await api("POST", yol, "dv_a", b);
+    ok(y.st === 403 && /e-postayla giriş/.test(y.j.hata || ""), `sahip anahtarı: POST ${yol} → ${y.st} (beklenen 403)`);
+  }
+  ok(T.uye[1].rol === "ekip" && !String(T.anahtar.find((k) => k.id === anahtarA)?.token_hash).startsWith("iptal:") && !T.davet?.length, "anahtarla güven ayarı denemeleri hiçbir şeyi değiştirmedi");
   // dış kişi akışta yalnız kendi adımını görür
   x = await api("GET", `/api/v1/akis/${kod}`, "dv_ad");
   const gorunen = (x.j.adimlar || []).map((a: any) => a.no);
@@ -159,8 +174,8 @@ const IZ = "GIZLIA"; // A alanına ait her metinde geçer; B'nin hiçbir yanıt�
   ok(x.st === 403, "dış kişi başkasının adımındaki dosyayı indiremez");
 
   // sahibin iptali en sonda: kendi alanındaki anahtarı iptal edebilir
-  x = await api("POST", `/api/v1/anahtar/${anahtarA}/iptal`, "dv_a");
+  x = await api("POST", `/api/v1/anahtar/${anahtarA}/iptal`, OT_S);
   ok(x.st === 200 && String(T.anahtar.find((k) => k.id === anahtarA)?.token_hash).startsWith("iptal:"), "sahip kendi alanındaki anahtarı iptal eder");
 
-  console.log(hata ? `✗ yetki matrisi: ${hata} hata` : `✓ yetki matrisi: ${capraz.length} çapraz yazma/okuma, 13 liste, 8 MCP aracı, ${rol.length * 3 - 1} rol hücresi, bağlantı kapsamı`);
+  console.log(hata ? `✗ yetki matrisi: ${hata} hata` : `✓ yetki matrisi: ${capraz.length} çapraz yazma/okuma, 13 liste, 8 MCP aracı, ${rol.length * 3 - 1} rol hücresi, ${guven.length} güven ayarı anahtarla, bağlantı kapsamı`);
 })();

@@ -137,6 +137,7 @@
 .alan:focus { box-shadow: inset 0 0 0 1.6px var(--renk-vurgu-altin); }
 .alan[aria-invalid='true'] { box-shadow: inset 0 0 0 1.6px var(--renk-vurgu-mercan); }
 .alan-hata { margin: 8px 2px 0; font-size: 12.5px; color: var(--renk-metin-mercan); }
+.alan-not { margin: 8px 2px 0; font-size: 12px; line-height: 16px; color: var(--renk-metin-ink3); }
 .hap {
   display: inline-flex; align-items: center; height: 20px; padding: 0 7px; border-radius: 10px;
   background: color-mix(in srgb, var(--renk-zemin-hap) 88%, transparent);

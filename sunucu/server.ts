@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.21.0";
+export const SURUM = "0.22.0";
 import type { Depo } from "./dosya.ts";
 import { bekleyenleriSifrele, type Sifre } from "./baglanti.ts";
 import { ANAHTAR_MS, TEKRAR_MS, birKez, hizSiniri, karma, llmButcesi, sirali, yazanArac } from "./islem.ts";

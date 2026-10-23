@@ -15,9 +15,12 @@ const db: any = {
 const sha = async (s: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))).map((x) => x.toString(16).padStart(2, "0")).join("");
 const ok = (c: boolean, m: string) => { console.log((c ? "✓ " : "✗ ") + m); if (!c) process.exitCode = 1; };
 const B = "https://x.supabase.co/functions/v1/devir-mcp";
+// sahte Supabase oturumu: "jwt:<auth_id>:<eposta>"; web'de insan yalnız oturumla (S-C1)
+const kimlik = async (j: string) => { const m = /^jwt:([\w-]+):(.+)$/.exec(j); return m ? { id: m[1], email: m[2] } : null; };
+const OT_BERKIN = "jwt:a-berkin:berkin@x", OT_Z = "jwt:a-z:z@x";
 async function api(method: string, path: string, body?: any, token = "dv_sahip") {
   NOW += 36e5;
-  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B });
+  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B, kimlik });
   return { st: r.status, j: await r.json() };
 }
 async function mcp(name: string, args: any, token = "dv_sahip") {
@@ -34,6 +37,7 @@ const sonOlay = () => T.olay[T.olay.length - 1];
   const [ws] = await db.insert("kullanici", [{ ad: "Kimlik alanı" }]);
   const [ayse1, ayse2] = await db.insert("kisi", [{ ws_id: ws.id, ad: "Ayşe", ad_norm: "ayşe", tip: "dis" }, { ws_id: ws.id, ad: "Ayşe", ad_norm: "ayşe", tip: "dis" }]);
   const [uyeZ] = await db.insert("uye", [{ kullanici_id: ws.id, auth_id: "a-z", eposta: "z@x", kisi: "Zeynep", rol: "ekip" }]);
+  await db.insert("uye", [{ kullanici_id: ws.id, auth_id: "a-berkin", eposta: "berkin@x", kisi: "Berkin", rol: "sahip" }]);
   await db.insert("anahtar", [
     { kullanici_id: ws.id, kisi: "Berkin", rol: "sahip", token_hash: await sha("dv_sahip") },
     { kullanici_id: ws.id, kisi: "Zeynep", rol: "ekip", uye_id: uyeZ.id, token_hash: await sha("dv_zuye") },
@@ -91,9 +95,11 @@ const sonOlay = () => T.olay[T.olay.length - 1];
   // karar politikası (MK-3): sahip ekip için "beyan" seçerse ekibin agent'ı karar veremez, öneri kalır
   x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "beyan" } }, "dv_zuye");
   ok(x.st === 403, "politikayı yalnız sahip değiştirir");
-  x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "beyan" } });
+  x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "insan", dis: "insan" } });
+  ok(x.st === 403 && /e-postayla giriş/.test(x.j.hata), "sahip anahtarı politikayı değiştiremez: agent kendine yetki veremez (S-C1)");
+  x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "beyan" } }, OT_BERKIN);
   ok(x.st === 200 && x.j.politika.agent_karari.ekip === "beyan" && x.j.politika.agent_karari.sahip === "insan", "politika kaydedildi");
-  x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "belki" } });
+  x = await api("POST", "/api/v1/politika", { agent_karari: { ekip: "belki" } }, OT_BERKIN);
   ok(x.st === 400, "politika yalnız insan/beyan alır");
   await api("POST", `/api/v1/akis/${kod}/adim/4`, { durum: "suruyor" }, "dv_zuye");
   m = await mcp("devir_karar_ver", { akis: kod, no: 4, secim: ["%10"], not: "Zeynep %10 dedi" }, "dv_zuye");
@@ -101,7 +107,9 @@ const sonOlay = () => T.olay[T.olay.length - 1];
   ok(adim(4).durum !== "tamam" && /beyan/.test(m) && ak.baglam.kararlar["4"].oneri.secim[0] === "%10", "beyan: ekibin agent kararı öneri olarak kaldı");
   ok(T.olay.some((e) => e.adim_no === 4 && e.veri?.tur === "karar_beyani"), "beyan olay kaydında");
   x = await api("POST", `/api/v1/akis/${kod}/adim/4`, { durum: "tamam", karar_secimi: ["%10"] }, "dv_zuye");
-  ok(x.st === 200 && adim(4).durum === "tamam", "ekip kararı web'den onaylar");
+  ok(x.st === 403 && adim(4).durum !== "tamam", "beyan: ekip anahtarıyla web ucundan da karar verilemez (anahtar agent)");
+  x = await api("POST", `/api/v1/akis/${kod}/adim/4`, { durum: "tamam", karar_secimi: ["%10"] }, OT_Z);
+  ok(x.st === 200 && adim(4).durum === "tamam", "ekip kararı web'den (e-postalı oturumla) onaylar");
 
   // üyelik bitince anahtar 401
   await db.update("uye", { id: uyeZ.id }, { kullanici_id: "baska" });

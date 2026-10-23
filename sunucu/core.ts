@@ -71,10 +71,11 @@ export function aracOf(a: any, ua: string): string {
   return "MCP istemcisi";
 }
 // Aktör kimlik bilgisinden gelir: kim her zaman anahtarın, oturumun ya da bağlantının kişisi; argümandaki kim ve kim_tip yok sayılır.
-// MCP (ve kanalı bilinmeyen çağrı) agent'tır; web oturumu ve web'den anahtarla gelen istek insan; bağlantı ya da dış üye dış.
+// İnsan yalnız e-postayla açılmış web oturumu ve dış bağlantıdır. MCP, kanalı bilinmeyen çağrı ve dv_ anahtarıyla gelen
+// her istek agent'tır: anahtar bir programın elinde olabilir, insanın orada olduğunu kanıtlamaz (S-C1).
 function actor(ctx: Ctx, a: any) {
   const arac = aracOf(a, ctx.ua);
-  const kim_tip = ctx.kanal === "oturum" || ctx.kanal === "anahtar" || ctx.kanal === "baglanti" ? (isDis(ctx) ? "dis" : "insan") : "agent";
+  const kim_tip = ctx.kanal === "oturum" || ctx.kanal === "baglanti" ? (isDis(ctx) ? "dis" : "insan") : "agent";
   return { kim: ctx.key.kisi, kim_tip, arac };
 }
 // Agent üzerinden verilen karar (MK-3): kullanıcı tipine göre insan kararı sayılır ya da beyan kalır.

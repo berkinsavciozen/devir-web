@@ -189,18 +189,21 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'olcek30') halOtuz(T);
 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
-  // Yazan kişi kimlik bilgisinden belirlenir (S-C1): başka kişinin yazması o kişinin ekip anahtarıyla,
-  // agent yazması MCP üzerinden Berkin'in anahtarıyla gider ("Claude (Berkin adına)").
-  const anahtarlar = new Map<string, string>();
-  const anahtarOf = async (kisi: string) => {
-    if (!kisi || kisi === 'Berkin') return BERKIN_ANAHTAR;
-    let t = anahtarlar.get(kisi);
-    if (!t) {
-      t = `dv_sahte${anahtarlar.size + 1}`;
-      anahtarlar.set(kisi, t);
-      T.anahtar.push({ id: crypto.randomUUID(), kullanici_id: BERKIN_ALAN, kisi, rol: 'ekip', kapsam: null, token_hash: await sha256(t), created_at: '2026-10-12T14:31:16Z' });
+  // Yazan kişi kimlik bilgisinden belirlenir (S-C1): insanın yazması kendi e-postalı oturumuyla (anahtarla gelen istek
+  // agent sayılır); agent yazması MCP üzerinden Berkin'in anahtarıyla gider ("Claude (Berkin adına)").
+  const kimlik = async (jwt: string) => {
+    const m = /^sahte:([^:]+):(.+)$/.exec(jwt);
+    return m ? { id: m[1], email: m[2] } : null;
+  };
+  const oturumOf = (kisi: string) => {
+    const ad = kisi || 'Berkin';
+    let u = T.uye.find((x) => x.kullanici_id === BERKIN_ALAN && x.kisi === ad);
+    if (!u) {
+      const n = T.uye.length + 1;
+      T.uye.push({ id: crypto.randomUUID(), auth_id: `sahte-hal-${n}`, eposta: `hal${n}@ornek.com`, kullanici_id: BERKIN_ALAN, kisi: ad, rol: ad === 'Berkin' ? 'sahip' : 'ekip', kapsam: null, created_at: '2026-10-12T14:31:16Z', son_giris: null });
+      u = T.uye[T.uye.length - 1];
     }
-    return t;
+    return `sahte:${u.auth_id}:${u.eposta}`;
   };
   const yaz: Yaz = async (an, yol, govde: any) => {
     saat = Date.parse(an);
@@ -211,7 +214,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
       const r = await handle(new Request(`${TABAN}/${BERKIN_ANAHTAR}`, { method: 'POST', headers: { 'content-type': 'application/json', 'user-agent': 'Claude' }, body: JSON.stringify(body) }), db as any, saat, { taban: TABAN, depo });
       return r.json();
     }
-    const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${await anahtarOf(kim)}`, 'content-type': 'application/json' }, body: JSON.stringify(g) }), db as any, saat, { taban: TABAN, depo });
+    const r = await handle(new Request(TABAN + yol, { method: 'POST', headers: { authorization: `Bearer ${oturumOf(kim)}`, 'content-type': 'application/json', 'x-devir-alan': BERKIN_ALAN }, body: JSON.stringify(g) }), db as any, saat, { taban: TABAN, kimlik, depo });
     return r.json();
   };
   if (o.hal === 'karar') await halKarar(yaz);
@@ -219,10 +222,6 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'gecikme') await halGecikme(yaz);
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
-  const kimlik = async (jwt: string) => {
-    const m = /^sahte:([^:]+):(.+)$/.exec(jwt);
-    return m ? { id: m[1], email: m[2] } : null;
-  };
   return {
     db,
     /** Saati ilerletir (yazmaların sırası olay kaydında korunur). */
