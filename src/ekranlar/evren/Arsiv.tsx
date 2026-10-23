@@ -9,6 +9,7 @@ import { akisAdi } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { SatirKart } from '../hesap/Hesap';
 import { kucukGalaksi, useDetaylar } from './Evren';
+import { akisIlerlemesi, ilerlemeMetni } from '../../api/ilerleme';
 
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
@@ -28,8 +29,8 @@ export function Arsiv({ ben }: { ben: Ben }) {
       {cumle && <Metin y={110} fs={17.5} lh={22} serif as="p" className="tek-satir">{cumle}</Metin>}
       <div role="list" aria-label="Kapanan akışlar">
         {L.map((k, i) => {
-          const d = detay[k.kod], a = d?.adimlar;
-          const n = a ? `${a.filter((x: any) => ['tamam', 'atlandi', 'ertelendi'].includes(x.durum)).length}/${a.length} adım` : `${k.ilerleme?.tamam ?? 0}/${k.ilerleme?.toplam ?? 0} adım`;
+          const d = detay[k.kod];
+          const n = ilerlemeMetni(akisIlerlemesi(k, d));
           const ne = k.durum === 'kapandi' ? `kapandı ${gunAy(tarihMs(k.kapandi_at || k.son_hareket))}` : 'arşivde';
           return <div role="listitem" key={k.kod}><SatirKart y={150 + i * 74} h={66} ikon={`<g opacity="${k.durum === 'kapandi' ? 1 : .55}">${kucukGalaksi(d, kisi, 26, 33, 17, 1.6, NOW)}</g>`} ust={akisAdi(k)} alt={`${ne} · ${n}`} onClick={() => git(`/akis/${encodeURIComponent(k.kod)}`)} /></div>;
         })}

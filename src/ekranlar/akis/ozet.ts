@@ -3,6 +3,7 @@
 import { adimAdi, ek, gunAyUzun, sayiIyelik } from '../../metin/turkce';
 import { hedefPayi } from '../../bilesen/KararSeridi';
 import type { Rol } from '../../api/turler';
+import { ilerleme as ilerlemeSay } from '../../api/ilerleme';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const ACIK_KARAR = (a: any) => a.karar_adimi && !BITTI(a.durum);
@@ -20,8 +21,8 @@ export function sayilar(d: any, ben?: string | null): Sayilar {
   const A: any[] = d.adimlar;
   const byT = (xs: any[]) => xs.sort((a, b) => tuttugu(d, b.no) - tuttugu(d, a.no) || a.no - b.no);
   return {
-    toplam: A.length,
-    biten: A.filter((a) => BITTI(a.durum)).length,
+    toplam: ilerlemeSay(A).toplam,
+    biten: ilerlemeSay(A).tamam,
     engelli: byT(A.filter((a) => a.durum === 'engelli')),
     karar: byT(A.filter(ACIK_KARAR)),
     gecRisk: byT(A.filter((a) => a.gec_risk && a.durum !== 'engelli')),

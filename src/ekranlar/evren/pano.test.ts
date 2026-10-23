@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { pano } from './pano';
+import { katilimcilar, pano } from './pano';
+import { ilerleme } from '../../api/ilerleme';
 
 const adim = (no: number, o: any = {}) => ({ no, ad: `Adım ${no}`, sahip: 'Emre', durum: 'sirada', bagimli: [], ...o });
 const kart = (kod: string) => ({ kod, ilerleme: { tamam: 0, toplam: 0 } });
@@ -31,5 +32,17 @@ describe('evren panosu', () => {
     expect(Q.eksik).toBe(1);
     expect(Q.cumle.endsWith('; 1 akışın işleri yükleniyor.')).toBe(true);
     expect(P.eksik).toBe(0);
+  });
+  it('katılımcılar (N5): sen hariç ekip, agent ve dış; sırası gelen önce; aynı ad tek satır', () => {
+    const d = { A: { adimlar: [adim(1, { sahip: 'Berkin', durum: 'hazir' }), adim(2, { sahip: 'Selin', durum: 'hazir' }), adim(3, { sahip: 'Claude', sahip_tip: 'agent' }), adim(4, { sahip: 'Emre', sahip_tip: 'dis' }), adim(5, { sahip: 'Emre', sahip_tip: 'dis', durum: 'tamam' })] },
+      B: { adimlar: [adim(1, { sahip: 'selin', durum: 'sirada' })] } };
+    const K = katilimcilar([kart('A'), kart('B')], d, 'Berkin');
+    expect(K.map((k) => k.ad)).toEqual(['Selin', 'Claude', 'Emre']);
+    expect(K[0]).toMatchObject({ acik: 2, sirasi: 1, akislar: ['A', 'B'], siradaki: { kod: 'A', no: 2 } });
+    expect(K.map((k) => k.tip)).toEqual(['insan', 'agent', 'dis']);
+    expect(K[2].acik).toBe(1);
+  });
+  it('ilerleme sunucuyla aynı: atlanan ve ertelenen bitmiş sayılmaz, toplamdan düşer', () => {
+    expect(ilerleme([{ durum: 'tamam' }, { durum: 'atlandi' }, { durum: 'ertelendi' }, { durum: 'sirada' }])).toEqual({ tamam: 1, toplam: 2, atlandi: 1, ertelendi: 1 });
   });
 });

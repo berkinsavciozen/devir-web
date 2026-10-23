@@ -65,7 +65,7 @@ test('N7: masaüstünde cümleler evren halkasına binmez (1280×720)', async ({
 test('K10: masaüstünde galaksi ve gezegenin üzerine gelince ad ve durum', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', 1440, 900);
   const g = page.getByRole('list', { name: 'Akışlar' }).getByRole('listitem', { name: /^Hasat postu/ });
-  await expect(g).toHaveAttribute('data-ipucu', /^Hasat postu · \d+\/\d+ adım · hedef/);
+  await expect(g).toHaveAttribute('data-ipucu', /^Hasat postu · \d+\/\d+ adım( · \d+ atlandı)? · hedef/);
   await g.hover();
   const ipucu = await g.evaluate((e) => getComputedStyle(e, '::after').content);
   expect(ipucu).toContain('Hasat postu');

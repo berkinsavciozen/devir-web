@@ -9,7 +9,7 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('B3-menu: "…" menüsü → haritanın altındaki bölümde sekme', async ({ page }) => {
+test('B3-menu: "…" menüsü → haritanın altındaki listede karar süzgeci', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Akış menüsü' }).click();
   await page.waitForTimeout(200);
@@ -18,7 +18,7 @@ test('B3-menu: "…" menüsü → haritanın altındaki bölümde sekme', async 
   // telefonda aynı sayfada kalır (el notu 12); bölüm başlığı görünür olur
   await expect(page).toHaveURL(/\/akis\/RTD5\?/);
   await expect(page.locator('.bolum-durak')).toBeInViewport();
-  await expect(page.getByRole('tab', { name: 'Kararlar' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('button', { name: /^Karar/ })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('B9-bilgi: adımlar sekmesi süzülür, satır adıma açılır', async ({ page }) => {
@@ -36,9 +36,11 @@ test('B9-bilgi: adımlar sekmesi süzülür, satır adıma açılır', async ({ 
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/\d+/);
 });
 
-for (const [s, ad] of [['kararlar', 'B9-kararlar'], ['ciktilar', 'B9-ciktilar'], ['kisiler', 'B9-kisiler']] as const) {
-  test(`${ad}: ${s} sekmesi`, async ({ page }) => {
-    await ac(page, `/akis/RTD5/bilgi?senaryo=berkin&sekme=${s}`);
+// kararlar ve çıktılar ayrı sekme değil, listenin süzgeci (N16); eski ?sekme= adresi de süzgece düşer
+for (const [s, ad] of [['suz=karar', 'B9-kararlar'], ['suz=cikti', 'B9-ciktilar'], ['sekme=kararlar', 'B9-eski-sekme']] as const) {
+  test(`${ad}: ${s}`, async ({ page }) => {
+    await ac(page, `/akis/RTD5/bilgi?senaryo=berkin&${s}`);
+    await expect(page.getByRole('button', { name: s.includes('cikti') ? /^Çıktı/ : /^Karar/ })).toHaveAttribute('aria-pressed', 'true');
     await page.waitForTimeout(300);
     await cek(page, ad);
     // sekme düğmeleri 36 px çizilir, dolguyla 44 px hedef (.segment)
@@ -47,8 +49,9 @@ for (const [s, ad] of [['kararlar', 'B9-kararlar'], ['ciktilar', 'B9-ciktilar'],
   });
 }
 
-test('B10-kisi: kişiler → kişi sayfası → haritada yolu', async ({ page }) => {
-  await ac(page, '/akis/RTD5/bilgi?senaryo=berkin&sekme=kisiler');
+test('B10-kisi: menüde kişiler → kişi sayfası → haritada yolu', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin');
+  await page.getByRole('button', { name: 'Akış menüsü' }).click();
   await page.getByRole('list', { name: 'Kişiler' }).getByRole('listitem').first().click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/kisi\//);
   await page.waitForTimeout(200);

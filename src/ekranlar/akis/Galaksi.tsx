@@ -17,7 +17,7 @@ import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
 import { galaksiSayilari, Lejant, SoruIkon } from './Lejant';
-import { AkisMenusu, useAkisBolumu } from './Bilgi';
+import { AkisMenusu, useAkisBolumu, type AkisSuzgec } from './Bilgi';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { KapaliGalaksi } from './Kapali';
 import { useBen } from '../../api/sorgular';
@@ -29,6 +29,7 @@ import { BaslikCipleri } from './Cipler';
 import { hedefPayi, KararSeridi } from '../../bilesen/KararSeridi';
 import { TarihNeden } from './TarihNeden';
 import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
+import { ilerleme } from '../../api/ilerleme';
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -47,9 +48,9 @@ export function haritaCumlesi(d: any): string[] | null {
   if (k.kapandi_at) return null;
   // bağımlılıksız akış: kritik yol anlamsız; kaç adım bitti, kaç kişide iş var (J2)
   if (d.adimlar.length > 1 && d.adimlar.every((a: any) => !(a.bagimli || []).length)) {
-    const tm = d.adimlar.filter((a: any) => BITTI(a.durum)).length, kisi = new Set(d.adimlar.map((a: any) => a.sahip)).size;
+    const { tamam: tm, toplam } = ilerleme(d.adimlar), kisi = new Set(d.adimlar.map((a: any) => a.sahip)).size;
     const hz = new Set(d.adimlar.filter((a: any) => ['hazir', 'engelli', 'suruyor'].includes(a.durum)).map((a: any) => a.sahip)).size;
-    return [`${d.adimlar.length} adımdan ${tm ? `${sayiIyelik(tm)} tamam` : 'hiçbiri bitmedi'};`, hz ? `${hz === kisi ? `${kisi} kişinin hepsinde` : `${hz} kişide`} sırası gelmiş iş var.` : 'sırası gelmiş iş yok.'];
+    return [`${toplam} adımdan ${tm ? `${sayiIyelik(tm)} tamam` : 'hiçbiri bitmedi'};`, hz ? `${hz === kisi ? `${kisi} kişinin hepsinde` : `${hz} kişide`} sırası gelmiş iş var.` : 'sırası gelmiş iş yok.'];
   }
   const tarih = k.en_erken_bitis ? gunAyUzun(k.en_erken_bitis) : null;
   const pay = hedefPayi(k);
@@ -125,8 +126,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const q = useAkis(kod);
   // tablet yatay ve masaüstü: solda harita, sağda şeritler + seçili adım kartı (§5 M1, T1)
   const boy = useBoyut();
-  const GD = useMemo(() => genisDuzen(boy.w, boy.h), [boy.w, boy.h]);
-  const [sel, setSel] = useState<number | null>(secim ?? null);
+  const uyeN = q.data ? new Set(q.data.adimlar.map((a: any) => String(a.sahip).toLocaleLowerCase('tr'))).size : 4;
+  const GD = useMemo(() => genisDuzen(boy.w, boy.h, uyeN), [boy.w, boy.h, uyeN]);
   const [gelis] = useState(haritaGelisi);
   const ben = useBen();
   const NOW = simdi();
@@ -158,16 +159,17 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const [birakildi, setBirakildi] = useState(an0);
   const d = q.data;
   // haritanın altındaki bölüm (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler; telefonda aynı sayfada
-  const B = useAkisBolumu({ d, kod, ben: sahip, y0: BOLUM_Y + 44 });
+  const B = useAkisBolumu({ d, kod, ben: sahip, y0: GD ? 12 : BOLUM_Y + 44, en: GD ? GD.kart.w : undefined });
   const bolumRef = useRef<HTMLHeadingElement>(null);
   // alt sayfa kapanırken geçmiş bir adım geri gider; kaydırma ondan sonra yapılır
-  const bolumAc = (i?: number) => { if (i != null && i >= 0) B.sec(i); setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
+  const bolumAc = (s?: AkisSuzgec) => { if (s) B.sec(s); if (GD) { if (secim != null) git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }); return; } setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
   // kalabalık akış (> 6 kişi): ps .82, şerit satırı 27 (§4.14)
   const geo = useMemo(() => (GD ? GD.harita : { ...HARITA, ps: d && new Set(d.adimlar.map((a: any) => a.sahip)).size > 6 ? .82 : HARITA.ps }), [d, GD]);
   const SU = GD ? GD.surgu : SURGU, SR = GD ? GD.serit : SERIT;
-  const selNo = GD && d ? sel ?? varsayilanSecim(d) : null;
+  // masaüstünde seçim adreste (/adim/:no); seçim yokken panelde şeritlerin altında adım listesi (N16)
+  const selNo = GD && d ? secim ?? null : null;
   // yakınlaşma, kaydırma (B3 "Pinch", §12): bölge sarmalın alanı; cümlenin altı, sürgünün üstü
   const [yelpazeNo, setYelpazeNo] = useState<number | null>(null);
   const [kuleAcik, setKuleAcik] = useState(false);
@@ -295,7 +297,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kritik = new Set<number>(d.kritik_yol || []);
   const byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const tekrarNo = new Set<number>((d.tekrar || []).flatMap((g: any) => (g.kalemler?.length ? g.adimlar : [])));
-  const ac = (no: number) => (GD && !tekrarNo.has(no) ? setSel(no) : git(`/akis/${encodeURIComponent(kod)}/${tekrarNo.has(no) ? 'tekrar' : 'adim'}/${no}`));
+  const ac = (no: number) => (GD && !tekrarNo.has(no) ? git(`/akis/${encodeURIComponent(kod)}/adim/${no}`, { yerine: secim != null }) : git(`/akis/${encodeURIComponent(kod)}/${tekrarNo.has(no) ? 'tekrar' : 'adim'}/${no}`));
   const kisiSec = (ad: string) => { const u = Y.G.uyeler.find((x: any) => x.ad === ad); if (u?.tip === 'dis') { setOdak(ad); setGonder(ad); } else setOdak(odak === ad ? null : ad); };
 
   // dokunma hedefleri (ekran koordinatı): önce gezegen, küme, soru; sonra kule, bayrak, bulut, kişi. Çakışan sonraki hedef konmaz
@@ -399,7 +401,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (history.length > 1 ? history.back() : git('/'))} />
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
-        <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
+        <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} bolumAc={bolumAc} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar)} akis={kod} />
         {serit ? <div className="galaksi-ust" style={{ left: U.cumleX, top: U.cumleY - 14, width: GD.PX - U.cumleX - 80 }}>
           <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
@@ -414,9 +416,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
         {kontroller}
-        {/* seçili görev: telefondakiyle aynı detay, panelde kendi içinde kayar (W2, N18, N21) */}
-        {a && <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y, width: GD.kart.w, height: GD.H - GD.kart.y - 16 }}>
+        {/* seçili görev: telefondakiyle aynı detay, panelde kendi içinde kayar (W2, N18, N21); seçim yoksa adım listesi (N16) */}
+        {a ? <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y, width: GD.kart.w, height: GD.H - GD.kart.y - 16 }}>
           <GorevDetay key={a.no} kod={kod} no={a.no} ben={sahip} />
+        </div> : <div className="gd-kaydir genis-liste" style={{ left: GD.kart.x - 20, top: GD.kart.y - 12, width: GD.kart.w + 40, height: GD.H - GD.kart.y }}>
+          <div style={{ position: 'relative', height: B.y + 24 }}>{B.dugum}</div>
         </div>}
         <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
       </GenisSahne>
@@ -440,7 +444,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <button type="button" className="bolum-ipucu" style={{ top: 812 }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: BOLUM_Y }}>{ad}</h2>
       {B.dugum}
-      <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={420} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} bolumAc={bolumAc} /></AltSayfa>
+      <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} bolumAc={bolumAc} /></AltSayfa>
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar)} akis={kod} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
     </Sahne>

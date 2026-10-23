@@ -17,6 +17,7 @@ import { git } from '../../yonlendirme';
 import { isPayi } from '../akis/Adim';
 import { evrenCumleleri } from './cumleler';
 import { kucukGalaksi, useDetaylar } from './Evren';
+import { akisIlerlemesi } from '../../api/ilerleme';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
@@ -24,10 +25,10 @@ const GUN = 864e5;
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
 const Y0 = 150, RH = 76;
 
-/** Biten adım oranı: detay varsa tamam + atlandı + ertelendi, yoksa kartın ilerlemesi. */
+/** Biten adım oranı (sunucuyla aynı): atlanan ve ertelenen toplamdan düşer. */
 export function bitenOrani(k: any, d?: any) {
-  if (d?.adimlar?.length) return d.adimlar.filter((a: any) => BITTI(a.durum)).length / d.adimlar.length;
-  return k.ilerleme?.toplam ? k.ilerleme.tamam / k.ilerleme.toplam : 0;
+  const i = akisIlerlemesi(k, d);
+  return i.toplam ? i.tamam / i.toplam : 0;
 }
 const boncukRenk = (d: string) => (BITTI(d) && d !== 'atlandi' ? ['#FFE29A', 2.4] : d === 'atlandi' ? ['#FFE29A', 2.4] : d === 'engelli' ? ['#FF8A78', 1.8] : d === 'hazir' || d === 'suruyor' ? ['#E9C8FF', 1.8] : ['#4B4380', 1.8]) as [string, number];
 
@@ -108,7 +109,7 @@ export function Akislar({ ben }: { ben: Ben }) {
       <ul className="akis-liste" aria-label="Akışlar">
         {satirlar.map((k, i) => {
           const cy = Y0 + i * RH + 34, d = detay[k.kod], t = d?.tekrar?.[0];
-          const tamam = d ? d.adimlar.filter((a: any) => BITTI(a.durum)).length : k.ilerleme?.tamam ?? 0, toplam = d ? d.adimlar.length : k.ilerleme?.toplam ?? 0;
+          const { tamam, toplam } = akisIlerlemesi(k, d);
           const etiket = `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı. ' : ''}${tamam}/${toplam} adım tamam.${k.pay_saat != null && k.durum !== 'kapandi' ? ` Hedefe ${paySure(k.pay_saat)} ${k.pay_saat >= 0 ? 'pay' : 'gecikme'}.` : ''}${isaret[k.kod] === 'engel' ? ' Engel sende.' : ''}`;
           return (
             <li key={k.kod} style={{ position: 'absolute', left: 14, top: cy - 34, width: 362, height: RH - 4 }}>

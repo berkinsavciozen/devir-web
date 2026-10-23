@@ -5,14 +5,14 @@ import { boyutYaz } from '../../api/dosya';
 import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { planet, ship } from '../../cizim/ortak.js';
+import { planet } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { arama, git, tamAdres } from '../../yonlendirme';
-import { SatirKart } from '../hesap/Hesap';
-import { Segment } from './Adim';
+import { Ok, SatirKart } from '../hesap/Hesap';
 import { odakCumlesi } from './cumleler';
 import { useAkis } from './Galaksi';
+import { ilerleme } from '../../api/ilerleme';
 
 // Akış bilgisi (denetim bulgusu: haritada olmayan liste görünümü) ve kişi sayfası. Tasarımda ayrı ekranları yok;
 // K satır kartlarıyla, B4'teki gezegen dilinde (CELISKILER 56).
@@ -21,21 +21,35 @@ const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const ajan = (a: { sahip: string; sahip_tip?: string }) => a.sahip_tip === 'agent' || /agent|Claude/i.test(a.sahip);
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const enc = encodeURIComponent;
-const SEKMELER = ['Adımlar', 'Kararlar', 'Çıktılar', 'Kişiler'] as const;
-const SEKME_KOD = ['adimlar', 'kararlar', 'ciktilar', 'kisiler'] as const;
-const FILTRE = ['Hepsi', 'Açık', 'Sende', 'Engelli', 'Bitti'] as const;
+const FILTRE = ['Hepsi', 'Açık', 'Sende', 'Engelli', 'Bitti', 'Karar', 'Çıktı'] as const;
+const FILTRE_KOD = ['hepsi', 'acik', 'sende', 'engelli', 'bitti', 'karar', 'cikti'] as const;
+export type AkisSuzgec = (typeof FILTRE_KOD)[number];
+/** Eski sekme adresleri (?sekme=kararlar) süzgece düşer; kişiler şeritlerde ve menüde. */
+const ESKI_SEKME: Record<string, AkisSuzgec> = { adimlar: 'hepsi', kararlar: 'karar', ciktilar: 'cikti', kisiler: 'hepsi' };
 const SATIR = 66;
 
 export const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
+/** Satırda karar ve çıktı işaretleri (N17): bayrak = karar adımı, sayfa = çıktısı var (sayısıyla). */
+export function AdimIsaretleri({ a }: { a: any }) {
+  const karar = !!a.karar_adimi, cikti = a.cikti_sayisi > 0 || !!a.cikti_bekleniyor;
+  if (!karar && !cikti) return <Ok />;
+  return (
+    <>
+      <span className="satir-isaretler" aria-hidden>
+        {karar && <svg width="14" height="18" viewBox="-7 -9 14 18"><title>Karar</title><path d="M-4,-8 V8" stroke="#FFF1E0" strokeWidth="1.4" /><path d="M-3,-8 L6,-4.5 L-3,-1Z" fill="#FFD27A" /></svg>}
+        {cikti && <svg width="14" height="18" viewBox="-7 -9 14 18"><title>Çıktı</title><path d="M-5,-8 H2 L6,-4 V8 H-5Z" fill="#1A1238" stroke="#D9CCFF" strokeWidth="1.2" strokeLinejoin="round" /><path d="M-2,0 H3 M-2,3.5 H2" stroke="#B9A6F2" strokeWidth="1.1" strokeLinecap="round" /></svg>}
+        {a.cikti_sayisi > 1 && <i>{a.cikti_sayisi}</i>}
+      </span>
+      <Ok />
+    </>
+  );
+}
 export const adimIkon = (a: any, h = 58) => `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
 /** "Berkin · hazır · en erken 21 Eki" */
 export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';
   return [kisaAd(a.sahip), a.durum_etiket || a.durum, t].filter(Boolean).join(' · ');
 }
-const kisiIkon = (ad: string, tip: string, sahip: boolean, h = 58) => tip === 'dis'
-  ? ship(28, h / 2 + 2, 0, 'dis', '', '#F2B8D8', .8)
-  : ship(28, h / 2, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), sahip ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#9EE6CF', .8, { flame: false });
 const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#1A1238" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
 
 /** Bir sütun satır kartı ve bölüm başlıkları; dönen y sonraki boş yer. */
@@ -52,34 +66,34 @@ export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etike
 }
 
 /**
- * Akışın alt bölümü (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler. Galaksi sayfasında haritanın altında,
- * /akis/:kod/bilgi'de tek başına çizilir. y0: sekmelerin üstü; dönen y sonraki boş yer.
+ * Akışın alt bölümü (madde 12, N16): şeritlerin altında tek adım listesi; Kararlar, Çıktılar ve Kişiler ayrı sekme değil.
+ * Karar ve çıktı süzgeçleri o adımları (ve akışın geçerli kararlarını, dosyalarını) gösterir; satırda işaretleri var (N17).
+ * Galaksi sayfasında haritanın altında, /akis/:kod/bilgi'de ve masaüstü panelde tek başına çizilir. y0: süzgecin üstü.
  */
-export function useAkisBolumu({ d, kod, ben, y0, adres }: { d: any; kod: string; ben: string; y0: number; adres?: boolean }) {
-  const s0 = Math.max(0, SEKME_KOD.indexOf((arama().get('sekme') || 'adimlar') as any));
-  const [sekme, setSekme] = useState(s0);
-  const [filtre, setFiltre] = useState(0);
-  const dosyalar = useQuery({ queryKey: ['dosyalar', kod], queryFn: () => api.get<any>(`/akis/${enc(kod)}/dosyalar`), enabled: !!d && sekme === 2 });
-  const sec = (i: number) => { setSekme(i); if (adres) git(`/akis/${enc(kod)}/bilgi?sekme=${SEKME_KOD[i]}`, { yerine: true }); };
-  if (!d) return { dugum: null, y: y0, sekme, sec, ad: SEKMELER[sekme] };
+export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: string; ben: string; y0: number; adres?: boolean; en?: number }) {
+  const f0 = (() => { const q = arama(); const f = q.get('suz') as AkisSuzgec | null; return Math.max(0, FILTRE_KOD.indexOf(f && FILTRE_KOD.includes(f) ? f : ESKI_SEKME[q.get('sekme') || ''] || 'hepsi')); })();
+  const [filtre, setFiltre] = useState(f0);
+  const dosyalar = useQuery({ queryKey: ['dosyalar', kod], queryFn: () => api.get<any>(`/akis/${enc(kod)}/dosyalar`), enabled: !!d && FILTRE_KOD[filtre] === 'cikti' });
+  const sec = (s: AkisSuzgec | number) => { const i = typeof s === 'number' ? s : FILTRE_KOD.indexOf(s); setFiltre(i); if (adres) git(`/akis/${enc(kod)}/bilgi${i ? `?suz=${FILTRE_KOD[i]}` : ''}`, { yerine: true }); };
+  if (!d) return { dugum: null, y: y0, sec, ad: 'Adımlar' };
 
   const A: any[] = [...d.adimlar].sort((a, b) => a.no - b.no);
-  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a), etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
-
-  let ogeler: Oge[] = [], ust: ReactNode = null, ly = y0 + 68, zincir = false;
-  if (sekme === 0) {
-    const uy = [() => true, (a: any) => !BITTI(a.durum), (a: any) => a.sahip === ben && !BITTI(a.durum), (a: any) => a.durum === 'engelli', (a: any) => BITTI(a.durum)][filtre];
-    // zincir: adımlar zaman sırasında (biten bitiş anına, açık en erken bitişine göre); aralarındaki ray bitenlerde yanar
-    const L = A.filter(uy).sort((a, b) => adimAn(a) - adimAn(b) || a.no - b.no);
-    ust = (
-      <div className="filtre-satir" role="group" aria-label="Süz" style={{ top: y0 + 62 }}>
-        {FILTRE.map((f, i) => <button key={f} type="button" className="filtre-cip" aria-pressed={i === filtre} onClick={() => setFiltre(i)}>{f}</button>)}
-      </div>
-    );
-    ly = y0 + 120;
-    zincir = L.length > 1;
-    ogeler = L.length ? L.map(adimSatir) : [{ tur: 'not', metin: filtre === 2 ? 'Sende açık adım yok.' : 'Bu süzgece uyan adım yok.' }];
-  } else if (sekme === 1) {
+  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a), sag: <AdimIsaretleri a={a} />,
+    etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.${a.karar_adimi ? ' Karar adımı.' : ''}${a.cikti_sayisi ? ` ${a.cikti_sayisi} çıktı.` : ''}`, git: () => git(`/akis/${enc(kod)}/adim/${a.no}`) });
+  const kod_ = FILTRE_KOD[filtre];
+  const sayi: Partial<Record<AkisSuzgec, number>> = { karar: A.filter((a) => a.karar_adimi).length, cikti: A.filter((a) => a.cikti_sayisi > 0).length, engelli: A.filter((a) => a.durum === 'engelli').length };
+  // süzgeç dar sütunda iki satıra iner (360'ta taşmaz); genişlik yazı boyundan kestirilir
+  const etiketler = FILTRE.map((f, i) => `${f}${sayi[FILTRE_KOD[i]] ? ` ${sayi[FILTRE_KOD[i]]}` : ''}`);
+  const sutun = en ?? Math.min(typeof window === 'undefined' ? 390 : window.innerWidth, 430) - 40;
+  const iki = etiketler.reduce((t, e) => t + e.length * 7.6 + 30 + 6, 0) > sutun;
+  const ust = (
+    <div className={`filtre-satir${iki ? ' iki-satir' : ''}`} role="group" aria-label="Adımları süz" style={{ top: y0 }}>
+      {etiketler.map((e, i) => <button key={FILTRE[i]} type="button" className="filtre-cip" aria-pressed={i === filtre} onClick={() => sec(i)}>{e}</button>)}
+    </div>
+  );
+  const ly = y0 + (iki ? 108 : 58);
+  let ogeler: Oge[] = [], zincir = false;
+  if (kod_ === 'karar') {
     const K = A.filter((a) => a.karar_adimi);
     ogeler = K.map((a) => {
       const s = a.karar?.secim;
@@ -92,45 +106,34 @@ export function useAkisBolumu({ d, kod, ben, y0, adres }: { d: any; kod: string;
       ogeler.push({ tur: 'baslik', metin: 'GEÇERLİ KARARLAR' });
       for (const k of kural) ogeler.push({ tur: 'satir', key: 'k' + k.id, ikon: `<g transform="translate(28,29)"><path d="M-1,-11 V11" stroke="#FFF1E0" stroke-width="1.4"/><path d="M0,-11 L10,-7 L0,-3Z" fill="#FFD27A"/></g>`, ust: k.kisa || k.karar, alt: [k.kim, k.tarih ? gunAy(Date.parse(k.tarih)) : null].filter(Boolean).join(' · ') || undefined, etiket: `${k.karar}.` });
     }
-  } else if (sekme === 2) {
+  } else if (kod_ === 'cikti') {
     const F: any[] = (dosyalar.data?.dosyalar || []).slice().sort((a: any, b: any) => Date.parse(b.tarih) - Date.parse(a.tarih));
     if (dosyalar.isPending) ogeler.push({ tur: 'not', metin: 'Yükleniyor…' });
-    if (F.length) {
-      ogeler.push({ tur: 'baslik', metin: 'DOSYALAR' });
-      for (const f of F) ogeler.push({ tur: 'satir', key: 'f' + f.id, ikon: dosyaIkon(), ust: f.ad, alt: [f.tur_ad, boyutYaz(f.boyut), f.adim_no ? `${f.adim_no}. adım` : null].filter(Boolean).join(' · '), etiket: `${f.ad}, ${f.adim_no}. adımın çıktısı.`, git: f.adim_no ? () => git(`/akis/${enc(kod)}/adim/${f.adim_no}?bolum=ciktilar`) : undefined });
-    }
     const C = A.filter((a) => a.cikti_sayisi > 0);
     if (C.length) {
       ogeler.push({ tur: 'baslik', metin: 'ADIMLARA GÖRE' });
       for (const a of C) ogeler.push({ ...adimSatir(a), key: 'c' + a.no, alt: `${a.cikti_sayisi} çıktı · ${kisaAd(a.sahip)}`, git: () => git(`/akis/${enc(kod)}/adim/${a.no}?bolum=ciktilar`) } as Oge);
     }
+    if (F.length) {
+      ogeler.push({ tur: 'baslik', metin: 'DOSYALAR' });
+      for (const f of F) ogeler.push({ tur: 'satir', key: 'f' + f.id, ikon: dosyaIkon(), ust: f.ad, alt: [f.tur_ad, boyutYaz(f.boyut), f.adim_no ? `${f.adim_no}. adım` : null].filter(Boolean).join(' · '), etiket: `${f.ad}, ${f.adim_no}. adımın çıktısı.`, git: f.adim_no ? () => git(`/akis/${enc(kod)}/adim/${f.adim_no}?bolum=ciktilar`) : undefined });
+    }
     if (!dosyalar.isPending && !F.length && !C.length) ogeler.push({ tur: 'not', metin: 'Henüz çıktı yok.' });
   } else {
-    const S0: any[] = d.sahipler?.length ? d.sahipler : [...new Set(A.map((a) => a.sahip))].map((ad) => ({ ad, tip: A.find((a) => a.sahip === ad).sahip_tip, adimlar: A.filter((a) => a.sahip === ad).map((a) => a.no), acik: A.filter((a) => a.sahip === ad && !BITTI(a.durum)).length }));
-    // sunucu sahipleri türüyle ayırır (aynı kişi insan ve dış olarak); kişi sayfası adla açılır, burada da tek satır
-    const S: any[] = [];
-    for (const k of S0) {
-      const o = S.find((x) => x.ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'));
-      if (!o) S.push({ ...k, adimlar: [...k.adimlar] });
-      else { o.adimlar.push(...k.adimlar); o.acik += k.acik; if (o.siradaki == null) o.siradaki = k.siradaki; }
-    }
-    const sahibi = A[0]?.sahip;
-    ogeler = S.map((k) => {
-      const tip = k.tip === 'agent' || ajan({ sahip: k.ad, sahip_tip: k.tip }) ? 'agent' : k.tip === 'dis' ? 'dis' : 'insan';
-      const siradaki = k.siradaki != null ? A.find((a) => a.no === k.siradaki) : A.find((a) => a.sahip === k.ad && !BITTI(a.durum));
-      const alt = `${k.acik} açık · ${k.adimlar.length} adım${siradaki ? ` · sırada ${adimAdi(siradaki)}` : ''}`;
-      return { tur: 'satir', key: 'p' + k.ad, ikon: kisiIkon(k.ad, tip, k.ad === sahibi), ust: k.ad, alt, etiket: `${k.ad} (${tip === 'agent' ? 'agent' : tip === 'dis' ? 'dış katılımcı' : 'insan'}): ${alt}.`, git: () => git(`/akis/${enc(kod)}/kisi/${enc(k.ad)}`) } as Oge;
-    });
+    const uy = [() => true, (a: any) => !BITTI(a.durum), (a: any) => a.sahip === ben && !BITTI(a.durum), (a: any) => a.durum === 'engelli', (a: any) => BITTI(a.durum)][filtre];
+    // zincir: adımlar zaman sırasında (biten bitiş anına, açık en erken bitişine göre); aralarındaki ray bitenlerde yanar
+    const L = A.filter(uy).sort((a, b) => adimAn(a) - adimAn(b) || a.no - b.no);
+    zincir = L.length > 1;
+    ogeler = L.length ? L.map(adimSatir) : [{ tur: 'not', metin: kod_ === 'sende' ? 'Sende açık adım yok.' : 'Bu süzgece uyan adım yok.' }];
   }
-  const L = Liste({ y0: ly, ogeler, etiket: SEKMELER[sekme] });
+  const L = Liste({ y0: ly, ogeler, etiket: 'Adımlar' });
   // zincir rayı: ardışık satırların gezegenlerini bağlar (kartların arasından görünür)
   const satirSayisi = ogeler.filter((o) => o.tur === 'satir').length;
   const ray = zincir ? <svg aria-hidden className="zincir-ray" style={{ top: ly + 29, height: (satirSayisi - 1) * 66 }} width="4" viewBox={`0 0 4 ${(satirSayisi - 1) * 66}`} preserveAspectRatio="none" dangerouslySetInnerHTML={{ __html: (ogeler as any[]).slice(0, -1).map((o, i) => `<rect x="1" y="${i * 66}" width="2" height="66" fill="${zincirRenk(o)}"/>`).join('') }} /> : null;
   return {
-    sekme, sec, ad: SEKMELER[sekme], y: L.y,
+    sec, ad: 'Adımlar', y: L.y,
     dugum: (
       <>
-        <Kutu x={0} y={y0} style={{ right: 0 }}><Segment secenekler={[...SEKMELER]} aktif={sekme} sec={sec} /></Kutu>
         {ust}
         {ray}
         {L.dugum}
@@ -150,8 +153,8 @@ export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
   const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}`));
   if (!d) return <Sahne gok={GOK} etiket={ad}><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>{q.isError && <Metin y={112} fs={16} renk="ink2">{(q.error as Error).message}</Metin>}</Sahne>;
   const A: any[] = d.adimlar;
-  const tm = A.filter((a) => BITTI(a.durum)).length, eng = A.filter((a) => a.durum === 'engelli').length;
-  const cumle = `${A.length} adım: ${tm} tamam, ${A.length - tm} açık${eng ? `, ${eng} engelli` : ''}.`;
+  const i = ilerleme(A), eng = A.filter((a) => a.durum === 'engelli').length, atla = i.atlandi + i.ertelendi;
+  const cumle = `${i.toplam} adım: ${i.tamam} tamam, ${i.toplam - i.tamam} açık${eng ? `, ${eng} engelli` : ''}${atla ? `; ${atla} atlandı` : ''}.`;
   return (
     <Sahne gok={GOK} etiket={`${ad} · ${B.ad}`} yukseklik={B.y + 40}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>
@@ -164,7 +167,7 @@ export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
 /** Kişi sayfası: bu akışta kişinin adımları; haritada yolunu öne çıkarır (/akis/:kod/kisi/:ad). */
 export function KisiSayfasi({ kod, ad, ben }: { kod: string; ad: string; ben: string }) {
   const q = useAkis(kod);
-  const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}/bilgi?sekme=kisiler`));
+  const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}`));
   const d = q.data;
   if (!d) return <Sahne gok={GOK} etiket={ad}><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu></Sahne>;
   const A: any[] = d.adimlar.filter((a: any) => a.sahip === ad || (a.ortak || []).includes?.(ad)).sort((a: any, b: any) => Number(BITTI(a.durum)) - Number(BITTI(b.durum)) || a.no - b.no);
@@ -189,24 +192,41 @@ export function KisiSayfasi({ kod, ad, ben }: { kod: string; ad: string; ben: st
   );
 }
 
-/** Akış menüsü (etkin akış, "…"): bilgi sekmeleri ve bağlantı. */
-export function AkisMenusu({ kod, kapat, d, bolumAc }: { kod: string; kapat: () => void; d: any; bolumAc?: (i: number) => void }) {
-  const [kopyalandi, setKopyalandi] = useState(false);
-  // aynı sayfadaki bölüm varsa oraya kayar (madde 12); yoksa bilgi sayfası açılır
-  const ac = (s: string) => { kapat(); if (bolumAc) bolumAc(SEKME_KOD.indexOf(s as any)); else git(`/akis/${enc(kod)}/bilgi?sekme=${s}`); };
+/** Akışın kişileri: sunucunun sahip listesi (aynı ad türleri birleşir), yoksa adımlardan. */
+export function akisKisileri(d: any): { ad: string; tip: 'insan' | 'agent' | 'dis'; acik: number; adim: number }[] {
   const A: any[] = d.adimlar;
-  const satirlar: [string, string, string][] = [
-    ['adimlar', 'Adımlar', `${A.length} adım, ${A.filter((a) => !BITTI(a.durum)).length} açık`],
-    ['kararlar', 'Kararlar', `${A.filter((a) => a.karar_adimi).length} karar adımı`],
-    ['ciktilar', 'Çıktılar', `${A.reduce((t, a) => t + (a.cikti_sayisi || 0), 0)} çıktı`],
-    ['kisiler', 'Kişiler', `${new Set(A.map((a) => a.sahip)).size} kişi`],
+  const S0: any[] = d.sahipler?.length ? d.sahipler : [...new Set(A.map((a) => a.sahip))].map((ad) => ({ ad, tip: A.find((a) => a.sahip === ad).sahip_tip, adimlar: A.filter((a) => a.sahip === ad).map((a) => a.no), acik: A.filter((a) => a.sahip === ad && !BITTI(a.durum)).length }));
+  const S: any[] = [];
+  for (const k of S0) {
+    const o = S.find((x) => x.ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'));
+    if (!o) S.push({ ...k, adimlar: [...k.adimlar] });
+    else { o.adimlar.push(...k.adimlar); o.acik += k.acik; }
+  }
+  return S.map((k) => ({ ad: k.ad, tip: k.tip === 'agent' || ajan({ sahip: k.ad, sahip_tip: k.tip }) ? 'agent' : k.tip === 'dis' ? 'dis' : 'insan', acik: k.acik, adim: k.adimlar.length }));
+}
+
+/** Akış menüsü (etkin akış, "…"): listeyi karar ya da çıktıya süzer, bağlantı, kişiler (kişi sayfası). */
+export function AkisMenusu({ kod, kapat, d, bolumAc }: { kod: string; kapat: () => void; d: any; bolumAc?: (s: AkisSuzgec) => void }) {
+  const [kopyalandi, setKopyalandi] = useState(false);
+  // aynı sayfadaki liste varsa oraya kayar (madde 12); yoksa bilgi sayfası açılır
+  const ac = (s: AkisSuzgec) => { kapat(); if (bolumAc) bolumAc(s); else git(`/akis/${enc(kod)}/bilgi${s === 'hepsi' ? '' : `?suz=${s}`}`); };
+  const A: any[] = d.adimlar;
+  const satirlar: [AkisSuzgec, string, string][] = [
+    ['hepsi', 'Adımlar', `${A.length} adım, ${A.filter((a) => !BITTI(a.durum)).length} açık`],
+    ['karar', 'Kararlar', `${A.filter((a) => a.karar_adimi).length} karar adımı`],
+    ['cikti', 'Çıktılar', `${A.reduce((t, a) => t + (a.cikti_sayisi || 0), 0)} çıktı`],
   ];
   const kopyala = async () => { try { await navigator.clipboard.writeText(tamAdres(`/akis/${enc(kod)}`)); setKopyalandi(true); } catch { setKopyalandi(false); } };
+  const K = akisKisileri(d);
   return (
     <div className="akis-menu-liste">
       <h2 className="gorunmez">Akış menüsü</h2>
       {satirlar.map(([s, b, k]) => <button key={s} type="button" className="akis-menu-satir dugmeli" onClick={() => ac(s)}><b>{b}</b><small>{k}</small></button>)}
       <button type="button" className="akis-menu-satir dugmeli" onClick={() => void kopyala()}><b>{kopyalandi ? 'Bağlantı kopyalandı' : 'Bağlantıyı kopyala'}</b><small>{d.akis.hedef_tarih ? `Hedef ${gunAyUzun(tarihMs(d.akis.hedef_tarih))}` : akisAdi(d.akis)}</small></button>
+      <h3 className="akis-menu-baslik">KİŞİLER</h3>
+      <div role="list" aria-label="Kişiler">
+        {K.map((k) => <button key={k.ad} role="listitem" type="button" className="akis-menu-satir dugmeli" onClick={() => { kapat(); git(`/akis/${enc(kod)}/kisi/${enc(k.ad)}`); }}><b>{k.ad}</b><small>{k.tip === 'agent' ? 'agent · ' : k.tip === 'dis' ? 'dış · ' : ''}{k.acik} açık · {k.adim} adım</small></button>)}
+      </div>
     </div>
   );
 }

@@ -807,3 +807,10 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
     color: var(--renk-metin-ink); font: 600 12.5px/1.3 Inter, sans-serif; pointer-events: none; z-index: 5;
   }
 }
+/* W4 · akış listesi (N16, N17): süzgeç tek satırda kayar; satırda karar ve çıktı işaretleri; masaüstünde şeritlerin altında */
+.filtre-satir.iki-satir { flex-wrap: wrap; row-gap: 6px; }
+.filtre-satir.iki-satir .filtre-cip { flex: 1 1 auto; padding: 0 12px; }
+.satir-isaretler { position: absolute; right: 38px; top: calc(50% - 9px); display: flex; align-items: center; gap: 4px; }
+.satir-isaretler i { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--renk-metin-ink3); }
+.akis-menu-baslik { margin: 20px 0 6px; font-size: 12px; line-height: 15px; font-weight: 700; letter-spacing: .6px; color: var(--renk-metin-ink3); }
+.gd-kaydir.genis-liste { background: none; box-shadow: none; border-radius: 0; }
