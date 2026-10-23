@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, alanSecimi } from '../../api/istemci';
 import { kimlik } from '../../api/kimlik';
@@ -24,12 +24,12 @@ export const Ok = () => <svg aria-hidden className="satir-ok" width="12" height=
 export const Tik = ({ r = 10 }: { r?: number }) => <svg aria-hidden className="satir-tik" width={r * 2} height={r * 2} viewBox={`${-r} ${-r} ${r * 2} ${r * 2}`}><circle r={r} fill="#FFD27A" /><path d="M-4.5,0 L-1.2,3.4 L4.8,-3.4" stroke="#2A1D4F" strokeWidth="2" fill="none" strokeLinecap="round" /></svg>;
 
 /** Satır kartı (son-090 satirKart): ikon x+26, üst/alt yazı x+58; sağda tik, ok ya da eylem. Genişlik verilmezse sağda 20 px kalır (dar telefon). */
-export function SatirKart({ y, h = 58, ikon, ust, alt, sec, sag, onClick, etiket, x = 20, w }: { y: number; h?: number; ikon: string; ust: ReactNode; alt?: ReactNode; sec?: boolean; sag?: ReactNode; onClick?: () => void; etiket?: string; x?: number; w?: number }) {
+export function SatirKart({ y, h = 58, ikon, ust, alt, sec, sag, onClick, etiket, baslik, x = 20, w }: { y: number; h?: number; ikon: string; ust: ReactNode; alt?: ReactNode; sec?: boolean; sag?: ReactNode; onClick?: () => void; etiket?: string; baslik?: string; x?: number; w?: number }) {
   const Etiket = onClick ? 'button' : 'div';
   return (
-    <Etiket type={onClick ? 'button' : undefined} className={`kart satir-kart ${sec ? 'secili' : ''}`} style={{ left: x, top: y, height: h, ...(w == null ? { right: 20 } : { width: w }) }} onClick={onClick} aria-label={etiket} aria-current={sec || undefined}>
+    <Etiket type={onClick ? 'button' : undefined} className={`kart satir-kart ${sec ? 'secili' : ''}`} style={{ left: x, top: y, height: h, ...(w == null ? { right: 20 } : { width: w }) }} onClick={onClick} aria-label={etiket} title={baslik} aria-current={sec || undefined}>
       <svg aria-hidden width="52" height={h} viewBox={`0 0 52 ${h}`} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ikon }} />
-      <span className="satir-metin"><b style={typeof ust === 'string' ? ({ '--n': ust.length } as CSSProperties) : undefined}>{ust}</b>{alt != null && <small>{alt}</small>}</span>
+      <span className="satir-metin"><b>{ust}</b>{alt != null && <small>{alt}</small>}</span>
       {sag ?? (sec ? <Tik /> : onClick ? <Ok /> : null)}
     </Etiket>
   );

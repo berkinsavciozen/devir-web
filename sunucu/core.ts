@@ -561,7 +561,7 @@ export const TOOLS = [
       properties: {
         taslak: { type: "string", description: "devir_tasla'nın verdiği taslak kodu (ör. T7K2F)." },
         baslik: { type: "string" }, amac: { type: "string" },
-        kisa_ad: { type: "string", description: "Akışın listelerde görünen kısa adı: 2–4 kelime, en çok 30 karakter (ör. 'Park aydınlatma ihalesi'). Verilmezse Devir üretir." },
+        kisa_ad: { type: "string", description: "Akışın listelerde görünen kısa adı: en çok 40 karakter (ör. 'Park aydınlatma ihalesi'). Verilmezse Devir üretir." },
         hedef_tarih: { type: "string", description: "YYYY-AA-GG; işin bitmesi gereken son gün." },
         sablon_kod: { type: "string" },
         cevaplar: { type: "object", description: "Soru kodu → cevap. Bilinmiyorsa \"bilmiyorum\" yaz; akış durmaz, netleştir adımı eklenir." },
@@ -572,7 +572,7 @@ export const TOOLS = [
         adimlar: {
           type: "array", description: "Şablonsuz kurulumda adımlar. bagimli, bu listedeki 1'den başlayan sıra numaralarıdır.",
           items: { type: "object", required: ["ad", "sahip", "kriter"], properties: {
-            ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: 2–4 kelime, en çok 30 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, aciklama: { type: "string" }, sahip: { type: "string", description: "Kişi, ekip, dış katılımcı ya da agent adı." },
+            ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, aciklama: { type: "string" }, sahip: { type: "string", description: "Kişi, ekip, dış katılımcı ya da agent adı." },
             sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string", description: "Agent ya da kişinin kullandığı araç (Claude, ChatGPT, Figma...)." },
             kriter: { type: "string", description: "Adımın bitti sayılması için test." }, beklenen_cikti: { type: "string" }, karar_kriteri: { type: "string" },
             son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } } } },
@@ -621,7 +621,7 @@ export const TOOLS = [
         },
         sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"], description: "Sahip değişiyorsa yeni sahibin tipi. Kullanıcının kendisi ya da ekibi insan, ekip dışı biri dis." }, son_tarih: { type: "string" },
         arac: { type: "string", description: "Kullandığın araç adı, ör. Claude, ChatGPT." },
-        kisa_ad: { type: "string", description: "Kısa adı düzelt (yalnız ekip): 2–4 kelime, en çok 30 karakter, akışta tekil." },
+        kisa_ad: { type: "string", description: "Kısa adı düzelt (yalnız ekip): en çok 40 karakter, akışta tekil." },
         zorla: { type: "boolean", description: "Bağımlılıklar bitmeden başlatmak için; not ile neden yaz." },
         cevap: { type: "string", description: "Bu adım bitince belli olan açık sorunun cevabı (adımda 'bitince cevaplanır' yazıyorsa). Devir akışı ona göre yeniden kurar." },
       },
@@ -648,7 +648,7 @@ export const TOOLS = [
     inputSchema: {
       type: "object", required: ["akis", "ad", "sahip", "kriter", "neden"],
       properties: {
-        akis: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: 2–4 kelime, en çok 30 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
+        akis: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
         kriter: { type: "string" }, aciklama: { type: "string" }, son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" },
         bagimli: { type: "array", items: { type: "integer" }, description: "Bu adımın beklediği adım numaraları." },
         bekleyenler: { type: "array", items: { type: "integer" }, description: "Artık bu yeni adımı beklemesi gereken adım numaraları." },

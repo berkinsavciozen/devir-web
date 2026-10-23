@@ -18,7 +18,7 @@ const UYAR: Record<PanoTur, (a: any, ben: string) => boolean> = {
   sira: (a) => a.durum === 'hazir' || a.durum === 'suruyor',
 };
 
-export interface PanoAdim { kod: string; no: number; ad: string; sahip: string; durum: string; karar: boolean; tuttugu: number; son?: string | null }
+export interface PanoAdim { kod: string; no: number; ad: string; kisa_ad?: string | null; sahip: string; durum: string; karar: boolean; tuttugu: number; son?: string | null }
 /** eksik: detayı henüz gelmemiş akış sayısı; listeler ve sayılar o akışlar gelmeden eksiktir (M-M3). */
 export interface Pano { cumle: string; eksik: number; suzgecler: { tur: PanoTur; n: number }[]; adimlar: Record<PanoTur, PanoAdim[]>; varsayilan: PanoTur | null }
 
@@ -33,7 +33,7 @@ export function pano(kartlar: any[], detay: Record<string, any>, ben: string): P
     toplam += A.length; biten += A.filter((a) => BITTI(a.durum)).length;
     for (const a of A) for (const t of Object.keys(UYAR) as PanoTur[]) {
       if (!UYAR[t](a, ben)) continue;
-      adimlar[t].push({ kod: k.kod, no: a.no, ad: a.ad, sahip: a.sahip, durum: a.durum, karar: !!a.karar_adimi, tuttugu: tuttugu(A, a.no), son: a.son_tarih ?? a.en_gec_bitis ?? null });
+      adimlar[t].push({ kod: k.kod, no: a.no, ad: a.ad, kisa_ad: a.kisa_ad ?? null, sahip: a.sahip, durum: a.durum, karar: !!a.karar_adimi, tuttugu: tuttugu(A, a.no), son: a.son_tarih ?? a.en_gec_bitis ?? null });
     }
   }
   for (const t of Object.keys(adimlar) as PanoTur[]) adimlar[t].sort((p, q) => q.tuttugu - p.tuttugu || p.kod.localeCompare(q.kod) || p.no - q.no);

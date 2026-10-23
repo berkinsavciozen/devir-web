@@ -295,7 +295,7 @@
 .akis-liste { list-style: none; margin: 0; padding: 0; }
 .akis-satir { position: absolute; inset: 0; width: 100%; background: none; border: 0; border-radius: 20px; padding: 0; cursor: pointer; text-align: left; }
 .akis-satir:focus-visible, .liste-alt:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
-.akis-satir-ad { position: absolute; left: 94px; font: 700 15px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; }
+.akis-satir-ad { position: absolute; left: 94px; font: 700 15px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; right: 16px; overflow: hidden; text-overflow: ellipsis; }
 .akis-satir-kalem { position: absolute; left: 248px; font: 650 12px/16px var(--font-sans); color: var(--renk-metin-ink2); white-space: nowrap; }
 .liste-alt { position: absolute; background: none; border: 0; border-radius: 22px; padding: 0; cursor: pointer; }
 .liste-alt span { position: absolute; font: 650 14px/18px var(--font-sans); color: var(--renk-metin-ink); white-space: nowrap; }
@@ -411,11 +411,11 @@
 .satir-kart { position: absolute; display: block; padding: 0; border: 0; border-radius: var(--yaricap-satir); text-align: left; font: inherit; color: inherit; }
 button.satir-kart { cursor: pointer; }
 .satir-kart.secili { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 80%, transparent); }
-.satir-metin { position: absolute; inset: 0 70px 0 58px; container-type: inline-size; }
-.satir-metin b, .satir-metin small { position: absolute; left: 0; right: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* P1-F: ad kesilmez; uzun ad satıra sığana dek küçülür (en az 11.5 px) */
-.satir-metin b { top: calc(50% - 17.3px); font-size: max(11.5px, min(14.5px, calc(182cqw / var(--n, 1)))); line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); }
-.satir-metin small { top: calc(50% + 3.6px); font-size: 12px; line-height: 16px; font-weight: 500; color: var(--renk-metin-ink3); }
+.satir-metin { position: absolute; inset: 0 70px 0 58px; display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.satir-metin b, .satir-metin small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* P1-F: ad kesilmez ve hep aynı boyda; sığmayan ad iki satıra iner, tamamı üzerine gelince görünür */
+.satir-metin b { font-size: 14.5px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.satir-metin small { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--renk-metin-ink3); }
 .satir-kart > .satir-ok { position: absolute; right: 18px; top: calc(50% - 8px); }
 .satir-kart > .satir-tik { position: absolute; right: 16px; top: calc(50% - 10px); }
 .satir-not { position: absolute; right: 18px; top: calc(50% - 3.4px); font-size: 12px; line-height: 16px; font-weight: 650; color: var(--renk-metin-ink3); }

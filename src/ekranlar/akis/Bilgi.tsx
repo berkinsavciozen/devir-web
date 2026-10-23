@@ -39,14 +39,14 @@ const kisiIkon = (ad: string, tip: string, sahip: boolean, h = 58) => tip === 'd
 const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#1A1238" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
 
 /** Bir sütun satır kartı ve bölüm başlıkları; dönen y sonraki boş yer. */
-export type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; sag?: ReactNode } | { tur: 'not'; metin: string };
+export type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; baslik?: string; sag?: ReactNode } | { tur: 'not'; metin: string };
 export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etiket: string }) {
   let y = y0;
   const out: ReactNode[] = [];
   ogeler.forEach((o, i) => {
     if (o.tur === 'baslik') { out.push(<h3 key={'b' + i} className="bolum-baslik" style={{ top: y + 6 }}>{o.metin}</h3>); y += 32; }
     else if (o.tur === 'not') { out.push(<Metin key={'n' + i} y={y + 18} fs={13.5} renk="ink3">{o.metin}</Metin>); y += 36; }
-    else { out.push(<div role="listitem" key={o.key} style={{ display: 'contents' }}><SatirKart y={y} ikon={o.ikon} ust={o.ust} alt={o.alt} onClick={o.git} etiket={o.etiket} sag={o.sag} /></div>); y += SATIR; }
+    else { out.push(<div role="listitem" key={o.key} style={{ display: 'contents' }}><SatirKart y={y} ikon={o.ikon} ust={o.ust} alt={o.alt} onClick={o.git} etiket={o.etiket} baslik={o.baslik} sag={o.sag} /></div>); y += SATIR; }
   });
   return { dugum: <div role="list" aria-label={etiket}>{out}</div>, y };
 }
@@ -64,7 +64,7 @@ export function useAkisBolumu({ d, kod, ben, y0, adres }: { d: any; kod: string;
   if (!d) return { dugum: null, y: y0, sekme, sec, ad: SEKMELER[sekme] };
 
   const A: any[] = [...d.adimlar].sort((a, b) => a.no - b.no);
-  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, alt: adimAlt(a), etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
+  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a), etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
 
   let ogeler: Oge[] = [], ust: ReactNode = null, ly = y0 + 68, zincir = false;
   if (sekme === 0) {
@@ -175,7 +175,7 @@ export function KisiSayfasi({ kod, ad, ben }: { kod: string; ad: string; ben: st
   A.forEach((a, i) => {
     if (i === acik && i) ogeler.push({ tur: 'baslik', metin: 'BİTEN' });
     else if (i === 0 && !acik) ogeler.push({ tur: 'baslik', metin: 'BİTEN' });
-    ogeler.push({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, alt: adimAlt(a).split(' · ').slice(1).join(' · ') || undefined, etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
+    ogeler.push({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a).split(' · ').slice(1).join(' · ') || undefined, etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.`, git: () => git(`/akis/${enc(kod)}/${a.karar_adimi ? 'karar' : 'adim'}/${a.no}`) });
   });
   const L = Liste({ y0: 160, ogeler, etiket: `${ad} adımları` });
   const by = L.y + 12;

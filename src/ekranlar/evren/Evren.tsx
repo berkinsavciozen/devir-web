@@ -12,7 +12,7 @@ import { Segment } from '../akis/Adim';
 import { evrenOlcek, iconCloud, iconRings, usturlap } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { brackets, C, pill, planet, ship } from '../../cizim/ortak.js';
-import { akisAdi, doluSatir, ozelEk, paySure, yaziTipleriHazir } from '../../metin/turkce';
+import { adimAdi, akisAdi, doluSatir, ozelEk, paySure, yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
 import { tanitimGorulmeli } from './Tanitim';
 import { yakinlas } from '../../cizim/yakinlas';
@@ -426,8 +426,8 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, cumleler, kartlar, kapanan, det
       </div>}
       {bekl.length ? bekl.map((b, i) => {
         const y = lY + i * 64, akis = ad(b.kod), t = b.son ? gunAy(tarihMs(b.son)) : null, kim = b.sahip === kisi ? 'Sende' : b.sahip.replace(/\s*\(.*\)$/, '');
-        return <button key={b.kod + b.no} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 56, background: 'none', boxShadow: 'none' }} onClick={() => git(`/akis/${encodeURIComponent(b.kod)}/adim/${b.no}`)}>
-          <span className="satir-metin" style={{ left: 54, right: 16 }}><b>{b.ad}</b><small>{[akis, kim, b.tuttugu ? `${b.tuttugu} adımı tutuyor` : null, t].filter(Boolean).join(' · ')}</small></span>
+        return <button key={b.kod + b.no} type="button" className="kart satir-kart" style={{ left: X + 20, top: y, width: PW - 40, height: 56, background: 'none', boxShadow: 'none' }} title={b.ad} onClick={() => git(`/akis/${encodeURIComponent(b.kod)}/adim/${b.no}`)}>
+          <span className="satir-metin" style={{ left: 54, right: 16 }}><b>{adimAdi(b)}</b><small>{[akis, kim, b.tuttugu ? `${b.tuttugu} adımı tutuyor` : null, t].filter(Boolean).join(' · ')}</small></span>
         </button>;
       }) : durum === 'kismi' || durum === 'hata'
         ? <DurumNotu durum={durum} y={lY + 14} x={X + 24} yeniden={yeniden} style={{ right: 'auto', width: PW - 48 }} />

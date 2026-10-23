@@ -28,19 +28,18 @@ async function mcp(name: string, args: any) {
 
 // P1-F: akış ve adımın kısa adı. Arayüz kesmez; sunucu kayıtlı ya da LLM'siz kuralla üretilmiş tekil kısa ad verir.
 const CANLI: [string, string][] = [
-  ["Geçici teminat mektubunu bankadan al", "Geçici teminat mektubunu al"],
-  ["Geçici teminat mektubunun iadesini al", "Geçici teminat iadesini al"],
-  ["Montaj planını yap ve montaja başla", "Montaj planını yap"],
-  ["İtiraz edip etmeyeceğine karar ver", "İtiraz kararını ver"],
-  ["Hava durumu ve yol durumunu kontrol et", "Yol durumunu kontrol et"],
-  ["Ses-ışık-sahne sağlayıcısını seç ve onayla", "Ses sağlayıcısını seç"],
-  ["Netleştir: Offsite bütçesi için ayrıca yönetici/finans onayı gerekiyor mu?", "Yönetici/finans onayı?"],
-  ["Mali müşavirle kuruluş görüşmesi: şirket türü, SGK, vergi, e-fatura", "Kuruluş görüşmesi"],
-  ["M1 · Mağaza canlı: şirket, 2 tedarikçi, 20+ SKU, uçtan uca ilk siparişler", "M1 · Mağaza canlı"],
-  ["M3 · Son 30 gün ciro ≥100 bin TL", "M3 · Ciro ≥100 bin TL"],
-  ["Haftalık koşu günlerini belirle", "Koşu günlerini belirle"],
-  ["Ara test 1: 5 km tempo koşusu ve program güncelleme", "Ara test 1"],
-  ["E2E test akışı", "E2E test akışı"],
+  ["Geçici teminat mektubunu bankadan Halkbank şubesinden al","Geçici teminat mektubunu al"],
+  ["Geçici teminat mektubunun iadesini idareden yazıyla al","Geçici teminat iadesini al"],
+  ["Montaj planını yap ve montaja başla","Montaj planını yap ve montaja başla"],
+  ["Komisyon koşullarını teyit et ve çiftçi teklif paketini hazırla","Komisyon koşullarını teyit et"],
+  ["Dış ses-ışık firmasından teklif al ve otel teknik uygunluğunu teyit et","Dış ses-ışık firmasından teklif al"],
+  ["Netleştir: Offsite bütçesi için ayrıca yönetici/finans onayı gerekiyor mu?","Yönetici/finans onayı?"],
+  ["Mali müşavirle kuruluş görüşmesi: şirket türü, SGK, vergi, e-fatura","Mali müşavirle kuruluş görüşmesi"],
+  ["M1 · Mağaza canlı: şirket, 2 tedarikçi, 20+ SKU, uçtan uca ilk siparişler","M1 · Mağaza canlı"],
+  ["Dataroid sözleşmesinde yan iş / rekabet yasağı / bildirim maddelerini kontrol et","Bildirim maddelerini kontrol et"],
+  ["Davetli listesini ve iletişim bilgilerini topla","İletişim bilgilerini topla"],
+  ["Ara test 1: 5 km tempo koşusu ve program güncelleme","Ara test 1"],
+  ["Hepsiburada mağazasını aç ve kazanan SKU'ları taşı","Hepsiburada mağazasını aç"],
 ];
 const UZUN = [
   "Üretici kendi markalı ilk partiyi üretip teslim eder (private label kararı evetse)",
@@ -54,7 +53,7 @@ const UZUN = [
 (async () => {
   for (const [ad, k] of CANLI) ok(kisaAdim(ad) === k, `adım: "${ad}" → "${k}" (${kisaAdim(ad)})`);
   for (const ad of UZUN) { const k = kisaAdim(ad); ok(kisaAdGecerli(k) && k.length <= KISA_AD_EN_COK, `uzun ad sığar, üç noktasız: "${k}"`); }
-  ok(kisaAkis("Belediye park aydınlatma ihalesi: teklif, sonuç ve sözleşme/itiraz") === "Park aydınlatma ihalesi", "akış: varlığı uzun başlık");
+  ok(kisaAkis("Belediye park aydınlatma ihalesi: teklif, sonuç ve sözleşme/itiraz") === "Belediye park aydınlatma ihalesi", "akış: varlığı uzun başlık");
   ok(kisaAkis("Hasat: Karadeniz'den 5 çiftçi kazanımı (en az 3'ü faturalı, kooperatif ağırlıklı)") === "Hasat çiftçi kazanımı", "akış: 'Varlık: iş' başlığı");
   ok(kisaAkis("İzmir 2 günlük müşteri etkinliği (40 davetli, Aralık 2026)") === "İzmir müşteri etkinliği", "akış: özel ad korunur, sayı düşer");
   ok(kisaAkis("6 aylık koşu programı: 10 km'yi 5:30/km tempoyla rahat koşmak") === "Koşu programı", "akış: ölçü düşer");
@@ -77,27 +76,27 @@ const UZUN = [
   const [ws] = await db.insert("kullanici", [{ ad: "Test alanı" }]);
   await db.insert("anahtar", [{ kullanici_id: ws.id, kisi: "Berkin", rol: "sahip", token_hash: await sha("dv_sahip") }, { kullanici_id: ws.id, kisi: "Dış", rol: "dis", token_hash: await sha("dv_dis") }]);
   const r = await mcp("devir_akis_olustur", { baslik: "Belediye park aydınlatma ihalesi: teklif, sonuç ve sözleşme/itiraz", hedef_tarih: "2026-12-20", adimlar: [
-    { ad: "Geçici teminat mektubunu bankadan al", sahip: "Berkin", kriter: "mektup", sure_tahmin_gun: 2 },
-    { ad: "Geçici teminat mektubunun iadesini al", sahip: "Berkin", kriter: "iade", sure_tahmin_gun: 1, bagimli: [1] },
+    { ad: "Geçici teminat mektubunu bankadan Halkbank şubesinden al", sahip: "Berkin", kriter: "mektup", sure_tahmin_gun: 2 },
+    { ad: "Geçici teminat mektubunun iadesini idareden yazıyla al", sahip: "Berkin", kriter: "iade", sure_tahmin_gun: 1, bagimli: [1] },
     { ad: "Teklif dosyasını hazırla ve EKAP'tan ver", kisa_ad: "EKAP teklifi ver", sahip: "Berkin", kriter: "teklif", sure_tahmin_gun: 2, bagimli: [1] },
   ] });
   const kod = /oluşturuldu: (\w+)/.exec(r)![1];
   const akis = T.akis.find((a) => a.kisa_kod === kod);
-  ok(akis.baglam.kisa_ad === "Park aydınlatma ihalesi", "kurulumda akış kısa adı yazılır");
+  ok(akis.baglam.kisa_ad === "Belediye park aydınlatma ihalesi", "kurulumda akış kısa adı yazılır");
   ok(akis.baglam.kisa_adlar["1"] === "Geçici teminat mektubunu al" && akis.baglam.kisa_adlar["2"] === "Geçici teminat iadesini al" && akis.baglam.kisa_adlar["3"] === "EKAP teklifi ver", "kurulumda adım kısa adları yazılır, verilen korunur");
   const d = (await api("GET", `/api/v1/akis/${kod}`)).j;
-  ok(JSON.stringify(d).includes('"kisa_ad":"Park aydınlatma ihalesi"'), "api akış kısa adı");
+  ok(JSON.stringify(d).includes('"kisa_ad":"Belediye park aydınlatma ihalesi"'), "api akış kısa adı");
   const ad = (await api("GET", `/api/v1/akis/${kod}/adim/2`)).j;
-  ok(JSON.stringify(ad).includes('"kisa_ad":"Geçici teminat iadesini al"') && JSON.stringify(ad).includes('"ad":"Geçici teminat mektubunun iadesini al"'), "adım detayı kısa ve tam adı birlikte döner");
+  ok(JSON.stringify(ad).includes('"kisa_ad":"Geçici teminat iadesini al"') && JSON.stringify(ad).includes('"ad":"Geçici teminat mektubunun iadesini idareden yazıyla al"'), "adım detayı kısa ve tam adı birlikte döner");
   const g = (await api("GET", "/api/v1/gorevler?kisi=hepsi")).j;
-  ok(g.gorevler.every((x: any) => x.kisa_ad && x.akis_kisa_ad === "Park aydınlatma ihalesi"), "görevlerde adım ve akış kısa adı");
+  ok(g.gorevler.every((x: any) => x.kisa_ad && x.akis_kisa_ad === "Belediye park aydınlatma ihalesi"), "görevlerde adım ve akış kısa adı");
   const h1 = await mcp("devir_adim_guncelle", { akis: kod, no: 3, kisa_ad: "Geçici teminat mektubunu al" });
   ok(/1\. adımın kısa adı/.test(h1), "düzeltme: akışta tekil olmalı");
   const h2 = await mcp("devir_adim_guncelle", { akis: kod, no: 3, kisa_ad: "Teklif dosyasını hazırla ve" });
-  ok(/en çok 30 karakter/.test(h2), "düzeltme: bağlaçla biten ad reddedilir");
+  ok(/en çok 40 karakter/.test(h2), "düzeltme: bağlaçla biten ad reddedilir");
   await mcp("devir_adim_guncelle", { akis: kod, no: 3, kisa_ad: "Teklif dosyasını ver" });
   ok(T.akis.find((a) => a.kisa_kod === kod).baglam.kisa_adlar["3"] === "Teklif dosyasını ver", "düzeltme kaydedilir");
-  await mcp("devir_adim_ekle", { akis: kod, ad: "Geçici teminat mektubunu bankadan al", sahip: "Berkin", kriter: "ikinci mektup", neden: "ikinci kalem" });
+  await mcp("devir_adim_ekle", { akis: kod, ad: "Geçici teminat mektubunu bankadan Halkbank şubesinden al", sahip: "Berkin", kriter: "ikinci mektup", neden: "ikinci kalem" });
   const ka = T.akis.find((a) => a.kisa_kod === kod).baglam.kisa_adlar;
   ok(ka["4"] && ka["4"] !== ka["1"], `eklenen adımın kısa adı tekil (${ka["4"]})`);
 })();

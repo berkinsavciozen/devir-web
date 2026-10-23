@@ -1,6 +1,6 @@
 // P1-F ad sözleşmesi: akış ve adımın kısa adı. Arayüz adı kesmez; kısa adı sunucu verir (kayıtlı ad ya da LLM'siz kural).
 
-export const KISA_AD_EN_COK = 30;
+export const KISA_AD_EN_COK = 40;
 
 const kucuk = (s: string) => s.toLocaleLowerCase("tr");
 const BAGLAC = new Set(["ve", "ile", "veya", "ya", "da", "de", "için", "gibi", "bu", "şu", "bir", "her", "olan", "vs", "vb", "göre", "adına", "öncesi", "sonrası"]);
@@ -96,7 +96,7 @@ function nesneFiil(w: string[], f: number, soru: boolean): string | null {
     const araYon = yon && w.indexOf(yon) > n ? [yon] : [];
     let m = n - 1;
     // "salon ve süit teklifi al": bağlaçlı iki öğe sığarsa ikisi
-    if (m >= 1 && kucuk(w[m - 1]) === "ve" && m - 2 >= 0 && !ayrilma(w[m - 2])) adaylar.push([w[m - 2], "ve", w[m], nesne, ...araYon, ...fiil]);
+    if (m >= 1 && kucuk(w[m - 1]) === "ve" && m - 2 >= 0 && !ayrilma(w[m - 2]) && !belirtme(w[m - 2]) && !tamlayan(w[m - 2]) && /^\p{L}/u.test(w[m - 2])) adaylar.push([w[m - 2], "ve", w[m], nesne, ...araYon, ...fiil]);
     if (m >= 0 && BAGLAC.has(kucuk(w[m]))) {
       // "hava durumu ve yol durumunu" → sol öğe iki sözcükse o
       const sol = w.slice(Math.max(0, m - 2), m).filter((v) => !ayrilma(v) && !/,$/.test(v));
@@ -104,7 +104,7 @@ function nesneFiil(w: string[], f: number, soru: boolean): string | null {
       m -= 2;
     }
     if (m >= 0 && tamlayan(w[m])) m--; // "teminat mektubunun iadesini" → "teminat iadesini"
-    const modOlur = (v: string) => !ayrilma(v) && !sayiyla(v) && (!ASKIDA.has(kucuk(v)) || NITEL.has(kucuk(v))) && !tamlayan(v) && !/,$/.test(v);
+    const modOlur = (v: string) => /^[\p{L}\d]/u.test(v) && !ayrilma(v) && !sayiyla(v) && (!ASKIDA.has(kucuk(v)) || NITEL.has(kucuk(v))) && !tamlayan(v) && !/,$/.test(v);
     if (m >= 0 && modOlur(w[m])) {
       const mod = w[m];
       if (m - 1 >= 0 && modOlur(w[m - 1]) && !BAGLAC.has(kucuk(w[m - 1])) && !/m[ae]$/i.test(w[m - 1]) && !belirtme(mod)) adaylar.push([w[m - 1], mod, nesne, ...araYon, ...fiil]); // "Geçici teminat mektubunu al"

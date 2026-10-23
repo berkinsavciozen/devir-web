@@ -110,7 +110,7 @@ export function Akislar({ ben }: { ben: Ben }) {
           return (
             <li key={k.kod} style={{ position: 'absolute', left: 14, top: cy - 34, width: 362, height: RH - 4 }}>
               <button className="akis-satir" aria-label={etiket} onClick={() => git(`/akis/${encodeURIComponent(k.kod)}`)}>
-                <span className="akis-satir-ad" style={{ top: metinUst(28, 15, 18) }}>{akisAdi(k)}</span>
+                <span className="akis-satir-ad" title={k.baslik} style={{ top: metinUst(28, 15, 18) }}>{akisAdi(k)}</span>
                 {t?.kalemler?.length ? <span className="akis-satir-kalem" style={{ top: metinUst(28, 12, 16) }}>{t.kalemler.length} kalem</span> : null}
               </button>
               <KararSeridi oz={k.karar_ozeti} kisa className="akis-satir-serit" style={{ left: 94, top: 52, width: 'min(260px, calc(100vw - 122px))' }} />

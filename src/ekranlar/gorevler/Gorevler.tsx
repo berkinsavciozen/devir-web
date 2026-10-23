@@ -92,7 +92,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     return {
       tur: 'satir', key: a.akis + ':' + a.no,
       ikon: `<circle cx="28" cy="29" r="24" fill="url(#bloom)" opacity=".18"/>${kucukGalaksi(detay[a.akis], kisi, 28, 29, 19, 2, NOW)}${gezegen(a, 43, 44, 6)}`,
-      ust: adimAdi(a),
+      ust: adimAdi(a), baslik: a.ad,
       alt: [akisAdi(a), kim, isaret, t].filter(Boolean).join(' · '),
       etiket: `${a.ad}. ${akisAdi(a)}. ${kim ? `Sahibi ${kim}. ` : ''}${a.durum === 'engelli' ? 'Engelli.' : a.durum === 'suruyor' ? 'Sürüyor.' : a.durum === 'hazir' ? 'Sırası geldi.' : BITTI(a.durum) ? 'Bitti.' : 'Sırada.'}${isaret ? ` ${isaret.replace(/^[←→] /, '')}.` : ''}`,
       sag: kim ? <svg aria-hidden className="satir-gemi" width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gemi(a.sahip, a.sahip_tip, 0, 0, .55, false) }} /> : undefined,

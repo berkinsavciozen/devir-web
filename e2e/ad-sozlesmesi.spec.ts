@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test';
 
 // P1-F: akış ve adım adları ekranda kesilmez. Sahte veriye canlıdaki uzun adlar konur, tasarım kısa adları kaldırılır;
-// sunucu kısa adı kendisi üretir. 360 px'te başlıklar, satır adları ve şerit adları taşmaz, "…" ile bitmez.
+// sunucu kısa adı kendisi üretir. 360 px'te başlıklar, satır adları ve şerit adları taşmaz, "…" ile bitmez;
+// satır adları aynı boyda kalır (sığmayan iki satıra iner), tam ad üzerine gelince (title) görünür.
 
 const UZUN: Record<string, string> = {
   1: 'Komisyon koşullarını teyit et ve çiftçi teklif paketini hazırla',
@@ -13,7 +14,7 @@ const UZUN: Record<string, string> = {
 async function kesikler(page: import('@playwright/test').Page) {
   return page.evaluate(() => [...document.querySelectorAll('h1, h2, .satir-metin b, .sahne-metin')]
     .filter((e) => (e as HTMLElement).offsetParent !== null)
-    .filter((e) => (e.textContent || '').trim().endsWith('…') || (getComputedStyle(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1))
+    .filter((e) => (e.textContent || '').trim().endsWith('…') || (getComputedStyle(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1) || (e.matches('.satir-metin b') && e.scrollHeight > e.clientHeight + 1))
     .map((e) => (e.textContent || '').trim()));
 }
 
@@ -33,6 +34,9 @@ test('360 px: uzun akış ve adım adları kesilmez; satırda kısa ad, adım de
   await expect(page.getByRole('main', { name: 'Görevler' })).toBeVisible();
   await expect(page.getByText('Komisyon koşullarını teyit et', { exact: true }).first()).toBeVisible();
   expect(await kesikler(page)).toEqual([]);
+  const boylar = await page.evaluate(() => [...new Set([...document.querySelectorAll('.satir-metin b')].map((e) => getComputedStyle(e).fontSize))]);
+  expect(boylar).toEqual(['14.5px']);
+  await expect(page.locator('[title="Komisyon koşullarını teyit et ve çiftçi teklif paketini hazırla"]').first()).toBeAttached();
 
   await expect(page.getByText('Hasat çiftçi kazanımı').first()).toBeVisible();
 

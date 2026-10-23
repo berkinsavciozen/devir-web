@@ -6,7 +6,7 @@ import { BaglantiGonder } from '../akis/BaglantiGonder';
 import { Metin } from '../../bilesen/Sahne';
 import { planet, ship } from '../../cizim/ortak.js';
 import { gunAy } from '../../cizim/yol.js';
-import { akisAdi, doluSatir } from '../../metin/turkce';
+import { adimAdi as adimEkranAdi, akisAdi, doluSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { useOlaylar } from '../../bilesen/Zil';
 import { saat } from '../../cizim/yol.js';
@@ -72,9 +72,9 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
           const alt = [ad(a.kod), kim, a.tuttugu ? `${a.tuttugu} adımı tutuyor` : null, son].filter(Boolean).join(' · ');
           const ikon = planet(0, 0, 9, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: a.karar });
           return (
-            <button key={a.kod + a.no} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)}>
+            <button key={a.kod + a.no} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} title={a.ad} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)}>
               <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: ikon }} />
-              <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{a.ad}</b><small>{alt}</small></span>
+              <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{adimEkranAdi(a)}</b><small>{alt}</small></span>
             </button>
           );
         }) : durum === 'kismi' || durum === 'hata' || durum === 'yukleniyor'
