@@ -77,7 +77,7 @@ async function mcp(name: string, args: any) {
   const d = (await api("GET", `/api/v1/akislar/detay?kodlar=${kod},${kod2},YOKK`)).j;
   ok(Object.keys(d.akislar).sort().join() === [kod, kod2].sort().join() && d.akislar[kod].adimlar.length === 3, "toplu detay: var olanlar döner, olmayan atlanır");
   let du = (await api("GET", "/api/v1/durum", undefined, "")).j;
-  ok(du.surum === "0.25.0", "sürüm 0.25.0");
+  ok(du.surum === "0.26.0", "sürüm 0.26.0");
   // N-8: kodun beklediği şema son migration; canlı şema okunamazsa uyumsuz görünür
   const sonMig = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort().at(-1)!.replace(/\.sql$/, "");
   ok(SEMA === sonMig, `SEMA son migration'la aynı (${sonMig})`);

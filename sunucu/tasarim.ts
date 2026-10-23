@@ -25,7 +25,7 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 5. 4–15 adım. Daha büyük iş, birden çok akıştır.
 6. Akışın şeklini değiştiren boyutlar: ${Object.entries(BOYUTLAR).map(([k, v]) => `${k} (${v})`).join("; ")}.
 7. Soru adayı yalnızca cevabı akışı değiştiren durumlar için yazılır. Her aday için: seçenekler, varsayılan, varsayılanın sormadan doğru olma güveni (0–1), cümleden ya da bağlamdan çıkarılabilir mi, etki (0: hiçbir şey değişmez, 1: bir tarih ya da sahip değişir, 2: 1–2 adım eklenir ya da çıkar, 3: akışın yapısı değişir). 3–8 aday yeterli; etkisi 0 olanı yazma.
-8. Seçim sorusunun cevabı adım ekliyor ya da çıkarıyorsa o adımları taslağa koy ve kosul ile bağla (ör. kosul {soru: "regule", deger: "evet"}). Varsayılan dışındaki dallar da taslakta olmalı.
+8. Seçim sorusunun cevabı adım ekliyor ya da çıkarıyorsa o adımları taslağa koy ve kosul ile bağla (ör. kosul {soru: "regule", deger: "evet"}). Varsayılan dışındaki dallar da taslakta olmalı. Birden çok seçeneğin birlikte seçilebildiği sorularda (ör. iki sertifika da gerekebilir) "her ikisi" diye ayrı bir seçenek açma; her seçeneğin adımını kendi değeriyle bağla, Devir birden çok cevabı ("organik, gida-kalite") ya da "her ikisi"ni hepsine uygular. Her durumda gereken işi (ticari fatura, temel belge, ödeme) bir cevaba koşullama; cevap yalnız o işin biçimini değiştiriyorsa (ödeme yöntemi, taşıma şekli) adımı koşulsuz kur ve seçenekleri adın içinde say ("Ödemeyi al: peşin ya da akreditif"), Devir cevabı adıma işler.
 9. Soru kodları kısa, kalıcı ve iş türleri arasında tutarlı olsun (regule, mobil, butce_onayi, hedef_tarih…). Mevcut iş türünün soru kodlarını aynen kullan.
 10. Adım türü kodları (tur_kod) kısa, kalıcı kebab-case olsun (guvenlik-onayi). Benzer geçmiş işlerde ya da standart süreçte aynı işi gören bir adım varsa onun tur_kod'unu aynen kullan. Standart süreç verildiyse onu temel al: adımlarını ve kodlarını koru, yalnızca bu işin cevaplarına ve koşullu dallarına göre uyarla.
 11. Tarihler. hedef_tarih, işin TAMAMEN bitmesi gereken gündür. Bir adım belirli bir günde gerçekleşiyorsa (etkinlik günü, yayın, lansman, teslim, toplantı, taşınma günü) o adıma tarih_capasi ver: gün cümleden ya da bağlamdan biliniyorsa {tarih: "YYYY-AA-GG"}, bilinmiyorsa {soru: "<tarih sorusunun kodu>"} ve tip "tarih" olan o soruyu aday olarak yaz (ör. etkinlik_tarihi, yayin_tarihi; etki 2). Çapalı adımdan sonra yapılacak adımlar (rapor, geri bildirim, kapanış) ona bağımlı olsun; Devir onları sonraya planlar. Çapa varsa ayrıca hedef_tarih sorma. hedef_tarih alanını yalnızca cümle ya da bağlam belirli bir günü gösteriyorsa doldur ("Cuma", "ay sonu", "Aralık sonuna kadar", "15 Mayıs"); "Mayıs'ta", "Q1'de", "yakında" gibi belirsiz ifadelerde doldurma, soru adayı yaz. Çapa yoksa, cümlede belirli bir gün yoksa ve iş bir bitiş tarihine bağlıysa kod "hedef_tarih", tip "tarih" olan bir soru adayı mutlaka yaz (etki 1, güven düşük); Devir bunu soru sınırının dışında sorar. Çapalı adımdan ÖNCE yapılması gereken her adım (hazırlık, başvuru, onay, ödeme) çapalı adımın bagimli listesinde olsun; böylece hiçbir hazırlık olaydan sonraya planlanmaz.
@@ -36,7 +36,7 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 16. Kararlar. "Geçerli kararlar" verildiyse bunlar kısıttır; taslak onlarla çelişmemeli. Bir konuda karar zaten varsa o konuyu soru yapma ve yeniden karar adımı kurma; kararı varsayım olarak yaz, gerekiyorsa kısa bir "teyit et" adımı kur. "Ertelenmiş açık işler" verildiyse ve bu işle ilgiliyse onları taslağa adım olarak al ve köşeli parantezdeki tur_kod'u AYNEN kullan; aynı işi ikinci bir adım olarak kurma.
 17. Geçmiş cevaplar yalnızca ipucudur: durum soruları ve bölge, kapsam gibi bu işe özgü konular değişmiş olabilir; bunları yeniden soru adayı yap. Yanlış çıktığı bildirilen varsayımları mutlaka soru adayı yap.
 18. Roller. Cümlede ya da bağlamda adı geçmeyen ekip rollerini (finans sorumlusu, operasyon sorumlusu, saha ekibi) uydurma; kullanıcı tek başına çalışıyor olabilir. Kullanıcının bu işte bir ekibi olup olmadığı belli değilse kod "ekip", boyut "karar", tip "secim", seçenekler yalniz (yalnızca ben ve agent'lar) / ekip (ekibim var) olan bir soru adayı yaz; Devir bunu soru sınırının dışında sorar. kisi alanını yalnızca adı geçen kişiler için doldur.
-19. Sahiplik. Birinden bir şey toplama, isteme ya da teklif alma adımının sahibi toplayan kişidir; dış taraf yalnızca kendi yaptığı işin (onay vermek, imzalamak, teslim etmek) sahibidir. Grup (kurul, aileler, firmalar, gönüllüler, yatırımcılar) yerine kişi ya da temsilci yaz; grup gerçekten tek tek izlenecekse bunu varsayıma yaz.
+19. Sahiplik. Birinden bir şey toplama, isteme ya da teklif alma adımının sahibi toplayan kişidir; dış taraf yalnızca kendi yaptığı işin (onay vermek, imzalamak, teslim etmek) sahibidir. Grup (kurul, aileler, firmalar, gönüllüler, yatırımcılar) yerine kişi ya da temsilci yaz; grup gerçekten tek tek izlenecekse bunu varsayıma yaz. Her işi gerçekten yapan role ver: hedef ülkedeki işler (ithalat gümrüğü, o ülkedeki kayıt ve dağıtım) alıcının ya da onun temsilcisinindir, ihracatçının gümrük müşaviri yalnız çıkış işlemlerini yapar; etiket, ürün kalitesi, analiz ve ambalaj uygunluğu üreticinin ya da ihracatçının işidir, muhasebeci yalnız fatura ve kayıtların sahibidir.
 20. Bağımlılık. Bir adımın girdisi başka bir adımın sonucuysa ona bağımlıdır (ör. değerlendirme tetkik sonucunu bekler, bildirim yayından sonra gelir). İzin, onay ve yasal kapılar (arabuluculuk, izin, sözleşme) ilgili işten önce gelir.
 21. Soru seçimi. Her soru adayı için genel alanını doldur: genel=true her işte sorulabilecek soru (mobil mi, regüle mi, bütçe onayı var mı, mevcut araç var mı); genel=false bu işe özgü, akışın yapısını değiştiren soru (kaç kişi onaylıyor, onay eşiği ya da tutar, kaç revizyon turu, girdi kimden geliyor, kesin teslim saati). Önce genel=false olanları yaz; gizli kalmış belirleyici bilgiyi bulmaya çalış.
 22. Büyük işler. Bir adım 30 günü aşıyorsa ya da aynı adımlar her bölge, müşteri ya da kalem için tekrar edecekse varsayımlara "Bu iş birden çok akışa bölünmeli" diye yaz ve ilk akışı (ör. ilk bölge) kur.
@@ -47,7 +47,9 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 27. Geçmiş ve bilgi. "Benzer geçmiş işler" bu ekibin gerçekte yaşadığı işlerdir: sonradan eklenen adımlar, yanlış çıkan varsayımlar ve uzun beklemeler bu işte de olabilir; bu işe uyuyorsa baştan kur. "Kanıtlı dersler" geçmişten çıkmış kurallardır: kesin olanları bu işe uyuyorsa mutlaka uygula (adım ekle, soru sor, süreyi uzat); aday olanları yalnızca bu işe açıkça uyuyorsa uygula. "Alan bilgi kartları" kaynaklı kurallardır (yasal süre, kurum, belge); bu işe uyuyorsa adımları, süreleri ve kapıları onlara göre kur. Geçmişte yaşanmamış bir şeyi yaşanmış gibi yazma.
 28. dayanak. Bir adımı, süreyi ya da soruyu bir derse, karta ya da geçmiş işe dayanarak kurduysan o adımın ya da sorunun dayanak alanına kaynağın kodunu aynen yaz (ör. ["D12"], ["K:sgk-ise-giris"], ["G:Q3XB"]). Dayanağı olmayan adımda alanı boş bırak; uydurma kod yazma.
 29. Adlar. Her adımın ad'ı tam ve kendi başına anlaşılır cümledir: nesne + fiil, kimin neyi yaptığı belli ("Geçici teminat mektubunu bankadan al"); "ve" ile iki iş birleştirme, iki işse iki adım kur. Her adıma ayrıca kisa_ad yaz: en çok 40 karakter, akışta tekil, işi ayırt eden kelimeyi koruyan nesne + fiil ("Teminat mektubunu al", "Teminat iadesini al"); üç nokta, kısaltma ya da bağlaçla bitiş yok. Akışa da kisa_ad yaz: varlık + iş, 2–4 kelime ("Park aydınlatma ihalesi", "Hasat çiftçi kazanımı"). Ayrıntı ad'da değil aciklama, kriter ve beklenen_cikti'da durur; beklenen_cikti'yı boş bırakma (ör. "imzalı sözleşme PDF").
-30. Türkçe yaz.`;
+30. Karar ve çıktı. Her adım için karar_gerekli ve cikti_bekleniyor alanlarını doldur. karar_gerekli=true: adım bir seçim, onay, ödeme ya da imzayla biter ve son sözü insan verir; o zaman karar_kriteri de yaz. Hazırlık, toplama ve gönderme adımları karar değildir. cikti_bekleniyor=true: adım bir belge, dosya, metin, kayıt ya da teslim edilebilir bir şey üretir (beklenen_cikti'ya ne olduğunu yaz); yalnızca bir şeyin olmasını bekleyen ya da karar veren adımda false.
+31. Dil. Yalnız Türkçe yaz; İngilizce ya da yarım kalmış kelime kullanma (rapor, şahit numune, vadeli ödeme gibi yerleşik terimleri kullan). Bir adın içinde aynı kelimeyi ya da aynı liste ögesini tekrarlama. Varsayım cümleleri tam ve tek anlamlı olsun.
+32. Türkçe yaz.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -84,11 +86,13 @@ export const TASLAK_ARACI: LlmTool = {
       adimlar: {
         type: "array",
         items: {
-          type: "object", required: ["id", "tur_kod", "ad", "sahip_rol", "kriter", "sure_tahmin_gun", "bagimli", "boyut"],
+          type: "object", required: ["id", "tur_kod", "ad", "sahip_rol", "kriter", "sure_tahmin_gun", "bagimli", "boyut", "karar_gerekli", "cikti_bekleniyor"],
           properties: {
             id: { type: "string" }, tur_kod: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "en çok 40 karakter, akışta tekil; nesne + fiil." }, aciklama: { type: "string" },
             sahip_rol: { type: "string", description: "roller içindeki kod" }, arac: { type: ["string", "null"] },
             kriter: { type: "string" }, beklenen_cikti: { type: ["string", "null"] }, karar_kriteri: { type: ["string", "null"] },
+            karar_gerekli: { type: "boolean", description: "Adım bir seçim, onay, ödeme ya da imzayla mı bitiyor (son söz insanda)?" },
+            cikti_bekleniyor: { type: "boolean", description: "Adım belge, dosya, metin ya da kayıt gibi bir çıktı üretiyor mu?" },
             sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "string" } },
             boyut: { type: "string", enum: Object.keys(BOYUTLAR).concat(["genel"]) },
             kosul: { type: ["object", "null"], properties: { soru: { type: "string" }, deger: { type: "string" } } },
@@ -144,10 +148,10 @@ export const DENETCI_SISTEM = `Sen Devir'in akış denetçisisin. Sana bir akı�
 1. Girdiler: dışarıdan toplanması gereken belge, veri, onay ya da malzeme ayrı bir toplama adımı olarak var mı? Bir adım bir girdiyi kullanıyor ama o girdiyi toplayan adım yoksa adim_ekle.
 2. Kapılar: izin, onay, imza, ödeme, yasal süre (ihbar, itiraz, bekleme) ilgili işten önce mi? Eksik kapıyı adim_ekle, yanlış sırayı bagimlilik ile düzelt.
 3. Bağımlılık: bir adımın girdisi başka bir adımın sonucuysa ona bağımlı olmalı; bildirim, bildirdiği şeyden sonra gelir; sabit tarihli olaydan önceki hazırlık o olayın bağımlılığıdır. "yalnızca X=a ise" ve "yalnızca X=b ise" adımları birbirini bekleyemez.
-4. Sahiplik: bir şeyi toplayan, isteyen kişi o adımın sahibidir; karar, onay, ödeme insandadır. Sahiplik hatası yama değil, not olarak yaz.
+4. Sahiplik: bir şeyi toplayan, isteyen kişi o adımın sahibidir; karar, onay, ödeme insandadır. Hedef ülkedeki işler (ithalat gümrüğü, o ülkedeki kayıt) alıcının ya da temsilcisinin; etiket, kalite ve ürün uygunluğu üreticinin ya da ihracatçının işidir, muhasebecinin değil. Sahiplik hatası yama değil, not olarak yaz.
 5. Dersler ve kartlar: kesin dersler ve bu işe uyan kartlar taslakta uygulanmış mı? Uygulanmamışsa adim_ekle ya da soru_ekle ile uygula ve dayanak alanına kodunu yaz.
 6. Sorular: akışı değiştirecek ama sorulmayan kritik bir bilinmeyen varsa (en fazla 2) soru_ekle.
-7. Dallar: her seçim sorusunun cevabı en az bir adımı değiştirmeli. Bir cevapta gereksiz kalacak adımlara kosul_ekle ile koşul ekle (ör. şirket türü şahıs ise ana sözleşme, noter ve sermaye adımları yalnızca ltd|as ise).
+7. Dallar: her seçim sorusunun cevabı en az bir adımı değiştirmeli. Bir cevapta gereksiz kalacak adımlara kosul_ekle ile koşul ekle (ör. şirket türü şahıs ise ana sözleşme, noter ve sermaye adımları yalnızca ltd|as ise). Her durumda gereken işe (ticari fatura, temel belge) koşul ekleme.
 Eklediğin adımın adı insanın okuyacağı kısa bir cümle olsun, kod değil. Bir soruyla cevaplanacak bir seçimi adım yapma; soru zaten varsa ekleme. Bekleme süresi ya da yasal süre yalnızca kartta ya da derste açıkça yazıyorsa adım olur; "X gün içinde yapılır" bir bekleme değildir.
 Var olan adımları ve bağımlılıkları kaldırma, döngü kurma, tartışmalı yama önerme. Emin değilsen önerme. Türkçe ve kısa yaz.`;
 export const DENETCI_ARACI: LlmTool = {
@@ -263,6 +267,9 @@ export function kuralDenetimi(t: any) {
   const kullanilan = new Set(adimlar.flatMap((s) => [s.kosul?.soru, s.tarih_capasi?.soru]).filter(Boolean));
   for (const q of t.sorular || []) {
     if (q.tip !== "secim" || ["hedef_tarih", "ekip", "iliski"].includes(q.kod) || q.ne_zaman === "sonra" || kullanilan.has(q.kod) || (q.dayanak || []).length) continue; // dersten gelen soru öğrenmek için sorulur
+    // M6: koşul yok ama bir adım seçenekleri sayıyor ("peşin ya da akreditif"): cevap o adımın içeriğini belirler, soru düşmez
+    const ilgili = soruAdimlari(t, q);
+    if (ilgili.length) { q._ilgili = ilgili; continue; }
     q._etkisiz = true;
     const o = (q.secenekler || []).find((x: any) => nv(x.deger) === nv(q.varsayilan));
     notlar.push(`[${q.kod}] sorusu hiçbir adımı değiştirmiyor; sorulmadı, "${o?.etiket || q.varsayilan}" varsayıldı. Yanlışsa ilgili adımları kurmadan önce düzelt.`);
@@ -352,18 +359,18 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
   for (const q of varsayim) tum.set(q.kod, { q, cevap: String(q.cevap ?? q.varsayilan ?? ""), kaynak: q.kaynak });
   for (const q of sonraSorular) {
     const c = cevaplar && q.kod in cevaplar ? String(cevaplar[q.kod] ?? "").trim() : "";
-    tum.set(q.kod, c && !BILMIYORUM.test(c) ? { q, cevap: esle(q, c), kaynak: "kullanici" } : { q, cevap: "", kaynak: "sonra" }); // kullanıcı zaten biliyorsa hemen uygulanır
+    tum.set(q.kod, c && !BILMIYORUM.test(c) ? { q, cevap: cevapCoz(q, c), kaynak: "kullanici" } : { q, cevap: "", kaynak: "sonra" }); // kullanıcı zaten biliyorsa hemen uygulanır
   }
   const acik = (kod: string) => { const k = tum.get(kod)?.kaynak; return k === "bilinmiyor" || k === "sonra"; };
   for (const q of secilen) {
     const c = cevaplar && q.kod in cevaplar ? String(cevaplar[q.kod] ?? "") : null;
     if (c == null || c === "") { tum.set(q.kod, { q, cevap: String(q.varsayilan ?? ""), kaynak: "cevapsiz" }); continue; }
     if (BILMIYORUM.test(c.trim())) { tum.set(q.kod, { q, cevap: c, kaynak: "bilinmiyor" }); continue; }
-    tum.set(q.kod, { q, cevap: esle(q, c), kaynak: "kullanici" });
+    tum.set(q.kod, { q, cevap: cevapCoz(q, c), kaynak: "kullanici" });
   }
   const adimlar: any[] = Array.isArray(t.adimlar) ? t.adimlar : [];
   const roller = new Map<string, any>((t.roller || []).map((r: any) => [r.kod, r]));
-  const eslesir = (kosul: any, cevap: string) => String(kosul.deger).split("|").some((d) => nv(d) === nv(cevap));
+  const eslesir = (kosul: any, cevap: string) => kosulEslesir(tum.get(kosul.soru)?.q || sorular(t).get(kosul.soru), kosul.deger, cevap);
   const dahil = (s: any, over?: { kod: string; cevap: string }) => {
     if (s.tur_kod && haric.has(s.tur_kod)) return false; // kararı zaten verilmiş adım
     if (!s.kosul || !s.kosul.soru) return true;
@@ -388,7 +395,9 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
       eklenen = [...a].filter((i) => !b.has(i)); cikarilan = [...b].filter((i) => !a.has(i));
       puan = eklenen.length + cikarilan.length;
     }
-    etkiler.push({ kod, boyut: x.q.boyut, soru: x.q.soru, cevap: x.cevap, kaynak: x.kaynak, eklenen, cikarilan, puan });
+    const degisen = x.kaynak === "kullanici" ? (x.q._ilgili || []) : [];
+    if (degisen.length) puan += 0.5;
+    etkiler.push({ kod, boyut: x.q.boyut, soru: x.q.soru, cevap: x.cevap, kaynak: x.kaynak, eklenen, cikarilan, degisen, puan });
   }
   void hedefDegisti;
   const secili = kume();
@@ -428,14 +437,35 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
     return TARIH.test(String(c.tarih || "")) ? String(c.tarih) : null;
   };
   const yalniz = /^(yalniz|yalnız|tek|ben|sadece)/i.test(nv(tum.get("ekip")?.cevap || ""));
+  // M6: seçenek sayan adımlara bilinen cevap işlenir (kullanıcının cevabı ya da sorulmadan kabul edilen varsayım)
+  const metinCevap = new Map<string, { q: any; d: string[] }[]>();
+  for (const [, x] of tum) {
+    if (!x.q?._ilgili?.length || x.kaynak === "bilinmiyor" || x.kaynak === "sonra" || !x.cevap) continue;
+    const d = cevapDegerleri(x.q, x.cevap).filter((v) => (x.q.secenekler || []).some((o: any) => nv(o.deger) === nv(v)));
+    if (d.length) for (const id of x.q._ilgili) metinCevap.set(id, [...(metinCevap.get(id) || []), { q: x.q, d }]);
+  }
+  const isle = (s: any) => {
+    const m = metinCevap.get(String(s.id));
+    if (!m) return { ad: s.ad, aciklama: s.aciklama || null };
+    let ad = String(s.ad), ac = s.aciklama ? String(s.aciklama) : "";
+    for (const { q, d } of m) {
+      const re = secenekIfadesi(q), yazi = seceneklerYazi(q, d);
+      if (re && re.test(ad)) ad = ad.replace(re, yazi);
+      else if (re && re.test(ac)) ac = ac.replace(re, yazi);
+      else ac = `${ac ? ac + " " : ""}${q.soru.replace(/\?\s*$/, "")}: ${yazi}.`;
+    }
+    return { ad, aciklama: ac || null };
+  };
   const out = son.map((s) => {
     let r = s.sahip_rol === "__sahip" ? { ad: sahip, tip: "insan" } : roller.get(s.sahip_rol) || { ad: s.sahip_rol, tip: "insan" };
     if (yalniz && r.tip === "insan" && !r.kisi && !ONAYCI.test(r.ad || "")) r = { ad: sahip, tip: "insan" }; // ekip yok: adı geçmeyen iş rolleri kullanıcıya; onaylayanlar üçüncü taraf olarak kalır
     const deps = [...new Set((s.bagimli || []).flatMap((d: string) => (son.some((x) => x.id === d) ? [d] : coz(d, new Set()))))].map((d) => noOf.get(d)).filter((n) => n && n !== noOf.get(s.id));
+    const yazi = isle(s);
     return {
-      ad: s.ad, kisa_ad: s.kisa_ad || null, aciklama: s.aciklama || null, sahip: r.kisi ? `${r.kisi}${r.tip === "dis" && r.ad && !String(r.kisi).includes("(") ? ` (${r.ad})` : ""}` : r.ad,
+      ad: yazi.ad, kisa_ad: s.kisa_ad || null, aciklama: yazi.aciklama, sahip: sahipAdi(r),
       sahip_tip: r.tip === "agent" ? "agent" : r.tip === "dis" ? "dis" : "insan", arac: s.arac || r.arac || null,
       kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
+      karar_gerekli: typeof s.karar_gerekli === "boolean" ? s.karar_gerekli : null, cikti_bekleniyor: typeof s.cikti_bekleniyor === "boolean" ? s.cikti_bekleniyor : null,
       sure_tahmin_gun: s.sure_tahmin_gun, bagimli: deps, _tur: s.tur_kod || slug(s.ad), _boyut: s.boyut, _capa: capaOf(s), _netlestir: String(s.id).startsWith("netlestir-"),
       _kosul: s.kosul?.soru && acik(s.kosul.soru) ? { soru: s.kosul.soru, deger: String(s.kosul.deger) } : null,
       _capaSoru: s.tarih_capasi?.soru && acik(s.tarih_capasi.soru) ? s.tarih_capasi.soru : null,
@@ -469,3 +499,95 @@ export function esle(q: any, c: string) {
   return c;
 }
 function sorular(t: any) { return new Map<string, any>((t.sorular || []).map((q: any) => [q.kod, q])); }
+// ---------- çoklu seçim (C2) ----------
+const OLUMSUZ = /^(hayir|hayır|yok|no|none|gerekmiyor|gerekli degil|gerekli değil|hicbiri|hiçbiri|istemiyorum|olmayacak)$/;
+const HEPSI = /^(her ?iki(si)?( de)?|iki(si)? de|ikisi|hepsi( de| birden)?|tümü|tumu|tamamı|tamami|her biri|hepsini|both|all)$/;
+const hepsiMi = (x: unknown) => HEPSI.test(nv(x).replace(/[-_]+/g, " ").replace(/\s+/g, " "));
+const secimMi = (q: any) => q?.tip === "secim" && Array.isArray(q.secenekler) && q.secenekler.length > 0;
+/** Cevabın karşıladığı seçenek değerleri: "her ikisi"/"hepsi" bütün olumlu seçenekleri, "a, b" ya da "a|b" ikisini birden karşılar. */
+export function cevapDegerleri(q: any, cevap: unknown): string[] {
+  const c = String(cevap ?? "").trim();
+  if (!secimMi(q) || !c) return c ? [c] : [];
+  const ops: any[] = q.secenekler;
+  const var0 = (v: string) => ops.find((o) => nv(o.deger) === nv(v));
+  const olumlu = ops.filter((o) => !BILMIYORUM.test(nv(o.deger)) && !OLUMSUZ.test(nv(o.deger)) && !hepsiMi(o.deger) && !hepsiMi(o.etiket));
+  const hepsi = (o?: any) => [...new Set([...(o ? [String(o.deger)] : []), ...olumlu.map((x) => String(x.deger))])];
+  const tam = ops.find((x) => nv(x.deger) === nv(c) || nv(x.etiket) === nv(c));
+  const yay = (o: any) => (hepsiMi(o.deger) || hepsiMi(o.etiket) ? hepsi(o) : [String(o.deger)]);
+  if (tam) return yay(tam);
+  if (hepsiMi(c)) return hepsi(ops.find((x) => hepsiMi(x.deger) || hepsiMi(x.etiket)));
+  const parca = c.split(/\s*(?:\||,|;|\+|\/|&|\sve\s|\sile\s)\s*/i).map((x) => x.trim()).filter(Boolean);
+  if (parca.length >= 2) {
+    const d = [...new Set(parca.map((x) => var0(esle(q, x))).filter(Boolean).flatMap(yay))];
+    if (d.length) return d;
+  }
+  const o = var0(esle(q, c));
+  return o ? yay(o) : [c];
+}
+/** Serbest cevabı kayda geçecek biçime getirir: tek seçenek değeri ya da birden çoksa "a|b". */
+export function cevapCoz(q: any, cevap: unknown) {
+  const d = cevapDegerleri(q, cevap);
+  return d.length > 1 ? d.join("|") : d[0] ?? String(cevap ?? "");
+}
+/** Koşul (deger "a|b") bu cevapla sağlanıyor mu? Çoklu cevapta herhangi bir değer yeter. */
+export function kosulEslesir(q: any, deger: unknown, cevap: unknown) {
+  const D = new Set(String(deger ?? "").split("|").map(nv));
+  return [String(cevap ?? ""), ...cevapDegerleri(q, cevap)].some((c) => D.has(nv(c)));
+}
+const seceneklerYazi = (q: any, d: string[]) => d.map((v) => { const o = (q.secenekler || []).find((x: any) => nv(x.deger) === nv(v)); return o?.etiket || v; }).join(" ve ");
+// adın içinde seçenekleri sayan ifade ("peşin ya da akreditif"): cevap belli olunca seçilene indirgenir (M6)
+const kacis = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+export function secenekIfadesi(q: any) {
+  const adlar = ([...new Set((q.secenekler || []).flatMap((o: any) => [o.etiket, o.deger]).filter((x: unknown) => x && !BILMIYORUM.test(nv(x)) && String(x).length >= 3).map(String))] as string[]).sort((a, b) => b.length - a.length);
+  if (adlar.length < 2) return null;
+  const A = `(?:${adlar.map(kacis).join("|")})`;
+  return new RegExp(`${A}(?:\\s*(?:,|/|\\bya da\\b|\\bveya\\b|\\byahut\\b|\\bya\\b)\\s*${A})+`, "iu");
+}
+/** Soru hiçbir adımı koşullamıyor ama bir adımın metni seçeneklerini sayıyorsa o adımlar (M6). */
+export function soruAdimlari(t: any, q: any): string[] {
+  if (!secimMi(q)) return [];
+  const re = secenekIfadesi(q);
+  return re ? (t.adimlar || []).filter((s: any) => re.test(`${s.ad || ""} · ${s.aciklama || ""} · ${s.kriter || ""}`)).map((s: any) => String(s.id)) : [];
+}
+
+// ---------- dil ve sahiplik (m2, m3) ----------
+// "(belge, girdi, belge, kanal)" → "(belge, girdi, kanal)"; art arda aynı kelime tek
+export function dilDuzelt(x: unknown) {
+  let s = String(x ?? "");
+  s = s.replace(/\(([^()]*,[^()]*)\)/g, (_m, ic: string) => `(${[...new Map(ic.split(",").map((p) => p.trim()).filter(Boolean).map((p) => [nv(p), p])).values()].join(", ")})`);
+  s = s.replace(/(^|\s)([\p{L}\d'’]+)(\s+\2)+(?=\s|[.,;:!?)]|$)/giu, "$1$2");
+  return s.replace(/\s{2,}/g, " ").trim();
+}
+export function dilDenetimi(t: any) {
+  const notlar: string[] = [];
+  for (const s of t.adimlar || []) for (const k of ["ad", "kisa_ad", "aciklama", "kriter"]) {
+    if (!s[k]) continue;
+    const y = dilDuzelt(s[k]);
+    if (y !== s[k]) { if (k === "ad") notlar.push(`"${s[k]}" adındaki tekrar düzeltildi → "${y}".`); s[k] = y; }
+  }
+  for (const v of t.varsayimlar || []) if (v?.metin) v.metin = dilDuzelt(v.metin);
+  return notlar;
+}
+const MUHASEBE = /(muhasebe|mali müşavir|mali musavir|smmm|finans)/i;
+const URUN_ISI = /(etiket|kalite|analiz|ambalaj|numune|uygunluk|sertifika|laboratuvar|standart)/i;
+const GUMRUK = /(gümrük müşavir|gumruk musavir|gümrükçü)/i;
+const HEDEF_ULKE = /(ithalat|varış|varis|alıcı ülke|hedef ülke|lucid)/i;
+/** Kurallı sahiplik uyarıları (m3): değiştirmez, taslak çıktısında söyler. */
+export function sahiplikUyarilari(t: any) {
+  const rol = new Map<string, any>((t.roller || []).map((r: any) => [r.kod, r]));
+  const notlar: string[] = [];
+  for (const s of t.adimlar || []) {
+    const r = rol.get(s.sahip_rol); if (!r) continue;
+    const rAd = `${r.ad || ""} ${r.kisi || ""}`, metin = `${s.ad} ${s.aciklama || ""}`;
+    if (MUHASEBE.test(rAd) && URUN_ISI.test(metin)) notlar.push(`"${s.ad}" ${sahipAdi(r)} üzerinde; etiket, kalite ve ürün uygunluğu genelde üreticinin ya da ihracatçının işidir. Sahibini kullanıcıya sor.`);
+    else if (GUMRUK.test(rAd) && HEDEF_ULKE.test(metin)) notlar.push(`"${s.ad}" ${sahipAdi(r)} üzerinde; hedef ülkedeki ithalat ve kayıt işleri genelde alıcının ya da onun temsilcisinin işidir. Sahibini kullanıcıya sor.`);
+  }
+  return notlar;
+}
+/** Rol adı ekranda: "Mert (Gümrük müşaviri)"; "Gümrük Müşaviri (Mert)" gibi rol adındaki kişi tekrarlanmaz (m2). */
+export function sahipAdi(r: any) {
+  if (!r?.kisi) return String(r?.ad || "");
+  const rolAd = String(r.ad || "").replace(/\s*\([^)]*\)/g, "").trim();
+  return r.tip === "dis" && rolAd && nv(rolAd) !== nv(r.kisi) && !String(r.kisi).includes("(") ? `${r.kisi} (${rolAd})` : String(r.kisi);
+}
+
