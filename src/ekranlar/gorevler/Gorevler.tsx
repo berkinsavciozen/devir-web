@@ -10,7 +10,7 @@ import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
-import { akisAdi as akisAdiK, doluSatir, paySure, yaziTipleriHazir } from '../../metin/turkce';
+import { adimAdi, akisAdi as akisAdiK, doluSatir, paySure, sarSatir, yaziTipleriHazir } from '../../metin/turkce';
 import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 import { arama, git } from '../../yonlendirme';
 import { durumGor, Liste, type Oge } from '../akis/Bilgi';
@@ -92,7 +92,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     return {
       tur: 'satir', key: a.akis + ':' + a.no,
       ikon: `<circle cx="28" cy="29" r="24" fill="url(#bloom)" opacity=".18"/>${kucukGalaksi(detay[a.akis], kisi, 28, 29, 19, 2, NOW)}${gezegen(a, 43, 44, 6)}`,
-      ust: a.ad,
+      ust: adimAdi(a),
       alt: [akisAdi(a), kim, isaret, t].filter(Boolean).join(' · '),
       etiket: `${a.ad}. ${akisAdi(a)}. ${kim ? `Sahibi ${kim}. ` : ''}${a.durum === 'engelli' ? 'Engelli.' : a.durum === 'suruyor' ? 'Sürüyor.' : a.durum === 'hazir' ? 'Sırası geldi.' : BITTI(a.durum) ? 'Bitti.' : 'Sırada.'}${isaret ? ` ${isaret.replace(/^[←→] /, '')}.` : ''}`,
       sag: kim ? <svg aria-hidden className="satir-gemi" width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gemi(a.sahip, a.sahip_tip, 0, 0, .55, false) }} /> : undefined,
@@ -133,7 +133,11 @@ export function Gorevler({ ben }: { ben: Ben }) {
         ) : <Metin y={150} fs={12.5} lh={16} renk="ink3">Sunucu 0.12.0 yüklenince bütün akışlardaki işler ve süzgeçler burada.</Metin>}
         {L.length > 0 && <>
           <h2 className="bolum-baslik" style={{ top: HY - 26 }}>{kisiBasina ? 'GÖREV HARİTASI · KİŞİLER' : 'GÖREV HARİTASI · AKIŞLAR'}</h2>
-          {H.seritler.map((r) => <Metin key={r.ad} y={r.y + 4} x={48} fs={11.5} lh={14} agirlik={650} renk="ink2" className="tek-satir" style={{ right: 'auto', width: 58, overflow: 'hidden', textOverflow: 'ellipsis', pointerEvents: 'none' }}>{r.tip === 'kisi' ? kisaAd(r.ad) : r.ad}</Metin>)}
+          {H.seritler.map((r) => {
+            // şerit adı kesilmez (P1-F): sütuna sığan en çok üç satır, şeridin ortasında
+            const ad = r.tip === 'kisi' ? kisaAd(r.ad) : r.ad, L = sarSatir(ad, 62, '650 10.5px Inter').slice(0, 3);
+            return <Metin key={r.ad} y={r.y + 4 - (L.length - 1) * 5.75} x={48} fs={L.length > 1 ? 10.5 : 11.5} lh={11.5} agirlik={650} renk="ink2" style={{ right: 'auto', width: 62, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</Metin>;
+          })}
           <Metin y={HY + H.h + 26} x={Math.max(20, H.bugunX - 20)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>bugün</Metin>
           {/* harita listenin görsel özeti; her görev aşağıdaki listede de var, bu yüzden dokunma kısayolu ekran okuyucudan gizli */}
           <div aria-hidden="true" className="harita-katman gorev-harita">

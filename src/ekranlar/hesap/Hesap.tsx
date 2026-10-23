@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, alanSecimi } from '../../api/istemci';
 import { kimlik } from '../../api/kimlik';
@@ -29,7 +29,7 @@ export function SatirKart({ y, h = 58, ikon, ust, alt, sec, sag, onClick, etiket
   return (
     <Etiket type={onClick ? 'button' : undefined} className={`kart satir-kart ${sec ? 'secili' : ''}`} style={{ left: x, top: y, height: h, ...(w == null ? { right: 20 } : { width: w }) }} onClick={onClick} aria-label={etiket} aria-current={sec || undefined}>
       <svg aria-hidden width="52" height={h} viewBox={`0 0 52 ${h}`} style={{ position: 'absolute', left: 0, top: 0, overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ikon }} />
-      <span className="satir-metin"><b>{ust}</b>{alt != null && <small>{alt}</small>}</span>
+      <span className="satir-metin"><b style={typeof ust === 'string' ? ({ '--n': ust.length } as CSSProperties) : undefined}>{ust}</b>{alt != null && <small>{alt}</small>}</span>
       {sag ?? (sec ? <Tik /> : onClick ? <Ok /> : null)}
     </Etiket>
   );

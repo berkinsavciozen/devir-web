@@ -46,7 +46,8 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 26. Sonradan belli olan bilgi. Cevabı ancak iş yürürken belli olacak sorular (ihale, başvuru ya da test sonucu, tetkik sonucu, gelen teklifin tutarı, randevu, duruşma, sınav ya da toplantı tarihi) kullanıcıya şimdi sorulmaz: ne_zaman "sonra" yaz, cevabın belli olduğu adımın id'sini cevaplayan_adim alanına yaz. Sonuca ya da tutara bağlı her dalın adımlarını kosul ile kur (ör. kosul {soru: "ihale_sonucu", deger: "kazanildi"}; diğer dal deger: "kaybedildi"); dal adımları cevaplayan adıma bağımlı olsun. Tarihse o tarihte gerçekleşen adıma tarih_capasi {soru} ver; tarihi uydurma. Devir cevap gelince seçilmeyen dalı atlar, takvimi yeniden kurar. Kullanıcının şimdi bilebileceği soruları (hedef tarih, kim onaylıyor, bütçe) "sonra"ya bırakma; ne_zaman "simdi" olsun.
 27. Geçmiş ve bilgi. "Benzer geçmiş işler" bu ekibin gerçekte yaşadığı işlerdir: sonradan eklenen adımlar, yanlış çıkan varsayımlar ve uzun beklemeler bu işte de olabilir; bu işe uyuyorsa baştan kur. "Kanıtlı dersler" geçmişten çıkmış kurallardır: kesin olanları bu işe uyuyorsa mutlaka uygula (adım ekle, soru sor, süreyi uzat); aday olanları yalnızca bu işe açıkça uyuyorsa uygula. "Alan bilgi kartları" kaynaklı kurallardır (yasal süre, kurum, belge); bu işe uyuyorsa adımları, süreleri ve kapıları onlara göre kur. Geçmişte yaşanmamış bir şeyi yaşanmış gibi yazma.
 28. dayanak. Bir adımı, süreyi ya da soruyu bir derse, karta ya da geçmiş işe dayanarak kurduysan o adımın ya da sorunun dayanak alanına kaynağın kodunu aynen yaz (ör. ["D12"], ["K:sgk-ise-giris"], ["G:Q3XB"]). Dayanağı olmayan adımda alanı boş bırak; uydurma kod yazma.
-29. Türkçe yaz.`;
+29. Adlar. Her adımın ad'ı tam ve kendi başına anlaşılır cümledir: nesne + fiil, kimin neyi yaptığı belli ("Geçici teminat mektubunu bankadan al"); "ve" ile iki iş birleştirme, iki işse iki adım kur. Her adıma ayrıca kisa_ad yaz: 2–4 kelime, en çok 30 karakter, akışta tekil, işi ayırt eden kelimeyi koruyan nesne + fiil ("Teminat mektubunu al", "Teminat iadesini al"); üç nokta, kısaltma ya da bağlaçla bitiş yok. Akışa da kisa_ad yaz: varlık + iş, 2–4 kelime ("Park aydınlatma ihalesi", "Hasat çiftçi kazanımı"). Ayrıntı ad'da değil aciklama, kriter ve beklenen_cikti'da durur; beklenen_cikti'yı boş bırakma (ör. "imzalı sözleşme PDF").
+30. Türkçe yaz.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -58,6 +59,7 @@ export const TASLAK_ARACI: LlmTool = {
       is_turu: { type: "object", required: ["kod", "ad", "mevcut"], properties: { kod: { type: "string" }, ad: { type: "string" }, mevcut: { type: "boolean", description: "Listedeki mevcut bir iş türü mü?" } } },
       anahtar_varlik: { type: "object", properties: { tur: { type: "string" }, ad: { type: "string" } } },
       baslik: { type: "string" },
+      kisa_ad: { type: "string", description: "Akışın kısa adı: varlık + iş, 2–4 kelime, en çok 30 karakter." },
       amac: { type: "string" },
       hedef_tarih: { type: ["string", "null"], description: "YYYY-AA-GG; cümleden çıkıyorsa." },
       roller: { type: "array", items: { type: "object", required: ["kod", "ad", "tip"], properties: { kod: { type: "string" }, ad: { type: "string" }, kisi: { type: ["string", "null"] }, tip: { type: "string", enum: ["insan", "dis", "agent"] }, arac: { type: ["string", "null"] } } } },
@@ -84,7 +86,7 @@ export const TASLAK_ARACI: LlmTool = {
         items: {
           type: "object", required: ["id", "tur_kod", "ad", "sahip_rol", "kriter", "sure_tahmin_gun", "bagimli", "boyut"],
           properties: {
-            id: { type: "string" }, tur_kod: { type: "string" }, ad: { type: "string" }, aciklama: { type: "string" },
+            id: { type: "string" }, tur_kod: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "2–4 kelime, en çok 30 karakter, akışta tekil; nesne + fiil." }, aciklama: { type: "string" },
             sahip_rol: { type: "string", description: "roller içindeki kod" }, arac: { type: ["string", "null"] },
             kriter: { type: "string" }, beklenen_cikti: { type: ["string", "null"] }, karar_kriteri: { type: ["string", "null"] },
             sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "string" } },
@@ -431,7 +433,7 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
     if (yalniz && r.tip === "insan" && !r.kisi && !ONAYCI.test(r.ad || "")) r = { ad: sahip, tip: "insan" }; // ekip yok: adı geçmeyen iş rolleri kullanıcıya; onaylayanlar üçüncü taraf olarak kalır
     const deps = [...new Set((s.bagimli || []).flatMap((d: string) => (son.some((x) => x.id === d) ? [d] : coz(d, new Set()))))].map((d) => noOf.get(d)).filter((n) => n && n !== noOf.get(s.id));
     return {
-      ad: s.ad, aciklama: s.aciklama || null, sahip: r.kisi ? `${r.kisi}${r.tip === "dis" && r.ad && !String(r.kisi).includes("(") ? ` (${r.ad})` : ""}` : r.ad,
+      ad: s.ad, kisa_ad: s.kisa_ad || null, aciklama: s.aciklama || null, sahip: r.kisi ? `${r.kisi}${r.tip === "dis" && r.ad && !String(r.kisi).includes("(") ? ` (${r.ad})` : ""}` : r.ad,
       sahip_tip: r.tip === "agent" ? "agent" : r.tip === "dis" ? "dis" : "insan", arac: s.arac || r.arac || null,
       kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
       sure_tahmin_gun: s.sure_tahmin_gun, bagimli: deps, _tur: s.tur_kod || slug(s.ad), _boyut: s.boyut, _capa: capaOf(s), _netlestir: String(s.id).startsWith("netlestir-"),

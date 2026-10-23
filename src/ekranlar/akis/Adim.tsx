@@ -12,7 +12,7 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { iconCloud } from '../../cizim/ekran';
 import { C, planet, route, shareRing, ship, sparkle } from '../../cizim/ortak.js';
 import { akisModeli, gunAy, gunAyHafta, saat, uyeRenkleri, yolCiz, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, adimEtiketi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, genislik, ikiSatir, ozelEk, sarSatir } from '../../metin/turkce';
 import { git, arama } from '../../yonlendirme';
 import { haritaCumlesi, useAkis } from './Galaksi';
 import { Karar } from './Karar';
@@ -303,7 +303,7 @@ function AdimArka({ d, no, sheetY, sahip }: { d: any; no: number; sheetY: number
   return (
     <Sahne gok={{ tohum: 33, yildiz: 260 }} cizim={cizim} etiket={d ? akisAdi(d.akis) : 'Akış'}>
       <div aria-hidden style={{ opacity: .55 }}>
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={d ? akisAdi(d.akis) : ''} geri={() => history.back()} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={d ? akisAdi(d.akis) : ''} geri={() => history.back()} sagBos={96} /></Kutu>
         {c && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={{ whiteSpace: 'nowrap' }}>{ikiSatir(c.join(' ')).map((x, i) => <span key={i}>{i ? <br /> : null}{x}</span>)}</Metin>}
       </div>
     </Sahne>
@@ -361,8 +361,10 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
     tarihSayisi(a),
   ];
   const benim = a.sahip === ben && !BITTI(a.durum);
-  // ne yapılacak (madde 14): beklenen çıktı ya da kısaltılmış adın tamamı; bitmiş adımda yazılmaz
-  const yapilacak = BITTI(a.durum) ? null : a.beklenen_cikti || (a.ad !== adimAdi(a) ? a.ad : null);
+  // ne yapılacak (madde 14, P1-F): başlık kısa ad; altında adın tamamı ve beklenen çıktı, kesilmeden; bitmiş adımda yazılmaz
+  const yapilacak: [string, string, number][] = BITTI(a.durum) ? [] : ([['Yapılacak', a.ad !== adimAdi(a) ? a.ad : ''], ['Çıktı', a.beklenen_cikti || '']] as [string, string][])
+    .filter(([, v]) => v).map(([k, v]) => [k, v, Math.min(4, sarSatir(`${k}: ${v}`, Math.min(350, (typeof window === 'undefined' ? 390 : window.innerWidth) - 40) - 10, '14px Inter').length)]);
+  const ySatir = yapilacak.reduce((t, [, , n]) => t + n, 0), yEk = Math.max(0, ySatir - 1) * 19;
   const bitir = useMutation({
     mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${a.no}`, { durum: 'tamam' }),
     onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['akis', kod] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['adim', kod, a.no] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); },
@@ -372,9 +374,9 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
   const [paylas, setPaylas] = useState(false);
   const disGonder = sahipDis && !BITTI(a.durum);
   return (
-    <div className="adim-durum">
+    <div className="adim-durum" style={yEk ? { height: 540 + yEk } : undefined}>
       <svg className="panel-cizim" aria-hidden width="390" height="480" viewBox={`0 ${28} 390 480`} dangerouslySetInnerHTML={{ __html: svg }} />
-      <Metin y={P(y0 + 218)} fs={24} lh={30} serif agirlik={700} hiza="orta" as="h2">{adimAdi(a)}</Metin>
+      <Metin y={P(y0 + 218)} fs={genislik(adimAdi(a), '700 24px Caladea') > 340 ? 19 : 24} lh={30} serif agirlik={700} hiza="orta" as="h2" style={{ whiteSpace: 'nowrap' }}>{adimAdi(a)}</Metin>
       <Metin y={P(y0 + 244)} fs={16.5} lh={21} serif renk="ink2" hiza="orta" style={{ whiteSpace: 'nowrap' }}>{bekledigi.length && /adım bitince başlar\.$/.test(cumle.join(' '))
         ? <>{bekledigi.map((n: number, i: number) => <span key={n}>{i ? ', ' : ''}<button type="button" className="metin-baglanti" aria-label={`${n}. adım: ${by.get(n)?.ad ?? ''}`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${n}`)}>{n}</button></span>)}. adım bitince başlar.</>
         : cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
@@ -388,8 +390,8 @@ function AdimDurum({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: strin
         {[...soldakiler.filter((z) => z.no != null), ...sonra.map((z, i) => ({ no: z.no, x: sagX(i) }))].map((z) => { const b = by.get(z.no!); return <button key={'h' + z.no} type="button" className="zincir-hedef" style={{ left: z.x - 28, top: P(ry) - 22 }} aria-label={`${sonra.some((x) => x.no === z.no) ? 'Bu adım bitince' : 'Önce'}: ${z.no}. adım, ${b?.ad ?? ''}.`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />; })}
       </>}
       <Metin y={P(y0 + 182)} x={76} fs={11.5} agirlik={700} renk={kritik.has(a.no) && !BITTI(a.durum) ? 'altin' : 'ink2'} style={{ width: 80, textAlign: 'center', lineHeight: '14px' }}>{kisaAd(a.sahip)}{kritik.has(a.no) && !BITTI(a.durum) ? <><br />kritik yol</> : null}</Metin>
-      {yapilacak && <Metin y={P(y0 + 440)} fs={14} lh={19} renk="ink2" className="yapilacak"><b>Yapılacak:</b> {yapilacak}</Metin>}
-      <div className="adim-eylem" style={{ top: P(y0 + (yapilacak ? 470 : 430)) }}>
+      {yapilacak.map(([k, v, n], i) => <Metin key={k} y={P(y0 + 440 + yapilacak.slice(0, i).reduce((t, x) => t + x[2], 0) * 19)} fs={14} lh={19} renk="ink2" className="yapilacak" style={{ WebkitLineClamp: n }}><b>{k}:</b> {v}</Metin>)}
+      <div className="adim-eylem" style={{ top: P(y0 + (ySatir ? 451 + ySatir * 19 : 430)) }}>
         {benim ? (
           <>
             {claude && <Dugme tur="ikincil" ton="lila" yukseklik={54} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}

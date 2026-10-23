@@ -55,31 +55,33 @@ export const tarihDi = (t: string) => {
   return t.trim() + '’' + (SESLI.includes(son) ? 'y' : '') + (!SESLI.includes(son) && SERT.includes(son) ? 't' : 'd') + i;
 };
 
-/** Akışın ekran adı: kisa_ad; yoksa başlığın ilk 18 karakteri, kelime sınırında (§ ad tutarsızlığı). */
+/** Akışın ekran adı (P1-F): sunucunun verdiği kisa_ad; yoksa başlığın açıklamasız kısmı. Ad kesilmez. */
 export function akisAdi(akis: { kisa_ad?: string | null; baslik?: string | null }): string {
   if (akis.kisa_ad) return akis.kisa_ad;
-  const b = (akis.baslik || '').split(/[:(–-]/)[0].trim();
-  if (b.length <= 18) return b;
-  const k = b.slice(0, 19), i = k.lastIndexOf(' ');
-  return (i > 6 ? k.slice(0, i) : b.slice(0, 18)).replace(/[,;.]$/, '');
+  return (akis.baslik || '').split(/:|\s\(|\s[–—]\s/)[0].trim();
 }
 
-/** Adımın kısa adı (cümlelerde): kisa_ad; yoksa adın ilk iki kelimesi. */
+/** Adımın ekran adı (P1-F): sunucunun verdiği kisa_ad; yoksa parantezsiz tam ad. Ad kesilmez. */
 export function adimAdi(a: { kisa_ad?: string | null; ad: string }): string {
   if (a.kisa_ad) return a.kisa_ad;
-  const w = a.ad.replace(/[/(].*$/, '').trim().split(/\s+/);
-  return w.slice(0, 2).join(' ');
+  return a.ad.replace(/\s*\([^)]*\)?/g, '').trim();
 }
-/** Harita etiketi: kısa adın en çok iki kelimesi ("App Store onayı" → "App Store"). */
+// kısa adın sonundaki fiil ("… al", "… kontrol et", "… teslim eder")
+const YARDIMCI = /^(et|eder|yap|yapar|ver|verir|al|alır|ol|olur)$/;
+const ISIM_FIIL = /^(kontrol|teslim|takip|kabul|teyit|rezerve|organize|tespit|talep|karar|revize|servis|analiz|iptal|sevk)$/i;
+/** Harita etiketi: kısa adın fiilsiz en çok iki kelimesi ("Teminat mektubunu al" → "Teminat mektubunu", "App Store onayı" → "App Store"). */
 export function adimEtiketi(a: { kisa_ad?: string | null; ad: string }): string {
-  const k = adimAdi(a), w = k.split(' ');
-  if (w.length > 2) return w.slice(0, 2).join(' ');
-  if (w.length === 2 && /^[a-zçğıöşü]/.test(w[1])) {
+  let w = adimAdi(a).replace(/\?$/, '').split(' ');
+  const n = w.length, fiilli = n >= 3 && /^[a-zçğıöşü]/.test(w[n - 1]);
+  if (fiilli) w = n >= 4 && YARDIMCI.test(w[n - 1]) && ISIM_FIIL.test(w[n - 2]) ? w.slice(0, n - 2) : w.slice(0, n - 1);
+  if (w.length > 2) w = /^[A-ZÇĞİÖŞÜ]/.test(w[1]) ? w.slice(0, 2) : w.slice(-2);
+  if (!fiilli && w.length === 2 && /^[a-zçğıöşü]/.test(w[1])) {
     // "Post görseli" → "Görsel", "Yayın onayı" → "Onay": tamlamanın başı, iyelik ekinden arınmış
     const s = w[1].replace(/(?<=[^aeıioöuü])[ıiuü]$|(?<=[aeıioöuü])s[ıiuü]$/, '');
     return s[0].toLocaleUpperCase('tr') + s.slice(1);
   }
-  return k;
+  const k = w.join(' ');
+  return k ? k[0].toLocaleUpperCase('tr') + k.slice(1) : k;
 }
 
 const tl = (ms: number) => new Date(ms + 3 * 36e5);
