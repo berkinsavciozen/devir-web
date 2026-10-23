@@ -16,7 +16,7 @@ import { Segment } from '../akis/Adim';
 import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { SatirKart } from '../hesap/Hesap';
-import { adimAdi, bSuzgecAdresi, gecmistenOlaylar, bSuzgecOku, gunlere, kisa, olayAciklamasi, olayFiili, suz, topla, type BSuzgec, type Toplu } from './model';
+import { adimAdi, bSuzgecAdresi, gecmistenOlaylar, bSuzgecOku, gunlere, kisa, olayAciklamasi, olayFiili, olayTuru, suz, topla, TUR_AD, type BSuzgec, type OlayTuru, type Toplu } from './model';
 
 // Bildirimler (/bildirimler; el notu 18): görünen akışlardaki başkalarının hareketleri. "Senin için" (senin adımın ya da
 // seni bekleyen) ve "Tüm etkinlik" sekmeleri, Kişi ve Akış süzgeçleri adreste; güne göre gruplar, aynı adımdaki art arda
@@ -27,6 +27,8 @@ const gemi = (ad: string, tip: string, x: number, y: number, k: number) => tip =
   ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
   : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : '#9EE6CF', k, { flame: false });
 const LISTE_Y = 236;
+/** Tür seçiminde haritadaki işaret (lejantla aynı). */
+const TUR_GEZEGEN: Partial<Record<OlayTuru, string>> = { bitti: 'lit', basladi: 'wait', engel: 'block', sira: 'wait', karar: 'wait', atlandi: 'ghost', cikti: 'lit' };
 
 export function Bildirimler({ ben }: { ben: Ben }) {
   const kisi = ben.kisi || '';
@@ -44,7 +46,7 @@ export function Bildirimler({ ben }: { ben: Ben }) {
   const detay = useDetaylar(eski ? eskiKodlar : yeniKodlar);
   const O: any[] = useMemo(() => (eski ? gecmistenOlaylar(detay, kisi) : Q.data?.olaylar || []), [eski, detay, kisi, Q.data]);
   const hata = Q.isError && !eski;
-  const [sec, setSec] = useState<'kisi' | 'akis' | null>(null);
+  const [sec, setSec] = useState<'kisi' | 'akis' | 'tur' | null>(null);
   const uygula = (y: Partial<BSuzgec>) => { setSec(null); git(bSuzgecAdresi({ ...S, ...y }), { yerine: true }); };
 
   // açılışta okundu: en yeni olaya kadar. Satırlar bu açılışta "yeni" olarak kalır; rozet hemen söner.
@@ -85,7 +87,7 @@ export function Bildirimler({ ben }: { ben: Ben }) {
   const ogeler: Oge[] = [];
   for (const [gun, G] of gunlere(T, NOW, gunAy)) ogeler.push({ tur: 'baslik', metin: gun }, ...G.map(satir));
   if (hata) ogeler.push({ tur: 'not', metin: 'Bildirimler alınamadı; birazdan yeniden dene.' });
-  if ((Q.data || (eski && ozet.data)) && !T.length) ogeler.push({ tur: 'not', metin: S.sekme === 'sen' && !S.kisi && !S.akis ? 'Senin adımlarında ya da seni bekleyenlerde yeni bir hareket yok.' : 'Bu süzgeçte hareket yok.' });
+  if ((Q.data || (eski && ozet.data)) && !T.length) ogeler.push({ tur: 'not', metin: S.sekme === 'sen' && !S.kisi && !S.akis && !S.tur ? 'Senin adımlarında ya da seni bekleyenlerde yeni bir hareket yok.' : 'Bu süzgeçte hareket yok.' });
   if (Q.data?.devami) ogeler.push({ tur: 'not', metin: 'Son 100 hareket gösteriliyor.' });
   const Lst = Liste({ y0: LISTE_Y, ogeler, etiket: 'Bildirimler' });
 
@@ -107,21 +109,25 @@ export function Bildirimler({ ben }: { ben: Ben }) {
           <div className="pano-cipler gorev-suzgec" role="group" aria-label="Süzgeçler" style={{ top: 182 }}>
             <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={!!S.kisi} onClick={() => setSec('kisi')}>Kişi: {kisiAd}</button>
             <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={!!S.akis} onClick={() => setSec('akis')}>Akış: {akisAd}</button>
+            <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={!!S.tur} onClick={() => setSec('tur')}>Tür: {S.tur ? TUR_AD[S.tur] : 'Hepsi'}</button>
           </div>
         </>}
         {Lst.dugum}
         <AltGezinme aktif={null} yeni={() => git('/yeni')} />
       </Sahne>
-      <AltSayfa acik={sec != null} kapat={() => setSec(null)} baslik={sec === 'kisi' ? 'Kişi' : 'Akış'} yukseklik={300} duraklar={['orta', 'yuksek']}>
+      <AltSayfa acik={sec != null} kapat={() => setSec(null)} baslik={sec === 'kisi' ? 'Kişi' : sec === 'tur' ? 'Tür' : 'Akış'} yukseklik={300} duraklar={['orta', 'yuksek']}>
         {sec && <SecimListesi sec={sec} S={S} O={O} uygula={uygula} />}
       </AltSayfa>
     </>
   );
 }
 
-function SecimListesi({ sec, S, O, uygula }: { sec: 'kisi' | 'akis'; S: BSuzgec; O: any[]; uygula: (y: Partial<BSuzgec>) => void }) {
+function SecimListesi({ sec, S, O, uygula }: { sec: 'kisi' | 'akis' | 'tur'; S: BSuzgec; O: any[]; uygula: (y: Partial<BSuzgec>) => void }) {
   const say = (f: (e: any) => string) => { const m = new Map<string, any>(); for (const e of O) { const k = f(e); m.set(k, { e, n: (m.get(k)?.n || 0) + 1 }); } return [...m].sort((a, b) => b[1].n - a[1].n); };
-  const L = sec === 'kisi'
+  const L = sec === 'tur'
+    ? [{ key: '', ust: 'Bütün türler', alt: undefined as string | undefined, ikon: '', secili: !S.tur, sec: () => uygula({ tur: null }) },
+      ...say((e) => olayTuru(e)).map(([k, { n }]) => ({ key: k, ust: TUR_AD[k as OlayTuru], alt: `${n} hareket`, ikon: `<g transform="translate(28,29)">${planet(0, 0, 8, TUR_GEZEGEN[k as OlayTuru] || 'dark', { life: false, waitRings: 1, cloudGap: 1.5, karar: k === 'karar' })}</g>`, secili: S.tur === k, sec: () => uygula({ tur: k as OlayTuru }) }))]
+    : sec === 'kisi'
     ? [{ key: '', ust: 'Herkes', alt: undefined as string | undefined, ikon: `<g transform="translate(28,29)">${planet(0, 0, 8, 'wait', { life: false, waitRings: 1 })}</g>`, secili: !S.kisi, sec: () => uygula({ kisi: null }) },
       ...say((e) => e.kim).map(([k, { e, n }]) => ({ key: k, ust: kisa(k), alt: `${n} hareket`, ikon: e.kim_tip === 'sistem' ? '' : gemi(k, e.kim_tip, 28, 29, .8), secili: S.kisi === k, sec: () => uygula({ kisi: k }) }))]
     : [{ key: '', ust: 'Bütün akışlar', alt: undefined as string | undefined, ikon: '', secili: !S.akis, sec: () => uygula({ akis: null }) },
