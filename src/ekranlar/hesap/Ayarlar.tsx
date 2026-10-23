@@ -20,6 +20,7 @@ import { akisErisimi, ekipOzeti, ekipSayilari, RolTablosu, ROL_TABLO_H } from '.
 import { alanAdi, alanIkon, CikisSatiri, HesapIcerik, hesapYuksekligi, kisiGemi, rolAdi, SatirKart, Svg, useUyeler } from './Hesap';
 import { useOlaylar } from '../../bilesen/Zil';
 import { evrenDiliniSifirla } from '../evren/Evren';
+import { uyumDurumu } from '../../api/surum';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const MCP_TABAN = () => (SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN);
@@ -104,7 +105,7 @@ export function Ayarlar() {
     <h2 id={`ayar-${b}`} className="bolum-baslik ayar-grup" style={{ top: bY[b] - 12 }}>{metin}</h2>{ek}
   </>;
   const ozelIkon = (svg: string) => `<g transform="translate(26,33)"><circle r="15" fill="#1E1645" stroke="#8E80D6" stroke-opacity=".6"/>${svg}</g>`;
-  const surum = durum.data?.surum;
+  const uyum = uyumDurumu(durum.data);
   return (
     <>
       <Sahne gok={GOK} etiket="Ayarlar" yukseklik={Math.max(844, h + 120)}>
@@ -154,8 +155,8 @@ export function Ayarlar() {
           ust="Bildirimler" alt={okunmamis ? `${okunmamis} okunmamış · okundu bilgisi cihazlarında aynı` : 'Okundu bilgisi cihazlarında aynı'} onClick={() => git('/bildirimler')} />
         <SatirKart y={satirY + 74} h={66} ikon={ozelIkon('<text y="5" text-anchor="middle" font-size="15" font-weight="700" fill="#D9CCFF">?</text>')}
           ust="Evren dilini yeniden göster" alt="Galaksi, bugün ibresi, bulut, bayrak, gemi" onClick={() => { evrenDiliniSifirla(); git('/'); }} />
-        <SatirKart y={satirY + 148} h={66} ikon={ozelIkon(`<circle r="5" fill="${durum.isError ? '#FF9A8A' : surum ? '#9EE6CF' : '#8E80D6'}"/>`)}
-          ust="Bağlantı denetimi" alt={durum.isPending ? 'denetleniyor…' : durum.isError ? 'Sunucuya ulaşılamadı' : `Sunucu ${surum} · erişim açık`} />
+        <SatirKart y={satirY + 148} h={66} ikon={ozelIkon(`<circle r="5" fill="${durum.isError || (durum.data && !uyum.tamam) ? '#FF9A8A' : durum.data ? '#9EE6CF' : '#8E80D6'}"/>`)}
+          ust="Bağlantı denetimi" alt={durum.isPending ? 'denetleniyor…' : durum.isError ? 'Sunucuya ulaşılamadı' : uyum.metin} />
         <CikisSatiri y={cikisY} />
         <AltGezinme aktif="ayarlar" yeni={() => git('/yeni')} />
       </Sahne>

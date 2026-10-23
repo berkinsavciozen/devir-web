@@ -1,4 +1,5 @@
-import { handle } from "../server.ts";
+import { readdirSync } from "node:fs";
+import { handle, SEMA } from "../server.ts";
 let idc = 1;
 const T: Record<string, any[]> = {};
 const match = (r: any, w: any) => Object.entries(w).every(([k, v]) => v === null ? r[k] == null : Array.isArray(v) ? v.includes(r[k]) : r[k] === v);
@@ -75,5 +76,22 @@ async function mcp(name: string, args: any) {
   // toplu detay
   const d = (await api("GET", `/api/v1/akislar/detay?kodlar=${kod},${kod2},YOKK`)).j;
   ok(Object.keys(d.akislar).sort().join() === [kod, kod2].sort().join() && d.akislar[kod].adimlar.length === 3, "toplu detay: var olanlar döner, olmayan atlanır");
-  ok((await api("GET", "/api/v1/durum", undefined, "")).j.surum === "0.22.0", "sürüm 0.22.0");
+  let du = (await api("GET", "/api/v1/durum", undefined, "")).j;
+  ok(du.surum === "0.23.0", "sürüm 0.23.0");
+  // N-8: kodun beklediği şema son migration; canlı şema okunamazsa uyumsuz görünür
+  const sonMig = readdirSync(new URL("../../supabase/migrations/", import.meta.url)).filter((f) => f.endsWith(".sql")).sort().at(-1)!.replace(/\.sql$/, "");
+  ok(SEMA === sonMig, `SEMA son migration'la aynı (${sonMig})`);
+  ok(du.sema?.beklenen === SEMA && du.sema.canli === null && du.sema.uyumlu === null, "bellek DB'sinde şema uyumu bilinmiyor: uyumlu null");
+  db.rpc = async (fn: string) => (fn === "devir_sema" ? SEMA : null);
+  du = (await api("GET", "/api/v1/durum", undefined, "")).j;
+  ok(du.sema.canli === SEMA && du.sema.uyumlu === true, "canlı şema beklenenle aynıysa uyumlu");
+  db.rpc = async (fn: string) => (fn === "devir_sema" ? "20261022120000_p1b_ortak_kayit" : null);
+  du = (await api("GET", "/api/v1/durum", undefined, "")).j;
+  ok(du.sema.uyumlu === false && du.sema.canli === "20261022120000_p1b_ortak_kayit", "migration uygulanmadıysa uyumsuz görünür");
+  db.rpc = async () => { throw new Error("Could not find the function public.devir_sema"); };
+  du = (await api("GET", "/api/v1/durum", undefined, "")).j;
+  ok(du.ok && du.sema.canli === null && du.sema.uyumlu === false, "devir_sema işlevi yoksa (eski şema) uyumsuz, durum yine 200");
+  delete db.rpc;
+  const on = await handle(new Request("https://x.supabase.co/functions/v1/devir-mcp/api/v1/akislar", { method: "OPTIONS" }), db, NOW, { taban: "https://x.supabase.co/functions/v1/devir-mcp" });
+  ok(on.status === 204 && on.headers.get("access-control-max-age") === "86400", "ön denetim (OPTIONS) önbelleklenir: Access-Control-Max-Age");
 })();
