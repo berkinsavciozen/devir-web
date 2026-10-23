@@ -13,8 +13,8 @@ const disAc = (p: Page, belirtec: string) => p.evaluate(async (t) => (await (win
 test('Pano: bağlantıyı açmayan dış katılımcı görünür; paylaşım sayfası durumla açılır', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
   await page.getByRole('button', { name: 'Pano ve bekleyen işler' }).click();
-  await expect(page.getByRole('heading', { name: 'DIŞ KATILIMCILAR' })).toBeAttached();
-  const satir = page.getByRole('button', { name: /^Emre \(Test Bank\): Test Bank · \d+ açık adım · bağlantıyı açmadı/ });
+  await expect(page.getByRole('heading', { name: 'KATILIMCILAR' })).toBeAttached();
+  const satir = page.getByRole('button', { name: /^Emre \(dış katılımcı\): Test Bank · \d+ açık · bağlantıyı açmadı/ });
   await satir.scrollIntoViewIfNeeded();
   await satir.click();
   const d = page.getByRole('dialog', { name: 'Emre ile paylaş' });
