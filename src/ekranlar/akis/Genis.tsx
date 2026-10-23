@@ -1,13 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { api } from '../../api/istemci';
-import { sorguIstemcisi } from '../../api/sorgular';
-import { Dugme } from '../../bilesen/Dugme';
-import { Metin } from '../../bilesen/Sahne';
-import { C, planet, shareRing } from '../../cizim/ortak.js';
-import { gunAy, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, ikiSatir } from '../../metin/turkce';
-import { git } from '../../yonlendirme';
-import { adimCumlesi, IHLAL_IPUCU, isPayi, sureKisa, takvimIhlali, tarihSayisi, tuttuklari } from './Adim';
+import { C } from '../../cizim/ortak.js';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 
@@ -91,60 +82,3 @@ export function varsayilanSecim(d: any): number | null {
   if (kr) return kr.no;
   return (d.adimlar.find((a: any) => a.durum === 'hazir' || a.durum === 'suruyor') || d.adimlar.find((a: any) => !BITTI(a.durum)) || d.adimlar[d.adimlar.length - 1])?.no ?? null;
 }
-
-const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
-
-/** Seçili adımın kartının çizimi (gezegen + iş payı halesi, sayı kutuları). */
-export function kartCizimi(K: KartDuzen, a: any, olaylar: any[] | null): string {
-  const dg = durumGor(a), px = K.x + K.pl.dx, py = K.y + K.pl.dy;
-  let s = `<rect x="${K.x}" y="${K.y}" width="${K.w}" height="${K.h}" rx="${K.rx}" fill="#120B2C" fill-opacity=".72" stroke="${dg === 'block' ? '#FF8A78' : '#FFFFFF'}" stroke-opacity="${dg === 'block' ? .35 : .08}"/>`;
-  s += `<ellipse cx="${px}" cy="${py - 4}" rx="${K.pl.r * 2.35}" ry="${K.pl.r * 1.65}" fill="url(#${dg === 'block' ? 'glowCoral' : 'glowGold'})" opacity=".4"/>`;
-  s += planet(px, py, K.pl.r, dg, { cloudGap: K.pl.r > 30 ? 10 : 8, karar: a.karar_adimi, waitRings: 2 });
-  const pay = olaylar ? isPayi(olaylar) : [];
-  if (pay.length) s += shareRing(px, py, K.pl.ring, pay, { br: K.pl.br, bead: K.pl.bead });
-  const renk = ['#FF8A78', '#B9A6F2', '#FFD27A'];
-  for (let i = 0; i < 3; i++) s += `<rect x="${K.x + K.chip.dx + i * K.chip.ara}" y="${K.y + K.chip.dy}" width="${K.chip.w}" height="54" rx="18" fill="#FFFFFF" fill-opacity=".06" stroke="${renk[i]}" stroke-opacity=".6"/>`;
-  return s;
-}
-
-/** Seçili adım kartı (B4 içeriği; §5 M1, T1): ad, durum, 2 cümle, 3 sayı, bekliyor/tutuyor, eylem. */
-export function GenisKart({ K, d, a, kod, ben }: { K: KartDuzen; d: any; a: any; kod: string; ben: string }) {
-  const by = new Map<number, any>(d.adimlar.map((x: any) => [x.no, x]));
-  const tut = tuttuklari(d.adimlar, a.no);
-  const bek = ((a.bekledigi?.map((b: any) => b.no) ?? a.bagimli ?? []) as number[]).map((no) => by.get(no)).filter(Boolean);
-  const sayilar: [string, string][] = [
-    [a.durum === 'engelli' || a.durum === 'hazir' || a.durum === 'suruyor' ? sureKisa(a.bekleme_saat) : BITTI(a.durum) ? gunAy(Date.parse(a.durum_at)) : '–', a.durum === 'engelli' ? 'engelli' : a.durum === 'hazir' ? 'bekliyor' : a.durum === 'suruyor' ? 'sürüyor' : a.durum_etiket || a.durum],
-    [`${tut.length} adım`, 'tutuyor'],
-    tarihSayisi(a),
-  ];
-  const ihlal = takvimIhlali(a);
-  const cumle = ikiSatir(adimCumlesi(a, ben), K.cumle.w, `${K.cumle.fs}px Caladea`);
-  const zincir = [bek.length ? `Bekliyor: ${bek.map((b: any) => adimAdi(b)).join(' · ')}` : '', tut.length ? `Tutuyor: ${tut.slice(0, 3).map((n) => adimAdi(by.get(n))).join(' → ')}` : ''].filter(Boolean).join('   ·   ');
-  const benim = a.sahip === ben && !BITTI(a.durum);
-  const claude = a.linkler?.claude;
-  const bitir = useMutation({
-    mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${a.no}`, { durum: 'tamam' }),
-    onSuccess: () => { for (const k of [['akis', kod], ['adim', kod, a.no], ['ozet']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); },
-  });
-  const ayrinti = () => git(`/akis/${encodeURIComponent(kod)}/adim/${a.no}?tam=1`);
-  const B = K.btn;
-  return (
-    <section aria-label={`Seçili adım: ${adimAdi(a)}`}>
-      <button type="button" className="genis-baslik" style={{ left: K.x + K.baslik.dx, top: K.y + K.baslik.dy - K.baslik.fs * 1.02, fontSize: K.baslik.fs, lineHeight: `${Math.round(K.baslik.fs * 1.25)}px` }} onClick={ayrinti} aria-label={`${adimAdi(a)}: ayrıntılar, geçmiş ve çıktılar`}>{adimAdi(a)}</button>
-      <Metin y={K.y + K.meta.dy} x={K.x + K.baslik.dx} fs={K.meta.fs} renk="ink3" className="tek-satir">{kisaAd(a.sahip)} · {a.durum_etiket || a.durum}{a.son_tarih ? ` · son ${gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00'))}` : ''}</Metin>
-      <Metin y={K.y + K.cumle.dy} x={K.x + K.cumle.dx} fs={K.cumle.fs} lh={K.cumle.lh} serif renk="ink2" style={{ whiteSpace: 'nowrap' }}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
-      {sayilar.map(([b, k], i) => <div key={k} className={`sayi-kutusu${i === 2 && ihlal ? ' ihlal' : ''}`} title={i === 2 && ihlal ? IHLAL_IPUCU : undefined} style={{ position: 'absolute', left: K.x + K.chip.dx + i * K.chip.ara, top: K.y + K.chip.dy, width: K.chip.w }}><b>{b}</b><small>{k}</small></div>)}
-      {zincir && <Metin y={K.y + K.bek.dy} x={K.x + K.bek.dx} fs={K.bek.fs} agirlik={600} renk="ink2" className="tek-satir" style={{ whiteSpace: 'pre' }}>{zincir}</Metin>}
-      <div className="genis-kart-eylem" style={{ left: K.x + B.dx, top: K.y + B.dy, width: B.w }}>
-        {benim ? <>
-          {claude && <Dugme tur="ikincil" ton="lila" yukseklik={B.h} fs={B.fs} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
-          <Dugme yukseklik={B.h} fs={B.fs} mesgul={bitir.isPending} onClick={() => (a.karar_adimi ? git(`/akis/${encodeURIComponent(kod)}/karar/${a.no}`) : bitir.mutate())}>{a.karar_adimi ? 'Kararı ver' : 'Bitti olarak işaretle'}</Dugme>
-        </> : claude ? <Dugme yukseklik={B.h} fs={B.fs} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>
-          : <Dugme tur="ikincil" ton="lila" yukseklik={B.h} fs={B.fs} onClick={ayrinti}>Ayrıntılar</Dugme>}
-      </div>
-    </section>
-  );
-}
-
-/** Seçili adımın olayları (iş payı halesi için). */
-export const useAdimOlaylari = (kod: string, no: number | null) => useQuery({ queryKey: ['adim', kod, no], enabled: no != null, queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`) });

@@ -59,10 +59,10 @@ test('B10-kisi: kişiler → kişi sayfası → haritada yolu', async ({ page })
 
 test('B4-gez: önceki/sonraki düğmeleri ve ok tuşları', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin');
-  await page.getByRole('button', { name: /^Sonraki adım: \d+/ }).waitFor();
+  await page.getByRole('button', { name: /^Sonraki görev: \d+/ }).waitFor();
   await cek(page, 'B4-gez');
   const uzunluk = await page.evaluate(() => history.length);
-  const sonraki = page.getByRole('button', { name: /^Sonraki adım: \d+/ });
+  const sonraki = page.getByRole('button', { name: /^Sonraki görev: \d+/ });
   const n = (await sonraki.getAttribute('aria-label'))!.match(/\d+/)![0];
   await sonraki.click();
   await expect(page).toHaveURL(new RegExp(`/adim/${n}`));
@@ -74,18 +74,18 @@ test('B4-gez: önceki/sonraki düğmeleri ve ok tuşları', async ({ page }) => 
   expect(await page.evaluate(() => history.length), `önce ${uzunluk}`).toBe(uzunluk);
 });
 
-test('B4-zincir: "bu adım bitince" zinciri bir sonraki adıma gider', async ({ page }) => {
+test('B4-zincir: "bunu bekleyenler" satırı o göreve gider', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
-  const z = page.locator('.zincir-hedef').first();
+  const z = page.getByRole('region', { name: 'ETKİLEYEN VE ETKİLEDİĞİ' }).locator('.gd-bag').last();
   // zinciri olan ilk açık adım
   for (const n of [3, 6, 7, 9, 10, 11, 12]) {
     await page.goto(`/akis/RTD5/adim/${n}?senaryo=berkin`);
-    await page.locator('.adim-gez').waitFor();
+    await page.locator('.gd-gez').waitFor();
     await page.waitForTimeout(150);
     if (await z.count()) break;
   }
   await z.waitFor();
-  const etiket = (await z.getAttribute('aria-label'))!, no = etiket.match(/: (\d+)\. adım/)![1];
+  const etiket = (await z.getAttribute('aria-label'))!, no = etiket.match(/^(\d+)\. görev/)![1];
   await z.click();
   await expect(page).toHaveURL(new RegExp(`/adim/${no}`));
 });

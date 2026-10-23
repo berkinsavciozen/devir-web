@@ -1,6 +1,7 @@
 // Galaksi başlığı (el notu 7–8): kural tabanlı durum cümlesi ve rol bazlı çipler.
 // Cümle iki parça: önce darboğaz (ne tutuyor), sonra ne iyi gidiyor / ne bitti. Kurallar sırayla denenir, ilk tutan yazılır.
-import { adimAdi, ek, gunAyUzun, paySure, sayiIyelik } from '../../metin/turkce';
+import { adimAdi, ek, gunAyUzun, sayiIyelik } from '../../metin/turkce';
+import { hedefPayi } from '../../bilesen/KararSeridi';
 import type { Rol } from '../../api/turler';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
@@ -55,7 +56,7 @@ function darbogaz(d: any, S: Sayilar): string | null {
 function ilerleme(d: any, S: Sayilar): string {
   const k = d.akis;
   const bitti = S.biten === S.toplam ? 'bütün adımlar bitti' : S.biten ? `${S.toplam} adımdan ${sayiIyelik(S.biten)} bitti` : 'henüz biten adım yok';
-  const pay = k.pay_saat == null ? '' : k.pay_saat >= 0 ? `hedefe ${paySure(k.pay_saat)} pay` : `hedef ${paySure(k.pay_saat)} geçiyor`;
+  const pay = hedefPayi(k);
   const erken = !pay && k.en_erken_bitis ? `en erken ${gunAyUzun(k.en_erken_bitis)}` : '';
   return [bitti, pay || erken].filter(Boolean).join(', ');
 }

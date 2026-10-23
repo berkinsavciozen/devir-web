@@ -52,6 +52,22 @@ export function aralikMetni([a, b]: [string, string]): string {
 /** Şeridin tonu: hedefe göre (pay / riskte / geçiyor); hedef yoksa süresi eksik akış "eksik". */
 export const seritTonu = (oz: KararOzeti | null | undefined) => oz?.hedef?.durum ?? (oz?.bitis.guven === 'eksik' ? 'eksik' : 'yok');
 
+/**
+ * Akışın hedefe göre payı, tek kaynaktan (W2, K4): sunucunun karar özetindeki hedef (bitiş aralığının üst ucuna göre);
+ * özet yoksa akışın pay_saat'i. Galaksi cümlesi, zaman sürgüsü, akış özeti ve görev detayı aynı sayıyı söyler.
+ * "hedefe 5 gün pay" · "hedef riskte" · "hedef 3 gün geçiyor"; hedef yoksa ''.
+ */
+export function hedefPayi(k: { karar_ozeti?: KararOzeti | null; pay_saat?: number | null }): string {
+  const h = k.karar_ozeti?.hedef;
+  if (h) {
+    if (h.durum === 'pay') return `hedefe ${h.pay_gun} gün pay`;
+    if (h.durum === 'riskte') return 'hedef riskte';
+    return `hedef ${hedefEtiketi(k.karar_ozeti)!.replace(' g geç', ' gün')} geçiyor`;
+  }
+  if (k.pay_saat == null) return '';
+  return k.pay_saat >= 0 ? `hedefe ${paySure(k.pay_saat)} pay` : `hedef ${paySure(k.pay_saat)} geçiyor`;
+}
+
 /** Liste satırı için kısa hedef etiketi ("6 g pay", "riskte", "3 g geç"); üst uca göre, şeritle aynı. */
 export function hedefEtiketi(oz: KararOzeti | null | undefined): string | null {
   const h = oz?.hedef;

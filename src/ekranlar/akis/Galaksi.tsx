@@ -7,10 +7,11 @@ import { Baslik } from '../../bilesen/Baslik';
 import { GenisSahne, Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
-import { genisDuzen, GenisKart, kartCizimi, panelZemini, useAdimOlaylari, varsayilanSecim } from './Genis';
+import { genisDuzen, panelZemini, varsayilanSecim } from './Genis';
+import { GorevDetay } from './GorevDetay';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritOlcu, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
-import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, paySure, sayiIyelik, tarihDi } from '../../metin/turkce';
+import { adimAdi, adimEtiketi, akisAdi, doluSatir, ek, gunAyUzun, ikiSatir, sayiIyelik, tarihDi } from '../../metin/turkce';
 import { git, arama } from '../../yonlendirme';
 import { odakCumlesi, tekrarAsamasi, tekrarCumlesi, uydular, zamanCumlesi } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
@@ -25,7 +26,7 @@ import { useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
 import { akilliCumle, basliktaCipler, type Cip } from './ozet';
 import { BaslikCipleri } from './Cipler';
-import { KararSeridi } from '../../bilesen/KararSeridi';
+import { hedefPayi, KararSeridi } from '../../bilesen/KararSeridi';
 import { TarihNeden } from './TarihNeden';
 import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
@@ -51,7 +52,7 @@ export function haritaCumlesi(d: any): string[] | null {
     return [`${d.adimlar.length} adımdan ${tm ? `${sayiIyelik(tm)} tamam` : 'hiçbiri bitmedi'};`, hz ? `${hz === kisi ? `${kisi} kişinin hepsinde` : `${hz} kişide`} sırası gelmiş iş var.` : 'sırası gelmiş iş yok.'];
   }
   const tarih = k.en_erken_bitis ? gunAyUzun(k.en_erken_bitis) : null;
-  const pay = k.pay_saat == null ? '' : k.pay_saat >= 0 ? `hedefe ${paySure(k.pay_saat)} pay` : `hedef ${paySure(k.pay_saat)} geçiyor`;
+  const pay = hedefPayi(k);
   if (ilk && tarih) return [`Kritik yol ${ek(adimAdi(ilk), 'den')} geçiyor;`, `en erken ${tarih}${pay ? ', ' + pay : ''}.`];
   if (tarih) return [`En erken ${tarih} biter;`, `${pay}.`];
   return null;
@@ -171,7 +172,6 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const zk = gz.g.k, yak = gz.yaklasik;
   const geoZ = useMemo(() => (yak ? { ...geo, cx: geo.cx * zk + gz.g.tx, cy: geo.cy * zk + gz.g.ty, R: geo.R * zk } : geo), [geo, yak, zk, gz.g.tx, gz.g.ty]);
   const sakin = useMemo<[number, number, number]>(() => [geo.cx, geo.cy, geo.R * 1.15], [geo]);
-  const secOlay = useAdimOlaylari(kod, selNo);
 
   // ilk çizim: geometri (etiket konumları için gezegen yerleri)
   const temel = useMemo(() => (M ? yolCiz(M, { ...geo, now: NOW, x: NOW }) : null), [M, NOW, geo]);
@@ -386,12 +386,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
 
   if (GD) {
     const U = GD.ust, a = selNo != null ? byNo.get(selNo) : null;
-    const tam = a ? { ...a, ...(secOlay.data?.adim || {}) } : null;
     const cumleG = ham && ham.filter(Boolean).length ? (U.tekSatir ? [ham.filter(Boolean).join(' ')] : ikiSatir(ham.filter(Boolean).join(' '), Math.min(340, GD.PX - 64), `${U.cumleFs}px Caladea`)) : null;
     const cG = soruC ? [soruC] : gecC ? [gecC] : cumleG;
     return (
       <GenisSahne gok={{ tohum: 101, yildiz: 280, parilti: 10, sakin }} w={GD.W} h={GD.H} etiket={ad} sinif={gelis ? 'harita-gelis' : ''}
-        cizim={panelZemini(GD) + cizim.svg + (tam ? kartCizimi(GD.kart, tam, secOlay.data?.adim?.olaylar || null) : '')}>
+        cizim={panelZemini(GD) + cizim.svg}>
         <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (history.length > 1 ? history.back() : git('/'))} />
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
@@ -410,7 +409,10 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
         {kontroller}
-        {tam && <GenisKart K={GD.kart} d={d} a={tam} kod={kod} ben={sahip} />}
+        {/* seçili görev: telefondakiyle aynı detay, panelde kendi içinde kayar (W2, N18, N21) */}
+        {a && <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y, width: GD.kart.w, height: GD.H - GD.kart.y - 16 }}>
+          <GorevDetay key={a.no} kod={kod} no={a.no} ben={sahip} />
+        </div>}
         <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
       </GenisSahne>
     );
