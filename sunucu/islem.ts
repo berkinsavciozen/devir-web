@@ -27,7 +27,7 @@ export async function karma(s: string) {
 }
 
 /** MCP'de yazan araçlar (okuma araçları tekrar kaydına girmez). devir_dersler yalnız işlem verilince yazar. */
-const YAZAN = new Set(["devir_tasla", "devir_akis_olustur", "devir_adim_guncelle", "devir_karar_ver", "devir_adim_ekle", "devir_akis_kapat", "devir_karar", "devir_cevapla", "devir_sabitle", "devir_alt_akis", "devir_dersler", "devir_baglanti"]);
+const YAZAN = new Set(["devir_tasla", "devir_akis_olustur", "devir_adim_guncelle", "devir_karar_ver", "devir_adim_ekle", "devir_akis_kapat", "devir_karar", "devir_cevapla", "devir_sabitle", "devir_alt_akis", "devir_dersler", "devir_baglanti", "devir_taslak_duzelt"]);
 export const yazanArac = (ad: string, a: any) => YAZAN.has(ad) && (ad !== "devir_dersler" || !!a?.islem);
 
 export type Tekrar<T> = { sonuc: T; tekrar: boolean };

@@ -4,9 +4,9 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.25.0";
+export const SURUM = "0.26.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
-export const SEMA = "20261023100000_p1d_fk_indeks";
+export const SEMA = "20261023180000_s2_karar_cikti_alanlari";
 async function semaDurumu(db: DB) {
   // bellek DB'si (testler, sahte kip) şema tutmaz: uyum bilinmez (null). Canlıda işlev yoksa migration uygulanmamıştır.
   if (!db.rpc) return { beklenen: SEMA, canli: null, uyumlu: null };

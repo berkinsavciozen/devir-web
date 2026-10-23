@@ -2,7 +2,7 @@
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
   callTool, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
-  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
+  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
 import type { LlmFn } from "./llm.ts";
@@ -40,6 +40,8 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null, ilerleme: s.ilerleme || null, durum_at: s.durum_at,
     kosul: s.kosul || null, cevap_soru: s.cevap_soru || null, capa_soru: s.capa_soru || null, tarih_sabit: !!s.tarih_sabit, capa_tarih: s.capa_tarih || null,
     kaynak: s.kaynak, tur_kod: s.tur_kod || null, cikti_sayisi: (s.ciktilar || []).length,
+    // S2 (N17): planlamada yazılan alanlar; eski adımda boşsa kuralla
+    karar_gerekli: typeof s.karar_gerekli === "boolean" ? s.karar_gerekli : null, cikti_bekleniyor: alanDoldur(s).cikti_bekleniyor,
     tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
   };
   if (!DONE(s) && !opts.dis) v.linkler = chatLinks(akis, s);

@@ -148,7 +148,9 @@ export function dersSatiri(x: any) {
   else if (x.etki === "sira") etki = " · etki: sıra kuralı";
   return `[D${x.id}] (${durum}${kanit.length ? `: ${kanit.slice(0, 4).join(", ")}` : ""}) ${x.metin}${etki}`;
 }
-export const kartSatiri = (k: any) => `[K:${k.kod}] ${k.baslik}: ${k.kural}${k.sure ? ` · süre: ${k.sure}` : ""}${k.kim ? ` · kim: ${k.kim}` : ""}${(k.adimlar || []).length ? ` · tipik adımlar: ${k.adimlar.join("; ")}` : ""} (kaynak: ${k.kaynak_ad || k.kaynak_url})`;
+// kart adımı düz metin ya da nesne olabilir (S2, M5): { ad, zorunlu, sahip_tip, anahtar[], ... }
+const kartAdimi = (a: any) => (typeof a === "string" ? a : `${a?.ad || ""}${a?.zorunlu ? " (zorunlu)" : ""}${a?.kim ? ` [${a.kim}]` : ""}`);
+export const kartSatiri = (k: any) => `[K:${k.kod}] ${k.baslik}: ${k.kural}${k.sure ? ` · süre: ${k.sure}` : ""}${k.kim ? ` · kim: ${k.kim}` : ""}${(k.adimlar || []).length ? ` · tipik adımlar: ${k.adimlar.map(kartAdimi).filter(Boolean).join("; ")}` : ""} (kaynak: ${k.kaynak_ad || k.kaynak_url})`;
 export function standartBlok(s: any) {
   return [`[S:${s.kod}] ${s.ad}${s.aciklama ? ` · ${s.aciklama}` : ""}`, ...(s.adimlar || []).map((a: any) => `  ${a.kod}=${a.ad} · sahip: ${a.sahip}${a.bagimli?.length ? ` · bekler: ${a.bagimli.join(",")}` : ""}${a.kosul ? ` · yalnızca ${a.kosul.soru}=${a.kosul.deger} ise` : ""}`), ...((s.sorular || []).length ? [`  sorular: ${s.sorular.map((q: any) => `${q.kod} (${q.soru})`).join("; ")}`] : [])].join("\n");
 }
@@ -180,10 +182,50 @@ export function hatirlatmaSatirlari(t: any, h: Hatira, sorular: any[], soruGerek
     if (k) L.push(`${yer.join(", ")}: ${k.kural}${k.sure ? ` (${k.sure})` : ""} · kaynak: ${k.kaynak_ad || k.kaynak_url}`);
   }
   for (const q of sorular) { const g = soruGerekce.get(q.kod); if (g) L.push(`[${q.kod}] sorusunu soruyorum: ${g}`); }
-  if (h.deneyim.length && !L.length) L.push(`Benzer ${h.deneyim.length} geçmiş işe baktım (${h.deneyim.map((d: any) => d.akis_kod).filter(Boolean).join(", ")}); bu işe taşınacak bir sürpriz yok.`);
-  else if (h.deneyim.length) L.push(`Dayandığım benzer geçmiş işler: ${h.deneyim.map((d: any) => `${d.akis_kod}${d.varlik ? ` (${d.varlik})` : ""}`).join(", ")}.`);
+  // m5: "dayandığım" yalnız gerçekten dayanılan (G: dayanağı) ya da güçlü benzeyen işler; zayıf benzerlik dayanak gibi gösterilmez
+  const guclu = h.deneyim.filter((d: any) => kullanilan.has(`G:${d.akis_kod}`) || (d._puan ?? 0) >= ESIK.kaynak);
+  if (h.deneyim.length && !L.length && !guclu.length) L.push(`Benzer görünen ${h.deneyim.length} geçmiş işe baktım (${h.deneyim.map((d: any) => d.akis_kod).filter(Boolean).join(", ")}); bu işe taşınacak bir şey yok.`);
+  else if (guclu.length) L.push(`Dayandığım benzer geçmiş işler: ${guclu.map((d: any) => `${d.akis_kod}${d.varlik ? ` (${d.varlik})` : ""}`).join(", ")}.`);
   return L;
 }
+
+// ---------- kartın zorunlu işleri (S2, M5) ----------
+/**
+ * Bu işe güçlü uyan bilgi kartının zorunlu işleri taslakta olur: varsa dayanağı yazılır ve her durumda gerektiği için koşulu kalkar
+ * (ör. ticari fatura "kontrat varsa" diye koşullanmaz); yoksa eklenir. Zayıf eşleşen kart zorlanmaz, motorun takdirine kalır.
+ */
+export function zorunluIsler(t: any, kartlar: any[]) {
+  const notlar: string[] = [];
+  const adimlar: any[] = t.adimlar || (t.adimlar = []);
+  const roller: any[] = t.roller || (t.roller = []);
+  const anahtarda = (s: any, anahtar: string[]) => { const m = vnorm(`${s.ad} ${s.kisa_ad || ""} ${s.aciklama || ""} ${s.tur_kod || ""}`); return anahtar.some((k) => k && m.includes(vnorm(k))); };
+  const bul = (x: any) => adimlar.find((s) => (x.tur_kod && s.tur_kod === x.tur_kod) || (Array.isArray(x.anahtar) && x.anahtar.length && anahtarda(s, x.anahtar)) || kelimeBenzer(kokler(s.ad), kokler(x.ad)) >= 0.6);
+  const idsOf = (anahtar: string[] = []) => (anahtar.length ? adimlar.filter((s) => anahtarda(s, anahtar)).map((s) => s.id) : []);
+  let eklenen = 0;
+  for (const k of kartlar) {
+    if (k._puan != null && k._puan < ESIK.zorunlu) continue;
+    const ref = `K:${k.kod}`;
+    for (const [i, x] of (Array.isArray(k.adimlar) ? k.adimlar : []).entries()) {
+      if (!x || typeof x !== "object" || !x.zorunlu || !x.ad) continue;
+      const var0 = bul(x);
+      if (var0) {
+        if (!dayanaklar(var0).includes(ref)) var0.dayanak = [...dayanaklar(var0), ref];
+        if (var0.kosul?.soru && x.kosulsuz !== false) { notlar.push(`"${var0.ad}" her durumda gerekli (${ref}); "${var0.kosul.soru}=${var0.kosul.deger}" koşulu kaldırıldı.`); var0.kosul = null; }
+        continue;
+      }
+      if (eklenen >= 8) { notlar.push(`"${x.ad}" kartta zorunlu ama taslak dolu; gerekiyorsa elle ekle (${ref}).`); continue; }
+      const tip = x.sahip_tip === "dis" ? "dis" : x.sahip_tip === "agent" ? "agent" : "insan";
+      const rol = roller.find((r) => x.sahip_rol && r.kod === x.sahip_rol) || roller.find((r) => r.tip === tip && !(tip === "insan" && /muhasebe|mali müşavir/i.test(r.ad || ""))) || roller[0];
+      const id = `kart-${slug(k.kod)}-${i + 1}`;
+      adimlar.push({ id, tur_kod: x.tur_kod || slug(x.ad), ad: x.ad, kisa_ad: x.kisa_ad || null, aciklama: x.aciklama || null, sahip_rol: rol ? rol.kod : "__sahip", kriter: x.kriter || `${x.ad} tamam`, beklenen_cikti: x.beklenen_cikti || null, sure_tahmin_gun: Number(x.sure_tahmin_gun ?? x.sure) || 1, bagimli: idsOf(x.bagimli_anahtar), boyut: x.boyut || "kapi", kosul: null, dayanak: [ref], ...(typeof x.karar_gerekli === "boolean" ? { karar_gerekli: x.karar_gerekli } : {}), ...(typeof x.cikti_bekleniyor === "boolean" ? { cikti_bekleniyor: x.cikti_bekleniyor } : {}) });
+      for (const b of idsOf(x.bekleyen_anahtar)) { const s = adimlar.find((y) => y.id === b); if (s && s.id !== id && !(s.bagimli || []).includes(id)) s.bagimli = [...(s.bagimli || []), id]; }
+      eklenen++;
+      notlar.push(`"${x.ad}" bilgi kartından eklendi (${ref}; zorunlu iş).`);
+    }
+  }
+  return notlar;
+}
+const slug = (s: string) => vnorm(s).replace(/\s+/g, "-").slice(0, 40) || "adim";
 
 // ---------- kesin derslerin uygulandığını garanti et ----------
 export function derslerUygula(t: any, dersler: any[]) {

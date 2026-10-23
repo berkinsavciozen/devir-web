@@ -136,7 +136,8 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
     return g === 0 ? 'bu görev bitmeden başlayamaz; her gün gecikme onu bir gün kaydırır' : `bu görev bitmeden başlayamaz; ${g} güne kadar gecikme onu kaydırmaz`;
   };
   const onculNotu = (z: any) => (BITTI(z.durum) ? (z.durum === 'tamam' ? `bitti ${gunAy(Date.parse(z.durum_at))}` : z.durum_etiket || z.durum) : `${z.durum_etiket || z.durum}${z.en_erken_bitis ? ` · en erken ${gunAy(Date.parse(z.en_erken_bitis))}` : ''}; bitmeden bu görev başlayamaz`);
-  const ciktiVar = !!A.beklenen_cikti || (A.ciktilar || []).length > 0 || A.cikti_sayisi > 0 || (benim && !A.karar_adimi);
+  // N17: çıktı bölümü yalnız gerekiyorsa; planlamada "çıktı yok" denen adımda, çıktı yazılmadıkça görünmez
+  const ciktiVar = !!A.beklenen_cikti || A.cikti_bekleniyor === true || (A.ciktilar || []).length > 0 || A.cikti_sayisi > 0 || (benim && !A.karar_adimi && A.cikti_bekleniyor !== false);
   const altlar: any[] = A.tekrar?.kalemler || [];
   const gorevSatiri = (z: any, not: string) => (
     <li key={z.no}>
