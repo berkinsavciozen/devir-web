@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gecmistenOlaylar, bSuzgecAdresi, bSuzgecOku, gunBasligi, olayAciklamasi, olayFiili, suz, topla } from './model';
+import { gecmistenOlaylar, bSuzgecAdresi, bSuzgecOku, gunBasligi, olayAciklamasi, olayFiili, olayTuru, suz, topla } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const gunAy = (ms: number) => new Date(ms).toISOString().slice(5, 10);
@@ -45,5 +45,19 @@ describe('bildirimler', () => {
     const O = gecmistenOlaylar(d, 'Berkin');
     expect(O).toHaveLength(1);
     expect(O[0]).toMatchObject({ akis: 'A', adim_ad: 'Liste', ilgili: true, okundu: true });
+  });
+  it('tür (K9): durum haritadaki dille; tür süzgeci adreste', () => {
+    expect(olayTuru(e({ tip: 'durum', durum: 'tamam' }))).toBe('bitti');
+    expect(olayTuru(e({ tip: 'durum', durum: 'engelli' }))).toBe('engel');
+    expect(olayTuru(e({ tip: 'durum', durum: 'hazir', kim_tip: 'sistem' }))).toBe('sira');
+    expect(olayTuru(e({ tip: 'durum', durum: 'ertelendi' }))).toBe('atlandi');
+    expect(olayTuru(e({ tip: 'karar' }))).toBe('karar');
+    expect(olayTuru(e({ tip: 'guncelleme', ozet: 'Adım 15 · çıktı: Rapor' }))).toBe('cikti');
+    expect(olayTuru(e({ adim_no: null, tip: 'akis_olustu' }))).toBe('akis');
+    expect(olayTuru(e({ tip: 'not' }))).toBe('not');
+    const s = bSuzgecOku(new URLSearchParams('sekme=tum&tur=engel'));
+    expect(bSuzgecAdresi(s)).toBe('/bildirimler?sekme=tum&tur=engel');
+    expect(bSuzgecOku(new URLSearchParams('tur=uydurma')).tur).toBeNull();
+    expect(suz([e({ tip: 'durum', durum: 'engelli' }), e({})], s)).toHaveLength(1);
   });
 });

@@ -592,6 +592,11 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .lejant li span { display: flex; flex-direction: column; line-height: 17px; }
 .lejant li b { font-size: 14px; font-weight: 700; color: var(--renk-metin-ink); }
 .lejant li small { font-size: 12px; font-weight: 500; color: var(--renk-metin-ink3); }
+.lejant li span { flex: 1; min-width: 0; }
+.lejant-sayi { font-style: normal; font-size: 13px; font-weight: 750; color: var(--renk-metin-ink); min-width: 28px; padding: 3px 9px; border-radius: 999px; background: color-mix(in srgb, var(--renk-vurgu-lila) 18%, transparent); text-align: center; }
+.lejant-satir { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 14px; width: 100%; height: 44px; margin: 0 -8px; padding: 0 8px; width: calc(100% + 16px); border-radius: 14px; cursor: pointer; }
+.lejant-satir:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 1px; }
+@media (hover: hover) { .lejant-satir:hover { background: color-mix(in srgb, var(--renk-vurgu-altin) 12%, transparent); } .lejant-satir:hover .lejant-sayi { background: color-mix(in srgb, var(--renk-vurgu-altin) 30%, transparent); } }
 .lejant-alt-baslik { margin: 18px 0 8px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 750; color: var(--renk-metin-ink3); }
 .lejant-kodlama { margin: 0; display: grid; gap: 6px; }
 .lejant-kodlama div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; font-size: 13px; line-height: 17px; }
@@ -792,3 +797,13 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-kaydir { position: absolute; overflow-y: auto; overscroll-behavior: contain; border-radius: 26px; background: color-mix(in srgb, var(--renk-zemin-kart) 72%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #FFFFFF 8%, transparent); }
 .gd-kaydir .gd { padding: 12px 24px 28px; max-width: none; }
 .sahne-genis .gd .dugme { position: relative; left: auto; right: auto; top: auto; }
+
+/* W3 · K10: haritada üzerine gelince ad ve durum (yalnız fareyle; dokunmatikte etiket ekran okuyucuda) */
+@media (hover: hover) and (pointer: fine) {
+  .gezegen-hedef[data-ipucu]:hover::after {
+    content: attr(data-ipucu); position: absolute; left: 50%; bottom: calc(100% + 6px); transform: translateX(-50%);
+    white-space: nowrap; max-width: 340px; overflow: hidden; text-overflow: ellipsis; padding: 6px 10px; border-radius: 10px;
+    background: color-mix(in srgb, var(--renk-zemin-kart) 96%, transparent); border: 1px solid color-mix(in srgb, var(--renk-vurgu-altin) 50%, transparent);
+    color: var(--renk-metin-ink); font: 600 12.5px/1.3 Inter, sans-serif; pointer-events: none; z-index: 5;
+  }
+}

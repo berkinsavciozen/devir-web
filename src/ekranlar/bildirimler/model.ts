@@ -4,15 +4,21 @@ const GUN = 864e5;
 export const kisa = (s: string) => (s || '').replace(/\s*\(.*\)$/, '').replace(/'/g, '’');
 
 export type BSekme = 'sen' | 'tum';
-export interface BSuzgec { sekme: BSekme; kisi: string | null; akis: string | null }
+/** Olay türü (K9): haritanın işaretleriyle aynı dil; lejanttaki işaret bu türün bildirimlerine gider (N2). */
+export type OlayTuru = 'bitti' | 'basladi' | 'engel' | 'sira' | 'karar' | 'cikti' | 'atlandi' | 'not' | 'akis';
+export const TUR_AD: Record<OlayTuru, string> = { bitti: 'Bitenler', basladi: 'Başlayanlar', engel: 'Engeller', sira: 'Sırası gelenler', karar: 'Kararlar', cikti: 'Çıktılar', atlandi: 'Atlanan ve ertelenen', not: 'Not ve ilerleme', akis: 'Akış değişiklikleri' };
+const TURLER = Object.keys(TUR_AD) as OlayTuru[];
+export interface BSuzgec { sekme: BSekme; kisi: string | null; akis: string | null; tur?: OlayTuru | null }
 export function bSuzgecOku(q: URLSearchParams): BSuzgec {
-  return { sekme: q.get('sekme') === 'tum' ? 'tum' : 'sen', kisi: q.get('kisi') || null, akis: q.get('akis') || null };
+  const t = q.get('tur') as OlayTuru | null;
+  return { sekme: q.get('sekme') === 'tum' ? 'tum' : 'sen', kisi: q.get('kisi') || null, akis: q.get('akis') || null, tur: t && TURLER.includes(t) ? t : null };
 }
 export function bSuzgecAdresi(s: BSuzgec): string {
   const p = new URLSearchParams();
   if (s.sekme === 'tum') p.set('sekme', 'tum');
   if (s.kisi) p.set('kisi', s.kisi);
   if (s.akis) p.set('akis', s.akis);
+  if (s.tur) p.set('tur', s.tur);
   const q = p.toString();
   return '/bildirimler' + (q ? '?' + q : '');
 }
@@ -85,9 +91,18 @@ export function gunlere<T extends { e: any }>(L: T[], now: number, gunAy: (ms: n
   return [...m];
 }
 
-/** Süzgeç: "Senin için" yalnız ilgili olaylar; kişi ve akış seçimi. */
+/** Olayın türü: durum değişimi haritadaki duruma göre; karar, çıktı, akış düzeyi ve geri kalan not/ilerleme. */
+export function olayTuru(e: any): OlayTuru {
+  if (e.tip === 'durum') return e.durum === 'tamam' ? 'bitti' : e.durum === 'suruyor' ? 'basladi' : e.durum === 'engelli' ? 'engel' : e.durum === 'hazir' ? 'sira' : e.durum === 'atlandi' || e.durum === 'ertelendi' ? 'atlandi' : 'not';
+  if (e.tip === 'karar' || /^karar_/.test(String(e.veri?.tur || ''))) return 'karar';
+  if (e.tip === 'cikti' || /·\s*çıktı:/.test(String(e.ozet || ''))) return 'cikti';
+  if (e.adim_no == null || e.tip === 'adim_eklendi' || /^akis_/.test(e.tip)) return 'akis';
+  return 'not';
+}
+
+/** Süzgeç: "Senin için" yalnız ilgili olaylar; kişi, akış ve tür seçimi. */
 export function suz(O: any[], s: BSuzgec): any[] {
-  return O.filter((e) => (s.sekme === 'tum' || e.ilgili) && (!s.kisi || e.kim === s.kisi) && (!s.akis || e.akis === s.akis));
+  return O.filter((e) => (s.sekme === 'tum' || e.ilgili) && (!s.kisi || e.kim === s.kisi) && (!s.akis || e.akis === s.akis) && (!s.tur || olayTuru(e) === s.tur));
 }
 
 /**

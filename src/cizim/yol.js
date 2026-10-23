@@ -280,12 +280,18 @@ export function seritler(M, Y, b, o = {}) {
   let ic = '';
   const eksenY = b.y + 14 + us.length * satir + 6;
   const d0 = Math.floor((tBas + 3 * 36e5) / GUN) * GUN - 3 * 36e5;
+  // eksen etiketleri üst üste binmez, kutudan taşmaz (K3): sığan en sık aralık (her gün, iki günde bir, haftalık, iki haftalık)
+  const efs = 10.5 * Math.min(ps, 1.3) * YK, een = (t) => gunAy(t).length * efs * .58 + 4;
+  const aralik = [1, 2, 7, 14, 28].find((n) => n * pxGun >= een(d0) + 8) ?? 28;
+  const etiketGunu = (t) => { const g = tl(t); return aralik === 1 || (aralik === 2 ? g.getUTCDate() % 2 === 0 : g.getUTCDay() === 1 && Math.floor((t + 3 * 36e5) / (7 * GUN)) % (aralik / 7) === 0); };
+  let sonSag = -1e9;
   for (let t = d0; xOf(t) < X0 + XW + 40; t += GUN) {
     const x = xOf(t), pzt = tl(t).getUTCDay() === 1;
     if (x < X0 - 10) continue;
     ic += `<line x1="${f(x)}" y1="${b.y + 10}" x2="${f(x)}" y2="${eksenY}" stroke="#8E80D6" stroke-width="${pzt ? .9 : .5}" opacity="${pzt ? .45 : .2}"/>`;
     ic += `<line x1="${f(x)}" y1="${eksenY}" x2="${f(x)}" y2="${eksenY + (pzt ? 7 : 4)}" stroke="#B9A6F2" stroke-width="${pzt ? 1.3 : .7}"/>`;
-    if ((o.herGun ? tl(t).getUTCDate() % 2 === 0 : pzt) && x > X0 + 14) ic += sans(f(x), eksenY + 20, gunAy(t), { fs: 10.5 * Math.min(ps, 1.3) * YK, fw: 600, col: C.ink3, anchor: 'middle' });
+    const w = een(t);
+    if (etiketGunu(t) && x - w / 2 >= Math.max(X0 + 4, sonSag + 6) && x + w / 2 <= X0 + XW - 4) { ic += sans(f(x), eksenY + 20, gunAy(t), { fs: efs, fw: 600, col: C.ink3, anchor: 'middle' }); sonSag = x + w / 2; }
   }
   if (G.kule && !F.kapandi) { const xk = xOf(G.hedef); ic += `<line x1="${f(xk)}" y1="${b.y + 10}" x2="${f(xk)}" y2="${eksenY}" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 4" opacity=".8"/>` + tower(xk, eksenY - 2, .16 * ps, false); }
   us.forEach((u, i) => {

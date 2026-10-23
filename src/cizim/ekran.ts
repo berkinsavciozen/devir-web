@@ -110,6 +110,12 @@ export const iconCloud = (x: number, y: number, s = 1) => `<g transform="transla
 export const iconRings = (x: number, y: number, s = 1) => `<g transform="translate(${x},${y}) scale(${s})"><circle r="15" fill="none" stroke="#FFD27A" stroke-width="1.6" stroke-dasharray="3 3" opacity=".6"/><circle r="10" fill="none" stroke="#FFD27A" stroke-width="2" stroke-dasharray="5 2.5"/><circle r="6" fill="url(#pWait)"/></g>`;
 
 const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
+/** Galaksi çerçevesinin galaksi yarıçapından payı; ad hapı bu çizginin üstünde durur (N1, N3). */
+export const CERCEVE = 4;
+/** Galaksinin sınırı: koyu iç zemin, lila çizgi (haritada akışın kapladığı yer okunur). */
+export const cerceve = (x: number, y: number, rr: number) => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr + CERCEVE)}" fill="#120B2C" fill-opacity=".38" stroke="#8E80D6" stroke-opacity=".6" stroke-width="1.3"/>`;
+/** Çerçeveye takılı ad hapının çizgisi (Evren hapları). */
+export const CERCEVE_HAP = '#6B5FB0';
 /** pill genişliği (ortak.js pill ile aynı kural) */
 export const hapEni = (t: string, fs = 11) => Math.round(t.length * fs * .56 + 14);
 
@@ -185,17 +191,18 @@ export function usturlap(o: {
       const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, kx = mx + (cx - mx) * .45, ky = my + (cy - my) * .45;
       s += `<path d="M${f(p.x)},${f(p.y)} Q${f(kx)},${f(ky)} ${f(q.x)},${f(q.y)}" fill="none" stroke="#D9CCFF" stroke-width="${f(.7 + .5 * Math.min(ip.n, 4))}" opacity=".2" stroke-dasharray="2 3"/>`;
     }
-    // etiket: altta, üstte, merkeze bakan yanda, dış yanda; halkaya, başka etikete ve galaksiye binmeyen ilk yer
-    const kutular: { x: number; y: number; w: number }[] = [];
-    const carpar = (x: number, y: number, w: number) => Math.hypot(x - cx, y - cy) + w / 2 > R - 10
+    // etiket galaksinin çerçevesine takılı (N3): altta, üstte, merkeze bakan yanda, dış yanda; halkaya, başka etikete,
+    // taslak hapına ve başka galaksiye binmeyen ilk yer. Hap ortası çerçeve çizgisinde durur.
+    const kutular: { x: number; y: number; w: number }[] = o.taslak ? [{ x: dx + 8, y: dy + 32, w: hapEni(`${o.taslak} taslak`, 11) }] : [];
+    const carpar = (kod: string, x: number, y: number, w: number) => Math.hypot(x - cx, y - cy) + w / 2 > R - 10
       || kutular.some((k) => Math.abs(k.x - x) < (k.w + w) / 2 + 4 && Math.abs(k.y - y) < 22)
-      || EY.yer.some((q) => Math.abs(q.x - x) < q.rr + w / 2 - 2 && Math.abs(q.y - y) < q.rr + 9);
+      || EY.yer.some((q) => q.kod !== kod && Math.abs(q.x - x) < q.rr + 4 + w / 2 && Math.abs(q.y - y) < q.rr + 4 + 10);
     for (const g of EY.yer) {
-      const w = hapEni(o.akislar.find((F) => F.kod === g.kod)!.ad, 11.5), yon = g.x > cx + 4 ? -1 : 1;
-      const aday: [number, number][] = [[g.x, g.y + g.rr + 12], [g.x, g.y - g.rr - 12], [g.x + yon * (g.rr + w / 2 + 6), g.y], [g.x - yon * (g.rr + w / 2 + 6), g.y]];
-      const [ex, ey] = aday.find(([x, y]) => !carpar(x, y, w)) || aday[0];
+      const w = hapEni(o.akislar.find((F) => F.kod === g.kod)!.ad, 11.5), yon = g.x > cx + 4 ? -1 : 1, c = g.rr + CERCEVE;
+      const aday: [number, number][] = [[g.x, g.y + c], [g.x, g.y - c], [g.x + yon * (c + w / 2 - 6), g.y], [g.x - yon * (c + w / 2 - 6), g.y]];
+      const [ex, ey] = aday.find(([x, y]) => !carpar(g.kod, x, y, w)) || aday[0];
       kutular.push({ x: ex, y: ey, w });
-      yer.push({ kod: g.kod, x: g.x, y: g.y, rr: g.rr, a: g.a, etiket: { x: ex, y: ey + 4, w }, isik: g.isik });
+      yer.push({ kod: g.kod, x: g.x, y: g.y, rr: g.rr, a: g.a, etiket: { x: ex, y: ey, w }, isik: g.isik });
     }
   }
   if (!EY) for (const it of aktif) {
@@ -209,21 +216,19 @@ export function usturlap(o: {
     }
     const rr = best!.clash > 0 ? Math.max(12, rr0 - best!.clash) : rr0, [gx, gy] = best!.p;
     const w = hapEni(it.F.ad, 11.5);
-    // etiket altta; halkaya taşarsa yanda (merkeze bakan yanda)
-    let ex = gx, ey = gy + rr * .92;
-    if (Math.hypot(ex - cx, ey + 10 - cy) > R - 14) { const yon = gx > cx + 4 ? -1 : 1; ex = gx + yon * (rr + w / 2 + 5); ey = gy + 4; }
+    // etiket çerçevenin altında; halkaya taşarsa yanda (merkeze bakan yanda)
+    let ex = gx, ey = gy + rr + CERCEVE;
+    if (Math.hypot(ex - cx, ey + 10 - cy) > R - 14) { const yon = gx > cx + 4 ? -1 : 1; ex = gx + yon * (rr + CERCEVE + w / 2 - 6); ey = gy; }
     yer.push({ kod: it.F.kod, x: gx, y: gy, rr, a: it.a, etiket: { x: ex, y: ey, w } });
   }
   for (const F of o.akislar) {
     const q = yer.find((y) => y.kod === F.kod); if (!q) continue;
     const [tx, ty] = pol(q.a, R - 12), tam = !!F.bitti;
     s += `<line x1="${f(q.x)}" y1="${f(q.y)}" x2="${f(tx)}" y2="${f(ty)}" stroke="${tam ? '#FFD27A' : '#8E80D6'}" stroke-width=".8" stroke-dasharray="1.5 3" opacity=".7"/><circle cx="${f(tx)}" cy="${f(ty)}" r="3.2" fill="${tam ? '#FFE29A' : '#B9A6F2'}"/>`;
-    // ışık (biten / toplam): hale ve ilerleme yayı
-    if (q.isik != null) {
-      s += `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(q.rr * 1.7)}" fill="url(#glowGold)" opacity="${f(.08 + .5 * q.isik)}"/>`;
-      s += `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(q.rr + 4)}" fill="none" stroke="#3A3170" stroke-width="1.6"/>`;
-      if (q.isik > 0) { const a1 = -90 + Math.min(.9999, q.isik) * 360, [x0, y0] = [q.x, q.y - q.rr - 4], [x1, y1] = [q.x + Math.cos(a1 * Math.PI / 180) * (q.rr + 4), q.y + Math.sin(a1 * Math.PI / 180) * (q.rr + 4)]; s += `<path d="M${f(x0)},${f(y0)} A${f(q.rr + 4)},${f(q.rr + 4)} 0 ${q.isik > .5 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="1.8" stroke-linecap="round"/>`; }
-    }
+    // galaksinin sınırı (N1): koyu zeminli, görünür çerçeve; ışık (biten / toplam) hale ve çerçevedeki ilerleme yayı
+    if (q.isik != null) s += `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(q.rr * 1.7)}" fill="url(#glowGold)" opacity="${f(.08 + .5 * q.isik)}"/>`;
+    s += cerceve(q.x, q.y, q.rr);
+    if (q.isik != null && q.isik > 0) { const c = q.rr + CERCEVE, a1 = -90 + Math.min(.9999, q.isik) * 360, [x0, y0] = [q.x, q.y - c], [x1, y1] = [q.x + Math.cos(a1 * Math.PI / 180) * c, q.y + Math.sin(a1 * Math.PI / 180) * c]; s += `<path d="M${f(x0)},${f(y0)} A${f(c)},${f(c)} 0 ${q.isik > .5 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="1.8" stroke-linecap="round"/>`; }
     s += o.kucuk(F.kod, q.x, q.y, q.rr, 3);
     if (F.karar) s += bayrak(q.x + q.rr * .9, q.y - q.rr * .9, .8);
   }
