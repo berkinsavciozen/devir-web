@@ -64,3 +64,30 @@ export async function bekleyenleriSifrele(db: DB, sifre: Sifre) {
   }
   return n;
 }
+
+/** Paylaşım adresi ve hazır mesaj (web ve MCP aynı metni verir). Belirteç yoksa (iptal, çözülemeyen) bağlantı yok. */
+export function linkV(base: string, k: any, belirtec: string | null | undefined, baslik?: string) {
+  if (!belirtec) return { link: null, whatsapp: null, mesaj: null }; // iptal ya da çözülemeyen şifreli belirteç: sahip yeniler
+  // belirteç # parçasında (N-3): tarayıcı onu sunucuya göndermez, Workers loglarına düşmez
+  const link = `${base}/l#${belirtec}`;
+  const mesaj = `Merhaba ${k.ad.replace(/\s*\(.*\)$/, "")}, ${baslik ? `${baslik} için ` : ""}senden beklenen adımlar burada: ${link}`;
+  return { link, mesaj, whatsapp: `https://wa.me/?text=${encodeURIComponent(mesaj)}` };
+}
+
+/**
+ * Dış bağlantının süresi (P1-C, plan v2: PIN yok, akış kapanınca 30 gün). Açık akışta süresiz; kapanan akışta
+ * kapanıştan 30 gün sonra, arşivlenen (vazgeçilen) akışta hemen kapanır. null: süre işlemiyor.
+ */
+export const BAGLANTI_GUN = 30;
+export function baglantiSonu(akis: any): number | null {
+  if (akis.durum === "aktif") return null;
+  if (akis.durum !== "kapandi") return 0;
+  const t = Date.parse(akis.kapandi_at || "");
+  return Number.isFinite(t) ? t + BAGLANTI_GUN * 864e5 : 0;
+}
+export const iptalMi = (k: any) => !k.link_hash && !k.link_token;
+/** acik | iptal | suresi_doldu */
+export function baglantiDurumu(k: any, akis: any, now: number) {
+  const son = baglantiSonu(akis);
+  return iptalMi(k) ? "iptal" : son != null && now >= son ? "suresi_doldu" : "acik";
+}

@@ -2,13 +2,13 @@
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
   callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
-  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod,
+  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { ANAHTAR_OMRU } from "./hesap.ts";
-import { belirtecAc, belirtecAlanlari, belirtecBul, yeniBelirtec } from "./baglanti.ts";
+import { belirtecAc, belirtecAlanlari, belirtecBul, yeniBelirtec, linkV, baglantiSonu, BAGLANTI_GUN, iptalMi } from "./baglanti.ts";
 import { akisKarari, gecmisYukle } from "./plan.ts";
 import { adimKisaAdi, akisKisaAdi } from "./ad.ts";
 
@@ -233,26 +233,6 @@ const kisiV = (k: any) => ({ id: k.id, ad: k.ad, tip: k.tip });
 export const POLITIKA_VARSAYILAN = { sahip: "insan", ekip: "insan", dis: "beyan" };
 const politikaV = (ws: any) => ({ agent_karari: { ...POLITIKA_VARSAYILAN, ...(ws?.politika?.agent_karari || {}) } });
 const katilimciV = (k: any, base: string | null, belirtec?: string | null, baslik?: string) => ({ id: k.id, kisi_id: k.kisi_id || null, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, olusturuldu: k.created_at, ...(base ? linkV(base, k, belirtec, baslik) : {}) });
-function linkV(base: string, k: any, belirtec: string | null | undefined, baslik?: string) {
-  if (!belirtec) return { link: null, whatsapp: null, mesaj: null }; // iptal ya da çözülemeyen şifreli belirteç: sahip yeniler
-  // belirteç # parçasında (N-3): tarayıcı onu sunucuya göndermez, Workers loglarına düşmez
-  const link = `${base}/l#${belirtec}`;
-  const mesaj = `Merhaba ${k.ad.replace(/\s*\(.*\)$/, "")}, ${baslik ? `${baslik} için ` : ""}senden beklenen adımlar burada: ${link}`;
-  return { link, mesaj, whatsapp: `https://wa.me/?text=${encodeURIComponent(mesaj)}` };
-}
-
-/**
- * Dış bağlantının süresi (P1-C, plan v2: PIN yok, akış kapanınca 30 gün). Açık akışta süresiz; kapanan akışta
- * kapanıştan 30 gün sonra, arşivlenen (vazgeçilen) akışta hemen kapanır. null: süre işlemiyor.
- */
-export const BAGLANTI_GUN = 30;
-export function baglantiSonu(akis: any): number | null {
-  if (akis.durum === "aktif") return null;
-  if (akis.durum !== "kapandi") return 0;
-  const t = Date.parse(akis.kapandi_at || "");
-  return Number.isFinite(t) ? t + BAGLANTI_GUN * 864e5 : 0;
-}
-const iptalMi = (k: any) => !k.link_hash && !k.link_token;
 /** Sahibin listesi: bağlantı, durum (acik | iptal | suresi_doldu), geçerlilik, son açılış ve adım sayısı. */
 async function katilimcilarV(ctx: Ctx, ak: any, base: string) {
   const ks = await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at");
@@ -273,12 +253,6 @@ async function katilimcilarV(ctx: Ctx, ak: any, base: string) {
       akis: { kod: ak.kisa_kod, baslik: ak.baslik, durum: ak.durum },
     };
   }));
-}
-/** Kişi bu alanın üyesi ya da anahtar sahibi mi (alanın sahibi dahil)? */
-async function ekipKisisi(ctx: Ctx, kisi: any) {
-  if (norm(kisi.ad) === norm(ctx.key.kisi) && !isDis(ctx)) return true;
-  if (await ctx.db.one("uye", { kullanici_id: ctx.ws.id, kisi_id: kisi.id })) return true;
-  return (await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id, kisi_id: kisi.id }, "created_at")).some((a: any) => a.rol !== "dis");
 }
 async function katilimciSahipli(ctx: Ctx, id: string) {
   const k = /^[0-9a-f-]{36}$/i.test(id) ? await ctx.db.one("katilimci", { id }) : null;
@@ -570,18 +544,8 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       const ak = await getAkis(ctx, r1);
       const ad = String(b.ad || "").trim();
       if (!ad) throw new ApiHata(400, "ad gerekli: bağlantıyı alacak kişinin adı (adımlarda sahip olarak yazılan ad).");
-      // kişi seçiciden kisi_id gelir; yoksa ad bu alandaki kişiye çözülür. Bir akışta bir kişiye bir bağlantı.
-      const kisi = b.kisi_id ? await kisiAl(ctx, b.kisi_id) : await kisiCoz(ctx, ad, "dis");
-      const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => kisi && k.kisi_id ? k.kisi_id === kisi.id : norm(k.ad) === norm(ad));
-      const yeni = var0 ? null : yeniBelirtec();
-      const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: kisi?.ad || ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}), ...(await belirtecAlanlari(yeni!, ctx.sifre)) }]))[0];
-      const steps = (await ctx.db.many("adim", { akis_id: ak.id }, "no")).filter((s: any) => kisi && s.sahip_kisi_id ? s.sahip_kisi_id === kisi.id : adEslesir(s.sahip, ad));
-      // N-10: bağlantı alan kişi ekipte değilse dış kişidir; "insan" yazılmış adımları "dış" olur (agent adımı değişmez)
-      if (kisi && kisi.tip !== "agent" && !(await ekipKisisi(ctx, kisi))) {
-        if (kisi.tip !== "dis") await ctx.db.update("kisi", { id: kisi.id }, { tip: "dis" });
-        for (const s of steps) if (s.sahip_tip === "insan") await ctx.db.update("adim", { id: s.id }, { sahip_tip: "dis" });
-      }
-      return { katilimci: katilimciV(k, taban.link, yeni || await belirtecAc(k, ctx.sifre), ak.baslik), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
+      const { k, belirtec, steps } = await katilimciAc(ctx, ak, { ad, kisi_id: b.kisi_id, rol: b.rol, iletisim: b.iletisim });
+      return { katilimci: katilimciV(k, taban.link, belirtec, ak.baslik), adim_sayisi: steps.length, ...(steps.length ? {} : { uyari: `Bu akışta sahibi "${ad}" olan adım yok; bağlantıda adım görünmez. Adımın sahibini bu adla yaz.` }) };
     }
     if (r0 === "katilimci" && r1 && r2 === "yenile" && !r3) {
       ekipMi(ctx);
