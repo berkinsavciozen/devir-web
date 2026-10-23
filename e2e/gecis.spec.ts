@@ -32,10 +32,16 @@ test('gecis-z1: evrenden akışa ≤ 560 ms', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', { azalt: false });
   const g = page.getByRole('listitem', { name: /^Hasat postu/ });
   await g.waitFor();
-  const t0 = Date.now();
+  // süre sayfanın içinde ölçülür (dokunuştan adres değişimine); Playwright'ın tıklama ve adres yoklaması gecikmesi sayılmaz
+  await page.evaluate(() => {
+    const w = window as any;
+    addEventListener('pointerdown', () => { w.__t0 = performance.now(); }, { capture: true, once: true });
+    const it = history.pushState.bind(history);
+    history.pushState = (...a: Parameters<History['pushState']>) => { it(...a); if (/\/akis\/RTD5$/.test(location.pathname)) w.__t1 ??= performance.now(); };
+  });
   await g.click();
   await expect(page).toHaveURL(/\/akis\/RTD5$/);
-  const gecen = Date.now() - t0;
+  const gecen = Math.round(await page.evaluate(() => (window as any).__t1 - (window as any).__t0));
   const a = await animasyonlar(page);
   expect(gecen + a.enUzun, `adres ${gecen} ms + geliş ${a.enUzun} ms`).toBeLessThanOrEqual(560 + 150);
   expect(a.enUzun).toBeLessThanOrEqual(280);
