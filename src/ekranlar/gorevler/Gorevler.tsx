@@ -6,6 +6,8 @@ import { useBen, useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { Zil } from '../../bilesen/Zil';
+import { usePanelIcinde } from '../../bilesen/Kabuk';
+import { useBoyut } from '../../bilesen/Gok';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
@@ -35,11 +37,9 @@ const gezegen = (a: any, x: number, y: number, r: number) => planet(x, y, r, dur
 type Sec = 'kisi' | 'akis' | 'durum' | null;
 const HARITA_Y = 214;
 
-export function Gorevler({ ben }: { ben: Ben }) {
+/** Görev listesi ve süzgeçleri (adresten); liste ve masaüstündeki büyük harita aynı veriyi okur. */
+function useGorevVerisi(ben: Ben) {
   const kisi = ben.kisi || '';
-  const NOW = simdi();
-  const [, setYazi] = useState(0);
-  useEffect(() => { void yaziTipleriHazir().then(() => setYazi(1)); }, []);
   const S = suzgecOku(arama());
   const kisiQ = S.kisi === 'ben' ? kisi : S.kisi;
   const qs = new URLSearchParams({ kisi: kisiQ || 'hepsi', durum: S.durum, ...(S.akis.length ? { akis: S.akis.join(',') } : {}) });
@@ -51,6 +51,16 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const L: any[] = useMemo(() => (eski ? ozettenGorevler(ozet.data?.benim || [], ozet.data?.akislar || [], kisi) : G.data?.gorevler || []), [eski, G.data, ozet.data, kisi]);
   const kodlar = useMemo(() => [...new Set(L.map((a) => a.akis))], [L]);
   const detay = useDetaylar(kodlar);
+  return { kisi, S, G, ozet, b, eski, L, kodlar, detay };
+}
+
+export function Gorevler({ ben }: { ben: Ben }) {
+  const NOW = simdi();
+  const [, setYazi] = useState(0);
+  useEffect(() => { void yaziTipleriHazir().then(() => setYazi(1)); }, []);
+  const { kisi, S, G, ozet, b, eski, L, kodlar, detay } = useGorevVerisi(ben);
+  // masaüstünde görev haritası sol bölmede büyük çizilir (GorevlerSol); panelde yalnız liste
+  const panelde = usePanelIcinde();
   const [sec, setSec] = useState<Sec>(null);
   const uygula = (y: Partial<Suzgec>) => { setSec(null); git(suzgecAdresi({ ...S, ...y }), { yerine: true }); };
 
@@ -63,7 +73,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
 
   // harita çizimi: şerit çizgileri, bugün, hafta işaretleri, görevler; bağımlılık bağı aynı haritadaki görevler arasında
   const svg = useMemo(() => {
-    if (!L.length) return '';
+    if (!L.length || panelde) return '';
     let s = `<rect x="16" y="${HY - 4}" width="358" height="${H.h + 40}" rx="20" fill="#120B2C" fill-opacity=".55" stroke="#FFFFFF" stroke-opacity=".06"/>`;
     for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) {
       const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
@@ -82,7 +92,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     s += `<line x1="${H.bugunX.toFixed(1)}" y1="${HY + 2}" x2="${H.bugunX.toFixed(1)}" y2="${HY + 10 + H.h}" stroke="#FFC9A3" stroke-width="1.5" stroke-linecap="round"/>`;
     for (const n of H.noktalar) s += gezegen(n.a, n.x, n.y, 6.5);
     return s;
-  }, [H, L, detay, kisi, NOW, HY]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [H, L, detay, kisi, NOW, HY, panelde]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // liste
   const satir = (a: any): Oge => {
@@ -110,7 +120,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     for (const t of taslaklar) ogeler.push({ tur: 'satir', key: 't' + t.kod, ikon: taslakIkon, ust: t.baslik || t.cumle, alt: `taslak · ${t.soru_sayisi} soru · ${t.adim_sayisi} adım`, etiket: `Taslak: ${t.baslik || t.cumle}. ${t.soru_sayisi} soru bekliyor.`, git: () => git(`/yeni/${enc(t.kod)}`) });
     for (const d of davetler) ogeler.push({ tur: 'satir', key: 'd' + d.id, ikon: zarfIkon, ust: alanAdi(d.alan || '', d.davet_eden), alt: `davet · ${d.rol === 'dis' ? 'dış' : d.rol}${d.davet_eden ? ` · ${d.davet_eden}` : ''}`, git: () => git('/hesap') });
   }
-  const listeY = L.length ? HY + H.h + 52 : 196 + kayma;
+  const listeY = L.length && !panelde ? HY + H.h + 52 : (L.length ? HY : 196 + kayma);
   const Lst = Liste({ y0: listeY, ogeler, etiket: 'Görevler' });
 
   const cumle = G.data || eski ? doluSatir(gorevCumlesi(L, S.kisi, kisi, S.durum), 340, '17px Caladea', 2) : [''];
@@ -131,7 +141,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
             <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={S.durum !== 'acik'} onClick={() => setSec('durum')}>Durum: {DURUM_AD[S.durum]}</button>
           </div>
         ) : <Metin y={150} fs={12.5} lh={16} renk="ink3">Sunucu 0.12.0 yüklenince bütün akışlardaki işler ve süzgeçler burada.</Metin>}
-        {L.length > 0 && <>
+        {L.length > 0 && !panelde && <>
           <h2 className="bolum-baslik" style={{ top: HY - 26 }}>{kisiBasina ? 'GÖREV HARİTASI · KİŞİLER' : 'GÖREV HARİTASI · AKIŞLAR'}</h2>
           {H.seritler.map((r) => {
             // şerit adı kesilmez (P1-F): sütuna sığan en çok üç satır, şeridin ortasında
@@ -154,6 +164,61 @@ export function Gorevler({ ben }: { ben: Ben }) {
         {sec && <SecimListesi sec={sec} S={S} kisi={kisi} veri={G.data} uygula={uygula} />}
       </AltSayfa>
     </>
+  );
+}
+
+/**
+ * Masaüstü Görevler'in sol bölmesi (N14, açık soru 3): görev haritası büyük hali; şerit başına akış (ya da kişi),
+ * yatayda zaman, haftalık tarih ekseni ve bugün çizgisi. Noktaya tıklayınca görev açılır.
+ */
+export function GorevlerSol({ ben }: { ben: Ben }) {
+  const NOW = simdi();
+  const { w: W, h: Hh } = useBoyut();
+  const { kisi, S, L, detay } = useGorevVerisi(ben);
+  const SW = W - 440, kisiBasina = S.kisi === 'hepsi';
+  const n = Math.max(1, Math.min(12, new Set(L.map((a) => (kisiBasina ? a.sahip : a.akis))).size));
+  const satir = Math.max(46, Math.min(86, (Hh - 300) / n)), y0 = 150;
+  const H = useMemo(() => gorevHaritasi(L, { kisiBasina, now: NOW, x0: 230, x1: SW - 70, y0, satir, en: 12 }), [L, kisiBasina, NOW, SW, satir]);
+  const akisAdi = (a: any) => a.akis_kisa_ad || a.akis_baslik;
+  const svg = useMemo(() => {
+    if (!L.length) return '';
+    let s = `<rect x="40" y="${y0 - 24}" width="${SW - 80}" height="${H.h + 92}" rx="26" fill="#120B2C" fill-opacity=".5" stroke="#FFFFFF" stroke-opacity=".06"/>`;
+    for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) {
+      const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
+      s += `<line x1="${x.toFixed(1)}" y1="${y0 - 6}" x2="${x.toFixed(1)}" y2="${y0 + H.h + 10}" stroke="#FFFFFF" stroke-opacity=".06"/>`;
+    }
+    for (const r of H.seritler) {
+      s += `<line x1="${H.x0}" y1="${r.y}" x2="${H.x1}" y2="${r.y}" stroke="#4B4380" stroke-width="1.4" stroke-dasharray="2 5"/>`;
+      if (r.tip === 'kisi') s += gemi(r.ad, r.sahipTip || 'insan', 84, r.y, .8, r.ad === kisi);
+      else s += kucukGalaksi(detay[L.find((a) => akisAdi(a) === r.ad)?.akis], kisi, 84, r.y, 18, 2, NOW);
+    }
+    const yer = new Map(H.noktalar.map((p) => [p.a.akis + ':' + p.a.no, p]));
+    for (const p of H.noktalar) for (const o of p.a.onceki || []) {
+      const q = yer.get(p.a.akis + ':' + o.no);
+      if (q) s += `<path d="M${q.x.toFixed(1)},${q.y.toFixed(1)} C${((q.x + p.x) / 2).toFixed(1)},${q.y.toFixed(1)} ${((q.x + p.x) / 2).toFixed(1)},${p.y.toFixed(1)} ${p.x.toFixed(1)},${p.y.toFixed(1)}" fill="none" stroke="#B9A6F2" stroke-opacity=".4" stroke-width="1.2"/>`;
+    }
+    s += `<line x1="${H.bugunX.toFixed(1)}" y1="${y0 - 8}" x2="${H.bugunX.toFixed(1)}" y2="${y0 + H.h + 14}" stroke="#FFC9A3" stroke-width="1.8" stroke-linecap="round"/>`;
+    for (const p of H.noktalar) s += gezegen(p.a, p.x, p.y, 10);
+    return s;
+  }, [H, L, detay, kisi, NOW, SW]); // eslint-disable-line react-hooks/exhaustive-deps
+  const haftalar: number[] = [];
+  for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) haftalar.push(t);
+  const xOf = (t: number) => H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
+  return (
+    <div className="gorev-sol" style={{ position: 'absolute', inset: 0 }}>
+      <svg aria-hidden width={SW} height={Hh} viewBox={`0 0 ${SW} ${Hh}`} style={{ position: 'absolute', left: 0, top: 0 }} dangerouslySetInnerHTML={{ __html: svg }} />
+      <h2 className="genis-bolum" style={{ left: 48, top: 92 }}>{kisiBasina ? 'GÖREV HARİTASI · KİŞİLER' : 'GÖREV HARİTASI · AKIŞLAR'}</h2>
+      {H.seritler.map((r) => (
+        <span key={r.ad} className="gorev-sol-ad" style={{ left: 112, top: r.y - 10, width: 108 }} title={r.ad}>{r.tip === 'kisi' ? kisaAd(r.ad) : r.ad}</span>
+      ))}
+      {haftalar.map((t) => <span key={t} className="gorev-sol-tarih" style={{ left: xOf(t) - 30, top: y0 + H.h + 22 }}>{gunAy(t)}</span>)}
+      {L.length > 0 && <span className="gorev-sol-tarih bugun" style={{ left: H.bugunX - 30, top: y0 + H.h + 40 }}>bugün</span>}
+      <div aria-hidden="true" className="harita-katman gorev-harita">
+        {H.noktalar.map((p) => <span key={p.a.akis + p.a.no} className="gezegen-hedef" title={`${p.a.ad} · ${akisAdi(p.a)}`} style={{ left: p.x - 18, top: p.y - 18, width: 36, height: 36 }}
+          onClick={() => git(`/akis/${enc(p.a.akis)}/adim/${p.a.no}`)} />)}
+      </div>
+      {!L.length && <p className="gorev-sol-bos">Bu süzgeçte görev yok.</p>}
+    </div>
   );
 }
 

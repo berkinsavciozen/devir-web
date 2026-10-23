@@ -4,7 +4,8 @@ import { alanSecimi } from './api/istemci';
 import { sorguIstemcisi, useBen, useOzet } from './api/sorgular';
 import type { Ben } from './api/turler';
 import { Baslik } from './bilesen/Baslik';
-import { Gok, Gren } from './bilesen/Gok';
+import { Gok, Gren, useBoyut } from './bilesen/Gok';
+import { Kabuk, masaustu, type KabukSekme } from './bilesen/Kabuk';
 import { Kutu, Metin, Sahne } from './bilesen/Sahne';
 import { SvgTanimlar } from './bilesen/Svg';
 import { Dugme } from './bilesen/Dugme';
@@ -27,7 +28,7 @@ import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
-import { Gorevler } from './ekranlar/gorevler/Gorevler';
+import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
@@ -58,6 +59,7 @@ const Yukleniyor = () => <Gok tohum={21} yildiz={330} />;
 
 function Uygulama({ yol }: { yol: string }) {
   const ben = useBen();
+  const boy = useBoyut();
   useEffect(() => {
     const d = () => void sorguIstemcisi.invalidateQueries({ queryKey: ['ben'] });
     window.addEventListener('devir:giris-gerekli', d);
@@ -71,38 +73,42 @@ function Uygulama({ yol }: { yol: string }) {
   const b = ben.data;
   if (!b) return <Giris />;
   if (b.kayit_gerekli) return b.bekleyen_davetler?.length ? <DavetKabul ben={b} /> : <DavetYok ben={b} yenile={() => void ben.refetch()} yenileniyor={ben.isFetching} />;
-  if (yol === '/bagla') return <ClaudeaBagla ben={b} />;
+  // masaüstü kabuğu (N13): sayfa sağdaki panelde, solda evren; telefonda sayfanın kendisi
+  const genis = masaustu(boy.w, boy.h);
+  const panel = (sayfa: JSX.Element, konum: string, o: { aktif?: KabukSekme; serbest?: boolean; geri?: string } = {}) =>
+    genis ? <Evren ben={b} panel={sayfa} konum={konum} aktif={o.aktif ?? null} serbest={o.serbest} geri={o.geri ? () => git(o.geri!) : undefined} /> : sayfa;
+  if (yol === '/bagla') return panel(<ClaudeaBagla ben={b} />, 'Claude’a bağla', { geri: '/ayarlar' });
   if (yol === '/' || yol === '') return <><Evren ben={b} /><IlkTanitim /></>;
   if (yol === '/hesap') return <Yonlen yol="/ayarlar?bolum=ben" />;
-  if (yol === '/ayarlar') return <Ayarlar />;
-  if (yol === '/ayarlar/ekip') return <Ekip />;
+  if (yol === '/ayarlar') return panel(<Ayarlar />, 'Ayarlar', { geri: '/' });
+  if (yol === '/ayarlar/ekip') return panel(<Ekip />, 'Ayarlar › Ekip');
   const sr = eslestir('/akis/:kod/soru/:soru', yol);
-  if (sr) return <Cevapla key={sr.kod + sr.soru} kod={sr.kod} soru={sr.soru} ben={b.kisi || ''} />;
+  if (sr) return panel(<Cevapla key={sr.kod + sr.soru} kod={sr.kod} soru={sr.soru} ben={b.kisi || ''} />, 'Akış › Soru');
   const tk = eslestir('/akis/:kod/tekrar/:no', yol);
-  if (tk) return <Kalemler key={tk.kod + tk.no} kod={tk.kod} no={Number(tk.no)} ben={b.kisi || ''} />;
+  if (tk) return panel(<Kalemler key={tk.kod + tk.no} kod={tk.kod} no={Number(tk.no)} ben={b.kisi || ''} />, 'Akış › Kalemler');
   const bl = eslestir('/akis/:kod/bilgi', yol);
-  if (bl) return <AkisBilgi key={bl.kod} kod={bl.kod} ben={b.kisi || ''} />;
+  if (bl) return panel(<AkisBilgi key={bl.kod} kod={bl.kod} ben={b.kisi || ''} />, 'Akış › Bilgi');
   const oz = eslestir('/akis/:kod/onizleme/:id', yol);
   if (oz) return <Baglanti key={oz.id} token="" onizleme={{ id: oz.id, kod: oz.kod }} />;
   const ks = eslestir('/akis/:kod/kisi/:ad', yol);
-  if (ks) return <KisiSayfasi key={ks.kod + ks.ad} kod={ks.kod} ad={ks.ad} ben={b.kisi || ''} />;
+  if (ks) return panel(<KisiSayfasi key={ks.kod + ks.ad} kod={ks.kod} ad={ks.ad} ben={b.kisi || ''} />, 'Akış › Kişi');
   const kr = eslestir('/akis/:kod/karar/:no', yol);
-  if (kr) return <Karar key={kr.kod + kr.no} kod={kr.kod} no={Number(kr.no)} ben={b.kisi || ''} />;
+  if (kr) return panel(<Karar key={kr.kod + kr.no} kod={kr.kod} no={Number(kr.no)} ben={b.kisi || ''} />, 'Akış › Karar');
   const ad = eslestir('/akis/:kod/adim/:no', yol);
   // tablet yatay ve masaüstünde adım haritanın yanındaki panelde açılır; ?tam=1 tam ayrıntı (geçmiş, çıktılar)
-  if (ad && innerWidth >= 1024 && innerHeight >= 600 && !arama().has('tam')) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
+  if (ad && genis && !arama().has('tam')) return <Galaksi key={ad.kod} kod={ad.kod} sahip={b.kisi || ''} secim={Number(ad.no)} />;
   // adımlar arası geçişte sayfa yerinde kalır (geçmiş kaydı büyümez); içerik numarayla yenilenir
   if (ad) return <Adim key={ad.kod} kod={ad.kod} no={Number(ad.no)} ben={b.kisi || ''} />;
   const ak = eslestir('/akis/:kod', yol);
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
-  if (yol === '/akislar') return <Akislar ben={b} />;
-  if (yol === '/gorevler') return <Gorevler ben={b} />;
-  if (yol === '/bildirimler') return <Bildirimler ben={b} />;
+  if (yol === '/akislar') return panel(<Akislar ben={b} />, 'Akışlar', { aktif: 'akislar', serbest: true });
+  if (yol === '/gorevler') return genis ? <Kabuk sol={<GorevlerSol ben={b} />} aktif="gorevler" konum="Görevler" etiket="Görevler"><Gorevler ben={b} /></Kabuk> : <Gorevler ben={b} />;
+  if (yol === '/bildirimler') return panel(<Bildirimler ben={b} />, 'Bildirimler', { geri: '/' });
   if (yol === '/bana') return <Yonlen yol={'/gorevler' + (arama().toString() ? '?' + arama().toString() : '')} />;
-  if (yol === '/akislar/arsiv') return <Arsiv ben={b} />;
-  if (yol === '/yeni') return <YeniIs />;
+  if (yol === '/akislar/arsiv') return panel(<Arsiv ben={b} />, 'Akışlar › Arşiv', { aktif: 'akislar' });
+  if (yol === '/yeni') return panel(<YeniIs />, 'Yeni iş');
   const ty = eslestir('/yeni/:kod', yol);
-  if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;
+  if (ty) return panel(<TaslakSorulari key={ty.kod} kod={ty.kod} />, 'Yeni iş › Taslak');
   return <Bulunamadi />;
 }
 

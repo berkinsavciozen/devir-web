@@ -7,6 +7,7 @@ import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { hedefParcasi, KararSeridi } from '../../bilesen/KararSeridi';
 import { Zil } from '../../bilesen/Zil';
+import { useVurgu, vurgula } from '../../bilesen/vurgu';
 import { Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { iconCloud, iconRings, TAKVIM1 } from '../../cizim/ekran';
 import { uydular } from '../../cizim/yol.js';
@@ -49,6 +50,8 @@ export function Akislar({ ben }: { ben: Ben }) {
   const satirlar = [...kartlar, ...kapanan].slice(0, 7);
   const kodlar = useMemo(() => [...satirlar.map((k) => k.kod), ...arsiv.slice(0, 1).map((k) => k.kod)], [ozet.data, hepsi.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const detay = useDetaylar(kodlar);
+  // masaüstünde satır ↔ soldaki galaksi vurgusu (N15)
+  const vurgu = useVurgu();
   const isaret = useMemo(() => {
     const m: Record<string, 'engel' | 'bekleme'> = {};
     for (const c of evrenCumleleri(kartlar, detay, kisi)) if (c.kod && (c.tur === 'engel' || c.tur === 'bekleme') && !m[c.kod]) m[c.kod] = c.tur;
@@ -109,7 +112,8 @@ export function Akislar({ ben }: { ben: Ben }) {
           const etiket = `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı. ' : ''}${tamam}/${toplam} adım tamam.${k.pay_saat != null && k.durum !== 'kapandi' ? ` Hedefe ${paySure(k.pay_saat)} ${k.pay_saat >= 0 ? 'pay' : 'gecikme'}.` : ''}${isaret[k.kod] === 'engel' ? ' Engel sende.' : ''}`;
           return (
             <li key={k.kod} style={{ position: 'absolute', left: 14, top: cy - 34, width: 362, height: RH - 4 }}>
-              <button className="akis-satir" aria-label={etiket} onClick={() => git(`/akis/${encodeURIComponent(k.kod)}`)}>
+              <button className={`akis-satir${vurgu === k.kod ? ' vurgulu' : ''}`} aria-label={etiket} onClick={() => git(`/akis/${encodeURIComponent(k.kod)}`)}
+                onMouseEnter={() => vurgula(k.kod)} onMouseLeave={() => vurgula(null)} onFocus={() => vurgula(k.kod)} onBlur={() => vurgula(null)}>
                 <span className="akis-satir-ad" title={k.baslik} style={{ top: metinUst(28, 15, 18) }}>{akisAdi(k)}</span>
                 {t?.kalemler?.length ? <span className="akis-satir-kalem" style={{ top: metinUst(28, 12, 16) }}>{t.kalemler.length} kalem</span> : null}
               </button>

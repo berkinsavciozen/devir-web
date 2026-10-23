@@ -6,6 +6,7 @@ import { simdi } from '../../api/ortam';
 import { Baslik } from '../../bilesen/Baslik';
 import { GenisSahne, Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
+import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
 import { genisDuzen, GenisKart, kartCizimi, panelZemini, useAdimOlaylari, varsayilanSecim } from './Genis';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, seritOlcu, seritler, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
@@ -401,6 +402,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
           <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ position: 'static' }} />
         </div> : <BaslikCipleri cipler={cipler} ben={sahip} sec={cipSec} style={{ left: U.cumleX, top: U.cumleY + (U.tekSatir ? 18 : 40), maxWidth: GD.PX - U.cumleX - 80 }} />}
         {!serit && cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
+        {/* panelin üstü (N9): seçili adımdan akışa geri, konum; zil, ayarlar, yeni iş */}
+        <div style={{ position: 'absolute', left: GD.PX, top: 0, width: GD.W - GD.PX }}>
+          <PanelUst geri={secim != null ? () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : undefined} konum={a && secim != null ? `${ad} › ${adimAdi(a)}` : ad} />
+        </div>
+        <YuzenGezinme aktif="akislar" solEn={GD.PX} />
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>
         {GD.bolum.alt && <Metin y={GD.bolum.alt.y} x={GD.bolum.x} fs={13} renk="ink3" className="tek-satir">Her satır bir kişinin yolu; soldan sağa zaman.</Metin>}
         {kontroller}

@@ -43,11 +43,12 @@ export function genisDuzen(W: number, H: number): GenisDuzen | null {
     return {
       tur: 'M', W, H, PX,
       harita: { cx: PX / 2, cy: H * .52, R, ps: 1.35 * k },
-      surgu: { x: 44, y: H - 58, w: PX - 90, ps: 1.1 },
-      serit: { x: PX + 20, y: 96, w: 620, h: 360, satir: 72, pxGun: 52, lw: 112, ps: 1.3 },
+      // sürgü yüzen gezinmenin üstünde (N14)
+      surgu: { x: 44, y: H - 112, w: PX - 90, ps: 1.1 },
+      serit: { x: PX + 20, y: 106, w: 620, h: 350, satir: 72, pxGun: 52, lw: 112, ps: 1.3 },
       etiket: { dx: 1.5, dy: 34 / 26 },
       ust: { geriX: 48, geriY: 54, geriR: 18, baslikX: 80, baslikY: 63, fs: 28, cumleX: 48, cumleY: 108, cumleFs: 19, tekSatir: true },
-      bolum: { x: PX + 32, y: 52, alt: { y: 76 } },
+      bolum: { x: PX + 32, y: 96 },
       kart: {
         x: PX + 20, y: 486, w: 620, h: 384, rx: 26,
         pl: { dx: 76, dy: 96, r: 34, ring: 50, br: 7.5, bead: 1.9 }, baslik: { dx: 148, dy: 72, fs: 26 }, meta: { dy: 96, fs: 13.5 },
@@ -60,11 +61,11 @@ export function genisDuzen(W: number, H: number): GenisDuzen | null {
   return {
     tur: 'T', W, H, PX,
     harita: { cx: PX / 2, cy: H * .51, R, ps: 1.05 * k },
-    surgu: { x: 24, y: H - 54, w: PX - 48, ps: 1 },
-    serit: { x: PX + 12, y: 58, w: 400, h: 300, satir: 62, pxGun: 38, lw: 96, ps: 1.1 },
+    surgu: { x: 24, y: H - 108, w: PX - 48, ps: 1 },
+    serit: { x: PX + 12, y: 100, w: 400, h: 270, satir: 62, pxGun: 38, lw: 96, ps: 1.1 },
     etiket: { dx: 52 / 44, dy: 30 / 26 },
     ust: { geriX: 40, geriY: 50, geriR: 20, baslikX: 72, baslikY: 59, fs: 25, cumleX: 32, cumleY: 100, cumleFs: 17, tekSatir: false },
-    bolum: { x: PX + 24, y: 44 },
+    bolum: { x: PX + 24, y: 92 },
     kart: {
       x: PX + 12, y: 378, w: 400, h: 372, rx: 24,
       pl: { dx: 56, dy: 70, r: 26, ring: 39, br: 6.5, bead: 1.7 }, baslik: { dx: 108, dy: 60, fs: 22 }, meta: { dy: 82, fs: 12.5 },

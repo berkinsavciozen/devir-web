@@ -12,7 +12,7 @@ describe('evren panosu', () => {
   const P = pano([kart('A'), kart('B')], detay, 'Berkin');
 
   it('tutanak cümlesi bütün akışları sayar', () => {
-    expect(P.cumle).toBe("2 aktif akışta toplam 7 adım: 2’si bitti, 1 adım takılı, 1 karar bekliyor, 2 iş senden bekleniyor.");
+    expect(P.cumle).toBe("2 aktif akışta toplam 7 adım: 2’si bitti, 1 adım takılı, 1 karar bekliyor, 2 görev senden bekleniyor.");
   });
   it('süzgeçler boş olanları atlar, ilk dolu varsayılandır', () => {
     expect(P.suzgecler.map((s) => s.tur)).toEqual(['sende', 'engel', 'karar', 'risk', 'sira']);

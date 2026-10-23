@@ -1,5 +1,6 @@
 import { useOzet } from '../api/sorgular';
 import { git as yonlen } from '../yonlendirme';
+import { usePanelIcinde } from './Kabuk';
 
 export type Sekme = 'evren' | 'akislar' | 'bana' | 'ayarlar';
 const YOL: Record<Sekme, string> = { evren: '/', akislar: '/akislar', bana: '/gorevler', ayarlar: '/ayarlar' };
@@ -39,22 +40,24 @@ const AyarlarIkon = ({ on }: { on: boolean }) => (
 
 const SEKMELER: [Sekme, string, (p: { on: boolean }) => JSX.Element, string][] = [
   ['evren', 'Evren', EvrenIkon, '10%'], ['akislar', 'Akışlar', AkislarIkon, '29%'],
-  ['bana', 'Görevler', BanaIkon, '71%'], ['ayarlar', 'Ayarlar', AyarlarIkon, '90%'],
+  ['bana', 'Görevler', BanaIkon, '48%'], ['ayarlar', 'Ayarlar', AyarlarIkon, '67%'],
 ];
 
 /**
- * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, ortada + (yeni iş), Görevler, Ayarlar.
- * Tasarımda üç yuva vardı; dört sekme denetim planından (CELISKILER 60).
+ * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, Görevler, Ayarlar ve en sağda + (yeni iş; el notu 23 Eki N12).
+ * Tasarımda üç yuva vardı; dört sekme denetim planından (CELISKILER 60). Masaüstü kabuğunun panelinde çizilmez (N13).
  */
 export function AltGezinme({ aktif, git, yeni }: { aktif: Sekme | null; git?: (s: Sekme) => void; yeni: () => void }) {
+  const panelde = usePanelIcinde();
   const ozet = useOzet();
   const bekleyen = (ozet.data?.benim || []).filter((b: any) => b.durum !== 'suruyor').length;
   const sec = git ?? ((s: Sekme) => yonlen(YOL[s]));
+  if (panelde) return null;
   return (
     <nav className="alt-gezinme" aria-label="Ana gezinme">
       {SEKMELER.map(([s, ad, Ikon, x]) => (
         <button key={s} type="button" className={`sekme ${aktif === s ? 'aktif' : ''}`} style={{ left: x }} aria-current={aktif === s ? 'page' : undefined}
-          aria-label={s === 'bana' && bekleyen ? `${ad}: ${bekleyen} iş` : undefined} onClick={() => sec(s)}>
+          aria-label={s === 'bana' && bekleyen ? `${ad}: ${bekleyen} görev` : undefined} onClick={() => sec(s)}>
           <Ikon on={aktif === s} /><span>{ad}</span>
           {s === 'bana' && bekleyen > 0 && <b className="sekme-sayi" aria-hidden>{bekleyen}</b>}
         </button>

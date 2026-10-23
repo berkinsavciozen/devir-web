@@ -86,7 +86,7 @@
 .alt-gezinme .sekme svg { overflow: visible; }
 .alt-gezinme .sekme.aktif { color: var(--renk-metin-ink); font-weight: 700; }
 .alt-gezinme .sekme-sayi { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-size: 10.5px; font-weight: 800; line-height: 16px; text-align: center; }
-.alt-gezinme .yeni-is { position: absolute; left: 50%; top: -8px; width: 60px; height: 60px; transform: translateX(-50%); border-radius: 30px; }
+.alt-gezinme .yeni-is { position: absolute; left: calc(100% - 38px); top: -8px; width: 60px; height: 60px; transform: translateX(-50%); border-radius: 30px; }
 .alt-gezinme .yeni-is svg { overflow: visible; }
 .alt-gezinme .yeni-is:active { transform: translateX(-50%) scale(.97); }
 
@@ -706,3 +706,25 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .baglanti-durum small { font-size: 12px; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .baglanti-durum.iptal, .baglanti-durum.suresi_doldu { background: color-mix(in srgb, var(--renk-vurgu-mercan) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 45%, transparent); }
 .paylasim-metin textarea.alan { height: 92px; resize: none; line-height: 19px; padding-top: 10px; }
+
+/* Masaüstü kabuğu (el notu 23 Eki N13–N14, N9): solda harita, sağda 440 px panel; mobil ekranlar panelin içinde */
+.kabuk-sol { position: absolute; left: 0; top: 0; overflow: hidden; }
+.kabuk-panel { position: absolute; top: 0; z-index: 4; transform: translateZ(0); overflow: hidden; display: flex; flex-direction: column; }
+.kabuk-panel-icerik { position: relative; flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.sahne-panelde { min-height: 844px; }
+.panel-ust { position: relative; flex: none; height: 76px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 18px; }
+.panel-geri { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 22px; flex: none; }
+.panel-konum { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; letter-spacing: .3px; color: var(--renk-metin-ink3); }
+.panel-ust-sag { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.panel-ust-sag .zil-dugme { position: relative; top: auto; }
+.panel-ayarlar { position: relative; }
+.panel-arti { width: 52px; height: 52px; border-radius: 26px; display: grid; place-items: center; }
+.panel-arti:active { transform: scale(.97); }
+.yuzen-gezinme { position: absolute; z-index: 6; bottom: 22px; width: 336px; margin: 0; transform: translateX(-50%); background: color-mix(in srgb, var(--renk-zemin-kart) 88%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-metin-ink) 10%, transparent), 0 8px 28px rgb(0 0 0 / .35); }
+.yuzen-gezinme button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+/* Akışlar (masaüstü): listedeki satır ↔ haritadaki galaksi vurgusu (N15) */
+.akis-satir.vurgulu { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--renk-vurgu-altin) 70%, transparent); border-radius: 20px; }
+.gorev-sol-ad { position: absolute; font-size: 13px; line-height: 20px; font-weight: 650; color: var(--renk-metin-ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.gorev-sol-tarih { position: absolute; width: 60px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--renk-metin-ink3); pointer-events: none; }
+.gorev-sol-tarih.bugun { color: var(--renk-metin-altin); font-weight: 750; }
+.gorev-sol-bos { position: absolute; left: 48px; top: 160px; margin: 0; font-family: var(--font-serif); font-size: 17px; color: var(--renk-metin-ink2); }
