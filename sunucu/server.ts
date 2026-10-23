@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.23.0";
+export const SURUM = "0.24.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
 export const SEMA = "20261023100000_p1d_fk_indeks";
 async function semaDurumu(db: DB) {
@@ -132,6 +132,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
       ctx = await kimlikBagla({ db, ws: a.ws, key: a.key, ua: ua || "Devir web", now, kanal: "anahtar", ...arka } as Ctx, "anahtar", a.key.id);
     }
     ctx.llm = llmButcesi(ctx, ctx.llm);
+    ctx.taban = taban.fn;
     const yurut = async () => {
       const e = await ekipYonlendir(ctx, req.method, rota, body, { link: taban.link, web }, ek.posta);
       return (e !== undefined ? e : await apiYonlendir(ctx, req.method, rota, url.searchParams, body, taban)) as any;
@@ -197,6 +198,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   } else {
     return yetkisiz(adresteAnahtar(url) ? "Adreste anahtar artık kabul edilmiyor. Bağlayıcıyı anahtarsız adresle yeniden ekle ya da Authorization: Bearer başlığı kullan." : "Kimlik gerekli. Bağlayıcıyı ekleyince Devir'de e-postanla onayla.", false);
   }
+  ctx0.taban = fn; // web_adresi yoksa dış bağlantı bu adrese açılır
   const { key } = ctx0;
 
   const msgs = Array.isArray(body) ? body : [body];

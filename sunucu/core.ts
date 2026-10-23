@@ -4,7 +4,7 @@ import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, esle, slug, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
-import { belirtecAlanlari, yeniBelirtec, type Sifre } from "./baglanti.ts";
+import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
 import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, KISA_AD_EN_COK } from "./ad.ts";
 
 export interface DB {
@@ -18,7 +18,7 @@ export interface DB {
 }
 /** kanal: isteğin geldiği yol. Aktör türü buradan türetilir, araç argümanından değil (S-C1). */
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
-export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null };
+export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null; taban?: string };
 
 /** Tipli hata (N-9): HTTP durumu mesajdan değil hatadan gelir. 403 yetki, 404 yok, 400 geçersiz. */
 export class DevirHata extends Error { constructor(public durum: number, m: string) { super(m); } }
@@ -139,8 +139,15 @@ export function adEslesir(sahip: string, kisi: string) {
   const k = norm(kisi);
   if (!k) return false;
   const tam = String(sahip || ""), m = /^(.*?)\s*\(([^)]*)\)\s*$/.exec(tam);
-  return norm(tam) === k || (!!m && (norm(m[1]) === k || norm(m[2]) === k));
+  return norm(tam) === k || adTabani(tam) === k || (!!m && (norm(m[1]) === k || norm(m[2]) === k));
 }
+/** Parantezli kısımlar (iç içe olanlar dahil) atılmış ad: "Mert (Gümrük Müşaviri (Mert))" → "mert". */
+export function adTabani(ad: string) {
+  let s = String(ad || ""), t = "";
+  while (s !== t) { t = s; s = s.replace(/\([^()]*\)/g, " "); }
+  return norm(s.replace(/[()]/g, " "));
+}
+const parantezli = (ad: string) => /\(/.test(String(ad || ""));
 /** Dış kapsam (P0-A): iki tarafta da kişi kimliği varsa yalnız kimlik eşitliği; ad yalnız gösterimdir. Kimliği olmayan eski kayıtta tam ad eşleşmesi. */
 export function stepInScope(ctx: Ctx, s: any) {
   if (!isDis(ctx)) return true;
@@ -180,10 +187,23 @@ export async function kisiCoz(ctx: Ctx, ad: unknown, tip?: unknown): Promise<any
   if (onbellek.has(n)) return onbellek.get(n);
   try {
     let k = (await ctx.db.many("kisi", { ws_id: ctx.ws.id, ad_norm: n }, "created_at"))[0];
+    if (!k) k = await kisiBenzeri(ctx, a, tip);
     if (!k) [k] = await ctx.db.insert("kisi", [{ ws_id: ctx.ws.id, ad: a, ad_norm: n, tip: kisiTipi(tip) }]);
     onbellek.set(n, k);
     return k;
   } catch (e) { console.warn("kişi çözülemedi (kisi tablosu yok mu?):", (e as Error).message); return null; } // şema yüklenmeden de eski yol çalışır
+}
+/**
+ * Tam eşi olmayan ad için aynı kişi (UAJY/TRHB vakası): "Mert" ile "Mert (Gümrük Müşaviri)" bir kişidir.
+ * Parantez dışı adlar aynı ve taraflardan biri yalın adsa, tek aday varsa ona bağlanır. İki parantezli ad
+ * ("Ali (A firması)", "Ali (B firması)") ayrı kişidir; birden çok aday varsa ya da biri agent'sa yeni kişi açılır.
+ */
+async function kisiBenzeri(ctx: Ctx, ad: string, tip?: unknown) {
+  const t = adTabani(ad);
+  if (!t || kisiTipi(tip) === "agent") return null;
+  const aday = (await ctx.db.many("kisi", { ws_id: ctx.ws.id }, "created_at"))
+    .filter((k: any) => k.tip !== "agent" && adTabani(k.ad) === t && (!parantezli(ad) || !parantezli(k.ad)));
+  return aday.length === 1 ? aday[0] : null;
 }
 /** Kimlik bilgisinin (anahtar, üye, bağlantı) kişisini bağlar; kaynak satırda yoksa bir kez çözüp yazar. */
 export async function kimlikBagla(ctx: Ctx, tablo: "anahtar" | "uye" | "katilimci", id: unknown) {
@@ -204,6 +224,79 @@ export async function kisiAlani(ctx: Ctx, ad: unknown, tip?: unknown, alan = "ki
 async function sahipBagla(ctx: Ctx, rows: any[]) {
   for (const r of rows) if (!r.sahip_kisi_id && r.sahip) { const k = await kisiCoz(ctx, r.sahip, r.sahip_tip); if (k) r.sahip_kisi_id = k.id; }
   return rows;
+}
+
+// ---------- dış katılımcı bağlantısı (web ve MCP ortak) ----------
+/** Kişi bu alanın üyesi ya da anahtar sahibi mi (alanın sahibi dahil)? */
+export async function ekipKisisi(ctx: Ctx, kisi: any) {
+  if (norm(kisi.ad) === norm(ctx.key.kisi) && !isDis(ctx)) return true;
+  if (await ctx.db.one("uye", { kullanici_id: ctx.ws.id, kisi_id: kisi.id })) return true;
+  return (await ctx.db.many("anahtar", { kullanici_id: ctx.ws.id, kisi_id: kisi.id }, "created_at")).some((a: any) => a.rol !== "dis");
+}
+/** Bağlantının açıldığı adres: ayar.web_adresi, yoksa sunucunun kendi adresi. */
+export async function baglantiTabani(ctx: Ctx) {
+  const w = (await ctx.db.one("ayar", { anahtar: "web_adresi" }).catch(() => null))?.deger;
+  return w ? String(w).replace(/\/$/, "") : ctx.taban || "";
+}
+const katilimciAdimi = (s: any, kisi: any, ad: string) => (kisi && s.sahip_kisi_id ? s.sahip_kisi_id === kisi.id : adEslesir(s.sahip, ad));
+/**
+ * Akışa dış katılımcı ekler ya da var olanı döner; bir akışta bir kişiye bir bağlantı. belirtec yalnız yeni
+ * satırda düz gelir, var olanda şifresi çözülür. benzer: adı benzeyen ama bu kişiye bağlı olmayan adımlar
+ * (sahibi başka kişi kaydında; bağlantıda görünmez).
+ */
+export async function katilimciAc(ctx: Ctx, ak: any, b: { ad: string; kisi_id?: string | null; rol?: string | null; iletisim?: string | null }) {
+  const ad = String(b.ad || "").trim();
+  // kişi seçiciden kisi_id gelir; yoksa ad bu alandaki kişiye çözülür
+  const kisi = b.kisi_id ? await kisiAl(ctx, b.kisi_id) : await kisiCoz(ctx, ad, "dis");
+  const var0 = (await ctx.db.many("katilimci", { akis_id: ak.id }, "created_at")).find((k: any) => kisi && k.kisi_id ? k.kisi_id === kisi.id : norm(k.ad) === norm(ad));
+  const yeni = var0 ? null : yeniBelirtec();
+  const k = var0 || (await ctx.db.insert("katilimci", [{ akis_id: ak.id, ad: b.kisi_id ? kisi.ad : ad, rol: b.rol || null, iletisim: b.iletisim || null, ...(kisi ? { kisi_id: kisi.id } : {}), ...(await belirtecAlanlari(yeni!, ctx.sifre)) }]))[0];
+  const tum = await ctx.db.many("adim", { akis_id: ak.id }, "no");
+  const steps = tum.filter((s: any) => katilimciAdimi(s, kisi, ad));
+  // N-10: bağlantı alan kişi ekipte değilse dış kişidir; "insan" yazılmış adımları "dış" olur (agent adımı değişmez)
+  if (kisi && kisi.tip !== "agent" && !(await ekipKisisi(ctx, kisi))) {
+    if (kisi.tip !== "dis") await ctx.db.update("kisi", { id: kisi.id }, { tip: "dis" });
+    for (const s of steps) if (s.sahip_tip === "insan") await ctx.db.update("adim", { id: s.id }, { sahip_tip: "dis" });
+  }
+  const t = adTabani(ad);
+  const benzer = tum.filter((s: any) => !steps.includes(s) && !!t && adTabani(s.sahip) === t);
+  return { k, yeni: !var0, belirtec: yeni || (await belirtecAc(k, ctx.sifre)), steps, benzer };
+}
+/** MCP satırları: kişi, adım sayısı, bağlantı ve hazır mesaj (ya da neden yok). */
+function baglantiSatirlari(base: string, ak: any, k: any, belirtec: string | null, durum: string, steps: any[], benzer: any[] = []) {
+  const ad = `${k.ad}${k.rol ? ` (${k.rol})` : ""}`;
+  const no = steps.length ? `${steps.length} adım: ${steps.map((s: any) => s.no).join(", ")}` : "adımı yok";
+  if (durum !== "acik" || !belirtec)
+    return [`- ${ad} · ${no} · bağlantı ${durum === "suresi_doldu" ? `kapalı (akış ${BAGLANTI_GUN} günden önce kapandı ya da arşivde)` : durum === "iptal" ? "kapatılmış; devir_baglanti ile yenile=true yeniden açar" : "okunamadı; devir_baglanti ile yenile=true yenisini üretir"}`];
+  const l = linkV(base, k, belirtec, ak.baslik);
+  const out = [`- ${ad} · ${no}`, `  Bağlantı: ${l.link}`, `  Hazır mesaj: ${l.mesaj}`];
+  if (!steps.length) out.push(`  ⚠ Bu akışta sahibi "${k.ad}" olan adım yok; bağlantı boş açılır. Adımın sahibini bu adla yaz.`);
+  if (benzer.length) out.push(`  ⚠ Adı benzeyen ama bu kişiye bağlı olmayan adım: ${benzer.map((s: any) => `${s.no} (${s.sahip})`).join(", ")}. Aynı kişiyse adımın sahibini "${k.ad}" yaz; bağlantıda ancak o zaman görünür.`);
+  return out;
+}
+
+const PAYLASIM_BASLIK = "Dış bağlantılar (kullanıcıya olduğu gibi ver; her bağlantı yalnız o kişinin adımlarını açar, giriş istemez):";
+
+/** devir_baglanti: kurulmuş akışa dış katılımcı ekler ya da var olanın bağlantısını verir; yenile eskisini kapatır. */
+async function baglantiAraci(a: any, ctx: Ctx) {
+  needTeam(ctx, "Dış bağlantı");
+  const akis = await getAkis(ctx, a.akis);
+  await loadFlow(ctx, akis); // ekip üyesinin akış kapsamı
+  const ad = String(a.ad || "").trim();
+  if (!ad) throw new DevirHata(400, "ad gerekli: bağlantıyı alacak kişinin adı (adımlarda sahip olarak yazılan ad).");
+  const son = baglantiSonu(akis);
+  if (son != null && ctx.now >= son) throw new DevirHata(409, akis.durum === "kapandi" ? `Akış ${BAGLANTI_GUN} günden önce kapandı; bağlantı verilmez.` : "Akış arşivde; bağlantı verilmez.");
+  const r = await katilimciAc(ctx, akis, { ad, rol: a.rol, iletisim: a.iletisim });
+  let { k, belirtec } = r;
+  const kapali = !r.yeni && (!belirtec || baglantiDurumu(k, akis, ctx.now) === "iptal");
+  if (!r.yeni && (a.yenile === true || kapali)) {
+    belirtec = yeniBelirtec();
+    await ctx.db.update("katilimci", { id: k.id }, await belirtecAlanlari(belirtec, ctx.sifre));
+    await olayYaz(ctx, akis.id, null, "guncelleme", `${k.ad} için bağlantı ${kapali ? "yeniden açıldı" : "yenilendi"}`, { tur: "baglanti_yenile", katilimci_id: k.id });
+    k = { ...k, link_hash: "x" };
+  }
+  const bas = r.yeni ? `✓ ${k.ad} ${akis.kisa_kod} akışına dış katılımcı olarak eklendi.` : a.yenile === true || kapali ? `✓ ${k.ad} için yeni bağlantı üretildi${kapali ? "" : "; eski bağlantı artık açılmıyor"}.` : `${k.ad} bu akışta zaten katılımcı; bağlantısı aşağıda (değişmedi).`;
+  return [bas, "", PAYLASIM_BASLIK, ...baglantiSatirlari(await baglantiTabani(ctx), akis, k, belirtec, "acik", r.steps, r.benzer)].join("\n");
 }
 
 // ---------- graf ----------
@@ -578,7 +671,7 @@ export const TOOLS = [
             kriter: { type: "string", description: "Adımın bitti sayılması için test." }, beklenen_cikti: { type: "string" }, karar_kriteri: { type: "string" },
             son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } } } },
         },
-        katilimcilar: { type: "array", items: { type: "object", properties: { ad: { type: "string" }, rol: { type: "string" }, iletisim: { type: "string" } } } },
+        katilimcilar: { type: "array", description: "Dış katılımcılar (müşteri, usta, tedarikçi…). Her birine giriş istemeyen bir bağlantı üretilir ve yanıtta döner; bağlantı yalnız sahibi bu kişi olan adımları gösterir. ad, adımlarda sahip olarak yazdığın adla aynı olmalı.", items: { type: "object", properties: { ad: { type: "string", description: "Adımlarda sahip olarak yazılan ad (ör. 'Mert Usta')." }, rol: { type: "string" }, iletisim: { type: "string" } } } },
       },
     },
   },
@@ -707,6 +800,17 @@ export const TOOLS = [
     } },
   },
   {
+    name: "devir_baglanti",
+    description: "Dış katılımcının (müşteri, usta, tedarikçi…) paylaşım bağlantısını verir: kişi akışta yoksa ekler, varsa var olan bağlantıyı döner. Bağlantı giriş istemez ve yalnız sahibi bu kişi olan adımları gösterir. Dönen bağlantıyı ve hazır mesajı kullanıcıya olduğu gibi ver; bağlantı uydurma. yenile=true eski bağlantıyı kapatıp yenisini üretir (bağlantı yanlış kişiye gittiyse).",
+    inputSchema: { type: "object", required: ["akis", "ad"], properties: {
+      akis: { type: "string" },
+      ad: { type: "string", description: "Adımlarda sahip olarak yazılan ad (ör. 'Mert Usta')." },
+      rol: { type: "string", description: "Kısa rol (ör. 'tadilat ustası')." },
+      iletisim: { type: "string" },
+      yenile: { type: "boolean", description: "true: eski bağlantı kapanır, yenisi üretilir." },
+    } },
+  },
+  {
     name: "devir_dersler",
     description: "Devir'in ekibin geçmiş işlerinden çıkardığı dersleri listeler; kullanıcı bir aday dersi onaylarsa ya da yanlış bulursa onu kaydeder. Onaylanan ders kanıtlı olur ve benzer işlerde uygulanır; reddedilen ders bir daha önerilmez.",
     inputSchema: { type: "object", properties: { islem: { type: "string", enum: ["liste", "onayla", "reddet"] }, ders: { type: "string", description: "Ders kodu (ör. D12); onayla ve reddet için." }, ara: { type: "string", description: "Listede metin araması." } } },
@@ -727,6 +831,7 @@ export const INSTRUCTIONS = `Devir, insanların ve AI agent'larının aynı işi
 - Karar, onay ve ödeme adımlarında son söz kullanıcıdadır: özetle, önerini göster ve kullanıcının kararını iste. Kullanıcı kararı bu konuşmada açıkça verirse devir_karar_ver ile kaydet; kararı sen verme. Kayıt kullanıcının adına, senin aracınla verilmiş olarak düşer; Devir yazanı bağlantının sahibinden belirler.
 - Akış bitince devir_akis_kapat ile kapat; Devir bu işten ders çıkarır ve benzer bir sonraki işte hatırlar.
 - Taslakta "Devir'in hatırladıkları" bölümü varsa kullanıcıya kısaca aktar; kullanıcı bir dersi yanlış bulursa devir_dersler ile reddet, doğrularsa onayla.
+- Akışta dış katılımcı (müşteri, usta, tedarikçi) varsa devir_akis_olustur'un katilimcilar alanına adımlardaki sahip adıyla yaz; kurulmuş akışa sonradan eklemek ya da bağlantıyı yeniden almak için devir_baglanti'yı çağır. Dönen bağlantıyı ve hazır mesajı kullanıcıya ver; bağlantıyı uydurma, kendin gönderme.
 - Aynı adımlar birden çok kalem için ayrı yürüyecekse (her çiftçi, müşteri ya da aday için) devir_alt_akis ile kalem başına alt akışa böl; sonra her kalemin adımını kendi alt akışında güncelle.
 - Kişisel ve finansal ayrıntıyı nota açık yazma; özet ve toplam yaz.`;
 
@@ -750,6 +855,7 @@ export async function callTool(name: string, a: any, ctx: Ctx): Promise<string> 
     case "devir_sabitle": return sabitle(a, ctx);
     case "devir_dersler": return dersler(a, ctx);
     case "devir_alt_akis": return altAkis(a, ctx);
+    case "devir_baglanti": return baglantiAraci(a, ctx);
   }
   throw new Error(`Bilinmeyen araç: ${name}`);
 }
@@ -924,8 +1030,14 @@ async function olustur(a: any, ctx: Ctx) {
     kosul: s._kosul, capa_soru: s._capaSoru, cevap_soru: s._cevapSoru, tarih_sabit: !!s._capa || !!s._sabit, capa_tarih: s._capa && isDate(s._capa) ? s._capa : null,
   }));
   const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
-  if (Array.isArray(a.katilimcilar) && a.katilimcilar.length)
-    for (const k of a.katilimcilar.filter((k: any) => k && k.ad)) await ctx.db.insert("katilimci", [{ akis_id: akis.id, ad: k.ad, rol: k.rol || null, iletisim: k.iletisim || null, ...(await kisiAlani(ctx, k.ad, "dis")), ...(await belirtecAlanlari(yeniBelirtec(), ctx.sifre)) }]);
+  const paylasim: string[] = [];
+  if (Array.isArray(a.katilimcilar) && a.katilimcilar.length) {
+    const base = await baglantiTabani(ctx);
+    for (const x of a.katilimcilar.filter((k: any) => k && k.ad)) {
+      const r = await katilimciAc(ctx, akis, { ad: x.ad, rol: x.rol, iletisim: x.iletisim });
+      paylasim.push(...baglantiSatirlari(base, akis, r.k, r.belirtec, "acik", r.steps, r.benzer));
+    }
+  }
   const act = actor(ctx, a);
   await log(ctx, akis.id, null, act, "akis_olustu", `Akış kuruldu: ${steps.length} adım${tk ? `, taslak ${tk.kisa_kod}` : sab ? `, şablon ${sab.kod}` : ""}`, { sablon: turKod, fark, ogrenim: [...L.musteri] });
   if (tk) {
@@ -966,6 +1078,7 @@ async function olustur(a: any, ctx: Ctx) {
   if (tk?.taslak?._hatira?.satirlar?.length) { out.push("", "Devir'in hatırladıkları:"); for (const x of tk.taslak._hatira.satirlar.slice(0, 5)) out.push(`- ${x}`); }
   if (fark && (fark.eklenen.length || fark.cikarilan.length)) dikkat.push(`Şablondan fark: eklenen ${fark.eklenen.length ? fark.eklenen.map((x: string) => `"${x}"`).join(", ") : "yok"}; çıkarılan ${fark.cikarilan.length ? fark.cikarilan.map((x: string) => `"${x}"`).join(", ") : "yok"}.`);
   if (dikkat.length) { out.push("", "Dikkat:"); for (const d of dikkat) out.push(`- ${d}`); }
+  if (paylasim.length) out.push("", PAYLASIM_BASLIK, ...paylasim);
   if (ready.length) {
     out.push("", "Şimdi başlayabilecek adımlar:");
     for (const s of ready.slice(0, 3)) { const l = chatLinks(akis, s); out.push(`- ${s.no}. ${s.ad} (${s.sahip}) · Claude'da aç: ${l.claude} · ChatGPT'de aç: ${l.chatgpt}`); }
@@ -1293,7 +1406,17 @@ async function akisDetay(a: any, ctx: Ctx) {
     if (ak.length) { out.push("", "Bu varlıkta başka akışlardan ertelenmiş işler:"); for (const x of ak) out.push(`- ${x.ad} (${x.akis_kod})`); }
   }
   const kat = await ctx.db.many("katilimci", { akis_id: akis.id }, "created_at");
-  if (kat.length) out.push("", "Katılımcılar: " + kat.map((k: any) => `${k.ad}${k.rol ? ` (${k.rol})` : ""}`).join(", "));
+  if (kat.length && isDis(ctx)) out.push("", "Katılımcılar: " + kat.map((k: any) => `${k.ad}${k.rol ? ` (${k.rol})` : ""}`).join(", "));
+  else if (kat.length) {
+    // ekip bağlantıyı görür (web'deki paylaşım sayfasıyla aynı); dış katılımcı yalnız adları
+    const base = await baglantiTabani(ctx);
+    out.push("", PAYLASIM_BASLIK);
+    for (const k of kat) {
+      const kisi = k.kisi_id ? { id: k.kisi_id } : null;
+      const durum = baglantiDurumu(k, akis, ctx.now);
+      out.push(...baglantiSatirlari(base, akis, k, durum === "acik" ? await belirtecAc(k, ctx.sifre) : null, durum, steps.filter((s: any) => katilimciAdimi(s, kisi, k.ad))));
+    }
+  }
   const recent = events.filter((e: any) => e.tip !== "okuma").slice(-10).reverse();
   if (recent.length) {
     out.push("", "Son hareketler:");
