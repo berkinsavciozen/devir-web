@@ -27,17 +27,43 @@ const bulunamadi = (m: string) => new DevirHata(404, m);
 
 export const DAY = 864e5;
 export const HOUR = 36e5;
+/** İlerleme sayımı (m6): tamam yalnız biten iştir; atlanan ve ertelenen toplamdan düşer, ayrıca söylenir. */
+export function ilerlemeSay(steps: any[]) {
+  const atlandi = steps.filter((s) => s.durum === "atlandi").length, ertelendi = steps.filter((s) => s.durum === "ertelendi").length;
+  return { tamam: steps.filter((s) => s.durum === "tamam").length, toplam: steps.length - atlandi - ertelendi, atlandi, ertelendi };
+}
+export const ilerlemeMetni = (i: ReturnType<typeof ilerlemeSay>) => `${i.tamam}/${i.toplam} adım tamam${i.atlandi ? ` · ${i.atlandi} atlandı` : ""}${i.ertelendi ? ` · ${i.ertelendi} ertelendi` : ""}`;
 export const DONE = (s: any) => s.durum === "tamam" || s.durum === "atlandi" || s.durum === "ertelendi";
+/**
+ * Adımın başlamasını hâlâ tutan öncüller (C1). Atlanan ya da ertelenen adım bitmiş sayılmaz, geçittir:
+ * onu bekleyen adım, onun da öncülleri bitince başlar.
+ */
+export function acikOnculler(s: any, by: Map<number, any>): number[] {
+  const out: number[] = [], gor = new Set<number>();
+  const gez = (n: number) => {
+    if (gor.has(n)) return; gor.add(n);
+    const d = by.get(n);
+    if (!d || d.durum === "tamam") return;
+    if (DONE(d)) (d.bagimli || []).forEach((x: unknown) => gez(Number(x)));
+    else out.push(n);
+  };
+  (s.bagimli || []).forEach((x: unknown) => gez(Number(x)));
+  return out.sort((a, b) => a - b);
+}
 export const ICON: Record<string, string> = { tamam: "✓", suruyor: "●", hazir: "◷", engelli: "⚠", sirada: "○", atlandi: "–", ertelendi: "↷" };
 export const LBL: Record<string, string> = { tamam: "tamam", suruyor: "sürüyor", hazir: "hazır, sıra sahibinde", engelli: "engelli", sirada: "sırada", atlandi: "atlandı", ertelendi: "ertelendi (açık iş)" };
 const AY = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
 const KARAR = /karar|onay|ödeme|imza/i;
 // karar adımı: karar_kriteri varsa kesin; yoksa addan, ama soru adımları ("Netleştir: … onayı gerekiyor mu?") karar sayılmaz
+// karar türü (tur_kod karar-…) de kesin (M3). Yalnız "imza" geçen hazırlık işi ("imza dosyasını hazırla", "imzaları topla") karar değil (M4).
 export function kararAdimi(s: any) {
   if (s?.karar_kriteri) return true;
+  if (/^karar(-|$)/.test(String(s?.tur_kod || ""))) return true;
   const ad = String(s?.ad || "").trim();
   if (/^netleştir/i.test(ad) || /\?\s*$/.test(ad) || /(^|\s)m[ıiuü](\s|$)/i.test(ad)) return false;
-  return KARAR.test(ad);
+  if (!KARAR.test(ad)) return false;
+  if (!/karar|onay|ödeme/i.test(ad) && /hazırla|hazır|taslak|gönder|ilet|topla/i.test(ad)) return false;
+  return true;
 }
 
 export const todayIst = (ms: number) => new Date(ms + 3 * HOUR).toISOString().slice(0, 10);
@@ -349,7 +375,8 @@ export function plan(akis: any, steps: any[], tl: ReturnType<typeof timeline>, n
     for (const d of s.bagimli || []) { const e = EF.get(d); if (e != null && e >= start) { start = e; p = d; } }
     const r = tl.get(s.no)!;
     let f: number;
-    if (DONE(s)) f = r.bitisAt ?? ts(s.durum_at);
+    if (s.durum === "tamam") f = r.bitisAt ?? ts(s.durum_at);
+    else if (DONE(s)) f = start; // atlanan ya da ertelenen adım geçittir: öncüllerinden önce bitmiş sayılmaz (C1)
     else f = Math.max(start, now, s.capa_tarih ? Date.parse(s.capa_tarih + "T00:00:00+03:00") - 6e4 : 0) + Math.max(num(s.sure_tahmin_gun) * DAY - r.aktif, 0.25 * DAY); // sabit tarihli olay o günden önce bitemez
     EF.set(s.no, f); prev.set(s.no, p);
   }
@@ -439,7 +466,7 @@ async function recalc(ctx: Ctx, akis: any, steps: any[]) {
   const ust = await ustBekleyen(ctx, akis);
   for (const s of steps) {
     if (DONE(s) || s.durum === "suruyor" || s.durum === "engelli") continue;
-    const ok = s.bagimli.every((n: number) => { const d = by.get(n); return !d || DONE(d); }) && !(ust.get(s.no) || []).length;
+    const ok = !acikOnculler(s, by).length && !(ust.get(s.no) || []).length;
     const target = ok ? "hazir" : "sirada";
     if (s.durum === target) continue;
     await setDurum(ctx, akis, s, target, SYS, target === "hazir" ? `Adım ${s.no} hazır; sıra şimdi: ${s.sahip}` : `Adım ${s.no} yeniden sıraya alındı`);
@@ -552,8 +579,9 @@ function backward(steps: any[], hedef: string, ilkCapa: number | null = null, so
 
 // takvim: sabit tarihli adımlar (_capa), hedef tarihe göre geriye planlama, netleştir başa, geçmiş tarih yok.
 // Tarihi henüz belli olmayan olay (_capaSoru) ve ondan sonraki adımlara tarih verilmez.
-function takvim(steps: any[], hedef: string | null, bugun: number, notes: string[]) {
+export function takvim(steps: any[], hedef: string | null, bugun: number, notes: string[]) {
   const capali = steps.filter((s) => s._capa && isDate(s._capa));
+  let planHedef: string | null = null;
   for (const s of capali) s.son_tarih = numDay(dayNum(s._capa) + Math.max(1, Math.ceil(num(s.sure_tahmin_gun))) - 1);
   const sonra = new Set<number>(); // çapalı adımlar ve onlardan sonra gelenler
   if (capali.length) {
@@ -565,7 +593,9 @@ function takvim(steps: any[], hedef: string | null, bugun: number, notes: string
       ef.set(s.no, s._capa ? dayNum(s._capa) + num(s.sure_tahmin_gun) : bas + num(s.sure_tahmin_gun));
     }
     const enGec = numDay(Math.ceil(Math.max(...[...sonra].map((n) => ef.get(n)!)) - 1e-9) - 1);
-    if (!hedef || hedef < enGec) { if (hedef) notes.push(`Hedef ${fmtD(hedef)}, sabit tarihli adımdan sonra yapılacak işlere yetmiyor; hedef ${fmtD(enGec)} yapıldı.`); hedef = enGec; }
+    // kullanıcının verdiği hedef sessizce kaymaz (C3): hedef korunur, plan en geç tarihe göre kurulur, uyarı yazılır
+    if (!hedef) hedef = enGec;
+    else if (hedef < enGec) { planHedef = enGec; notes.push(`⚠ Hedef ${fmtD(hedef)}, sabit tarihli adımdan sonra yapılacak işlere yetmiyor; bu işler en erken ${fmtD(enGec)} biter. Hedef korundu; kullanıcıya hedefi ${fmtD(enGec)} yapmayı ya da kapsamı daraltmayı sor.`); }
     for (const c of capali) {
       const once = Math.max(bugun, ...c.bagimli.map((d: number) => ef.get(d) ?? bugun));
       if (once > dayNum(c._capa) + 1e-9) notes.push(`"${c.ad}" (${fmtD(c._capa)}) öncesindeki işler sırayla yapılırsa ancak ${fmtD(numDay(Math.ceil(once - 1e-9)))} yetişir; takvim sıkışık. Süreleri kısalt, işleri paralel yürüt ya da kapsamı daralt.`);
@@ -574,7 +604,7 @@ function takvim(steps: any[], hedef: string | null, bugun: number, notes: string
   let planned = 0;
   const ilkCapa = capali.length ? Math.min(...capali.map((s) => dayNum(s._capa))) : null;
   const tarihsiz = new Set(steps.filter((s) => !s.son_tarih).map((s) => s.no));
-  if (hedef) planned = backward(steps, hedef, ilkCapa, sonra);
+  if (hedef) planned = backward(steps, planHedef || hedef, ilkCapa, sonra);
   // bağımsız adım (ne bir şeyi bekliyor ne bir şey onu bekliyor) hedefe yapışmaz: süresi kadar sonra (P1-E madde 9)
   if (hedef && steps.length >= 3 && steps.some((s) => s.bagimli.length)) { // düz listede sıra örtük olabilir; yalnız bağımlılığı yazılmış akışta
     const bekleniyor = new Set(steps.flatMap((s) => s.bagimli));
@@ -713,7 +743,9 @@ export const TOOLS = [
             { type: "array", items: { anyOf: [{ type: "string" }, { type: "object", properties: { ad: { type: "string" }, ozet: { type: "string" }, icerik: { type: "string" }, url: { type: "string" }, kaynak: { type: "string" }, durum: { type: "string", enum: ["taslak", "onaylandi", "yayinda"] }, paylasim: { type: "string", enum: ["ekip", "dis"] } }, required: ["ad"] }] } },
           ],
         },
-        sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"], description: "Sahip değişiyorsa yeni sahibin tipi. Kullanıcının kendisi ya da ekibi insan, ekip dışı biri dis." }, son_tarih: { type: "string" },
+        sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"], description: "Sahip değişiyorsa yeni sahibin tipi. Kullanıcının kendisi ya da ekibi insan, ekip dışı biri dis." }, son_tarih: { type: "string", description: "YYYY-AA-GG. Takvim yeniden kurulunca planlanan tarih gibi kayabilir; kullanıcı bu tarihin sabit olduğunu söylediyse tarih_sabit=true ver." },
+        tarih_sabit: { type: "boolean", description: "Son tarih dışarıdan konmuş, kaymaz (ör. sözleşme, resmi süre). Yalnız kullanıcı söylediyse true." },
+        karar_kriteri: { type: "string", description: "Yalnız ekip: adımı karar adımı yapar; kararın neye göre verileceği." },
         arac: { type: "string", description: "Kullandığın araç adı, ör. Claude, ChatGPT." },
         kisa_ad: { type: "string", description: "Kısa adı düzelt (yalnız ekip): en çok 40 karakter, akışta tekil." },
         zorla: { type: "boolean", description: "Bağımlılıklar bitmeden başlatmak için; not ile neden yaz." },
@@ -743,7 +775,10 @@ export const TOOLS = [
       type: "object", required: ["akis", "ad", "sahip", "kriter", "neden"],
       properties: {
         akis: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
-        kriter: { type: "string" }, aciklama: { type: "string" }, son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" },
+        kriter: { type: "string" }, aciklama: { type: "string" }, sure_tahmin_gun: { type: "number" },
+        son_tarih: { type: "string", description: "YYYY-AA-GG. Verilmezse akışın hedefine göre planlanır." },
+        tarih_sabit: { type: "boolean", description: "Son tarih dışarıdan konmuş, kaymaz. Yalnız kullanıcı söylediyse true." },
+        karar_kriteri: { type: "string", description: "Bu bir karar adımıysa kararın neye göre verileceği; adım karar adımı olur." },
         bagimli: { type: "array", items: { type: "integer" }, description: "Bu adımın beklediği adım numaraları." },
         bekleyenler: { type: "array", items: { type: "integer" }, description: "Artık bu yeni adımı beklemesi gereken adım numaraları." },
         neden: { type: "string", description: "Bu adım neden sonradan çıktı? Öğrenim için." },
@@ -1333,7 +1368,7 @@ async function akislar(a: any, ctx: Ctx) {
     if (!flowInScope(ctx, f, steps)) continue;
     const vis = steps.filter((s: any) => stepInScope(ctx, s));
     const m = metrics(f, steps, allEv.filter((e: any) => e.akis_id === f.id), ctx.now);
-    tamam += steps.filter(DONE).length; toplam += steps.length;
+    const il = ilerlemeSay(steps); tamam += il.tamam; toplam += il.toplam;
     const waits = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ s, w: m.tl.get(s.no)!.simdi }));
     for (const { s, w } of waits) { acikBekleme += w; bekleyen.set(s.sahip, (bekleyen.get(s.sahip) || 0) + w); }
     rows.push({ f, steps, vis, m, waits });
@@ -1353,7 +1388,8 @@ async function akislar(a: any, ctx: Ctx) {
   out.push("");
   for (const r of rows) {
     const { f, steps, vis, m, waits } = r;
-    const parts = [`${f.kisa_kod} · ${f.baslik}`, `${steps.filter(DONE).length}/${steps.length}`];
+    const il = ilerlemeSay(steps);
+    const parts = [`${f.kisa_kod} · ${f.baslik}`, `${il.tamam}/${il.toplam}${il.atlandi ? ` (${il.atlandi} atlandı)` : ""}`];
     if (f.durum === "kapandi") parts.push(`kapandı, ${dur(m.sure)} sürdü, ${dur(m.bekleme)} bekleme`);
     else {
       const act = vis.filter((s: any) => s.durum === "suruyor").map((s: any) => `${s.no}. ${s.ad} (${s.sahip}) sürüyor`);
@@ -1382,7 +1418,7 @@ async function akisDetay(a: any, ctx: Ctx) {
   const { bitis: bt, karar_ozeti: ko } = akisKarari(akis, steps, events.filter((e: any) => e.tip !== "okuma"), ctx.now, await gecmisYukle(ctx), { dis: isDis(ctx), vis: vis0 });
   if (ko.cumle) out.splice(1, 0, ko.cumle);
   if (isDis(ctx)) {
-    out.push(`İlerleme: ${steps.filter(DONE).length}/${steps.length} adım tamam${akis.hedef_tarih ? ` · hedef ${fmtD(akis.hedef_tarih)}` : ""}`, "", "Sana atanan adımlar:");
+    out.push(`İlerleme: ${ilerlemeMetni(ilerlemeSay(steps))}${akis.hedef_tarih ? ` · hedef ${fmtD(akis.hedef_tarih)}` : ""}`, "", "Sana atanan adımlar:");
     for (const s of steps.filter((s: any) => stepInScope(ctx, s))) out.push(stepLine(s, m.tl, m.pl, { sahipGizle: true }));
     out.push("", "Diğer adımların ayrıntısı rolün gereği gizli.");
     return out.join("\n");
@@ -1391,7 +1427,8 @@ async function akisDetay(a: any, ctx: Ctx) {
     "",
     `Süre: ${dur(m.sure)}${akis.hedef_tarih ? ` · hedef ${fmtD(akis.hedef_tarih)} · en erken bitiş ${fmtMs(m.pl.end)}${m.pay != null ? (m.pay >= 0 ? ` (${dur(m.pay)} pay)` : ` ⚠ ${dur(-m.pay)} gecikme riski`) : ""}` : ""}`,
     speedLine(m),
-    `Kritik yol: ${m.pl.chain.join(" → ")}`,
+    // karar özetiyle tek kaynak (m7): bitiş aralığının zinciri, yalnız açık adımlar
+    ...((z) => z.length ? [`Kritik yol: ${z.join(" → ")}`] : [])((bt.zincir.length ? bt.zincir : m.pl.chain).filter((no: number) => { const x = steps.find((y: any) => y.no === no); return x && !DONE(x); })),
     ...(bt.aralik && !akis.kapandi_at ? [`Bitiş aralığı: ${aralikMetni(bt.aralik)} (${bt.guven === "kesin" ? "kesin" : bt.guven === "eksik" ? "süresi eksik adım var" : "tahmini"})${bt.varsayimlar.length ? " · " + bt.varsayimlar.join("; ") : ""}`] : []),
     "",
   );
@@ -1538,7 +1575,14 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
     if (yeniTip === "agent" && (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s)) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı; sahibi agent olamaz.`);
     if (yeniTip && yeniTip !== s.sahip_tip) patch.sahip_tip = yeniTip;
   }
-  if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw yetkiYok("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; patch.tarih_sabit = true; }
+  // son tarih sessizce sabitlenmez (M1): sabitlik yalnız açıkça istenirse; hedefi aşan tarih uyarıdır
+  if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw yetkiYok("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; }
+  if (typeof a.tarih_sabit === "boolean" && !isDis(ctx) && (a.son_tarih || s.son_tarih)) patch.tarih_sabit = a.tarih_sabit;
+  if (a.karar_kriteri != null && String(a.karar_kriteri).trim()) {
+    if (isDis(ctx)) throw yetkiYok("Karar kriterini yalnızca ekip değiştirebilir.");
+    if (s.sahip_tip === "agent" && patch.sahip_tip !== "insan" && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir.`);
+    patch.karar_kriteri = String(a.karar_kriteri).trim();
+  }
   // P1-F: kısa ad düzeltmesi akışın baglam.kisa_adlar'ına yazılır; akış içinde tekil
   let kisaAd: string | null = null;
   if (a.kisa_ad != null && String(a.kisa_ad).trim()) {
@@ -1561,19 +1605,29 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
     if (/claude\.ai|Claude Docs/i.test(`${c.url || ""} ${c.kaynak || ""}`) && !c.icerik) warn.push(`"${c.ad}" kişisel Claude hesabında duruyor; başkaları açamayabilir. İçeriğin metnini icerik alanına da yaz.`);
   }
   const to = a.durum && a.durum !== s.durum ? String(a.durum) : null;
+  // önce doğrula, sonra yaz (B1): karar seçimi, karar izni ve cevap durum yazılmadan denetlenir; hata yarım kayıt bırakmaz
+  const isKarar = (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s);
+  const secimVar = Array.isArray(a.karar_secimi);
+  if (secimVar && !kararAdimi(s) && !akis.baglam?.kararlar?.[String(s.no)]?.secenekler) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı değil; karar_secimi yalnız karar adımına yazılır.`);
+  if (op.kararAraci && !isKarar) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı değil; devir_adim_guncelle ile güncelle.`);
+  if (act.kim_tip === "agent" && (secimVar || (to === "tamam" && isKarar))) await kararIzni(ctx, akis, act, s, op);
+  let cevapKod: string | null = null;
+  if (a.cevap != null && String(a.cevap).trim()) {
+    const bek = Object.keys(akis.baglam?.bekleyen || {});
+    cevapKod = s.cevap_soru || (bek.length === 1 ? bek[0] : null);
+    if (!cevapKod) throw new Error(bek.length ? `Bu adım bir açık soruya bağlı değil. Açık sorular: ${bek.join(", ")}; devir_cevapla ile soruyu belirterek yaz.` : "Bu akışta açık soru yok.");
+    cevapDogrula(akis, cevapKod, a.cevap);
+  }
   if (to) {
     if (!["suruyor", "engelli", "tamam", "atlandi", "ertelendi", "hazir"].includes(to)) throw new Error("durum: suruyor, engelli, tamam, atlandi, ertelendi ya da hazir olmalı.");
     const grup = altAdimi(akis, s.no);
     if (grup) throw new Error(`Adım ${s.no} ${grup.kalemler.length} ${grup.kalem_turu || "kalem"} için alt akışlarda yürüyor (${grup.kalemler.map((k) => `${k.ad}: ${k.kod}`).join(", ")}). Durumu alt akışlardan gelir; ilgili alt akışın adımını güncelle.`);
-    const pending = s.bagimli.filter((n: number) => { const d: any = by.get(n); return d && !DONE(d); });
+    const pending = acikOnculler(s, by);
     const ustAcik = (await ustBekleyen(ctx, akis)).get(s.no) || [];
     if ((to === "suruyor" || to === "tamam") && ustAcik.length && !a.zorla)
       throw new Error(`Adım ${s.no} henüz başlayamaz; üst akış ${akis.baglam.ust_kod}'da şu adımlar bitmedi: ${ustAcik.join(", ")}. Gerçekten başladıysa zorla=true ve not ile nedenini yaz.`);
     if ((to === "suruyor" || to === "tamam") && pending.length && !a.zorla)
       throw new Error(`Adım ${s.no} henüz başlayamaz; şu adımlar bitmedi: ${pending.map((n: number) => { const d: any = by.get(n); return `${n}. ${d.ad} (${d.sahip}, ${LBL[d.durum]})`; }).join("; ")}. Gerçekten başladıysa zorla=true ve not ile nedenini yaz.`);
-    const isKarar = (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s);
-    if (op.kararAraci && !isKarar) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı değil; devir_adim_guncelle ile güncelle.`);
-    if (to === "tamam" && isKarar && act.kim_tip === "agent") await kararIzni(ctx, akis, act, s, op);
     if (to === "engelli") { if (!a.engel) throw new Error("durum=engelli için engel yaz: ne ya da kim bekleniyor?"); patch.engel = String(a.engel); }
     else patch.engel = null;
     if ((to === "atlandi" || to === "ertelendi") && !a.not) throw new Error(to === "atlandi" ? "Adımı atlamak için not alanına nedenini yaz." : "Adımı ertelemek için not alanına neden ve ne zaman yapılacağını yaz.");
@@ -1611,8 +1665,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
       const o = a.karar.oneri;
       if (o) k0.oneri = { kim: act.kim_tip === "agent" ? act.arac || act.kim : act.kim, secim: (Array.isArray(o.secim) ? o.secim : []).map(String), ozet: o.ozet ? String(o.ozet) : null, gerekce: o.gerekce ? String(o.gerekce) : null, at: new Date(ctx.now).toISOString() };
     }
-    if (Array.isArray(a.karar_secimi)) {
-      if (act.kim_tip === "agent") await kararIzni(ctx, akis, act, s, op);
+    if (secimVar) {
       k0.secim = { secim: a.karar_secimi.map(String), kim: act.kim, at: new Date(ctx.now).toISOString() };
     }
     kk[String(s.no)] = k0;
@@ -1635,17 +1688,21 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
       warn.push(`${x.akis_kod} akışında ertelenmiş "${x.ad}" işi de kapandı.`);
     }
   }
-  if (a.cevap != null && String(a.cevap).trim()) {
-    const bek = Object.keys(akis.baglam?.bekleyen || {});
-    const kod = s.cevap_soru || (bek.length === 1 ? bek[0] : null);
-    if (!kod) throw new Error(bek.length ? `Bu adım bir açık soruya bağlı değil. Açık sorular: ${bek.join(", ")}; devir_cevapla ile soruyu belirterek yaz.` : "Bu akışta açık soru yok.");
-    out.push(...await soruUygula(ctx, akis, steps, kod, a.cevap, act));
+  if (cevapKod) {
+    out.push(...await soruUygula(ctx, akis, steps, cevapKod, a.cevap, act));
   } else if (to === "tamam" && s.cevap_soru && akis.baglam?.bekleyen?.[s.cevap_soru]) warn.push(`Bu adım bitince "${akis.baglam.bekleyen[s.cevap_soru].soru}" sorusunun cevabı belli olmalıydı. Cevabı devir_cevapla({ akis: "${akis.kisa_kod}", soru: "${s.cevap_soru}", cevap }) ile yaz; bağlı adımlar o zamana kadar bekliyor.`);
   const bits = [];
   if (a.ilerleme) bits.push(`ilerleme: ${a.ilerleme}`);
   if (cikti.length) bits.push(`çıktı: ${cikti.map((c: any) => c.ad).join(", ")}`);
   if (patch.sahip || patch.sahip_tip) bits.push(`sahip → ${patch.sahip || s.sahip}${patch.sahip_tip ? ` (${patch.sahip_tip === "dis" ? "dış" : patch.sahip_tip})` : ""}`);
-  if (patch.son_tarih) bits.push(`son tarih → ${fmtD(String(patch.son_tarih))}`);
+  if (patch.son_tarih) {
+    bits.push(`son tarih → ${fmtD(String(patch.son_tarih))}${patch.tarih_sabit ? " (sabit)" : ""}`);
+    if (akis.hedef_tarih && String(patch.son_tarih) > akis.hedef_tarih) {
+      warn.push(`⚠ ${fmtD(String(patch.son_tarih))}, akışın hedefinden (${fmtD(akis.hedef_tarih)}) sonra. Hedef değişmedi; kullanıcıya hedefi kaydırmak mı yoksa bu adımı öne çekmek mi istediğini sor.`);
+      await log(ctx, akis.id, s.no, act, "guncelleme", `Son tarih hedefi aşıyor: ${fmtD(String(patch.son_tarih))} > ${fmtD(akis.hedef_tarih)}`, { tur: "tarih_uyarisi", son_tarih: patch.son_tarih, hedef_tarih: akis.hedef_tarih });
+    }
+  } else if ("tarih_sabit" in patch) bits.push(patch.tarih_sabit ? "son tarih sabitlendi" : "son tarih artık planla kayabilir");
+  if (patch.karar_kriteri) bits.push(`karar kriteri → ${patch.karar_kriteri}`);
   if (kisaAd) {
     akis.baglam = { ...(akis.baglam || {}), kisa_adlar: { ...(akis.baglam?.kisa_adlar || {}), [String(s.no)]: kisaAd } };
     await ctx.db.update("akis", { id: akis.id }, { baglam: akis.baglam });
@@ -1682,7 +1739,7 @@ async function adimEkle(a: any, ctx: Ctx) {
     ad: String(a.ad || "").trim(), aciklama: a.aciklama || null, sahip: String(a.sahip || "").trim(),
     sahip_tip: ["insan", "agent", "dis"].includes(a.sahip_tip) ? a.sahip_tip : "insan", arac: a.arac || null,
     kriter: String(a.kriter || "").trim(), son_tarih: a.son_tarih || null, sure_tahmin_gun: a.sure_tahmin_gun != null ? num(a.sure_tahmin_gun) : null,
-    bagimli: [...new Set(((a.bagimli || []) as unknown[]).map(Number))],
+    bagimli: [...new Set(((a.bagimli || []) as unknown[]).map(Number))], karar_kriteri: a.karar_kriteri ? String(a.karar_kriteri).trim() || null : null,
   };
   if (!v.ad || !v.sahip || !v.kriter) throw new Error("ad, sahip ve kriter gerekli.");
   if (v.son_tarih && !isDate(v.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı.");
@@ -1692,6 +1749,18 @@ async function adimEkle(a: any, ctx: Ctx) {
   for (const b of bekleyen) { const t = steps.find((s: any) => s.no === b); if (!t) throw new Error(`bekleyenler: ${b} numaralı adım yok.`); if (DONE(t)) throw new Error(`bekleyenler: ${b} zaten bitmiş.`); }
   const test = [...steps.map((s: any) => ({ no: s.no, bagimli: bekleyen.includes(s.no) ? [...s.bagimli, no] : s.bagimli })), { no, bagimli: v.bagimli }];
   topo(test);
+  // tarih (m6, M1): verilmediyse hedefe göre planlanır, kayabilir; verilen tarih yalnız açıkça istenirse sabittir
+  const sabit = a.tarih_sabit === true && !!v.son_tarih;
+  let planlandi = false;
+  if (!v.son_tarih && akis.hedef_tarih) {
+    const bugun = dayNum(todayIst(ctx.now));
+    const sinir = bekleyen.map((b) => steps.find((s: any) => s.no === b)).filter((t: any) => t.son_tarih).map((t: any) => dayNum(t.son_tarih) - Math.max(1, Math.ceil(num(t.sure_tahmin_gun))));
+    const enGec = Math.min(dayNum(akis.hedef_tarih), ...sinir);
+    const enErken = bugun + Math.max(1, Math.ceil(num(v.sure_tahmin_gun)));
+    const bagimsiz = !v.bagimli.length && !bekleyen.length; // takvimdeki gibi bağımsız iş hedefe yapışmaz
+    v.son_tarih = numDay(Math.max(bugun, bagimsiz ? Math.min(enErken, enGec) : enGec));
+    planlandi = true;
+  }
   let turKod = slug(v.ad), boyut: string | null = null;
   if (ctx.llm) {
     try {
@@ -1702,7 +1771,7 @@ async function adimEkle(a: any, ctx: Ctx) {
     } catch (e) { console.warn("adim_turu eşleştirilemedi:", (e as Error).message); }
   }
   if (!boyut) boyut = "genel";
-  const [row] = await ctx.db.insert("adim", await sahipBagla(ctx, [{ akis_id: akis.id, no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: v.bagimli, kaynak: "sonradan", tur_kod: turKod, tarih_sabit: !!v.son_tarih }]));
+  const [row] = await ctx.db.insert("adim", await sahipBagla(ctx, [{ akis_id: akis.id, no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: v.bagimli, kaynak: "sonradan", tur_kod: turKod, tarih_sabit: sabit, karar_kriteri: v.karar_kriteri }]));
   if (akis.sablon_kod || akis.taslak_id) await ctx.db.insert("soru_kaydi", [{ ws_id: ctx.ws.id, taslak_id: akis.taslak_id || null, akis_id: akis.id, is_turu: akis.sablon_kod, tip: "kacan", boyut, soru: v.ad, cevap: String(a.neden), kaynak: "adim_ekle", etki: { eklenen: [turKod] }, etki_puan: 1 }]);
   fixStep(row);
   for (const b of bekleyen) { const t = steps.find((s: any) => s.no === b); t.bagimli = [...t.bagimli, no]; await ctx.db.update("adim", { id: t.id }, { bagimli: t.bagimli }); }
@@ -1719,6 +1788,11 @@ async function adimEkle(a: any, ctx: Ctx) {
   const ready = await recalc(ctx, akis, steps);
   const out = [`+ Adım ${no} eklendi: ${v.ad} — ${v.sahip} (kısa ad: ${kayit[String(no)]})`, `Neden: ${a.neden}`];
   if (bekleyen.length) out.push(`Artık bunu bekleyen adımlar: ${bekleyen.join(", ")}`);
+  if (v.son_tarih) out.push(`Son tarih: ${fmtD(v.son_tarih)}${planlandi ? " (hedefe göre planlandı; takvimle kayabilir)" : sabit ? " (sabit)" : ""}`);
+  if (v.son_tarih && akis.hedef_tarih && v.son_tarih > akis.hedef_tarih) {
+    out.push(`⚠ ${fmtD(v.son_tarih)}, akışın hedefinden (${fmtD(akis.hedef_tarih)}) sonra. Hedef değişmedi; kullanıcıya hedefi kaydırmak mı yoksa bu adımı öne çekmek mi istediğini sor.`);
+    await log(ctx, akis.id, no, act, "guncelleme", `Son tarih hedefi aşıyor: ${fmtD(v.son_tarih)} > ${fmtD(akis.hedef_tarih)}`, { tur: "tarih_uyarisi", son_tarih: v.son_tarih, hedef_tarih: akis.hedef_tarih });
+  }
   out.push(`Durum: ${LBL[row.durum]}${ready.some((r: any) => r.no === no) ? " (hemen başlayabilir)" : ""}`);
   if (boyut && boyut !== "genel") out.push(`Sorulmamış boyut: ${boyut}. Bir sonraki benzer işte bu boyuttaki soru öne çıkar.`);
   out.push("Akış kapanınca bu ekleme ekibin deneyim belleğine yazılır; benzer işlerde baştan önerilir.");
@@ -1727,7 +1801,8 @@ async function adimEkle(a: any, ctx: Ctx) {
 }
 
 // ---------- sonradan cevaplanan soru ----------
-async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapHam: unknown, act: any) {
+/** Açık sorunun cevabını yazmadan doğrular; eşlenmiş cevabı döndürür. */
+function cevapDogrula(akis: any, kod: string, cevapHam: unknown) {
   const bek: Record<string, any> = akis.baglam?.bekleyen || {};
   const b = bek[kod];
   if (!b) throw new Error(`'${kod}' bu akışta açık bir soru değil.${Object.keys(bek).length ? ` Açık sorular: ${Object.keys(bek).join(", ")}.` : " Açık soru yok."}`);
@@ -1739,6 +1814,12 @@ async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapH
     const ops: any[] = Array.isArray(b.secenekler) ? b.secenekler : [];
     if (b.tip === "secim" && ops.length && !ops.some((o) => norm(o.deger) === norm(cevap))) throw new Error(`Cevap şu seçeneklerden biri olmalı: ${ops.map((o) => `${o.deger}${o.etiket ? ` (${o.etiket})` : ""}`).join(" / ")}.`);
   }
+  return cevap;
+}
+async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapHam: unknown, act: any) {
+  const bek: Record<string, any> = akis.baglam?.bekleyen || {};
+  const b = bek[kod];
+  const cevap = cevapDogrula(akis, kod, cevapHam);
   const out: string[] = [`✓ ${b.soru} → ${cevap}`];
   const notes: string[] = [];
   // dallar: seçilmeyen dal atlanır, seçilen dalın koşulu kalkar
@@ -1936,6 +2017,15 @@ async function vazgec(ctx: Ctx, a: any, akis: any, neden: string, acik: number) 
   }
   const notlar = akis.baglam?.ust_akis ? [] : await dersUymadi(ctx, Array.isArray(akis.baglam?.dersler) ? akis.baglam.dersler : []);
   const out = [`■ ${akis.kisa_kod} · ${akis.baslik} ${ad}; arşive taşındı.`, "Deneyim yazılmadı: bu akış benzer işlerde örnek alınmaz."];
+  // iptal edilen işte verilen kararlar geçerli kalmaz (m8): kayıt silinmez, geçerlilikten düşer (yerine geçen yok)
+  if (neden === "iptal") {
+    const kk = await ctx.db.many("karar", { ws_id: ctx.ws.id, akis_id: akis.id, durum: "gecerli" }, "created_at");
+    for (const k of kk) await ctx.db.update("karar", { id: k.id }, { durum: "degisti", yerine_gecen: null });
+    if (kk.length) {
+      await log(ctx, akis.id, null, act, "guncelleme", `Akış iptal edildi; ${kk.length} karar geçerlilikten düştü`, { tur: "karar_askida", karar_id: kk.map((k: any) => k.id) });
+      out.push(`Bu akışta verilen ${kk.length} karar (${kk.map((k: any) => k.id).join(", ")}) artık geçerli sayılmaz; sonraki işlerde kısıt olarak kullanılmaz. Hâlâ geçerliyse devir_karar ile yeniden kaydet.`);
+    }
+  }
   if (notlar.length) { out.push("", "Bu akışa uygulanan dersler:"); for (const x of notlar.slice(0, 6)) out.push(`- ${x}`); }
   return out.join("\n");
 }

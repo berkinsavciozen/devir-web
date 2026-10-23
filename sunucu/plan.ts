@@ -52,7 +52,8 @@ function cizelge(akis: any, steps: any[], tl: ReturnType<typeof timeline>, now: 
     for (const d of s.bagimli || []) { const e = EF.get(d); if (e != null && e >= start) { start = e; p = d; } }
     const r = tl.get(s.no)!;
     let f: number;
-    if (DONE(s)) f = r.bitisAt ?? ts(s.durum_at);
+    if (s.durum === "tamam") f = r.bitisAt ?? ts(s.durum_at);
+    else if (DONE(s)) f = start; // atlanan adım geçittir (C1)
     else {
       const k = kisiOf(s), kis = k != null && kisitli(k);
       let bas = Math.max(start, now, s.capa_tarih ? Date.parse(s.capa_tarih + "T00:00:00+03:00") - 6e4 : 0);
@@ -203,7 +204,7 @@ export function kararOzeti(akis: any, steps: any[], b: Bitis, now: number, opts:
     if (z.length) p.push(`Kritik yol: ${z.slice(0, 3).map((s) => kisaAd(akis, s, steps)).join(" → ")}${z.length > 3 ? " → …" : ""}`);
   }
   if (b.aralik) p.push(`${b.aralik[0] === b.aralik[1] ? "Bitiş" : "En erken"} ${aralikMetni(b.aralik)}${b.guven === "eksik" ? " (süresi eksik adım var)" : ""}`);
-  if (hedef) p.push(hedef.durum === "pay" ? `hedefe ${hedef.pay_gun} gün pay` : hedef.durum === "riskte" ? "hedef aralığın içinde, riskte" : `hedef ${-gunFark(akis.hedef_tarih, b.aralik![0]) || 1} gün geçiyor`);
+  if (hedef) p.push(hedef.durum === "pay" ? `hedefe ${hedef.pay_gun} gün pay` : hedef.durum === "riskte" ? `hedef riskte: süreler uzarsa ${-hedef.pay_gun} gün geçebilir` : `hedef ${-gunFark(akis.hedef_tarih, b.aralik![0]) || 1} gün geçiyor`);
   return {
     cumle: p.join(" · "),
     darbogaz: db && gor(db.s) ? { no: db.s.no, ad: db.s.ad, tur: db.tur, tuttugu: tuttugu(steps, db.s.no), sahip: db.s.sahip } : null,

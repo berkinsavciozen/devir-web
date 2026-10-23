@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
 } from "./core.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -50,8 +50,8 @@ function akisOzeti(akis: any, steps: any[], m: any, now: number): Parca[] {
   const p: Parca[] = [];
   const A = (metin: string, tur: Parca["tur"] = "metin", ref?: any) => p.push({ tur, metin, ...(ref ? { ref } : {}) });
   if (akis.durum !== "aktif") { A(`${fmtMs(Date.parse(akis.kapandi_at || akis.created_at))} tarihinde kapandı; `, "tarih"); A(`${durKisa(m.sure)} sürdü.`, "sure"); return p; }
-  const tamam = steps.filter(DONE).length;
-  A(`${steps.length} adımdan ${tamam} tamam. `);
+  const il = ilerlemeSay(steps);
+  A(`${il.toplam} adımdan ${il.tamam} tamam${il.atlandi ? ` (${il.atlandi} atlandı)` : ""}. `);
   const engelli = steps.filter((s: any) => s.durum === "engelli").sort((a: any, b: any) => m.tl.get(b.no).simdi - m.tl.get(a.no).simdi)[0];
   const bekleyen = steps.filter((s: any) => s.durum === "hazir").sort((a: any, b: any) => (m.pl.chain.includes(b.no) ? 1 : 0) - (m.pl.chain.includes(a.no) ? 1 : 0) || m.tl.get(b.no).simdi - m.tl.get(a.no).simdi)[0];
   const suren = steps.find((s: any) => s.durum === "suruyor");
@@ -86,7 +86,7 @@ function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx,
     kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akisKisaAdi(akis), durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
     en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay), risk: m.pay != null && m.pay < 0,
     bitis: { en_erken: b.en_erken, aralik: b.aralik, guven: b.guven, eksik_sure: b.eksik_sure }, karar_ozeti,
-    ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length, suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
+    ilerleme: { ...ilerlemeSay(steps), suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
     sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip })),
     kritik_bekleme_saat: saat(m.kritikBekleme), toplam_bekleme_saat: saat(m.bekleme),
     ust: akis.baglam?.ust_akis ? { akis: akis.baglam.ust_kod, kalem: akis.baglam.kalem } : null,
@@ -361,7 +361,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
         no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum,
         engel: s.engel || null, karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s), kritik: !DONE(s) && m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no),
         // kimi bekliyor, kim bekliyor (doğrudan, açık olanlar): satırdaki bağımlılık işareti
-        onceki: steps.filter((x: any) => s.bagimli.includes(x.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
+        onceki: acikOnculler(s, new Map(steps.map((x: any) => [x.no, x]))).map((n) => steps.find((x: any) => x.no === n)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
         sonraki: DONE(s) ? [] : steps.filter((x: any) => x.bagimli.includes(s.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
         son_tarih: s.son_tarih || null, en_erken_bitis: iso(ef), gec_risk: ef != null && !!s.son_tarih && ef > eod(s.son_tarih), bekleme_saat: t ? saat(t.simdi) : null, durum_at: s.durum_at || null,
       });
@@ -657,7 +657,7 @@ async function baglantiGorunum(ctx: Ctx, k: any, akis: any, okuma: boolean) {
     const v: any = adimV(akis, s, m, steps, { dis: true });
     v.girdiler = (await ciktilar(ctx, akis.id, s.bagimli)).filter((c: any) => c.paylasim === "dis").map(ciktiV);
     v.ciktilar = (await ciktilar(ctx, akis.id, [s.no])).map(ciktiV);
-    v.bekledigi = s.bagimli.map((n: number) => { const d: any = steps.find((x: any) => x.no === n); return d && !DONE(d) ? { ad: d.ad, durum: d.durum } : null; }).filter(Boolean);
+    v.bekledigi = acikOnculler(s, new Map(steps.map((x: any) => [x.no, x]))).map((n) => { const d: any = steps.find((x: any) => x.no === n); return { ad: d.ad, durum: d.durum }; });
     v.eylemler = DONE(s) ? [] : s.durum === "suruyor" || s.durum === "engelli" ? ["tamam", "engel", "not"] : v.bekledigi.length ? ["not"] : ["basladim", "tamam", "engel", "not"];
     adimlar.push(v);
   }
@@ -673,7 +673,7 @@ async function baglantiGorunum(ctx: Ctx, k: any, akis: any, okuma: boolean) {
   if (okuma) await db.insert("olay", [{ akis_id: akis.id, adim_no: null, kim: k.ad, kim_tip: "dis", arac: "Devir bağlantı", kanal: "baglanti", ...(ctx.key.kisi_id ? { kisi_id: ctx.key.kisi_id } : {}), tip: "okuma", ozet: "Bağlantı açıldı", veri: {} }]).catch(() => {});
   const sahipUye = await db.one("uye", { kullanici_id: akis.sahip_id, rol: "sahip" }).catch(() => null);
   return {
-    kisi: k.ad, ...(akis.durum === "kapandi" ? { gecerlilik: iso(baglantiSonu(akis)) } : {}), akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: { tamam: steps.filter(DONE).length, toplam: steps.length }, karar_ozeti: akisKarari(akis, steps, ev, now, await gecmisYukle(ctx), { dis: true, vis: benim }).karar_ozeti },
+    kisi: k.ad, ...(akis.durum === "kapandi" ? { gecerlilik: iso(baglantiSonu(akis)) } : {}), akis: { sahip: sahipUye?.kisi || null, baslik: akis.baslik, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null, durum: akis.durum, ilerleme: ilerlemeSay(steps), karar_ozeti: akisKarari(akis, steps, ev, now, await gecmisYukle(ctx), { dis: true, vis: benim }).karar_ozeti },
     ozet: yaz(p), ozet_parcalar: p, adimlar,
     // sisli harita (0.10.0): öteki adımlar adsız; sahipler yalnız rol harfiyle (yol geometrisi için)
     harita: haritaDis(ctx, akis, steps, m),
