@@ -4,7 +4,15 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.22.0";
+export const SURUM = "0.23.0";
+/** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
+export const SEMA = "20261023100000_p1d_fk_indeks";
+async function semaDurumu(db: DB) {
+  // bellek DB'si (testler, sahte kip) şema tutmaz: uyum bilinmez (null). Canlıda işlev yoksa migration uygulanmamıştır.
+  if (!db.rpc) return { beklenen: SEMA, canli: null, uyumlu: null };
+  const canli = await db.rpc("devir_sema", {}).then((x: unknown) => (typeof x === "string" ? x : null)).catch(() => null);
+  return { beklenen: SEMA, canli, uyumlu: canli === SEMA };
+}
 import type { Depo } from "./dosya.ts";
 import { bekleyenleriSifrele, type Sifre } from "./baglanti.ts";
 import { ANAHTAR_MS, TEKRAR_MS, birKez, hizSiniri, karma, llmButcesi, sirali, yazanArac } from "./islem.ts";
@@ -15,6 +23,8 @@ const CORS: Record<string, string> = {
   "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan, x-devir-baglanti, idempotency-key",
   "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
   "Access-Control-Expose-Headers": "mcp-session-id, www-authenticate, idempotent-replayed, retry-after",
+  // P1-D (S-M4): tarayıcı ön denetimini (OPTIONS) önbellekler (Chrome en çok 2 saat); canlıda isteklerin yarısı OPTIONS, p50 410 ms
+  "Access-Control-Max-Age": "86400",
 };
 const ISLEM_ID = { type: "string", description: "İsteğe bağlı işlem kimliği. Aynı çağrıyı yeniden denerken (zaman aşımı, bağlantı kopması) aynı değeri ver: Devir ikinci kez yazmaz, ilk sonucu döner." };
 /** Yazan araçlara islem_id (P1-B); okuma araçları olduğu gibi. */
@@ -95,7 +105,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     }
     if (yol[1] !== "v1") throw new ApiHata(404, "Uçlar /api/v1/ altında.");
     // kimliksiz: giriş ekranı kaydın açık olup olmadığını bilir (§9-19)
-    if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, acik_kayit: await acikKayit(db) });
+    if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, sema: await semaDurumu(db), acik_kayit: await acikKayit(db) });
     const webAdres = (await db.one("ayar", { anahtar: "web_adresi" }).catch(() => null))?.deger;
     const web = webAdres ? String(webAdres).replace(/\/$/, "") : null;
     taban.link = web || taban.fn;

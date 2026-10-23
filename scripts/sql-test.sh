@@ -15,6 +15,11 @@ for f in supabase/migrations/*.sql; do
   n=$((n+1))
 done
 echo "✓ $n migration uygulandı"
+# N-8: devir_sema() son migration'ın adını döner (/api/v1/durum canlı şemayı kodla bununla karşılaştırır)
+son=$(basename "$(ls supabase/migrations/*.sql | tail -1)" .sql)
+sema=$($P -tA -c "select public.devir_sema()")
+[ "$sema" = "$son" ] || { echo "✗ devir_sema() = '$sema', son migration '$son': yeni migration devir_sema()'yı kendi adıyla yeniden yazmalı"; exit 1; }
+echo "✓ devir_sema() son migration'la aynı"
 for t in supabase/test/*.test.sql; do
   $P -f "$t" || { echo "✗ $t"; exit 1; }
   echo "✓ $(basename "$t")"
