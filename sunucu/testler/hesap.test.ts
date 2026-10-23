@@ -50,6 +50,7 @@ async function link(method: string, path: string, body?: any, baslik?: string) {
 const AUTH_BERKIN = "jwt:11111111-1111-4111-8111-111111111111:berkin@ornek.com";
 const AUTH_AYSE = "jwt:22222222-2222-4222-8222-222222222222:Ayse@Ornek.com";
 const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
+const AUTH_KURUCU = "jwt:44444444-4444-4444-8444-444444444444:kurucu@ornek.com";
 
 (async () => {
   const [ws] = await db.insert("kullanici", [{ ad: "Test alanı" }]);
@@ -71,14 +72,19 @@ const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
   x = await api("POST", "/api/v1/kayit", { alan_adi: "Yeni alan" }, AUTH_BERKIN);
   ok(x.st === 403 && /davetle/.test(x.j.hata), "açık kayıt kapalıyken yeni alan açılamaz");
 
-  // sahip (anahtarla) Berkin'i ve Ayşe'yi davet eder
+  // davet güven ayarıdır: sahip anahtarıyla yapılamaz (S-C1); alanı kuran sahip e-postalı oturumla davet eder
+  const [kurucu] = await db.insert("uye", [{ auth_id: "44444444-4444-4444-8444-444444444444", eposta: "kurucu@ornek.com", kullanici_id: ws.id, kisi: "Kurucu", rol: "sahip" }]);
   x = await api("POST", "/api/v1/davet", { eposta: "Berkin@Ornek.com", kisi: "Berkin", rol: "sahip" });
+  ok(x.st === 403 && /e-postayla giriş/.test(x.j.hata) && !GIDEN.length, "sahip anahtarıyla davet edilemez (S-C1)");
+  x = await api("GET", "/api/v1/uyeler");
+  ok(x.j.ok && x.j.uyeler.length === 1, "anahtarla üye listesi okunur");
+  x = await api("POST", "/api/v1/davet", { eposta: "Berkin@Ornek.com", kisi: "Berkin", rol: "sahip" }, AUTH_KURUCU);
   ok(x.j.ok && x.j.gonderildi && GIDEN[0]?.e === "berkin@ornek.com", "davet: e-posta küçük harfe çevrildi, giriş bağlantısı gönderildi");
-  x = await api("POST", "/api/v1/davet", { eposta: "ayse@ornek.com", kisi: "Ayşe", rol: "dis", kapsam: "Mali müşavir Ayten" });
+  x = await api("POST", "/api/v1/davet", { eposta: "ayse@ornek.com", kisi: "Ayşe", rol: "dis", kapsam: "Mali müşavir Ayten" }, AUTH_KURUCU);
   ok(x.j.ok && x.j.davet.kapsam === "Mali müşavir Ayten", "dış davet kapsamla");
   x = await api("POST", "/api/v1/davet", { eposta: "zeynep@ornek.com" }, "dv_ekip");
   ok(x.st === 403, "ekip davet edemez");
-  x = await api("POST", "/api/v1/davet", { eposta: "bozuk" });
+  x = await api("POST", "/api/v1/davet", { eposta: "bozuk" }, AUTH_KURUCU);
   ok(x.st === 400, "geçersiz e-posta reddedildi");
 
   x = await api("GET", "/api/v1/ben", null, AUTH_BERKIN);
@@ -100,6 +106,7 @@ const AUTH_YABANCI = "jwt:33333333-3333-4333-8333-333333333333:kimse@ornek.com";
   x = await api("GET", "/api/v1/kararlar", null, AUTH_AYSE);
   ok(x.st === 403, "dış üye kararları göremez");
 
+  await db.update("uye", { id: kurucu.id }, { kullanici_id: "ayrildi" }); // kurucu ayrıldı: tek sahip Berkin
   x = await api("GET", "/api/v1/uyeler", null, AUTH_BERKIN);
   ok(x.j.uyeler?.length === 2 && x.j.uyeler.some((u: any) => u.ben), "üyeler listesi (oturumla, sahip)");
   const ayseId = x.j.uyeler.find((u: any) => u.rol === "dis").id;

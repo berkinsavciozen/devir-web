@@ -102,6 +102,8 @@ export async function ekipYonlendir(ctx: Ctx, method: string, yol: string[], bod
   const [r0, r1, r2] = yol;
   if (!["uyeler", "davet", "uye"].includes(r0)) return undefined;
   if (ctx.key.rol !== "sahip") throw new HesapHata(403, "Bunu yalnızca çalışma alanının sahibi yapabilir.");
+  // üye ve davet değişikliği güven ayarıdır: yalnız e-postayla giriş yapmış sahip (S-C1); liste okunabilir
+  if (method !== "GET" && ctx.kanal !== "oturum") throw new HesapHata(403, "Bunu yalnız e-postayla giriş yapmış kişi yapabilir; anahtarla ya da agent üzerinden yapılamaz.");
   const b = body && typeof body === "object" ? body : {};
   if (method === "GET" && r0 === "uyeler" && !r1) {
     const uyeler = await ctx.db.many("uye", { kullanici_id: ctx.ws.id }, "created_at");

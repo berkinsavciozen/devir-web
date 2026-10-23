@@ -458,11 +458,15 @@ async function okunduYaz(ctx: Ctx, b: any) {
 const ARAC = "Devir web";
 function govdeAl(b: any) { return b && typeof b === "object" ? b : {}; }
 async function arac(ctx: Ctx, ad: string, a: any) {
-  try { return await callTool(ad, { arac: ARAC, kim_tip: "insan", ...a }, ctx); }
+  // dv_ anahtarıyla gelen istek agent sayılır (S-C1); kayıtta "Devir anahtarı (X adına)" görünür
+  try { return await callTool(ad, { arac: ctx.kanal === "anahtar" ? "Devir anahtarı" : ARAC, ...a }, ctx); }
   catch (e) { throw new ApiHata(e instanceof DevirHata ? e.durum : 400, (e as Error).message); }
 }
 
 function sahipMi(ctx: Ctx) { if (ctx.key.rol !== "sahip") throw new ApiHata(403, "Bunu yalnızca çalışma alanının sahibi yapabilir."); }
+// Güven ayarları (karar politikası, anahtar verme/iptal) yalnız e-postayla giriş yapmış kişiden: anahtar ya da agent kendine yetki veremez (S-C1)
+export const OTURUM_GEREK = "Bunu yalnız e-postayla giriş yapmış kişi yapabilir; anahtarla ya da agent üzerinden yapılamaz.";
+function oturumMu(ctx: Ctx) { if (ctx.kanal !== "oturum") throw new ApiHata(403, OTURUM_GEREK); }
 function ekipMi(ctx: Ctx) { if (isDis(ctx)) throw new ApiHata(403, "Bunu yalnızca ekip üyeleri yapabilir."); }
 async function sha256(s: string) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, "0")).join(""); }
 function yeniToken(on: string, n = 18) { const b = new Uint8Array(n); crypto.getRandomValues(b); return on + Array.from(b).map((x) => "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"[x % 57]).join(""); }
@@ -614,7 +618,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     }
     // karar politikası (MK-3): agent üzerinden verilen karar kullanıcı tipine göre insan kararı mı, beyan mı
     if (r0 === "politika" && !r1) {
-      sahipMi(ctx);
+      sahipMi(ctx); oturumMu(ctx);
       const ak: Record<string, string> = { ...politikaV(ctx.ws).agent_karari };
       for (const rol of ["sahip", "ekip", "dis"]) if (b.agent_karari?.[rol] != null) {
         if (!["insan", "beyan"].includes(b.agent_karari[rol])) throw new ApiHata(400, "agent_karari değerleri insan ya da beyan olmalı.");
@@ -626,7 +630,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     }
     // anahtar yönetimi (yalnızca sahip)
     if (r0 === "anahtar" && !r1) {
-      sahipMi(ctx);
+      sahipMi(ctx); oturumMu(ctx);
       const kisi = String(b.kisi || "").trim();
       const rol = ["ekip", "dis", "sahip"].includes(b.rol) ? b.rol : "ekip";
       if (!kisi) throw new ApiHata(400, "kisi gerekli.");
@@ -641,7 +645,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       return { anahtar: { id: k.id, kisi, rol, kapsam: k.kapsam || null, onek: k.onek, son_gecerlilik: son }, token, mcp_adresi: taban.fn, baslik: `Authorization: Bearer ${token}`, not: "Anahtar yalnızca şimdi gösterilir, 90 gün geçerli. Claude ve ChatGPT'de anahtar gerekmez: kişi adresi ekleyip e-postasıyla onaylar." };
     }
     if (r0 === "anahtar" && r1 && r2 === "iptal" && !r3) {
-      sahipMi(ctx);
+      sahipMi(ctx); oturumMu(ctx);
       const k = await ctx.db.one("anahtar", { id: r1, kullanici_id: ctx.ws.id });
       if (!k) throw new ApiHata(404, "Anahtar yok.");
       if (k.id === ctx.key.id) throw new ApiHata(400, "Şu an kullandığın anahtarı iptal edemezsin.");

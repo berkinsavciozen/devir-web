@@ -81,7 +81,8 @@ export function AnahtarSayfasi({ acik, kapat }: { acik: boolean; kapat: () => vo
         <label className="alan-etiket" htmlFor="anahtar">Devir anahtarı</label>
         <input id="anahtar" className="alan alan-es" autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="dv_…"
           value={deger} onChange={(e) => setDeger(e.target.value)} aria-invalid={hata ? true : undefined} aria-describedby={hata ? 'anahtar-hata' : undefined} />
-        {hata && <p id="anahtar-hata" className="alan-hata" role="alert">{hata}</p>}
+        {hata ? <p id="anahtar-hata" className="alan-hata" role="alert">{hata}</p>
+          : <p className="alan-not">Anahtarla yazdıkların agent kaydı olarak düşer. Karar politikası, anahtar ve üye ayarları için e-postayla gir.</p>}
         <Dugme type="submit" mesgul={mesgul} style={{ marginTop: 20 }}>Gir</Dugme>
       </form>
     </AltSayfa>

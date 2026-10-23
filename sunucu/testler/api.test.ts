@@ -14,9 +14,12 @@ const db: any = {
 const sha = async (s: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))).map((x) => x.toString(16).padStart(2, "0")).join("");
 const ok = (c: boolean, m: string) => { console.log((c ? "✓ " : "✗ ") + m); if (!c) process.exitCode = 1; };
 const B = "https://x.supabase.co/functions/v1/devir-mcp";
-async function api(method: string, path: string, body?: any, token = "dv_sahip") {
+// sahte Supabase oturumu: "jwt:<auth_id>:<eposta>"; web'de insan yalnız oturumla (S-C1), anahtar agent sayılır
+const kimlik = async (j: string) => { const m = /^jwt:([\w-]+):(.+)$/.exec(j); return m ? { id: m[1], email: m[2] } : null; };
+const OT_BERKIN = "jwt:a-berkin:berkin@ornek.com";
+async function api(method: string, path: string, body?: any, token = OT_BERKIN) {
   NOW += 36e5;
-  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B });
+  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B, kimlik });
   return { st: r.status, j: await r.json() };
 }
 async function mcp(name: string, args: any) {
@@ -28,6 +31,7 @@ async function mcp(name: string, args: any) {
 (async () => {
   const [ws] = await db.insert("kullanici", [{ ad: "Test alanı" }]);
   await db.insert("anahtar", [{ kullanici_id: ws.id, kisi: "Berkin", rol: "sahip", token_hash: await sha("dv_sahip") }, { kullanici_id: ws.id, kisi: "Zeynep", rol: "ekip", token_hash: await sha("dv_ekip") }]);
+  await db.insert("uye", [{ auth_id: "a-berkin", eposta: "berkin@ornek.com", kullanici_id: ws.id, kisi: "Berkin", rol: "sahip" }]);
   const r = await mcp("devir_akis_olustur", { baslik: "Hasat Karadeniz çiftçileri", hedef_tarih: "2026-11-20", baglam: { musteri: "Hasat" }, adimlar: [
     { ad: "Aday listesi", sahip: "Berkin", kriter: "liste", sure_tahmin_gun: 2 },
     { ad: "Muhasebeci belge modelini onaylar", sahip: "Mali müşavir Ayten", sahip_tip: "dis", kriter: "onay", sure_tahmin_gun: 3, bagimli: [1] },
@@ -74,7 +78,9 @@ async function mcp(name: string, args: any) {
   x = await api("POST", `/api/v1/akis/${kod}/adim/3`, { durum: "tamam", not: "Komisyon %12" });
   x = await api("GET", "/api/v1/kararlar");
   ok(x.j.varliklar[0]?.kararlar[0]?.karar === "Komisyon %12", "karar adımı insan tamamlayınca karar kaydı");
-  // anahtarlar
+  // anahtarlar: yalnız oturumla verilir; anahtar kendine yeni anahtar üretemez (S-C1)
+  x = await api("POST", "/api/v1/anahtar", { kisi: "Ayten", rol: "dis", kapsam: "Mali müşavir Ayten" }, "dv_sahip");
+  ok(x.st === 403 && /e-postayla giriş/.test(x.j.hata), "sahip anahtarıyla anahtar üretilemez (S-C1)");
   x = await api("POST", "/api/v1/anahtar", { kisi: "Ayten", rol: "dis", kapsam: "Mali müşavir Ayten" });
   ok(x.j.token?.startsWith("dv_") && !x.j.mcp_adresi.includes("dv_") && x.j.baslik === "Authorization: Bearer " + x.j.token, "anahtar üretildi, adreste değil başlıkta (S-B1)");
   const disTok = x.j.token, disId = x.j.anahtar.id;

@@ -16,9 +16,12 @@ const db: any = {
 const sha = async (s: string) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)))).map((x) => x.toString(16).padStart(2, "0")).join("");
 const ok = (c: boolean, m: string) => { console.log((c ? "✓ " : "✗ ") + m); if (!c) process.exitCode = 1; };
 const B = "https://x.supabase.co/functions/v1/devir-mcp";
+// sahte Supabase oturumu: "jwt:<auth_id>:<eposta>" (insan yalnız oturumla, S-C1)
+const kimlik = async (j: string) => { const m = /^jwt:([\w-]+):(.+)$/.exec(j); return m ? { id: m[1], email: m[2] } : null; };
+const OT_BERKIN = "jwt:a-berkin:berkin@ornek.com";
 async function api(method: string, path: string, body?: any, token = "dv_sahip") {
   NOW += 36e5;
-  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B });
+  const r = await handle(new Request(B + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined }), db, NOW, { taban: B, kimlik });
   return { st: r.status, j: await r.json() };
 }
 async function mcp(name: string, args: any, token = "dv_sahip") {
@@ -44,6 +47,7 @@ const sonOlay = (no: number) => [...T.olay].reverse().find((e) => e.adim_no === 
     { kullanici_id: ws.id, kisi: "Zeynep", rol: "ekip", token_hash: await sha("dv_ekip") },
     { kullanici_id: ws.id, kisi: "Ali", rol: "dis", kapsam: "Ali", token_hash: await sha("dv_dis") },
   ]);
+  await db.insert("uye", [{ auth_id: "a-berkin", eposta: "berkin@ornek.com", kullanici_id: ws.id, kisi: "Berkin", rol: "sahip" }]);
   const r = await mcp("devir_akis_olustur", { baslik: "Güvenlik akışı", hedef_tarih: "2026-11-20", adimlar: [
     { ad: "Aday listesi", sahip: "Berkin", kriter: "liste", sure_tahmin_gun: 1 },
     { ad: "Belgeleri gönder", sahip: "Mehmet Ali", sahip_tip: "dis", kriter: "belge", sure_tahmin_gun: 1 },
@@ -68,9 +72,13 @@ const sonOlay = (no: number) => [...T.olay].reverse().find((e) => e.adim_no === 
   m = await mcp("devir_adim_guncelle", { akis: kod, no: 1, durum: "suruyor", kim: "Zeynep", kim_tip: "insan" });
   let e = sonOlay(1);
   ok(e.kim === "Berkin" && e.kim_tip === "agent", "mcp_sahte_kimlik: kim=Zeynep, kim_tip=insan yok sayıldı (Berkin, agent)");
-  x = await api("POST", `/api/v1/akis/${kod}/adim/1`, { durum: "tamam", not: "liste hazır", kim: "Zeynep" });
+  // dv_ anahtarı insanın orada olduğunu kanıtlamaz: web uçlarına anahtarla gelen istek de agent (S-C1)
+  x = await api("POST", `/api/v1/akis/${kod}/adim/1`, { not: "anahtarla not", kim: "Zeynep" });
   e = sonOlay(1);
-  ok(x.st === 200 && e.kim === "Berkin" && e.kim_tip === "insan", "web isteği insan, kişi anahtardan");
+  ok(x.st === 200 && e.kim === "Berkin" && e.kim_tip === "agent" && e.arac === "Devir anahtarı" && e.kanal === "anahtar", "anahtarla web isteği agent: Devir anahtarı (Berkin adına), kanal anahtar");
+  x = await api("POST", `/api/v1/akis/${kod}/adim/1`, { durum: "tamam", not: "liste hazır", kim: "Zeynep" }, OT_BERKIN);
+  e = sonOlay(1);
+  ok(x.st === 200 && e.kim === "Berkin" && e.kim_tip === "insan" && e.kanal === "oturum", "e-postalı oturumla web isteği insan, kişi üyelikten");
 
   // agent kararı (S-C1): devir_adim_guncelle ile karar tamamlanamaz, devir_karar_ver gerekir
   m = await mcp("devir_adim_guncelle", { akis: kod, no: 4, durum: "tamam", not: "%10", kim_tip: "insan" });
