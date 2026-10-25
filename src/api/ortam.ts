@@ -3,7 +3,7 @@ import { arama } from '../yonlendirme';
 export const SAHTE = import.meta.env.VITE_SAHTE === '1';
 export const API_TABAN = (import.meta.env.VITE_DEVIR_API as string) || '';
 /** Sahte kipte hal örnekleri (§10): örnek veriye eklenen yazmalar ve o halin "bugün"ü. ?hal=karar */
-export const HAL_SIMDI: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
+export const HAL_SIMDI: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00' };
 export function hal(): string | null {
   if (!SAHTE || typeof location === 'undefined') return null;
   const q = arama();

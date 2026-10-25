@@ -42,6 +42,8 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     kaynak: s.kaynak, tur_kod: s.tur_kod || null, cikti_sayisi: (s.ciktilar || []).length,
     // S2 (N17): planlamada yazılan alanlar; eski adımda boşsa kuralla
     karar_gerekli: typeof s.karar_gerekli === "boolean" ? s.karar_gerekli : null, cikti_bekleniyor: alanDoldur(s).cikti_bekleniyor,
+    // W5: alt görev (tek düzey); üst görevin alt görev numaraları
+    ust_adim: s.ust_adim ?? null, alt_gorevler: steps.filter((x: any) => x.ust_adim === s.no).sort((p: any, r: any) => p.no - r.no).map((x: any) => x.no),
     tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
   };
   if (!DONE(s) && !opts.dis) v.linkler = chatLinks(akis, s);
@@ -520,6 +522,7 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
       return { mesaj, ...(await adimDetayV(ctx, r1, Number(r3))) };
     }
     if (r0 === "akis" && r1 && r2 === "adim" && r3 && r4 === "dosya") return yuklemeIste(ctx, r1, Number(r3), b);
+    if (r0 === "akis" && r1 && r2 === "adim" && r3 && r4 === "alt") { const mesaj = await arac(ctx, "devir_alt_gorev", { ...b, akis: r1, adim: Number(r3) }); return { mesaj, ...(await adimDetayV(ctx, r1, Number(r3))) }; }
     if (r0 === "dosya" && r1 && r2 === "sil") return dosyaSil(ctx, [r1]);
     if (r0 === "akis" && r1 && r2 === "dosyalari-sil" && !r3) { sahipMi(ctx); const ak = await getAkis(ctx, r1); return dosyaSil(ctx, null, ak.id); }
     if (r0 === "akis" && r1 && r2 === "adim" && !r3) { const mesaj = await arac(ctx, "devir_adim_ekle", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }

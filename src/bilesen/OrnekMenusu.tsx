@@ -5,6 +5,7 @@ const ORNEKLER: [string, string][] = [
   ['Günlük görünüm', '/?senaryo=berkin&hal='],
   ['Karar bekleyen adım', '/akis/XPVZ/adim/9?senaryo=berkin&hal=karar'],
   ['Kalemli adım (uydular)', '/akis/XPVZ?senaryo=berkin&hal=uydu'],
+  ['Alt görevli adım', '/akis/RTD5/adim/10?senaryo=berkin&hal=alt'],
   ['Hedefi geçmiş akış', '/akis/RTD5?senaryo=berkin&hal=gecikme'],
   ['Kapanmış akış', '/akis/GKX8?senaryo=berkin&hal='],
   ['Yeni iş taslağı', '/yeni?senaryo=berkin&hal='],
