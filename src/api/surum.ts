@@ -2,7 +2,7 @@
  * Web–sunucu sürüm uyumu (N-8). Web ve Edge ayrı yayınlanır: web merge'de çıkar, Edge panelden elle yüklenir.
  * Web bu sunucu sürümüne göre yazıldı; /api/v1/durum daha eski bir sürüm ya da uygulanmamış migration gösterirse Ayarlar söyler.
  */
-export const SUNUCU_SURUMU = '0.26.0';
+export const SUNUCU_SURUMU = '0.26.1';
 
 type Durum = { surum?: string; sema?: { beklenen?: string; canli?: string | null; uyumlu?: boolean | null } };
 

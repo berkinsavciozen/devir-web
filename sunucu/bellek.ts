@@ -166,15 +166,17 @@ export function hatirlatmaSatirlari(t: any, h: Hatira, sorular: any[], soruGerek
   const dersBy = new Map(h.ders.map((x: any) => [`D${x.id}`, x]));
   const kartBy = new Map(h.kart.map((k: any) => [`K:${k.kod}`, k]));
   const kullanilan = new Map<string, string[]>();
-  for (const s of t.adimlar || []) for (const r of dayanaklar(s)) { const a = kullanilan.get(r) || []; a.push(`"${s.ad}"`); kullanilan.set(r, a); }
+  for (const s of t.adimlar || []) for (const r of dayanaklar(s)) { const a = kullanilan.get(r) || []; a.push(`"${s.kisa_ad || s.ad}"`); kullanilan.set(r, a); }
   const sorulan = new Set(sorular.map((q: any) => q.kod));
   for (const q of (t.sorular || []).filter((q: any) => sorulan.has(q.kod))) for (const r of dayanaklar(q)) { const a = kullanilan.get(r) || []; a.push(`[${q.kod}] sorusu`); kullanilan.set(r, a); }
-  for (const [r, yer] of kullanilan) {
+  for (const [r, tumYer] of kullanilan) {
+    // uzun liste okunmaz: ilk üç yer, gerisi sayıyla
+    const yer = tumYer.length > 3 ? [...tumYer.slice(0, 3), `${tumYer.length - 3} adım daha`] : tumYer;
     const x: any = dersBy.get(r);
     if (x) { const kanit = (x.kanit || []).map((k: any) => k.akis).filter(Boolean); L.push(`${yer.join(", ")}: ${x.metin} (${x.durum === "kesin" ? "kanıtlı" : "aday ders"}, ${x.kanit_sayi} akış${kanit.length ? `: ${kanit.slice(0, 3).join(", ")}` : ""})`); continue; }
     const g: any = r.startsWith("G:") ? h.deneyim.find((d: any) => d.akis_kod === r.slice(2)) : null;
     if (g) {
-      const ek = (g.eklenen || []).find((e: any) => yer.some((y) => kelimeBenzer(kokler(y), kokler(e.ad)) >= 0.5));
+      const ek = (g.eklenen || []).find((e: any) => tumYer.some((y) => kelimeBenzer(kokler(y), kokler(e.ad)) >= 0.5));
       L.push(ek ? `${yer.join(", ")}: ${g.akis_kod}${g.varlik ? ` (${g.varlik})` : ""} işinde sonradan eklenmişti; bu kez baştan planda.` : `${yer.join(", ")}: benzer geçmiş iş ${g.akis_kod}${g.varlik ? ` (${g.varlik})` : ""} esas alındı.`);
       continue;
     }
@@ -199,7 +201,16 @@ export function zorunluIsler(t: any, kartlar: any[]) {
   const adimlar: any[] = t.adimlar || (t.adimlar = []);
   const roller: any[] = t.roller || (t.roller = []);
   const anahtarda = (s: any, anahtar: string[]) => { const m = vnorm(`${s.ad} ${s.kisa_ad || ""} ${s.aciklama || ""} ${s.tur_kod || ""}`); return anahtar.some((k) => k && m.includes(vnorm(k))); };
-  const bul = (x: any) => adimlar.find((s) => (x.tur_kod && s.tur_kod === x.tur_kod) || (Array.isArray(x.anahtar) && x.anahtar.length && anahtarda(s, x.anahtar)) || kelimeBenzer(kokler(s.ad), kokler(x.ad)) >= 0.6);
+  // en iyi eşleşme: aynı tür > anahtarın adda geçmesi (önce gelen anahtar daha belirgin) > ad benzerliği > anahtarın yalnız açıklamada geçmesi
+  // (ör. faturanın açıklamasında "EUR.1 için" yazması EUR.1 adımının yerini tutmaz)
+  const adda = (s: any, k: string) => !!k && vnorm(`${s.ad} ${s.kisa_ad || ""} ${s.tur_kod || ""}`).includes(vnorm(k));
+  const bul = (x: any) => {
+    const A: string[] = Array.isArray(x.anahtar) ? x.anahtar : [];
+    const puan = (s: any) => (x.tur_kod && s.tur_kod === x.tur_kod ? 100 : 0) + Math.max(0, ...A.map((k, j) => (adda(s, k) ? 50 - j : 0))) + (kelimeBenzer(kokler(s.ad), kokler(x.ad)) >= 0.6 ? 20 : 0) + (A.length && anahtarda(s, A) ? 1 : 0);
+    let en: any = null, ep = 0;
+    for (const s of adimlar) { const p = puan(s); if (p > ep) { en = s; ep = p; } }
+    return en;
+  };
   const idsOf = (anahtar: string[] = []) => (anahtar.length ? adimlar.filter((s) => anahtarda(s, anahtar)).map((s) => s.id) : []);
   let eklenen = 0;
   for (const k of kartlar) {

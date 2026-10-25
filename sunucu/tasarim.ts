@@ -1,5 +1,6 @@
 // Akış tasarımcısı: tek cümleden taslak, soru adayları, soru seçimi ve cevaplardan akış.
 import type { LlmTool } from "./llm.ts";
+import { kelimeBenzer, kokler } from "./bellek.ts";
 
 export const BOYUTLAR: Record<string, string> = {
   sonuc: "Sonuç: bitti ne demek, ne teslim edilecek",
@@ -185,6 +186,8 @@ export function denetimUygula(t: any, d: any) {
   let n = 0;
   for (const e of (Array.isArray(d?.adim_ekle) ? d.adim_ekle : []).slice(0, 3)) {
     if (!e?.ad || adimlar.some((s) => s.tur_kod === e.tur_kod || nv(s.ad) === nv(e.ad))) continue;
+    const ayni = adimlar.find((s) => benzerlik(s.ad, e.ad) >= 0.6);
+    if (ayni) { red.push(`Denetçinin önerdiği "${String(e.ad).trim()}" adımı eklenmedi: "${ayni.ad}" adımıyla aynı iş.`); continue; }
     // denetçi yamaları da doğrulanır: ham kod adı, soruyu adım yapma, uzun bekleme, hiçbir şeye bağlanmayan adım
     const ad = String(e.ad).trim();
     if (KOD_AD.test(ad)) { red.push(`Denetçinin önerdiği "${ad}" adımı eklenmedi: ad kod olarak geldi.`); continue; }
@@ -223,6 +226,7 @@ export function denetimUygula(t: any, d: any) {
 }
 const KOD_AD = /^[a-z0-9]+(?:[-_][a-z0-9]+)+$/; // "sirket-turu-sec" gibi: boşluksuz, küçük harf, tireli
 const DENETCI_AZAMI_GUN = 5;
+const benzerlik = (a: unknown, b: unknown) => kelimeBenzer(kokler(a), kokler(b));
 const harf = (x: string) => slug(x).replace(/-/g, "");
 // iş türü etiketi doğrulaması: motor var olan bir türü seçtiyse işin cümlesiyle ortak kökü olmalı; yoksa yeni tür açılır
 const kokSet = (x: string) => new Set(slug(x).split("-").filter((w) => w.length > 3).map((w) => w.slice(0, 5)));
@@ -271,8 +275,9 @@ export function kuralDenetimi(t: any) {
     const ilgili = soruAdimlari(t, q);
     if (ilgili.length) { q._ilgili = ilgili; continue; }
     q._etkisiz = true;
-    const o = (q.secenekler || []).find((x: any) => nv(x.deger) === nv(q.varsayilan));
-    notlar.push(`[${q.kod}] sorusu hiçbir adımı değiştirmiyor; sorulmadı, "${o?.etiket || q.varsayilan}" varsayıldı. Yanlışsa ilgili adımları kurmadan önce düzelt.`);
+    const qv = bilinmiyorDuzelt(q); // sec() "bilinmiyor" varsayılanı ilk gerçek seçeneğe çevirir; not aynı değeri söylesin
+    const o = (qv.secenekler || []).find((x: any) => nv(x.deger) === nv(qv.varsayilan));
+    notlar.push(`[${q.kod}] sorusu hiçbir adımı değiştirmiyor; sorulmadı, "${o?.etiket || qv.varsayilan}" varsayıldı. Yanlışsa ilgili adımları kurmadan önce düzelt.`);
   }
   return notlar;
 }
@@ -538,7 +543,7 @@ const seceneklerYazi = (q: any, d: string[]) => d.map((v) => { const o = (q.sece
 // adın içinde seçenekleri sayan ifade ("peşin ya da akreditif"): cevap belli olunca seçilene indirgenir (M6)
 const kacis = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export function secenekIfadesi(q: any) {
-  const adlar = ([...new Set((q.secenekler || []).flatMap((o: any) => [o.etiket, o.deger]).filter((x: unknown) => x && !BILMIYORUM.test(nv(x)) && String(x).length >= 3).map(String))] as string[]).sort((a, b) => b.length - a.length);
+  const adlar = ([...new Set((q.secenekler || []).flatMap((o: any) => [o.etiket, o.deger]).filter((x: unknown) => x && !BILMIYORUM.test(nv(x)) && String(x).length >= 3).flatMap((x: unknown) => [String(x), nv(x)]))] as string[]) // "İhracatçı" /i ile "ihracatçı"yı tutmaz: Türkçe küçük biçim de aranır.sort((a, b) => b.length - a.length);
   if (adlar.length < 2) return null;
   const A = `(?:${adlar.map(kacis).join("|")})`;
   return new RegExp(`${A}(?:\\s*(?:,|/|\\bya da\\b|\\bveya\\b|\\byahut\\b|\\bya\\b)\\s*${A})+`, "iu");
