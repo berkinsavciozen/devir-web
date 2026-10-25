@@ -1,7 +1,7 @@
 // 0.26.0 (S2, 23 Eki test bulguları): çoklu seçim cevapları (C2), zorunlu işler ve kartlar (M5), soru-adım bağı (M6),
 // taslak düzeltme ve kurulu adımın tanımı (M8), kısa ad yanıtlarda (m1), dil (m2), sahiplik (m3), benzer iş (m5), karar/çıktı alanları (K11, N17).
 import { callTool, kararAdimi, alanDoldur } from "../core.ts";
-import { cevapDegerleri, cevapCoz, kosulEslesir, kuralDenetimi, sec, uygula, dilDuzelt, sahipAdi, sahiplikUyarilari } from "../tasarim.ts";
+import { cevapDegerleri, cevapCoz, kosulEslesir, kuralDenetimi, sec, uygula, denetimUygula, soruAdimlari, dilDuzelt, sahipAdi, sahiplikUyarilari } from "../tasarim.ts";
 import { zorunluIsler, kartSatiri, hatirlatmaSatirlari } from "../bellek.ts";
 
 let idc = 1;
@@ -205,6 +205,35 @@ const adimlar = (kod: string) => T.adim.filter((s) => s.akis_id === akisOf(kod).
     const g = S.find((s) => /Gıda kalite/.test(s.ad)), o = S.find((s) => /Organik/.test(s.ad));
     ok("'ikisi de' cevabı iki sertifika adımını da korur", g.durum !== "atlandi" && o.durum !== "atlandi" && !g.kosul && !o.kosul, [g.durum, o.durum, r]);
     ok("cevap seçenek değerleriyle kaydedilir", /her-ikisi\|gida-kalite\|organik/.test(akisOf(ak).baglam.cevaplar.sertifika), akisOf(ak).baglam.cevaplar);
+  }
+
+  // 0.26.1 · canlı deneme (TP8RW) bulguları
+  {
+    // EUR.1 adımı koşulda kalmıştı: faturanın açıklamasında "EUR.1" geçtiği için kart o adımı eşlemişti
+    const t: any = { roller: [{ kod: "ben", ad: "Kooperatif", tip: "insan" }], adimlar: [
+      { id: "f", tur_kod: "fatura-duzenle", ad: "Ticari faturayı düzenle", aciklama: "EUR.1 ve menşe için gerekli", sahip_rol: "ben", bagimli: [] },
+      { id: "e", tur_kod: "eur1-duzenle", ad: "EUR.1 dolaşım belgesini hazırlat", sahip_rol: "ben", bagimli: ["f"], kosul: { soru: "fatura_modeli", deger: "evet" } },
+    ] };
+    const K = { kod: "k", adimlar: [{ ad: "EUR.1 belgesini al", tur_kod: "eur1-mense", anahtar: ["eur.1", "eur1", "menşe"], zorunlu: true }] };
+    zorunluIsler(t, [K]);
+    const e = t.adimlar.find((s: any) => s.id === "e");
+    ok("zorunlu iş adında geçen adımı eşler, açıklamada geçeni değil", !e.kosul && e.dayanak.includes("K:k") && !(t.adimlar[0].dayanak || []).includes("K:k"), t.adimlar);
+    // denetçi var olan işi başka sözlerle yeniden eklemesin
+    const t2: any = { roller: [{ kod: "ben", ad: "Kooperatif", tip: "insan" }], sorular: [], adimlar: [{ id: "a", tur_kod: "analiz", ad: "Zeytinyağının kimyasal ve duyusal analizini akredite laboratuvara yaptır ve sonucu al", sahip_rol: "ben", bagimli: [] }] };
+    const r = denetimUygula(t2, { adim_ekle: [{ ad: "Zeytinyağının kimyasal ve duyusal analiz raporunu akredite laboratuvarından al", tur_kod: "belge", bagimli: ["a"] }] });
+    ok("denetçinin aynı işi yeniden eklemesi reddedilir", t2.adimlar.length === 1 && JSON.stringify(r).includes("aynı iş"), r);
+    // "İhracatçı" seçeneği küçük harfle yazılmış adımda da bulunur
+    const L = { kod: "lojistik", tip: "secim", soru: "Taşımayı kim üstlenecek?", varsayilan: "ihracatci", secenekler: [{ deger: "ihracatci", etiket: "İhracatçı" }, { deger: "alici", etiket: "Alıcı" }, { deger: "disaridan", etiket: "Dışarıdan lojistikçi" }] };
+    ok("Türkçe büyük İ'li seçenek adımda eşleşir", JSON.stringify(soruAdimlari({ adimlar: [{ id: "x", ad: "Taşımayı kesinleştir (ihracatçı, alıcı veya dış lojistikçi ile)" }] }, L)) === '["x"]');
+    // bilinmiyor varsayılanlı ölü soru: not, varsayımlarla aynı değeri söyler
+    const t3: any = { adimlar: [{ id: "a", ad: "Hazırla", bagimli: [] }], sorular: [{ kod: "lucid", tip: "secim", soru: "LUCID kaydı var mı?", varsayilan: "bilinmiyor", secenekler: [{ deger: "evet", etiket: "Evet" }, { deger: "hayir", etiket: "Hayır" }, { deger: "bilinmiyor", etiket: "Bilinmiyor" }] }] };
+    const n3 = kuralDenetimi(t3), s3 = sec(t3, new Map(), new Map(), {});
+    const v3 = s3.varsayim.find((q: any) => q.kod === "lucid");
+    ok("ölü sorunun notu ile varsayım aynı değeri söyler", n3.some((x) => x.includes('"Evet" varsayıldı')) && v3?.cevap === "evet", [n3, v3?.cevap]);
+    // hatırlatma satırı uzun adım listesini kısaltır, kısa adı kullanır
+    const t4: any = { adimlar: [1, 2, 3, 4, 5].map((i) => ({ id: `s${i}`, ad: `Uzun adım adı ${i}`, kisa_ad: `Adım ${i}`, dayanak: ["K:k"] })) };
+    const h4 = hatirlatmaSatirlari(t4, { deneyim: [], ders: [], kart: [{ kod: "k", kural: "Kural.", kaynak_ad: "Kaynak" }], standart: null, gommeli: false } as any, [], new Map());
+    ok("hatırlatma ilk üç adımı ve kalan sayıyı yazar", h4[0]?.startsWith('"Adım 1", "Adım 2", "Adım 3", 2 adım daha: Kural.'), h4);
   }
 
   console.log(hata ? `\n${hata} hata` : "\nS2 testleri geçti");
