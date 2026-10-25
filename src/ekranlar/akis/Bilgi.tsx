@@ -44,7 +44,10 @@ export function AdimIsaretleri({ a }: { a: any }) {
     </>
   );
 }
-export const adimIkon = (a: any, h = 58) => `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
+export const adimIkon = (a: any, h = 58) => a.ust_adim != null
+  // alt görev: üstüne bağlı küçük uydu (W5, N24)
+  ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${planet(37, 29, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`
+  : `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
 /** "Berkin · hazır · en erken 21 Eki" */
 export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';
@@ -78,8 +81,10 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
   if (!d) return { dugum: null, y: y0, sec, ad: 'Adımlar' };
 
   const A: any[] = [...d.adimlar].sort((a, b) => a.no - b.no);
-  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a), sag: <AdimIsaretleri a={a} />,
-    etiket: `${a.no}. adım, ${a.ad}. ${adimAlt(a)}.${a.karar_adimi ? ' Karar adımı.' : ''}${a.cikti_sayisi ? ` ${a.cikti_sayisi} çıktı.` : ''}`, git: () => git(`/akis/${enc(kod)}/adim/${a.no}`) });
+  const ustOf = (a: any) => (a.ust_adim != null ? A.find((x) => x.no === a.ust_adim) : null);
+  const altSay = (a: any) => { const k = A.filter((x) => x.ust_adim === a.no); return k.length ? ` · ${k.filter((x) => BITTI(x.durum)).length}/${k.length} alt görev` : ''; };
+  const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a) + altSay(a), sag: <AdimIsaretleri a={a} />,
+    etiket: `${a.no}. ${ustOf(a) ? `alt görev (${ustOf(a).no}. ${adimAdi(ustOf(a))} görevinin)` : 'adım'}, ${a.ad}. ${adimAlt(a)}${altSay(a)}.${a.karar_adimi ? ' Karar adımı.' : ''}${a.cikti_sayisi ? ` ${a.cikti_sayisi} çıktı.` : ''}`, git: () => git(`/akis/${enc(kod)}/adim/${a.no}`) });
   const kod_ = FILTRE_KOD[filtre];
   const sayi: Partial<Record<AkisSuzgec, number>> = { karar: A.filter((a) => a.karar_adimi).length, cikti: A.filter((a) => a.cikti_sayisi > 0).length, engelli: A.filter((a) => a.durum === 'engelli').length };
   // süzgeç dar sütunda iki satıra iner (360'ta taşmaz); genişlik yazı boyundan kestirilir
@@ -122,7 +127,10 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
   } else {
     const uy = [() => true, (a: any) => !BITTI(a.durum), (a: any) => a.sahip === ben && !BITTI(a.durum), (a: any) => a.durum === 'engelli', (a: any) => BITTI(a.durum)][filtre];
     // zincir: adımlar zaman sırasında (biten bitiş anına, açık en erken bitişine göre); aralarındaki ray bitenlerde yanar
-    const L = A.filter(uy).sort((a, b) => adimAn(a) - adimAn(b) || a.no - b.no);
+    const L0 = A.filter(uy).sort((a, b) => adimAn(a) - adimAn(b) || a.no - b.no);
+    // W5: alt görevler üstlerinin hemen altında (üstü süzgeçte yoksa kendi zaman yerinde)
+    const var0 = new Set(L0.map((a) => a.no));
+    const L = L0.filter((a) => a.ust_adim == null || !var0.has(a.ust_adim)).flatMap((a) => [a, ...L0.filter((x) => x.ust_adim === a.no).sort((p, r) => p.no - r.no)]);
     zincir = L.length > 1;
     ogeler = L.length ? L.map(adimSatir) : [{ tur: 'not', metin: kod_ === 'sende' ? 'Sende açık adım yok.' : 'Bu süzgece uyan adım yok.' }];
   }

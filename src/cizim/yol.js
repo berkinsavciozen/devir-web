@@ -22,7 +22,10 @@ const BIT = (d) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
  * API akış detayından (GET /akis/:kod) çizim modeli: F (adımların durum/sahip/bağımlılık özeti) + AK (geometri girdisi).
  * sahip: akışın sahibi (üye sırasında ilk, yolu kuruluşta başlar); yoksa oturumdaki kişi.
  */
-export function akisModeli(detay, o = {}) {
+export function akisModeli(detay0, o = {}) {
+  // W5: alt görevler gezegen değil, üst görevinin uyduları (cumleler.uydular); model yalnız ana görevlerle kurulur
+  const ana = detay0.adimlar.filter((a) => a.ust_adim == null), anaNo = new Set(ana.map((a) => a.no));
+  const detay = ana.length === detay0.adimlar.length ? detay0 : { ...detay0, adimlar: ana, kritik_yol: (detay0.kritik_yol || []).filter((n) => anaNo.has(n)) };
   const k = detay.akis;
   const F = {
     kod: k.kod, baslik: k.baslik, kapandi: k.kapandi_at ? Date.parse(k.kapandi_at) : null,

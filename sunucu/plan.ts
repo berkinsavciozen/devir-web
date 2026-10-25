@@ -2,7 +2,7 @@
 // üst uç aynı kişinin işlerini sırayla yapar, tahmin süreler uzayabilir, eksik süre birkaç gün sürebilir. Kimseye kapasite
 // kuralı dayatılmaz; çakışan iş yalnız aralığı genişletir ve uyarı olarak görünür. Süreler eksikse kesin tarih üretilmez.
 // MK-8: karar_ozeti, galaksi, Pano, Akışlar, Görevler, dış bağlantı ve MCP'nin aynı cümleyi göstermesi için tek kaynak.
-import { DAY, DONE, eod, fmtD, kararAdimi, norm, timeline, todayIst } from "./core.ts";
+import { DAY, DONE, eod, fmtD, kararAdimi, norm, planGirdisi, timeline, todayIst } from "./core.ts";
 import { adimKisaAdi } from "./ad.ts";
 
 export type Kaynak = "kullanici" | "tahmin" | "gecmis" | "eksik";
@@ -54,6 +54,7 @@ function cizelge(akis: any, steps: any[], tl: ReturnType<typeof timeline>, now: 
     let f: number;
     if (s.durum === "tamam") f = r.bitisAt ?? ts(s.durum_at);
     else if (DONE(s)) f = start; // atlanan adım geçittir (C1)
+    else if (s._altAcik) f = Math.max(start, now); // açık alt görevli üst görev alt görevleriyle biter (W5)
     else {
       const k = kisiOf(s), kis = k != null && kisitli(k);
       let bas = Math.max(start, now, s.capa_tarih ? Date.parse(s.capa_tarih + "T00:00:00+03:00") - 6e4 : 0);
@@ -93,6 +94,7 @@ export function bitis(akis: any, steps: any[], events: any[], now: number, gecmi
   if (akis.kapandi_at) { const g = todayIst(ts(akis.kapandi_at)); return { en_erken: g, aralik: [g, g], guven: "kesin", eksik_sure: 0, varsayimlar: [], yuk_uyarilari: [], adimlar: [], zincir: [] }; }
   if (!steps.length) return { en_erken: null, aralik: null, guven: "eksik", eksik_sure: 0, varsayimlar: ["Akışta adım yok."], yuk_uyarilari: [], adimlar: [], zincir: [] };
   const tl = timeline(steps, events, now);
+  steps = planGirdisi(steps); // W5: üst görev alt görevlerini bekler
   const S = new Map(steps.map((s) => [s.no, sureOf(s, gecmis)]));
   const alt = (s: any) => S.get(s.no)!.alt, ust = (s: any) => S.get(s.no)!.ust;
   const a = cizelge(akis, steps, tl, now, alt, () => false);

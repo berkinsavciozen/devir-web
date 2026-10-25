@@ -220,6 +220,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'karar') await halKarar(yaz);
   if (o.hal === 'uydu') await halUydu(yaz);
   if (o.hal === 'gecikme') await halGecikme(yaz);
+  if (o.hal === 'alt') await halAlt(yaz);
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   return {
@@ -241,7 +242,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
 
 /** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
-const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00' };
+const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim_tip: 'agent', arac: 'Claude' };
 
@@ -328,6 +329,11 @@ async function halGecikme(yaz: Yaz) {
 }
 
 /** D1, D2 · 4 Kas: Karadeniz'de görüşme, belgeler, ürünler ve profil 5 çiftçi için alt akışlarda yürüyor. */
+/** W5: RTD5'in 10. adımı (ilk 48 saat raporu) üç alt göreve bölünmüş; biri erkenden bitmiş. */
+async function halAlt(yaz: Yaz) {
+  await yaz('2026-10-14T09:00:00+03:00', '/api/v1/akis/RTD5/adim/10/alt', { alt_gorevler: [{ ad: 'Ölçüm tablosunu kur' }, { ad: 'Instagram içgörülerini çek' }, { ad: 'Raporu yaz', sahip: 'Claude', sahip_tip: 'agent' }] });
+  await yaz('2026-10-14T09:40:00+03:00', '/api/v1/akis/RTD5/adim/11', { durum: 'tamam', zorla: true, not: 'Tablo hazır; yayından önce kuruldu' });
+}
 async function halUydu(yaz: Yaz) {
   const a = (k: string, no: number) => `/api/v1/akis/${k}/adim/${no}`;
   await yaz('2026-10-15T11:00:00+03:00', a('XPVZ', 1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme' } });

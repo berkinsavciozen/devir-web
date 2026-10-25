@@ -169,7 +169,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const geo = useMemo(() => (GD ? GD.harita : { ...HARITA, ps: d && new Set(d.adimlar.map((a: any) => a.sahip)).size > 6 ? .82 : HARITA.ps }), [d, GD]);
   const SU = GD ? GD.surgu : SURGU, SR = GD ? GD.serit : SERIT;
   // masaüstünde seçim adreste (/adim/:no); seçim yokken panelde şeritlerin altında adım listesi (N16)
-  const selNo = GD && d ? secim ?? null : null;
+  // alt görev seçiliyse haritada üst görevi (uydusunun gezegeni) seçili
+  const selNo = GD && d ? (secim != null ? d.adimlar.find((a: any) => a.no === secim)?.ust_adim ?? secim : null) : null;
   // yakınlaşma, kaydırma (B3 "Pinch", §12): bölge sarmalın alanı; cümlenin altı, sürgünün üstü
   const [yelpazeNo, setYelpazeNo] = useState<number | null>(null);
   const [kuleAcik, setKuleAcik] = useState(false);
@@ -392,7 +393,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   );
 
   if (GD) {
-    const U = GD.ust, a = selNo != null ? byNo.get(selNo) : null;
+    const U = GD.ust, a = secim != null ? byNo.get(secim) : null, au = a?.ust_adim != null ? byNo.get(a.ust_adim) : null;
     const cumleG = ham && ham.filter(Boolean).length ? (U.tekSatir ? [ham.filter(Boolean).join(' ')] : ikiSatir(ham.filter(Boolean).join(' '), Math.min(340, GD.PX - 64), `${U.cumleFs}px Caladea`)) : null;
     const cG = soruC ? [soruC] : gecC ? [gecC] : cumleG;
     return (
@@ -410,7 +411,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         {!serit && cG && <Metin y={U.cumleY} x={U.cumleX} fs={U.cumleFs} lh={Math.round(U.cumleFs * 1.3)} serif renk="ink2" style={{ whiteSpace: 'nowrap', right: 'auto' }} id="harita-cumle" as="p">{cG.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>}
         {/* panelin üstü (N9): seçili adımdan akışa geri, konum; zil, ayarlar, yeni iş */}
         <div style={{ position: 'absolute', left: GD.PX, top: 0, width: GD.W - GD.PX }}>
-          <PanelUst geri={secim != null ? () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : undefined} konum={a && secim != null ? `${ad} › ${adimAdi(a)}` : ad} />
+          <PanelUst geri={secim != null ? () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : undefined} konum={a && secim != null ? `${ad} › ${au ? `${adimAdi(au)} › ` : ''}${adimAdi(a)}` : ad} />
         </div>
         <YuzenGezinme aktif="akislar" solEn={GD.PX} />
         <h2 className="genis-bolum" style={{ left: GD.bolum.x, top: GD.bolum.y - 12 }}>ŞERİTLER</h2>

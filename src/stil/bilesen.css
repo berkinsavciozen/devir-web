@@ -787,6 +787,20 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-karar-metin textarea { width: 100%; margin: 10px 0 12px; padding: 12px; border-radius: 14px; border: 0; font: 15px/20px var(--font-sans); color: var(--renk-metin-ink); background: var(--renk-zemin-alan); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); resize: vertical; }
 .gd-ciktilar .ciktilar { padding: 0; }
 .gd-ciktilar .ciktilar .bolum { margin-top: 0; }
+/* W5 · alt görev (N23, N24): üst göreve dönüş, uydu boyunda başlık, ekleme satırı */
+.gd-ust { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 0 2px; padding: 0 12px 0 8px; border: 0; border-radius: 22px; font: 500 13px/17px var(--font-sans); color: var(--renk-metin-ink2); background: color-mix(in srgb, var(--renk-vurgu-lila) 10%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; max-width: 100%; }
+.gd-ust b { font-weight: 650; color: var(--renk-metin-ink); }
+.gd-ust span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-ust svg { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--renk-metin-ink2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.gd-ust:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.gd-tur { display: block; font-size: 11px; line-height: 14px; font-weight: 750; letter-spacing: .7px; color: var(--renk-vurgu-lila); }
+.gd-bas-alt .gd-bas-metin h2 { font-size: 20px; line-height: 25px; }
+.gd-alt-liste { margin-bottom: 8px; }
+.gd-alt-ekle { display: flex; gap: 8px; align-items: center; }
+.gd-alt-ekle .alan { flex: 1; min-width: 0; height: 44px; padding: 0 14px; border: 0; border-radius: 14px; font: 15px/20px var(--font-sans); color: var(--renk-metin-ink); background: var(--renk-zemin-alan); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.gd-alt-ekle-dugme { flex: none; min-width: 64px; height: 44px; padding: 0 14px; border: 0; border-radius: 22px; font: 650 14px/18px var(--font-sans); color: #2A1D4F; background: var(--renk-vurgu-altin, #FFD27A); cursor: pointer; }
+.gd-alt-ekle-dugme:disabled { opacity: .45; cursor: default; }
+.gd-alt-ekle-dugme:focus-visible { outline: 2px solid var(--renk-metin-ink); outline-offset: 2px; }
 .gd-gecmis summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; list-style: none; }
 .gd-gecmis summary::-webkit-details-marker { display: none; }
 .gd-gecmis summary::before { content: ''; width: 7px; height: 7px; margin-right: 10px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(-45deg); transition: transform var(--sure-kisa); }

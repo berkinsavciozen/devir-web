@@ -75,10 +75,12 @@ export function tekrarAsamasi(d: any): { no: number; ad: string; n: number; k: n
   }
   return null;
 }
-/** Uydular: tekrarlanan her üst adım için kalem durumları. */
+/** Uydular: tekrarlanan her üst adım için kalem durumları; alt görevli adım için alt görevlerin durumları. */
 export function uydular(d: any): Record<number, { ad: string; durum: string }[]> {
   const out: Record<number, { ad: string; durum: string }[]> = {};
   for (const g of d.tekrar || []) for (const no of g.adimlar || []) out[no] = (g.kalemler || []).map((k: any) => ({ ad: k.ad, durum: k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada' }));
+  // W5: alt görevler üst görevin uyduları
+  for (const a of d.adimlar || []) if (a.ust_adim != null) (out[a.ust_adim] ||= []).push({ ad: adimAdi(a), durum: a.durum });
   return out;
 }
 /** D1: "5 çiftçiden 2’si belgeleri tamamladı; Hemşin Koop’ta IBAN eksik." */

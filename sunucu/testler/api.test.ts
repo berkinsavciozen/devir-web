@@ -121,5 +121,5 @@ async function mcp(name: string, args: any) {
   x = await api("GET", "/api/v1/ozet", undefined, "dv_yanlis");
   ok(x.st === 401, "yanlış anahtar 401");
   const mcpList = await handle(new Request(B + "/dv_sahip", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }) }), db, NOW, {});
-  ok((await mcpList.json()).result.tools.length === 18, "MCP: 18 araç (devir_karar_ver, devir_baglanti, devir_taslak_duzelt dahil)");
+  ok((await mcpList.json()).result.tools.length === 19, "MCP: 19 araç (devir_karar_ver, devir_baglanti, devir_taslak_duzelt, devir_alt_gorev dahil)");
 })();
