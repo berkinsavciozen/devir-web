@@ -846,3 +846,12 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-yol i { font-style: normal; color: var(--renk-metin-ink3); }
 .gd-yol span { padding: 13px 0; color: var(--renk-metin-ink); font-weight: 600; overflow-wrap: anywhere; }
 .gd-yol button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+
+/* akış süzgeci (plan 27 Eki, 3.30) */
+.akis-secim ul { list-style: none; margin: 12px 0 0; padding: 0; }
+.akis-secim-satir { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 4px; border-radius: 12px; cursor: pointer; color: var(--renk-metin-ink); font-size: 15px; }
+.akis-secim-satir:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.akis-secim-kutu { flex: none; width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--renk-metin-ink2); }
+.akis-secim-satir[aria-pressed="true"] .akis-secim-kutu { background: var(--renk-vurgu-altin); border-color: var(--renk-vurgu-altin); box-shadow: inset 0 0 0 3px var(--renk-zemin-kart); }
+.akis-secim-hap { position: absolute; z-index: 3; height: 44px; padding: 0 16px; border-radius: 22px; font-size: 13px; font-weight: 700; color: var(--renk-metin-ink); background: color-mix(in srgb, var(--renk-zemin-kart) 80%, transparent); border: 1px solid color-mix(in srgb, var(--renk-vurgu-altin) 55%, transparent); }
+.akis-secim-hap:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }

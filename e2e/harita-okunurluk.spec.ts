@@ -45,12 +45,13 @@ test('N1, N3: evrende galaksi adı kendi çerçevesine takılı (1440 ve 360)', 
     const hedef = page.getByRole('list', { name: 'Akışlar' }).getByRole('listitem');
     await expect(hedef.first()).toBeVisible();
     const G = await hedef.evaluateAll((L) => L.map((e) => { const r = e.getBoundingClientRect(); return { ad: (e.getAttribute('aria-label') || '').split('.')[0], x: r.left + r.width / 2, y: r.top + r.height / 2, r: r.width / 2 }; }));
-    const ad = (await page.locator('svg text').evaluateAll((L) => L.map((e) => { const r = e.getBoundingClientRect(); return { t: e.textContent || '', x: r.left + r.width / 2, y: r.top + r.height / 2 }; })));
+    const ad = (await page.locator('svg text').evaluateAll((L) => L.map((e) => { const r = e.getBoundingClientRect(); return { t: e.textContent || '', x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width }; })));
     for (const g of G.filter((x) => ['İzmir', 'Offsite', 'Karadeniz', 'Test Bank'].includes(x.ad))) {
       const e = ad.find((a) => a.t === g.ad);
       expect(e, g.ad).toBeTruthy();
-      // hap ortası galaksinin çerçeve çizgisinde: merkezden uzaklık yarıçap kadar (± hap yarı yüksekliği)
-      const d = Math.hypot(e!.x - g.x, e!.y - g.y);
+      // hap galaksinin çerçeve çizgisinde: altta/üstte hap ortası, yanda hapın galaksiye bakan ucu (yazı + 7 px iç boşluk)
+      const yan = Math.abs(e!.x - g.x) > Math.abs(e!.y - g.y);
+      const d = Math.hypot(e!.x - g.x, e!.y - g.y) - (yan ? e!.w / 2 + 7 : 0);
       expect(d, `${g.ad} ${w}`).toBeLessThan(g.r * 1.25 + 14);
     }
   }

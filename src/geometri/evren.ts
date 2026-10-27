@@ -1,7 +1,8 @@
 /**
  * Evren matematiği (el notu 5; tasarim/KODLAMA.md): her galaksinin yeri ve boyu veriden gelir.
  * - Açı: hedef tarihin takvim halkasındaki açısı (zaman). Başlangıçtan hedefe yay, halkanın içinde çizilir.
- * - Yarıçap (merkeze uzaklık): hedefe kalan pay. Pay azaldıkça galaksi halkaya yaklaşır; hedefi geçen halkanın dibinde.
+ * - Yarıçap (merkeze uzaklık): kalan iş oranı (plan 27 Eki, karar 3.I). Merkez "bitti" noktasıdır: bitmeye yaklaşan akış
+ *   merkeze iner. Gecikme uzaklıkla değil, galaksinin kırmızılaşan çerçevesiyle gösterilir (gec).
  * - Boy: alan adım sayısıyla orantılı (yarıçap ∝ √adım).
  * - Işık: biten / toplam adım.
  * - İp: ortak kişisi olan galaksiler arasında; kalınlık ortak kişi sayısıyla.
@@ -10,7 +11,7 @@
 export const GUN = 864e5;
 
 export interface EAkis { kod: string; t0: number; hedef: number; payGun: number | null; adim: number; biten: number; kisiler: string[] }
-export interface EYer { kod: string; x: number; y: number; rr: number; a: number; rho: number; rhoPay: number; isik: number; yay: [number, number] }
+export interface EYer { kod: string; x: number; y: number; rr: number; a: number; rho: number; rhoPay: number; isik: number; yay: [number, number]; gec: boolean }
 export interface EIp { a: string; b: string; n: number }
 export interface EYerlesim { yer: EYer[]; ipler: EIp[]; olcek: number; ic: number; dis: number }
 
@@ -22,7 +23,16 @@ export function evrenTakvimi(akislar: { t0: number; hedef: number }[], now: numb
   return { CA, CB: Math.max(ay(son, 1), ay(CA, 3)) };
 }
 
-/** Pay (gün) → merkeze uzaklık. 0 ve altı: dış sınır; P gün ve üstü: iç sınır; arası doğrusal (gün başına sabit px). */
+/**
+ * Kalan iş oranı → merkeze uzaklık (karar 3.I): ρ = iç + (dış − iç) × (1 − biten / toplam).
+ * Hiç başlamamış akış dış sınırda, bitmek üzere olan iç sınırda.
+ */
+export function kalanYaricap(biten: number, adim: number, ic: number, dis: number): number {
+  const oran = adim > 0 ? Math.max(0, Math.min(1, biten / adim)) : 0;
+  return ic + (dis - ic) * (1 - oran);
+}
+
+/** Pay (gün) → merkeze uzaklık (3.I öncesi kural; artık kullanılmıyor, eski çizimlerle kıyas için). 0 ve altı: dış sınır; P gün ve üstü: iç sınır; arası doğrusal (gün başına sabit px). */
 export function payYaricap(payGun: number | null, ic: number, dis: number, P = 45): number {
   if (payGun == null) return (ic + dis) / 2;
   if (payGun <= 0) return dis;
@@ -40,8 +50,8 @@ export function evrenYerlesimi(akislar: EAkis[], o: { cx: number; cy: number; R:
   let yer: EYer[] = [];
   for (let tur = 0; tur < 16; tur++) {
     yer = sirali.map((a) => {
-      const rr = Math.max(EN_K * olcek / olcek0, olcek * Math.sqrt(Math.max(1, a.adim))), rhoPay = payYaricap(a.payGun, ic, dis);
-      return { kod: a.kod, a: ang(a.hedef), rr, rho: Math.min(rhoPay, R - 14 - rr), rhoPay, x: 0, y: 0, isik: a.adim ? a.biten / a.adim : 0, yay: [ang(a.t0), ang(a.hedef)] as [number, number] };
+      const rr = Math.max(EN_K * olcek / olcek0, olcek * Math.sqrt(Math.max(1, a.adim))), rhoPay = kalanYaricap(a.biten, a.adim, ic, dis);
+      return { kod: a.kod, a: ang(a.hedef), rr, rho: Math.min(rhoPay, R - 14 - rr), rhoPay, x: 0, y: 0, isik: a.adim ? a.biten / a.adim : 0, yay: [ang(a.t0), ang(a.hedef)] as [number, number], gec: a.payGun != null && a.payGun < 0 };
     });
     const konum = (g: EYer) => { const r = g.a * Math.PI / 180; g.x = cx + Math.cos(r) * g.rho; g.y = cy + Math.sin(r) * g.rho; };
     yer.forEach(konum);

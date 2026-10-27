@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { evrenTakvimi, evrenYerlesimi, GUN, payYaricap, type EAkis } from './evren';
+import { evrenTakvimi, evrenYerlesimi, GUN, kalanYaricap, type EAkis } from './evren';
 
 const T = Date.parse('2026-10-14T12:00:00+03:00');
 const akis = (kod: string, o: Partial<EAkis> = {}): EAkis => ({ kod, t0: T - 3 * GUN, hedef: T + 20 * GUN, payGun: 10, adim: 10, biten: 3, kisiler: ['Berkin'], ...o });
@@ -14,12 +14,14 @@ describe('evren matematiği', () => {
     const k = evrenTakvimi([akis('A')], T);
     expect((k.CB - k.CA) / GUN).toBeGreaterThanOrEqual(89);
   });
-  it('payı azalan galaksi halkaya yaklaşır', () => {
-    expect(payYaricap(2, 50, 140)).toBeGreaterThan(payYaricap(20, 50, 140));
-    expect(payYaricap(-5, 50, 140)).toBe(140);
-    const Y = O([akis('A', { payGun: 2, hedef: T + 10 * GUN }), akis('B', { payGun: 25, hedef: T + 60 * GUN })]);
+  it('kalan iş azaldıkça galaksi merkeze iner (karar 3.I); gecikme çerçevede', () => {
+    expect(kalanYaricap(9, 10, 50, 140)).toBeLessThan(kalanYaricap(1, 10, 50, 140));
+    expect(kalanYaricap(10, 10, 50, 140)).toBe(50);
+    expect(kalanYaricap(0, 10, 50, 140)).toBe(140);
+    const Y = O([akis('A', { biten: 8, hedef: T + 10 * GUN }), akis('B', { biten: 1, hedef: T + 60 * GUN, payGun: -3 })]);
     const a = Y.yer.find((y) => y.kod === 'A')!, b = Y.yer.find((y) => y.kod === 'B')!;
-    expect(uz(a)).toBeGreaterThan(uz(b));
+    expect(uz(a)).toBeLessThan(uz(b));
+    expect([a.gec, b.gec]).toEqual([false, true]);
   });
   it('adım sayısı iki katına çıkınca alan iki katına çıkar', () => {
     const Y = O([akis('A', { adim: 8, hedef: T + 10 * GUN }), akis('B', { adim: 16, hedef: T + 50 * GUN })]);
