@@ -10,7 +10,7 @@ import { GenisSahne, Metin, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { KabukPanel, masaustu, PANEL_EN, YuzenGezinme, type KabukSekme } from '../../bilesen/Kabuk';
 import { useVurgu, vurgula } from '../../bilesen/vurgu';
-import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, usturlap } from '../../cizim/ekran';
+import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, hapEni, usturlap } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { C, pill, ship } from '../../cizim/ortak.js';
 import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
@@ -27,6 +27,7 @@ import { hareketAz } from '../../ayar/hareket';
 import { PANO_AD, pano, type Pano as PanoV, type PanoTur } from './pano';
 import { EvrenPano, panoYerlesimi, sonHareketler, usePanoListeleri } from './Pano';
 import { DurumNotu, veriDurumu, type VeriDurumu } from '../../bilesen/VeriDurumu';
+import { AltSayfa } from '../../bilesen/AltSayfa';
 import { hedefEtiketi } from '../../bilesen/KararSeridi';
 import { akisIlerlemesi, ilerlemeMetni } from '../../api/ilerleme';
 
@@ -89,11 +90,12 @@ type Hap = [number, number, string, Record<string, unknown>];
  * Evren yakınlaşması: usturlap ölçeklenir; ekranda yarıçapı 64 px'i geçen galaksi ayrıntılı çizilir, adımları ve kişileri
  * dokunulur olur. En yakında bir galaksinin üstünde daha da yaklaşmak o akışa girer (Z1).
  */
-function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, GYer>; hap: Hap[] } | null, detay: Record<string, any>, kisi: string, now: number, taban = { k: 1, x: 0, y: 0 }, soluk?: Set<string> | null) {
+function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, GYer>; hap: Hap[]; serbest?: boolean } | null, detay: Record<string, any>, kisi: string, now: number, taban = { k: 1, x: 0, y: 0 }, soluk?: Set<string> | null) {
   const ref = useRef<(kod: string) => void>(() => {});
   // en büyük galaksi ekranın yaklaşık yarısını doldurunca yakınlaşma durur; daha da açmak o akışa girer (el notu 6)
   const enR = Math.max(8, ...Object.values(cizim?.konum || {}).map((g) => g.r)) * taban.k;
-  const gz = useGezinme(b, { max: Math.max(2.5, Math.min(6, b.w * .42 / (enR * 1.35))), asiri: (p) => ref.current(enYakin(p)) });
+  // serbest düzen (Akışlar, 3.31): yakınlaşma yok
+  const gz = useGezinme(b, { max: cizim?.serbest ? 1 : Math.max(2.5, Math.min(6, b.w * .42 / (enR * 1.35))), asiri: (p) => ref.current(enYakin(p)) });
   const { k, tx, ty } = gz.g;
   const kucukler = useMemo(() => {
     const m: Record<string, string> = {};
@@ -136,7 +138,7 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
 }
 
 /** Evren dokunma katmanı: galaksiler (dokun → Z1), yakınken adımlar ve kişiler. */
-function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; minR?: number }) {
+function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; merkez?: { x: number; y: number; n: number } | null; minR?: number }) {
   const { gz, sonuc, ekran } = E;
   // en yakında daha da yaklaşmak akışa kendiliğinden girmez; önce sorulur (plan 27 Eki, 3.28)
   const [gecis, setGecis] = useState<string | null>(null);
@@ -171,6 +173,8 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, minR = 22 }: { E: Retur
       <div role="list" aria-label="Akışlar" className="harita-katman" style={{ left: -b.x, top: -b.y }}>
         {hedef.map((h) => <button key={h.key} role="listitem" data-kod={h.kod} className="gezegen-hedef" style={{ left: h.x - h.r, top: h.y - h.r, width: h.r * 2, height: h.r * 2 }} aria-label={h.etiket} data-ipucu={h.ipucu} onClick={h.tikla}
           onMouseEnter={h.kod ? () => vurgula(h.kod!) : undefined} onMouseLeave={h.kod ? () => vurgula(null) : undefined} />)}
+        {/* merkez = bitti (karar 3.I): dokununca kapanan akışlar */}
+        {merkez && merkez.n > 0 && (() => { const e = ekran({ x: merkez.x, y: merkez.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button role="listitem" className="gezegen-hedef" style={{ left: e.x - 22, top: e.y - 22, width: 44, height: 44 }} aria-label={`${merkez.n} akış bitti. Biten akışları aç.`} data-ipucu={`${merkez.n} akış bitti`} onClick={() => git('/akislar/arsiv')} />; })()}
         {taslak && (() => { const e = ekran({ x: taslak.x, y: taslak.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button className="gezegen-hedef" style={{ left: e.x - 52 * e.r, top: e.y - 58 * e.r, width: 104 * e.r, height: 72 * e.r }} aria-label={`${taslak.n} taslak`} onClick={() => git('/yeni')} />; })()}
       </div>
       {gecis && (
@@ -233,7 +237,14 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   const DD = useDetaylarDurum(kodlar), detay = DD.d;
 
   const cumleler = useMemo(() => evrenCumleleri(kartlar, detay, kisi, ozet.data?.ozet), [ozet.data, detay, kisi]); // eslint-disable-line react-hooks/exhaustive-deps
+  // akış süzgeci (3.30, karar 3.J): 10'dan çok akışta ilk açılışta en riskli 10; seçim 10'u aşarsa ölçek düzeni
+  const [akisSecim, setAkisSecim] = useState<string[] | null>(null);
+  const [secimAcik, setSecimAcik] = useState(false);
+  const riskSirasi = useMemo(() => enRiskliSirasi(kartlar, detay, cumleler), [ozet.data, detay, cumleler]); // eslint-disable-line react-hooks/exhaustive-deps
+  const secili = kartlar.length > OLCEK ? new Set(akisSecim ?? riskSirasi.slice(0, OLCEK)) : null;
+  const tumKartlar = kartlar;
   const cizim = useMemo(() => {
+    const kartlar = secili ? tumKartlar.filter((k) => secili.has(k.kod)) : tumKartlar;
     if (!ozet.data) return null;
     const isaret: Record<string, 'engel' | 'bekleme'> = {};
     for (const c of cumleler) if (c.kod && (c.tur === 'engel' || c.tur === 'bekleme') && !isaret[c.kod]) isaret[c.kod] = c.tur;
@@ -247,11 +258,11 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     // Akışlar haritası (N15): halkasız ve ipsiz serbest dizilim, en riskli sol üstte
     if (serbest && genis) {
       const sira = [...kartlar].sort((a, b) => (a.pay_saat ?? 1e9) - (b.pay_saat ?? 1e9));
-      const S = serbestDizilim([...sira, ...kapanan.slice(0, 6)].map((k) => ({ kod: k.kod, adim: say(k)[1] })));
+      const S = serbestDizilim([...sira, ...kapanan.slice(0, 6)].map((k) => ({ kod: k.kod, adim: say(k)[1], ad: akisAdi(k) })));
       let s = '';
       for (const g of S) { konum[g.kod] = { x: g.x, y: g.y, r: g.r, pr: 1.8 }; s += cerceve(g.x, g.y, g.r) + yerTutucu(g.kod); }
       for (const g of S) { const k = tum.find((x) => x.kod === g.kod); if (k) hap.push([g.x, g.y + g.r + CERCEVE, akisAdi(k), { fs: 11.5, fw: 650, col: C.ink, stroke: CERCEVE_HAP }]); }
-      return { svg: s, U: { yer: S.map((g) => ({ kod: g.kod, x: g.x, y: g.y, rr: g.r })), taslak: null }, olcek: null, konum, hap };
+      return { svg: s, U: { yer: S.map((g) => ({ kod: g.kod, x: g.x, y: g.y, rr: g.r })), taslak: null, merkez: null }, olcek: null, konum, hap, serbest: true };
     }
     // J1: çok akışta ölçek düzeni (§4.14)
     if (kartlar.length > OLCEK) {
@@ -267,8 +278,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       });
       let s = O.svg;
       for (const e of O.etiketler) { const k = tum.find((x) => x.kod === e.kod); if (k) hap.push([e.etiket.x, e.etiket.y, akisAdi(k), { fs: 10.5, fw: 650 }]); }
-      if (O.kapanan) hap.push([O.kapananHap.x, O.kapananHap.y, `${O.kapanan} kapandı`, { fs: 11, fw: 650, stroke: '#FFD27A', col: '#FFE6B0' }]);
-      return { svg: s, U: { yer: O.yer, taslak: null }, olcek: O, konum, hap };
+      return { svg: s, U: { yer: O.yer, taslak: null, merkez: O.merkez }, olcek: O, konum, hap };
     }
     // evren matematiği (madde 5): başlangıç, pay, adım sayısı, biten ve kişiler; takvim veriden
     const kisileri = (k: any) => [...new Set<string>((detay[k.kod]?.adimlar || []).map((a: any) => a.sahip))];
@@ -286,10 +296,11 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     let s = U.svg;
     // haplar: bugün, galaksi adları, taslak
     hap.push([U.hap.x, U.hap.y, gunAy(NOW), { fs: 11.5, fw: 700, bg: '#FFC9A3', bgo: 1, col: '#2A1D4F', w: 54 }]);
-    for (const y of U.yer) { const k = tum.find((q) => q.kod === y.kod); hap.push([y.etiket.x, y.etiket.y, k ? akisAdi(k) : y.kod, { fs: 11.5, fw: 650, col: C.ink, ...(k?.durum === 'kapandi' ? {} : { stroke: CERCEVE_HAP }) }]); }
+    for (const y of U.yer) { const k = tum.find((q) => q.kod === y.kod); if (!y.etiket.w) continue; hap.push([y.etiket.x, y.etiket.y, k ? akisAdi(k) : y.kod, { fs: 11.5, fw: 650, col: C.ink, ...(k?.durum === 'kapandi' ? {} : { stroke: CERCEVE_HAP }) }]); }
     if (U.taslak) hap.push([U.taslak.x, U.taslak.y, `${ozet.data.taslaklar.length} taslak`, { fs: 11, fw: 500, col: C.ink2 }]);
     return { svg: s, U, olcek: null, konum, hap };
-  }, [ozet.data, kap.data, detay, cumleler, NOW, serbest, genis]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [ozet.data, kap.data, detay, cumleler, NOW, serbest, genis, akisSecim]); // eslint-disable-line react-hooks/exhaustive-deps
+  const secimOz: AkisSecimOz | null = secili && !(serbest && genis) ? { kartlar: riskSirasi.map((kod) => tumKartlar.find((k) => k.kod === kod)).filter(Boolean), secili, sec: setAkisSecim, acik: secimAcik, ac: setSecimAcik } : null;
 
   // pano (el notu 3–4): tutanak, durum süzgeci; seçilen süzgeç haritada eşleşmeyenleri söndürür
   const P = useMemo(() => pano(kartlar, detay, kisi), [ozet.data, detay, kisi]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -336,8 +347,8 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   };
   const panoOz = { P, suz, setSuz, soluk, durum: panoDurum, yeniden: DD.yeniden, odak };
   // masaüstü kabuğu: ölçek düzeninde de aynı (K2); cümle ölçek cümlesi olur
-  if (genis) return <EvrenGenis W={boy.w} H={boy.h} kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} taslak={ozet.data?.taslaklar?.length || 0} now={NOW} pano={panoOz} panel={panel} konum={konum} geri={geri} aktif={aktif} />;
-  if (cizim.olcek) return <EvrenOlcek kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} now={NOW} pano={panoOz} />;
+  if (genis) return <EvrenGenis W={boy.w} H={boy.h} kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} taslak={ozet.data?.taslaklar?.length || 0} now={NOW} pano={panoOz} panel={panel} konum={konum} geri={geri} aktif={aktif} secim={secimOz} />;
+  if (cizim.olcek) return <EvrenOlcek kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} now={NOW} pano={panoOz} secim={secimOz} />;
   const tum = [...kartlar, ...kapanan];
   const goster = suz ?? P.varsayilan;
   const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54, PL.katilimcilar.length, PL.akislar.length);
@@ -348,14 +359,47 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
-      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} minR={24} />
+      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} merkez={cizim.U.merkez} minR={24} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} lejant={() => setLejant(true)} />
-      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + 8} />
+      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + (secimOz ? 58 : 8)} />
+      {secimOz && <AkisSecimi s={secimOz} top={EVREN_BOLGE.y + 4} />}
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': '724px' } as React.CSSProperties} onClick={panoAc}>Pano ve bekleyen işler</button>
       <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={panoDurum} yeniden={DD.yeniden} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
       <Lejant acik={lejant} kapat={lejantKapat} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
     </Sahne>
+  );
+}
+
+/** En riskli sıra (karar 3.J): engelli, karar bekleyen, sonra payı en az olan. */
+export function enRiskliSirasi(kartlar: any[], detay: Record<string, any>, cumleler: { kod?: string; tur?: string }[]): string[] {
+  const engel = new Set(cumleler.filter((c) => c.tur === 'engel' && c.kod).map((c) => c.kod!));
+  const engelli = (k: any) => engel.has(k.kod) || !!detay[k.kod]?.adimlar?.some((a: any) => a.durum === 'engelli');
+  const karar = (k: any) => !!detay[k.kod]?.adimlar?.some((a: any) => a.karar_adimi && (a.durum === 'hazir' || a.durum === 'suruyor'));
+  const puan = (k: any) => (engelli(k) ? 0 : karar(k) ? 1 : 2);
+  return [...kartlar].sort((a, b) => puan(a) - puan(b) || (a.pay_saat ?? 1e9) - (b.pay_saat ?? 1e9) || String(a.kod).localeCompare(String(b.kod))).map((k) => k.kod);
+}
+type AkisSecimOz = { kartlar: any[]; secili: Set<string>; sec: (k: string[] | null) => void; acik: boolean; ac: (a: boolean) => void };
+/** Akış süzgeci: "10/14 akış" hapı ve seçim sayfası (3.30). Sıra en riskliden; 10'dan çok seçilirse ölçek düzeni. */
+function AkisSecimi({ s, top, left = 16 }: { s: AkisSecimOz; top: number; left?: number }) {
+  const n = s.secili.size, N = s.kartlar.length;
+  const degistir = (kod: string) => { const y = new Set(s.secili); if (y.has(kod)) { if (y.size > 1) y.delete(kod); } else y.add(kod); s.sec([...y]); };
+  return (
+    <>
+      <button type="button" className="akis-secim-hap" style={{ top, left }} aria-haspopup="dialog" aria-label={`Haritada ${n} / ${N} akış. Seç.`} onClick={() => s.ac(true)}>{n}/{N} akış</button>
+      <AltSayfa acik={s.acik} kapat={() => s.ac(false)} baslik="Haritadaki akışlar" yukseklik="yuksek">
+        <div className="akis-secim">
+          <div className="odak-cipler">
+            <button type="button" className="filtre-cip" onClick={() => s.sec(null)}>En riskli {OLCEK}</button>
+            <button type="button" className="filtre-cip" aria-pressed={n === N} onClick={() => s.sec(s.kartlar.map((k) => k.kod))}>Hepsi</button>
+          </div>
+          <p className="lejant-not">{OLCEK} akışa kadar usturlap tam görünür; daha çoğu seçilince kalabalık düzene geçer.</p>
+          <ul aria-label="Akışlar">
+            {s.kartlar.map((k) => <li key={k.kod}><button type="button" className="akis-secim-satir" aria-pressed={s.secili.has(k.kod)} onClick={() => degistir(k.kod)}><span aria-hidden className="akis-secim-kutu" />{akisAdi(k)}</button></li>)}
+          </ul>
+        </div>
+      </AltSayfa>
+    </>
   );
 }
 
@@ -367,7 +411,7 @@ function OdakHapi({ o, P, top, left }: { o: OdakAyar; P: PanoV; top: number; lef
   if (!ad) return null;
   return <button type="button" className="harita-suzgec" style={{ top, left }} onClick={() => { o.kisiSec(null); o.durumSec(null); }} aria-label={`Süzgeç: ${ad}. Kaldır.`}>{ad}</button>;
 }
-function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak } }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz }) {
+function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak }, secim }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz; secim: AkisSecimOz | null }) {
   const tum = [...kartlar, ...kapanan];
   const O = cizim.olcek;
   const E = useEvrenGezinme(EVREN_BOLGE, cizim, detay, kisi, now, undefined, soluk);
@@ -380,10 +424,10 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
-      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} minR={16} />
-      {O.kapanan > 0 && <button className="gezegen-hedef" style={{ left: O.kapananHap.x - 44, top: O.kapananHap.y - 22, width: 88, height: 44 }} aria-label={`${O.kapanan} kapandı`} onClick={() => git('/akislar/arsiv')} />}
+      <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} merkez={O.merkez} minR={16} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
-      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + 8} />
+      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + (secim ? 58 : 8)} />
+      {secim && <AkisSecimi s={secim} top={EVREN_BOLGE.y + 4} />}
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': '724px' } as React.CSSProperties} onClick={() => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' })}>Pano ve bekleyen işler</button>
       <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={durum} yeniden={yeniden} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
@@ -405,7 +449,7 @@ function PanoPanel({ P, kisi, kartlar, detay, suz, setSuz, durum, yeniden }: { P
   );
 }
 
-function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak }, panel, konum, geri, aktif }: { W: number; H: number; kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; taslak: number; now: number; pano: PanoOz; panel?: ReactNode; konum?: string; geri?: () => void; aktif: KabukSekme }) {
+function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak }, panel, konum, geri, aktif, secim }: { W: number; H: number; kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; taslak: number; now: number; pano: PanoOz; panel?: ReactNode; konum?: string; geri?: () => void; aktif: KabukSekme; secim: AkisSecimOz | null }) {
   // usturlap üst satırın altında kalır (N7; plan 27 Eki, 2.3: cümleler kalktı): halka + ay adları üst satıra ve alttaki
   // gezinmeye binmez; yer yetmezse küçülür
   const PW = PANEL_EN, X = W - PW, cumleAlti = 96, DIS = 200;
@@ -424,9 +468,10 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
         <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -20, 'insan', (kisi[0] || '?').toLocaleUpperCase('tr'), C.peach, 1.1, { flame: false }) }} />
       </button>
       <Metin y={64} x={80} fs={17} agirlik={650} style={{ right: 'auto', pointerEvents: 'none' }}>{kisi}</Metin>
-      <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} minR={24} />
-      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep lejant={() => setLejant(true)} />
+      <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} merkez={cizim.U.merkez} minR={24} />
+      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep={!cizim.serbest} lejant={() => setLejant(true)} />
       <OdakHapi o={odak} P={P} top={B.y + 8} left={40} />
+      {secim && <AkisSecimi s={secim} top={B.y + 52} left={40} />}
       <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
       <YuzenGezinme aktif={aktif} solEn={X} />
       {/* pano (N10): telefondaki panoyla aynı bölüm, panelde kayar */}
@@ -437,20 +482,30 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
 }
 
 /**
- * Akışlar haritası (N15): galaksiler 390 tasarım karesinde serbest dizilir (sıra: verilen sıra, sol üstten);
- * boy adım sayısıyla, satırlar yarım hücre kayık (bal peteği), konum akış koduna bağlı küçük sapmayla.
+ * Akışlar haritası (N15; plan 27 Eki 3.31): galaksiler sabit boşluk (BOSLUK) ve kenar payıyla ızgaraya dizilir; sütun sayısı
+ * galaksileri en büyük yapan değer seçilir. Boşluklar akış sayısından bağımsız sabit, değişen yalnız boy. Yakınlaşma yok.
+ * Sıra verilen sıra (en riskli sol üstte); boy adım sayısıyla hafifçe değişir (en küçük en büyüğün %80'i).
  */
-export function serbestDizilim(G: { kod: string; adim: number }[]): { kod: string; x: number; y: number; r: number }[] {
+export const SERBEST = { kx: 20, ky: 230, kw: 350, kh: 410, BOSLUK: 30, AD: 26 } as const;
+export function serbestDizilim(G: { kod: string; adim: number; ad?: string }[]): { kod: string; x: number; y: number; r: number }[] {
   const n = G.length; if (!n) return [];
-  const kx = 20, ky = 250, kw = 350, kh = 440;
-  const sutun = Math.max(1, Math.round(Math.sqrt(n * kw / kh))), satir = Math.ceil(n / sutun);
-  const hw = kw / sutun, hh = kh / satir, enAdim = Math.max(1, ...G.map((g) => g.adim));
-  const rMax = Math.min(hw, hh) * .3;
-  const sapma = (kod: string, i: number) => { let h = 7 + i; for (const c of kod) h = (h * 31 + c.charCodeAt(0)) % 997; return (h / 997 - .5); };
-  return G.map((g, i) => {
-    const sa = Math.floor(i / sutun), su = i % sutun, kayik = sa % 2 ? hw / 4 : -hw / 4;
-    const x = kx + hw * (su + .5) + (sutun > 1 ? kayik : 0) + sapma(g.kod, 1) * hw * .18;
-    const y = ky + hh * (sa + .5) - 8 + sapma(g.kod, 2) * hh * .16;
-    return { kod: g.kod, x, y, r: rMax * (.62 + .38 * Math.sqrt(g.adim / enAdim)) };
+  const { kx, ky, kw, kh, BOSLUK: g, AD } = SERBEST;
+  // sütun en az en uzun ad hapı kadar geniş (adlar birbirine binmesin)
+  const adEn = Math.max(0, ...G.map((x) => (x.ad ? hapEni(x.ad, 11.5) : 0)));
+  let en = { sutun: 1, r: 0 };
+  for (let c = 1; c <= n; c++) {
+    const satir = Math.ceil(n / c), hw = (kw - (c - 1) * g) / c, hh = (kh - (satir - 1) * g) / satir;
+    if (c > 1 && hw + g < adEn + 6) break;
+    const r = Math.min(hw / 2, (hh - AD) / 2);
+    if (r > en.r) en = { sutun: c, r };
+  }
+  const { sutun, r } = en, satir = Math.ceil(n / sutun), enAdim = Math.max(1, ...G.map((x) => x.adim));
+  // sütun adımı: galaksi çapı + boşluk, ad hapından dar değil
+  const adim = Math.max(2 * r + g, adEn + 6), hh = (kh - (satir - 1) * g) / satir, ox = kx + (kw - ((sutun - 1) * adim + 2 * r)) / 2;
+  return G.map((x, i) => {
+    const sa = Math.floor(i / sutun), su = i % sutun;
+    // son satır eksikse ortalanır
+    const buSatir = sa === satir - 1 ? n - sa * sutun : sutun, kay = (sutun - buSatir) * adim / 2;
+    return { kod: x.kod, x: ox + kay + r + su * adim, y: ky + sa * (hh + g) + r, r: r * (.8 + .2 * Math.sqrt(x.adim / enAdim)) - 4 };
   });
 }
