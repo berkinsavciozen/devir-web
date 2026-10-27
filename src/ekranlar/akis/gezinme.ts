@@ -79,7 +79,8 @@ export function useGezinme(b: Bolge, o: { max?: number; asiri?: (p: [number, num
     const J = jest.current;
     if (J.tur === 'kistir' && ip.current.size >= 2) {
       const [a, c] = [...ip.current.values()], m: [number, number] = [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2];
-      const oran = Math.hypot(a[0] - c[0], a[1] - c[1]) / J.mesafe0, k = J.d0.k * oran;
+      // duyarlılık (plan 27 Eki, 3.D): parmak oranının 1.4. kuvveti; az açınca daha çok yakınlaşır
+      const oran = Math.pow(Math.hypot(a[0] - c[0], a[1] - c[1]) / J.mesafe0, 1.4), k = J.d0.k * oran;
       J.asti = k / max;
       const r = Math.max(1, Math.min(max, k)) / J.d0.k;
       setG(sinirla({ k: J.d0.k * r, tx: m[0] - (J.m0[0] - J.d0.tx) * r, ty: m[1] - (J.m0[1] - J.d0.ty) * r }));
@@ -140,4 +141,14 @@ export function useGezinme(b: Bolge, o: { max?: number; asiri?: (p: [number, num
     icinde: (x: number, y: number, pay = 0) => x >= b.x - pay && x <= b.x + b.w + pay && y >= b.y - pay && y <= b.y + b.h + pay,
     olaylar: { onPointerDown, onPointerMove, onPointerUp: bitir, onPointerCancel: bitir, onClickCapture },
   };
+}
+
+/**
+ * Ortak harita çerçevesi (plan 27 Eki, 2.1): yakınlaşınca çizim bölgenin dışına taşmaz; üst ve alt kenarda 18 px'te
+ * yumuşakça söner (sert kesik yok). Döner: maskeyle açılan grup; kapatmak için `</g>`.
+ */
+export function haritaCercevesi(id: string, b: Bolge, sonum = 18): string {
+  const o = Math.min(.45, sonum / Math.max(1, b.h));
+  return `<defs><linearGradient id="${id}-s" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="${o.toFixed(4)}" stop-color="#fff"/><stop offset="${(1 - o).toFixed(4)}" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>`
+    + `<mask id="${id}" maskUnits="userSpaceOnUse" x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}"><rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" fill="url(#${id}-s)"/></mask></defs><g mask="url(#${id})">`;
 }

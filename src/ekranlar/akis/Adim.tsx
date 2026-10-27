@@ -8,13 +8,13 @@ import { sorguIstemcisi } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
-import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
+import { Kutu, Sahne } from '../../bilesen/Sahne';
 import { iconCloud } from '../../cizim/ekran';
 import { C, ship, sparkle } from '../../cizim/ortak.js';
 import { akisModeli, gunAy, gunAyHafta, saat, yolCiz, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, akisAdi, ikiSatir, ozelEk } from '../../metin/turkce';
+import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
-import { haritaCumlesi, useAkis } from './Galaksi';
+import { useAkis } from './Galaksi';
 import { GorevDetay } from './GorevDetay';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
@@ -231,12 +231,10 @@ function AdimArka({ d, no, sheetY, sahip }: { d: any; no: number; sheetY: number
     const Y = yolCiz(M, { cx: 195, cy, R, ps: .7, now: simdi(), sel: no, selTop: true, labels: [] });
     return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#07051A" opacity=".38"/>` + (Y.secim || '');
   }, [d, no, sheetY, sahip]);
-  const c = d ? haritaCumlesi(d) : null;
   return (
     <Sahne gok={{ tohum: 33, yildiz: 260 }} cizim={cizim} etiket={d ? akisAdi(d.akis) : 'Akış'}>
       <div aria-hidden style={{ opacity: .55 }}>
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={d ? akisAdi(d.akis) : ''} geri={() => history.back()} sagBos={96} /></Kutu>
-        {c && <Metin y={110} fs={17} lh={22} serif renk="ink2" style={{ whiteSpace: 'nowrap' }}>{ikiSatir(c.join(' ')).map((x, i) => <span key={i}>{i ? <br /> : null}{x}</span>)}</Metin>}
       </div>
     </Sahne>
   );

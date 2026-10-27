@@ -35,7 +35,7 @@ export function genisDuzen(W: number, H: number): GenisDuzen | null {
       tur: 'M', W, H, PX,
       harita: { cx: PX / 2, cy: H * .52, R, ps: 1.35 * k },
       // sürgü yüzen gezinmenin üstünde (N14)
-      surgu: { x: 44, y: H - 112, w: PX - 90, ps: 1.1 },
+      surgu: { x: 44, y: H - 112, w: PX - 90, ps: .9 },
       etiket: { dx: 1.5, dy: 34 / 26 },
       ust: { geriX: 48, geriY: 54, geriR: 18, baslikX: 80, baslikY: 63, fs: 28, cumleX: 48, cumleY: 108, cumleFs: 19, tekSatir: true },
       kart: {
@@ -51,7 +51,7 @@ export function genisDuzen(W: number, H: number): GenisDuzen | null {
   return {
     tur: 'T', W, H, PX,
     harita: { cx: PX / 2, cy: H * .51, R, ps: 1.05 * k },
-    surgu: { x: 24, y: H - 108, w: PX - 48, ps: 1 },
+    surgu: { x: 24, y: H - 108, w: PX - 48, ps: .85 },
     etiket: { dx: 52 / 44, dy: 30 / 26 },
     ust: { geriX: 40, geriY: 50, geriR: 20, baslikX: 72, baslikY: 59, fs: 25, cumleX: 32, cumleY: 100, cumleFs: 17, tekSatir: false },
     kart: {
