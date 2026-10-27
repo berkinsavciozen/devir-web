@@ -7,5 +7,7 @@ export interface Ben {
   kisi?: string; rol?: Rol; kapsam?: string | null; calisma_alani?: { id: string; ad: string };
   /** OAuth ile bağlı istemcinin (Claude, ChatGPT) son MCP çağrısı */
   mcp_son_kullanim?: string | null;
+  /** referansla gelip onay bekleyen (0.28.0, karar 4.B) */
+  bekleme?: { durum: 'bekliyor' | 'onaylandi' | 'reddedildi' | 'katildi'; tarih: string } | null;
 }
 export interface OzetParca { tur: 'metin' | 'kisi' | 'adim' | 'akis' | 'sure' | 'tarih' | 'uyari'; metin: string; ref?: { akis?: string; no?: number; tarih?: string } }

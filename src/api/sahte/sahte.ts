@@ -137,6 +137,15 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     T.kullanici.push({ id: 'bos-alan', ad: 'Berkin · çalışma alanı', created_at: '2026-10-14T06:55:00Z' });
     uye('sahte-berkin-yeni', 'berkin@ornek.com', 'bos-alan', 'Berkin', 'sahip', null, '2026-10-14T06:55:00Z');
   }
+  // P7, P8 (0.28.0): Berkin'in referans kodu (/katil/BERK26), onay bekleyen bir kişi, bağlı Claude'u ve bu ayki kullanımı (%62)
+  {
+    let bu = T.uye.find((x) => x.kullanici_id === BERKIN_ALAN && x.kisi === 'Berkin');
+    if (!bu) { uye('sahte-berkin', 'berkin@ornek.com', BERKIN_ALAN, 'Berkin', 'sahip'); bu = T.uye[T.uye.length - 1]; }
+    T.referans = [{ kod: 'BERK26', ws_id: BERKIN_ALAN, uye_id: bu.id, created_at: '2026-10-12T15:00:00Z' }];
+    T.bekleme = [{ id: crypto.randomUUID(), eposta: 'ayse@ornek.com', ad: 'Ayşe', referans_kod: 'BERK26', referans_ws: BERKIN_ALAN, referans_uye_id: bu.id, durum: 'bekliyor', created_at: '2026-10-13T19:20:00Z' }];
+    T.agent_baglanti = [{ id: crypto.randomUUID(), ws_id: BERKIN_ALAN, uye_id: bu.id, istemci: 'sahte-claude', ad: 'Claude', ilk_kullanim: '2026-10-12T15:30:00Z', son_kullanim: '2026-10-14T06:10:00Z', kaldirildi_at: null }];
+    T.ai_kullanim = [{ id: 1, ws_id: BERKIN_ALAN, kimlik: `u:${bu.id}`, ay: '2026-10-01', tur: 'taslak', model: 'claude-sonnet-5-5', girdi_token: 0, cikti_token: 0, usd: o.hal === 'sinir' ? 5 : 3.1, created_at: '2026-10-12T15:00:00Z' }];
+  }
   // Bildirimler (el notu 18): ekipten son hareketler (kurgu; durum değiştirmeyen olaylar, Berkin'in görünümü için)
   if (senaryo === 'berkin') {
     const ak = (k: string) => T.akis.find((x) => x.kisa_kod === k)?.id;

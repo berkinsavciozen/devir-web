@@ -875,3 +875,18 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-akordiyon .gd-liste > div { grid-template-columns: 96px 1fr; }
 .gd-akordiyon-eylem { display: flex; align-items: center; gap: 12px; padding: 0 12px 10px 50px; }
 .gd-akordiyon-eylem .metin-baglanti { min-height: 44px; font-size: 14px; }
+/* Ayarlar · Devir AI kullanımı (plan 27 Eki, 5.2): yalnız oran, tutar yok */
+.kullanim-kart { position: absolute; left: 20px; right: 20px; height: 70px; padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; gap: 5px; border-radius: var(--yaricap-satir); }
+.kullanim-kart b { font-size: 14.5px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); }
+.kullanim-kart small { font-size: 12px; line-height: 15px; font-weight: 500; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kullanim-cubuk { display: block; height: 6px; border-radius: 3px; background: color-mix(in srgb, #FFFFFF 10%, transparent); overflow: hidden; }
+.kullanim-cubuk i { display: block; height: 100%; border-radius: 3px; background: #B9A6F2; }
+.kullanim-cubuk i.az { background: #FFD27A; }
+.kullanim-cubuk i.doldu { background: #FF8A78; }
+/* Ayarlar · onay listesi (karar 4.B) */
+.onay-listesi ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.onay-satir { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 6px 10px 6px 14px; border-radius: 14px; background: color-mix(in srgb, #FFFFFF 4%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.onay-satir span { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.onay-satir b { font-size: 14.5px; line-height: 19px; font-weight: 650; }
+.onay-satir small { font-size: 12px; line-height: 16px; color: var(--renk-metin-ink3); overflow-wrap: anywhere; }
+.onay-satir .satir-eylem { position: static; flex: none; }
