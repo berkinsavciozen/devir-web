@@ -16,26 +16,28 @@ const hapEni = (t: string, fs: number) => Math.round(t.length * fs * .56 + 14);
 const icinde = (b: Bolge, k: Kutu) => k.x0 >= b.x + 2 && k.x1 <= b.x + b.w - 2 && k.y0 >= b.y + 2 && k.y1 <= b.y + b.h - 2;
 
 /** Yakınlaşınca adım etiketleri: öncelik engelli > kritik > sırası gelmiş > sırada > bitmiş; sınır ölçekle artar, çakışan yazılmaz. */
-export function yakinEtiketler(d: any, Y: any, b: Bolge, k: number, odak: string | null, gemiler: Daire[]): { svg: string; kutular: Kutu[] } {
+export function yakinEtiketler(d: any, Y: any, b: Bolge, k: number, odak: string | null, gemiler: Daire[], kad = 2): { svg: string; kutular: Kutu[] } {
   const kritik = new Set<number>(d.kritik_yol || []), byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const inCl = new Set<number>((Y.clusters || []).flat());
-  const sinir = Math.round(2 + (k - 1) * 3);
-  const oncelik = (a: any) => (a.durum === 'engelli' ? 0 : kritik.has(a.no) && !BITTI(a.durum) ? 1 : ['hazir', 'suruyor'].includes(a.durum) ? 2 : BITTI(a.durum) ? 4 : 3);
+  const sinir = kad <= 1 ? 4 : Math.round(2 + (k - 1) * 3);
+  // öncelik (karar 3.D): engelli > karar > kritik yol > sürüyor > sırada > bitti; Z1'de yalnız ilk dördü
+  const oncelik = (a: any) => (a.durum === 'engelli' ? 0 : a.karar_adimi && !BITTI(a.durum) ? 1 : kritik.has(a.no) && !BITTI(a.durum) ? 2 : a.durum === 'suruyor' ? 3 : BITTI(a.durum) ? 5 : 4);
+  const Z1 = (a: any) => a.durum === 'engelli' || (a.karar_adimi && !BITTI(a.durum)) || a.durum === 'suruyor';
   const aday = Object.values(Y.G.gezegen as Record<string, any>)
     .map((g: any) => ({ g, a: byNo.get(g.no) }))
-    .filter(({ g, a }) => a && !inCl.has(g.no) && g.x > b.x && g.x < b.x + b.w && g.y > b.y && g.y < b.y + b.h && (!odak || g.uyeler.includes(odak)))
+    .filter(({ g, a }) => a && (kad >= 2 || Z1(a)) && !inCl.has(g.no) && g.x > b.x && g.x < b.x + b.w && g.y > b.y && g.y < b.y + b.h && (!odak || g.uyeler.includes(odak)))
     .sort((p, q) => oncelik(p.a) - oncelik(q.a) || p.g.t - q.g.t);
   const dolu: Kutu[] = [...Object.values(Y.G.gezegen as Record<string, any>).map((g: any) => daireKutu({ x: g.x, y: g.y, r: Y.radOf(g.no) + 2 })), ...gemiler.map(daireKutu)];
   const kutular: Kutu[] = [];
   let s = '', n = 0;
   for (const { g, a } of aday) {
     if (n >= sinir) break;
-    const t = adimEtiketi(a), w = hapEni(t, 11), h = 20, r = Y.radOf(g.no);
+    const t = adimEtiketi(a) + (kad >= 3 ? ` · ${gunAy(g.t)}` : ''), w = hapEni(t, 11), h = 20, r = Y.radOf(g.no);
     for (const dy of [r + 16, -(r + 16)]) {
       const kt = { x0: g.x - w / 2, y0: g.y + dy - h / 2, x1: g.x + w / 2, y1: g.y + dy + h / 2 };
       if (!icinde(b, kt) || kutular.some((q) => kesisir(q, kt)) || dolu.some((q) => kesisir(q, kt))) continue;
       const o = oncelik(a);
-      s += pill(g.x, g.y + dy, t, { fs: 11, fw: 650, col: o === 0 ? '#FFD6CC' : o === 1 ? '#FFE6B0' : o === 4 ? C.ink3 : C.ink, stroke: o === 0 ? '#FF8A78' : o === 1 ? '#FFD27A' : undefined });
+      s += pill(g.x, g.y + dy, t, { fs: 11, fw: 650, col: o === 0 ? '#FFD6CC' : o <= 2 ? '#FFE6B0' : o === 5 ? C.ink3 : C.ink, stroke: o === 0 ? '#FF8A78' : o <= 2 ? '#FFD27A' : undefined });
       kutular.push(kt); n++; break;
     }
   }

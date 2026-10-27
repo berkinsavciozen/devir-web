@@ -66,6 +66,8 @@ export interface KurSecenek {
   sira?: string[];
   spin?: number;
   haric?: number[];
+  /** kuyruğun (pay) en çok kaç aktif-süre katı çizileceği; zaman ölçeği uzak geleceği zaten sıkıştırdığında Infinity (R17) */
+  kuyrukMax?: number;
 }
 
 type Polar = { r: number; th: number };
@@ -234,7 +236,7 @@ type HamParca = { ta: number; tb: number; L: number; P: Nokta[]; hata: number; t
  * o: { cx, cy, R, ps, simdi, sira: [üye adları], spin (derece), haric: [no] (çizilmeyen: tarihi bilinmeyen, gizli dal) }
  */
 export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
-  const cx = o.cx ?? 0, cy = o.cy ?? 0, R = o.R ?? 100, ps = o.ps ?? 1, simdi = o.simdi ?? Date.now();
+  const cx = o.cx ?? 0, cy = o.cy ?? 0, R = o.R ?? 100, ps = o.ps ?? 1, simdi = o.simdi ?? Date.now(), KMAX = o.kuyrukMax ?? SABIT.KUYRUK_MAX;
   const haric = new Set<number>([...(o.haric || []), ...akis.adimlar.filter((a) => a.tarih_bilinmiyor).map((a) => a.no)]);
   const adimlar = akis.adimlar.filter((a) => !haric.has(a.no));
   const byNo: Record<number, GirdiAdim> = {}; for (const a of adimlar) byNo[a.no] = a;
@@ -277,7 +279,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   const tAktif = Math.max(T0, ...adimlar.map((a) => a.t)), aktifGun = (tAktif - T0) / GUN;
   const tSon = bitti ? (akis.kapandi as number) : Math.max(akis.hedef, tAktif);
   const payGun = bitti ? 0 : Math.max(0, (akis.hedef - tAktif) / GUN);
-  const Dgun = Math.max(0.5, bitti ? ((akis.kapandi as number) - T0) / GUN : aktifGun + Math.min(payGun, SABIT.KUYRUK_MAX * Math.max(aktifGun, 1)));
+  const Dgun = Math.max(0.5, bitti ? ((akis.kapandi as number) - T0) / GUN : aktifGun + Math.min(payGun, KMAX * Math.max(aktifGun, 1)));
   const b = Dgun / S(SABIT.PHI_SON);
   // 4) zaman sırasıyla yerleşim
   const durum: Record<string, { p: Polar; t: number; yol: HamParca[] }> = {}; for (const u of uyeler) durum[u.ad] = { p: { r: 0, th: u.psi }, t: u.t0, yol: [] };
@@ -330,7 +332,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
     const D = durum[kuleUye.ad];
     if (akis.hedef >= D.t) {
       // kuyruk = iş payı (hedefe kalan süre). Üyenin yürüdüğü yol değildir; çok uzunsa kırık işaretle kısaltılır.
-      const gercek = (akis.hedef - D.t) / GUN, L = Math.min(gercek, SABIT.KUYRUK_MAX * Math.max(aktifGun, 1)), K = dogal(D.p, L, b);
+      const gercek = (akis.hedef - D.t) / GUN, L = Math.min(gercek, KMAX * Math.max(aktifGun, 1)), K = dogal(D.p, L, b);
       kuyruk = { ta: D.t, tb: akis.hedef, L, gercekGun: gercek, kirik: L < gercek - 1e-6, P: araYol(D.p, K, (K.r - D.p.r) / b, 0), hata: 0, pts: [] };
       kule = { r: K.r, th: K.th, t: akis.hedef };
     } else gec = true; // hedef geçti: kule, yolun hedef anındaki noktasına konur (aşağıda)

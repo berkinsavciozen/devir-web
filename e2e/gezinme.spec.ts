@@ -89,7 +89,8 @@ test.describe('dokunmatik', () => {
 
   test('B3-ikon: 2×+ yakınlıkta bulut ve bayrak kendi hedefleri', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
-    await page.mouse.move(110, 380);
+    // engelli "Görsel" gezegeni (zaman ölçeğiyle konum, plan 27 Eki D)
+    await page.mouse.move(120, 455);
     for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, -60); await page.waitForTimeout(16); }
     await page.waitForTimeout(100);
     await hedefKontrol(page);

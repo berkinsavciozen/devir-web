@@ -159,7 +159,7 @@ function planet(x, y, r, state, o = {}) {
   }
   if (state === 'run') {
     // sürüyor: dönen yeşil halka
-    s += `<g class="dongu-halka"><circle r="${f(r + 5)}" fill="none" stroke="#6FE0A0" stroke-width="1.8" stroke-dasharray="7 3" opacity=".95"/></g>`;
+    s += `<g class="dongu-halka"><circle r="${f(r + (o.mini ? 2.4 : 5))}" fill="none" stroke="#6FE0A0" stroke-width="${o.mini ? 1.1 : 1.8}" stroke-dasharray="${o.mini ? '3 1.6' : '7 3'}" opacity=".95"/></g>`;
     s += `<circle r="${f(r * 2)}" fill="url(#glowGreen)" opacity=".3"/>`;
     s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#B8F5CF" stroke-opacity=".6" stroke-width="1"/>`;
     s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
@@ -208,8 +208,9 @@ function planet(x, y, r, state, o = {}) {
     // sırası geldi, sahibini bekliyor: kehribar halka (durağan)
     const n = o.waitRings ?? 1;
     for (let i = n; i >= 1; i--) {
-      s += `<circle r="${f(r + 5 * i)}" fill="none" stroke="#FFB547" stroke-width="${f(1.9 - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
+      s += `<circle r="${f(r + (o.mini ? 2.4 : 5) * i)}" fill="none" stroke="#FFB547" stroke-width="${f((o.mini ? 1.1 : 1.9) - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
     }
+    if (o.mini) return s + `<circle r="${f(r)}" fill="url(#pWait)"/></g>`;
     s += `<circle r="${f(r * 2)}" fill="url(#glowGold)" opacity=".28"/>`;
     s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#FFD9B8" stroke-opacity=".6" stroke-width="1"/>`;
     s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
@@ -223,7 +224,8 @@ function planet(x, y, r, state, o = {}) {
     s += `<circle r="${f(r)}" fill="url(#pBlock)"/>`;
     // tutulma: önüne geçen karanlık ay
     s += `<circle cx="${f(r * .42)}" cy="${f(r * .18)}" r="${f(r * .82)}" fill="#1A1238" opacity=".92"/>`;
-    s += `<circle r="${f(r + 1.5)}" fill="none" stroke="#FF8A78" stroke-width="1.6" opacity=".9"/>`;
+    s += `<circle r="${f(r + 1.5)}" fill="none" stroke="#FF8A78" stroke-width="${o.mini ? 1 : 1.6}" opacity=".9"/>`;
+    if (o.mini) return s + '</g>';
     s += house(r, -40, false, .9);
     // fırtına bulutu + şimşek
     const cy = -r - (o.cloudGap ?? 10), cs = Math.max(.7, r / 20);
@@ -244,10 +246,11 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
   const son = '</g></g></g>';
   if (kind === 'dis') {
     // UFO (plan 27 Eki, 3.17): Devir kullanıcısıysa (o.kullanici) kubbe dolu, değilse boş
+    s += `<g transform="scale(.78)">`;
     s += `<ellipse cx="0" cy="9" rx="13" ry="7" fill="url(#glowPeach)" opacity=".55"/>`;
     s += `<path d="M-8,-1 A8,8 0 0 1 8,-1Z" fill="${o.kullanici ? col : '#2B2160'}" stroke="${col}" stroke-width="1.4"/>`;
     s += `<ellipse cx="0" cy="1" rx="17" ry="5.5" fill="#FFF1E2" stroke="${col}" stroke-width="1.4"/>`;
-    s += `<circle cx="-9" cy="1.5" r="1.4" fill="${col}"/><circle cx="0" cy="3" r="1.4" fill="${col}"/><circle cx="9" cy="1.5" r="1.4" fill="${col}"/>`;
+    s += `<circle cx="-9" cy="1.5" r="1.4" fill="${col}"/><circle cx="0" cy="3" r="1.4" fill="${col}"/><circle cx="9" cy="1.5" r="1.4" fill="${col}"/></g>`;
     return s + son;
   }
   if (kind === 'agent') {
