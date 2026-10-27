@@ -1,7 +1,7 @@
 // Devir MCP çekirdeği. Saf mantık: veri erişimi DB arayüzü üzerinden gelir (Supabase ya da test için bellek).
 
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
-import type { LlmFn } from "./llm.ts";
+import type { LlmFn, SohbetFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { sahipAdi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
@@ -18,7 +18,7 @@ export interface DB {
 }
 /** kanal: isteğin geldiği yol. Aktör türü buradan türetilir, araç argümanından değil (S-C1). */
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
-export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null; taban?: string };
+export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null; taban?: string };
 
 /** Tipli hata (N-9): HTTP durumu mesajdan değil hatadan gelir. 403 yetki, 404 yok, 400 geçersiz. */
 export class DevirHata extends Error { constructor(public durum: number, m: string) { super(m); } }
@@ -684,6 +684,7 @@ function validateSteps(raw: any[], kurallar: any) {
       son_tarih: a.son_tarih || null, sure_tahmin_gun: a.sure_tahmin_gun != null ? num(a.sure_tahmin_gun) : null,
       bagimli: [...new Set((a.bagimli || []).map(Number))], _kod: a._kod || null, _ek: a._ek || null,
       karar_gerekli: typeof a.karar_gerekli === "boolean" ? a.karar_gerekli : null, cikti_bekleniyor: typeof a.cikti_bekleniyor === "boolean" ? a.cikti_bekleniyor : null,
+      ust_adim: a.ust_adim != null && a.ust_adim !== "" ? Number(a.ust_adim) : a._ust != null ? Number(a._ust) : null, _ustAcik: a.ust_adim != null && a.ust_adim !== "",
     };
     Object.assign(s, alanDoldur(s));
     if (!s.ad) errs.push(`Adım ${no}: ad boş.`);
@@ -695,8 +696,29 @@ function validateSteps(raw: any[], kurallar: any) {
       errs.push(`Adım ${no} (${s.ad}) bir karar/onay/ödeme adımı; sahibi insan olmalı. Agent hazırlık adımı ayrı olsun.`);
     return s;
   });
+  // P3 (0.28.0): görev → alt görev (tek düzey). Elle verilen geçersiz ust_adim hatadır; taslaktan geleni sessizce düzleştirilir.
+  const byNo = new Map(steps.map((s: any) => [s.no, s]));
+  for (const s of steps) {
+    if (s.ust_adim == null) continue;
+    const u: any = byNo.get(s.ust_adim);
+    const neden = !Number.isInteger(s.ust_adim) || !u ? `geçersiz ust_adim ${s.ust_adim}` : u === s ? "kendi alt görevi olamaz" : u.ust_adim != null ? `${u.no}. adım zaten bir alt görev; alt görevin alt görevi olmaz` : null;
+    if (neden) { if (s._ustAcik) errs.push(`Adım ${s.no}: ${neden}.`); s.ust_adim = null; }
+  }
+  for (const s of steps) if (s.ust_adim != null && byNo.get(s.ust_adim)!.ust_adim != null) s.ust_adim = null;
   if (errs.length) throw new Error("Akış kurulamadı:\n- " + errs.join("\n- "));
+  // alt görev üst görevin öncüllerini bekler; üst ile alt arasında doğrudan bağımlılık kurulmaz (plan bunu kendisi kurar)
+  for (const s of steps) {
+    const altlar = steps.filter((x: any) => x.ust_adim === s.no).map((x: any) => x.no);
+    if (altlar.length) s.bagimli = s.bagimli.filter((d: number) => !altlar.includes(d));
+  }
+  for (const s of steps) if (s.ust_adim != null) {
+    const u: any = byNo.get(s.ust_adim);
+    s.bagimli = [...new Set([...s.bagimli.filter((d: number) => d !== u.no), ...u.bagimli.filter((d: number) => d !== s.no)])];
+  }
   topo(steps);
+  try { topo(planGirdisi(steps)); }
+  catch (e) { if (steps.some((s: any) => s._ustAcik)) throw e; for (const s of steps) s.ust_adim = null; } // taslağın hiyerarşisi döngü kuruyorsa düz kurulur
+  for (const s of steps) delete s._ustAcik;
   return steps;
 }
 
@@ -789,6 +811,7 @@ export const TOOLS = [
         durum: { type: "string", enum: ["suruyor", "engelli", "tamam", "atlandi", "ertelendi", "hazir"], description: "atlandi: gerek kalmadı. ertelendi: yapılması gerekiyor ama bu akışta değil; açık iş olarak kalır ve varlığın sonraki işlerine taşınır." },
         ilerleme: { type: "string", description: "Kısa durum cümlesi, ör. '38/42 fatura yüklendi'." },
         not: { type: "string", description: "Olay kaydına düşülecek açıklama; atlama için neden." },
+        agent_sahibi: { type: "string", description: "Agent adımını yürüten agent'ın kime ait olduğu (kişi adı). Verilmezse agent ilk yazdığında bağlantının sahibi yazılır." },
         atlama_nedeni: { type: "string", enum: ["gerek_kalmadi", "mukerrer", "varsayim_yanlis"], description: "durum=atlandi ise: gerek_kalmadi (iş artık gerekmiyor), mukerrer (aynı iş başka adımda yapılıyor), varsayim_yanlis (adım yanlış bir varsayım yüzünden kurulmuştu; Devir bunu öğrenir)." },
         engel: { type: "string", description: "durum=engelli ise ne ya da kim bekleniyor." },
         karar: { type: "object", description: "Karar adımında seçenekler ve önerin: { secenekler: [{ ad, alt (ör. 'Rize/Hemşin · çay'), etiket (ör. 'faturalı'), uyari (teyit bekliyorsa true) }], oneri: { secim: [seçilen adlar], ozet (ör. '5'ini de kabul et'), gerekce } }. Kararı kullanıcı verir.", properties: { tur: { type: "string", description: "Seçeneklerin ne olduğu, tekil (ör. çiftçi, teklif)." }, secenekler: { type: "array", items: { anyOf: [{ type: "string" }, { type: "object", properties: { ad: { type: "string" }, alt: { type: "string" }, etiket: { type: "string" }, uyari: { type: "boolean" } }, required: ["ad"] }] } }, oneri: { type: "object", properties: { secim: { type: "array", items: { type: "string" } }, ozet: { type: "string" }, gerekce: { type: "string" } } } } },
@@ -1145,6 +1168,8 @@ async function olustur(a: any, ctx: Ctx) {
     beklenen_cikti: s.beklenen_cikti, karar_kriteri: s.karar_kriteri, son_tarih: s.son_tarih, sure_tahmin_gun: s.sure_tahmin_gun, bagimli: s.bagimli,
     kaynak: s._kod || tk ? "sablon" : "plan", tur_kod: s._tur, karar_gerekli: s.karar_gerekli, cikti_bekleniyor: s.cikti_bekleniyor,
     kosul: s._kosul, capa_soru: s._capaSoru, cevap_soru: s._cevapSoru, tarih_sabit: !!s._capa || !!s._sabit, capa_tarih: s._capa && isDate(s._capa) ? s._capa : null,
+    ...(s.ust_adim != null ? { ust_adim: s.ust_adim } : {}),
+    ...(s.sahip_tip === "agent" && ctx.key?.kisi && !isDis(ctx) ? { agent_sahibi: ctx.key.kisi } : {}),
   }));
   const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
   const paylasim: string[] = [];
@@ -1438,7 +1463,8 @@ function taslakAdimlari(t: any) {
   const out = ["", "Taslak adımları (kurmadan önce düzeltmek için devir_taslak_duzelt bu numaraları kullanır):"];
   (t.adimlar || []).forEach((x: any, i: number) => {
     const r0 = rol.get(x.sahip_rol), al = alanDoldur(x);
-    out.push(`${i + 1}. ${x.ad}${x.kisa_ad && norm(x.kisa_ad) !== norm(x.ad) ? ` (kısa ad: ${x.kisa_ad})` : ""} — ${r0 ? sahipAdi(r0) : x.sahip_rol}${x.kosul && x.kosul.soru ? ` [yalnızca ${x.kosul.soru}=${x.kosul.deger} ise]` : ""}${al.karar_gerekli ? " · karar" : ""}${al.cikti_bekleniyor ? " · çıktı" : ""}`);
+    const ust = x.ust ? (t.adimlar || []).findIndex((y: any) => y.id === x.ust) : -1;
+    out.push(`${ust >= 0 ? "   ↳ " : ""}${i + 1}. ${x.ad}${ust >= 0 ? ` (${ust + 1}. adımın alt görevi)` : ""}${x.kisa_ad && norm(x.kisa_ad) !== norm(x.ad) ? ` (kısa ad: ${x.kisa_ad})` : ""} — ${r0 ? sahipAdi(r0) : x.sahip_rol}${x.kosul && x.kosul.soru ? ` [yalnızca ${x.kosul.soru}=${x.kosul.deger} ise]` : ""}${al.karar_gerekli ? " · karar" : ""}${al.cikti_bekleniyor ? " · çıktı" : ""}`);
   });
   return out;
 }
@@ -1762,6 +1788,11 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
     if (!yeniTip && patch.sahip && s.sahip_tip === "dis" && norm(String(patch.sahip)) === norm(ctx.key.kisi)) yeniTip = "insan"; // kullanıcı adımı kendine aldı
     if (yeniTip === "agent" && (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s)) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı; sahibi agent olamaz.`);
     if (yeniTip && yeniTip !== s.sahip_tip) patch.sahip_tip = yeniTip;
+    // agent sahibi (0.28.0): agent'ın adımını kimin agent'ı yürütüyor. Açıkça verilir ya da agent ilk yazdığında bağlantının kişisi olur
+    const tip = (patch.sahip_tip as string) || s.sahip_tip;
+    if (a.agent_sahibi != null && String(a.agent_sahibi).trim()) patch.agent_sahibi = String(a.agent_sahibi).trim().slice(0, 80);
+    else if (tip === "agent" && act.kim_tip === "agent" && !s.agent_sahibi && ctx.key?.kisi) patch.agent_sahibi = ctx.key.kisi;
+    else if (yeniTip === "agent" && !s.agent_sahibi && ctx.key?.kisi) patch.agent_sahibi = ctx.key.kisi;
   }
   // son tarih sessizce sabitlenmez (M1): sabitlik yalnız açıkça istenirse; hedefi aşan tarih uyarıdır
   if (a.son_tarih) { if (!isDate(a.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı."); if (isDis(ctx)) throw yetkiYok("Son tarihi yalnızca ekip değiştirebilir."); patch.son_tarih = a.son_tarih; }

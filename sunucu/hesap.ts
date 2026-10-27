@@ -44,7 +44,7 @@ async function bekleyenDavetler(db: DB, eposta: string) {
 }
 
 // Yalnızca oturumla (JWT) gelen istekler: ben, kayıt, kendine MCP anahtarı.
-export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyelikler: any[], method: string, yol: string[], body: any, taban: { fn: string }, now: number) {
+export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyelikler: any[], method: string, yol: string[], body: any, taban: { fn: string; web?: string | null }, now: number) {
   const [r0, r1, r2] = yol;
   const b = body && typeof body === "object" ? body : {};
   if (method === "GET" && r0 === "ben" && !r1) {
@@ -54,8 +54,29 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
     for (const d of await bekleyenDavetler(db, ot.eposta)) if (!uyelikler.some((u: any) => u.kullanici_id === d.kullanici_id)) davetler.push(davetV(d, await db.one("kullanici", { id: d.kullanici_id })));
     return {
       eposta: ot.eposta, uyelikler: alanlar, bekleyen_davetler: davetler, acik_kayit: await acikKayit(db),
-      ...(ctx ? { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { id: ctx.ws.id, ad: ctx.ws.ad }, mcp_son_kullanim: uyelikler.find((u: any) => u.id === ctx.key.uye_id)?.mcp_son_kullanim || null } : { kayit_gerekli: true }),
+      ...(ctx ? { kisi: ctx.key.kisi, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { id: ctx.ws.id, ad: ctx.ws.ad }, mcp_son_kullanim: uyelikler.find((u: any) => u.id === ctx.key.uye_id)?.mcp_son_kullanim || null } : { kayit_gerekli: true, bekleme: await beklemeDurumu(db, ot.eposta) }),
     };
+  }
+  // P7 (0.28.0): kişinin Claude/ChatGPT bağlantıları; kaldırılan bağlantı yeniden bağlanana kadar çalışmaz
+  if (r0 === "ben" && r1 === "agentlar" && method === "GET") {
+    if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");
+    const L = await db.many("agent_baglanti", { uye_id: ctx.key.uye_id }, "ilk_kullanim").catch(() => []);
+    return { agentlar: L.filter((x: any) => !x.kaldirildi_at).map(agentV), mcp_adresi: taban.fn };
+  }
+  if (r0 === "ben" && r1 === "agent" && r2 && method === "POST" && yol[3] === "kaldir") {
+    if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");
+    const x = await db.one("agent_baglanti", { id: r2, uye_id: ctx.key.uye_id });
+    if (!x) throw new HesapHata(404, "Bağlantı yok.");
+    await db.update("agent_baglanti", { id: x.id }, { kaldirildi_at: new Date(now).toISOString() });
+    return { kaldirildi: true, not: `${x.ad} bağlantısı kaldırıldı. Yeniden kullanmak için ${x.ad} içinde Devir bağlayıcısını yeniden bağla.` };
+  }
+  // P7 (0.28.0, karar 4.B): kişiye özel referans bağlantısı; gelen kişi onaya düşer
+  if (r0 === "referans" && !r1 && method === "GET") {
+    if (!ctx || ctx.key.rol === "dis") throw new HesapHata(403, "Referans bağlantısı yalnız ekip üyelerine açık.");
+    const ref = await referansAl(db, ctx);
+    const gelen = await db.many("bekleme", { referans_kod: ref.kod }, "created_at").catch(() => []);
+    const link = `${taban.web || ""}/katil/${ref.kod}`;
+    return { kod: ref.kod, link, gelen: gelen.length, onaylanan: gelen.filter((x: any) => x.durum === "onaylandi").length, mesaj: `Ekiple ve AI agent'larıyla aynı işi yürütmek için Devir'i kullanıyorum. Sen de denemek istersen: ${link}` };
   }
   if (method === "POST" && r0 === "kayit" && !r1) return kayit(db, ot, uyelikler, b, now);
   if (method === "POST" && r0 === "ben" && r1 === "anahtar" && !r2) {
@@ -89,12 +110,93 @@ async function kayit(db: DB, ot: Oturum, uyelikler: any[], b: any, now: number) 
     const ws = await db.one("kullanici", { id: d.kullanici_id });
     return { katildi: uyeV(u, ws) };
   }
-  const alanAdi = String(b.alan_adi || "").trim().slice(0, 120);
+  // referans bağlantısıyla gelen (P7, karar 4.B): açık kayıt kapalıyken onay listesine düşer; onaylanınca kendi alanını açar
+  const bk = await db.one("bekleme", { eposta: ot.eposta }).catch(() => null);
+  const onayli = bk?.durum === "onaylandi";
+  if (b.referans && !onayli && !(await acikKayit(db))) {
+    const ref = await db.one("referans", { kod: String(b.referans).trim().toUpperCase() }).catch(() => null);
+    if (!ref) throw new HesapHata(404, "Bu referans bağlantısı geçerli değil.");
+    if (!bk) await db.insert("bekleme", [{ eposta: ot.eposta, auth_id: ot.auth_id, ad: kisiAd || yerelAd(ot.eposta), referans_kod: ref.kod, referans_ws: ref.ws_id, referans_uye_id: ref.uye_id, durum: "bekliyor" }]);
+    return { bekleme: await beklemeDurumu(db, ot.eposta) };
+  }
+  const alanAdi = String(b.alan_adi || "").trim().slice(0, 120) || ((onayli || b.referans) && !uyelikler.length ? `${kisiAd || bk.ad || yerelAd(ot.eposta)} çalışma alanı` : "");
   if (!alanAdi) throw new HesapHata(400, uyelikler.length ? "Zaten bir çalışma alanına üyesin. Yeni bir alan açmak için alan_adi ver." : "Bekleyen davetin yok. Yeni bir çalışma alanı açmak için alan_adi ver ya da bir ekipten davet iste.");
-  if (!(await acikKayit(db))) throw new HesapHata(403, "Devir şimdilik davetle açılıyor. Bir çalışma alanı sahibinden davet iste.");
+  if (!onayli && !(await acikKayit(db))) throw new HesapHata(403, "Devir şimdilik davetle açılıyor. Bir çalışma alanı sahibinden davet iste.");
   const [ws] = await db.insert("kullanici", [{ ad: alanAdi }]);
-  const [u] = await db.insert("uye", [{ auth_id: ot.auth_id, kullanici_id: ws.id, eposta: ot.eposta, kisi: kisiAd || yerelAd(ot.eposta), rol: "sahip", kapsam: null, son_giris: at }]);
+  const [u] = await db.insert("uye", [{ auth_id: ot.auth_id, kullanici_id: ws.id, eposta: ot.eposta, kisi: kisiAd || bk?.ad || yerelAd(ot.eposta), rol: "sahip", kapsam: null, son_giris: at }]);
+  if (onayli) await db.update("bekleme", { id: bk.id }, { durum: "katildi", katildi_at: at });
   return { acildi: uyeV(u, ws) };
+}
+
+// ---------- P7 (0.28.0): referans, onay listesi, agent bağlantıları ----------
+const REF_HARF = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+async function referansAl(db: DB, ctx: Ctx) {
+  const var0 = await db.one("referans", { uye_id: ctx.key.uye_id });
+  if (var0) return var0;
+  for (let i = 0; i < 6; i++) {
+    const b = crypto.getRandomValues(new Uint8Array(6));
+    const kod = Array.from(b).map((x) => REF_HARF[x % REF_HARF.length]).join("");
+    try { const [r] = await db.insert("referans", [{ kod, ws_id: ctx.ws.id, uye_id: ctx.key.uye_id }]); return r; }
+    catch (e) { if (!/duplicate|unique|23505/i.test(String((e as Error).message))) throw e; }
+  }
+  throw new HesapHata(500, "Referans kodu üretilemedi, tekrar dene.");
+}
+async function beklemeDurumu(db: DB, eposta: string) {
+  const bk = await db.one("bekleme", { eposta }).catch(() => null);
+  return bk ? { durum: bk.durum, tarih: bk.created_at } : null;
+}
+/** Kimliksiz: referans sayfası kimin davet ettiğini gösterir (yalnız ad) */
+export async function referansBilgisi(db: DB, kod: string) {
+  const ref = await db.one("referans", { kod: String(kod || "").trim().toUpperCase() }).catch(() => null);
+  if (!ref) throw new HesapHata(404, "Bu referans bağlantısı geçerli değil.");
+  const u = await db.one("uye", { id: ref.uye_id });
+  return { kod: ref.kod, davet_eden: u ? String(u.kisi || "").split(" ")[0] : null, acik_kayit: await acikKayit(db) };
+}
+const agentV = (x: any) => ({ id: x.id, ad: x.ad, istemci: x.istemci, ilk_kullanim: x.ilk_kullanim || x.created_at || null, son_kullanim: x.son_kullanim || null });
+/** OAuth ile gelen MCP isteği: bağlantıyı kaydeder; kaldırılmışsa ve jeton kaldırmadan önce alındıysa reddeder. */
+export async function agentBaglantisi(db: DB, ctx: Ctx, istemci: string | null, jetonZamani: number | null, ad: string, now: number): Promise<boolean> {
+  if (!istemci || !ctx.key?.uye_id) return true;
+  const at = new Date(now).toISOString();
+  try {
+    const x = await db.one("agent_baglanti", { uye_id: ctx.key.uye_id, istemci });
+    if (!x) { await db.insert("agent_baglanti", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id, istemci, ad, ilk_kullanim: at, son_kullanim: at }]); return true; }
+    if (x.kaldirildi_at) {
+      if (jetonZamani == null || jetonZamani <= Date.parse(x.kaldirildi_at)) return false;
+      await db.update("agent_baglanti", { id: x.id }, { kaldirildi_at: null, ilk_kullanim: at, son_kullanim: at, ad });
+      return true;
+    }
+    db.update("agent_baglanti", { id: x.id }, { son_kullanim: at }).catch(() => {});
+  } catch (e) { console.warn("agent_baglanti:", (e as Error).message); } // tablo yoksa (eski şema) bağlantı çalışmaya devam eder
+  return true;
+}
+/** Onay listesi: referansla gelenler. Sahip kendi alanının referanslarını görür; ayar.yoneticiler'deki e-postalar hepsini. */
+async function yoneticiMi(db: DB, ctx: Ctx) {
+  const a = await db.one("ayar", { anahtar: "yoneticiler" }).catch(() => null);
+  const L = String(a?.deger || "").toLowerCase().split(/[,\s]+/).filter(Boolean);
+  const u = ctx.key.uye_id ? await db.one("uye", { id: ctx.key.uye_id }) : null;
+  return !!u && L.includes(String(u.eposta || "").toLowerCase());
+}
+const beklemeV = (x: any, ad: string | null) => ({ id: x.id, eposta: x.eposta, ad: x.ad || null, durum: x.durum, tarih: x.created_at, referans_veren: ad, karar_at: x.karar_at || null });
+export async function beklemeYonlendir(ctx: Ctx, method: string, yol: string[], taban: { web: string | null }, posta?: Posta) {
+  const [r0, r1, r2] = yol;
+  if (r0 !== "bekleme") return undefined;
+  if (ctx.key.rol !== "sahip") throw new HesapHata(403, "Onay listesini yalnızca çalışma alanının sahibi görür.");
+  if (method !== "GET" && ctx.kanal !== "oturum") throw new HesapHata(403, "Bunu yalnız e-postayla giriş yapmış kişi yapabilir; anahtarla ya da agent üzerinden yapılamaz.");
+  const hepsi = await yoneticiMi(ctx.db, ctx);
+  const L = (hepsi ? await ctx.db.many("bekleme", {}, "created_at") : await ctx.db.many("bekleme", { referans_ws: ctx.ws.id }, "created_at")) as any[];
+  const adOf = async (x: any) => (x.referans_uye_id ? (await ctx.db.one("uye", { id: x.referans_uye_id }))?.kisi || null : null);
+  if (method === "GET" && !r1) return { bekleme: await Promise.all(L.slice().reverse().map(async (x) => beklemeV(x, await adOf(x)))) };
+  if (method === "POST" && r1 && (r2 === "onayla" || r2 === "reddet")) {
+    const x = L.find((y) => y.id === r1);
+    if (!x) throw new HesapHata(404, "Bu kayıt yok ya da senin onayında değil.");
+    if (x.durum === "katildi") throw new HesapHata(409, "Bu kişi zaten katıldı.");
+    const durum = r2 === "onayla" ? "onaylandi" : "reddedildi";
+    await ctx.db.update("bekleme", { id: x.id }, { durum, karar_at: new Date(ctx.now).toISOString(), karar_veren: ctx.key.kisi });
+    let gonderildi = false;
+    if (durum === "onaylandi" && posta) { try { await posta.girisBaglantisi(x.eposta, taban.web ? `${taban.web}/giris` : null); gonderildi = true; } catch (e) { console.warn("onay e-postası:", (e as Error).message); } }
+    return { bekleme: beklemeV({ ...x, durum }, await adOf(x)), gonderildi };
+  }
+  throw new HesapHata(404, "Böyle bir uç yok.");
 }
 
 // Ekip yönetimi (anahtarla ya da oturumla; yalnızca sahip): üyeler, davetler.

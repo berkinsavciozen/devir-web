@@ -1,9 +1,10 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, TOOLS, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
 } from "./core.ts";
+import { aiKullanimi, aylikSinir, kullanimYaz } from "./islem.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
 import type { LlmFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
@@ -28,7 +29,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   const ef = m.pl.EF.get(s.no);
   const grup = altAdimi(akis, s.no);
   const v: any = {
-    no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, durum: s.durum, durum_etiket: LBL[s.durum],
+    no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, agent_sahibi: s.sahip_tip === "agent" ? s.agent_sahibi || null : null, durum: s.durum, durum_etiket: LBL[s.durum],
     aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
     karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
     son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
@@ -46,6 +47,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     ust_adim: s.ust_adim ?? null, alt_gorevler: steps.filter((x: any) => x.ust_adim === s.no).sort((p: any, r: any) => p.no - r.no).map((x: any) => x.no),
     tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
   };
+  if (opts.dis) v.agent_sahibi = null;
   if (!DONE(s) && !opts.dis) v.linkler = chatLinks(akis, s);
   return v;
 }
@@ -317,7 +319,7 @@ async function taslakV(ctx: Ctx, kod: string) {
     varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null, boyut: q.boyut || null, tip: q.tip || null, secenekler: q.secenekler || null })),
     // 0.10.0: taslağın metin varsayımları (H1 yörünge rozetleri)
     varsayim_metinleri: (Array.isArray(t.varsayimlar) ? t.varsayimlar : tt.varsayimlar || []).map((v: any) => ({ boyut: v.boyut || null, metin: v.metin })),
-    adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null })),
+    adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null, ust: x.ust || null })),
     roller: tt.roller || [], hatirlananlar: tt._hatira?.satirlar || [],
     // P1-E madde 11: yedek motorla üretilen taslak arayüzde etiketlenir
     motor: t.model ? { ad: motorAdi(t.model), yedek: yedekMotor(t.model) } : null,
@@ -511,6 +513,8 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     }
     if (r0 === "kisiler" && !r1) { ekipMi(ctx); return { kisiler: (await ctx.db.many("kisi", { ws_id: ctx.ws.id }, "ad")).map(kisiV) }; }
     if (r0 === "politika" && !r1) { ekipMi(ctx); return { politika: politikaV(ctx.ws) }; }
+    // P8 (0.28.0): bu ayın yapay zekâ kullanımı (oran; tutar gösterilmez)
+    if (r0 === "kullanim" && !r1) return { kullanim: await aiKullanimi(ctx) };
     if (r0 === "ben" && !r1) return { kisi: ctx.key.kisi, kisi_id: ctx.key.kisi_id || null, kanal: ctx.kanal || null, rol: ctx.key.rol, kapsam: ctx.key.kapsam || null, calisma_alani: { ad: ctx.ws.ad } };
     throw new ApiHata(404, "Böyle bir uç yok.");
   }
@@ -531,6 +535,9 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "akis" && r1 && r2 === "kapat" && !r3) { const mesaj = await arac(ctx, "devir_akis_kapat", { ...b, akis: r1 }); return { mesaj }; }
     if (r0 === "akis" && r1 && r2 === "sabitle" && !r3) { const mesaj = await arac(ctx, "devir_sabitle", { ...b, akis: r1 }); return { mesaj }; }
     if (r0 === "olaylar" && r1 === "okundu" && !r2) return okunduYaz(ctx, b);
+    // P8 (0.28.0): Devir AI sohbeti; yazan araçlar önizleme olarak döner, "Uygula" ile çalışır
+    if (r0 === "sohbet" && !r1) return sohbet(ctx, b);
+    if (r0 === "sohbet" && r1 === "uygula" && !r2) return sohbetUygula(ctx, b);
     if (r0 === "karar" && !r1) { const mesaj = await arac(ctx, "devir_karar", b); return { mesaj, ...(await kararlarV(ctx, b.varlik || null)) }; }
     if (r0 === "ders" && r1 && (r2 === "onayla" || r2 === "reddet")) { const mesaj = await arac(ctx, "devir_dersler", { islem: r2, ders: r1 }); return { mesaj }; }
     if (r0 === "tasla" && !r1) { const mesaj = await arac(ctx, "devir_tasla", b); const kod = /Taslak (T\w+)/.exec(mesaj)?.[1] || /\b(T[A-Z0-9]{3,})\b/.exec(mesaj)?.[1]; return { mesaj, ...(kod ? { taslak: await taslakV(ctx, kod) } : {}) }; }
@@ -719,4 +726,85 @@ export async function baglantiDosya(db: DB, token: string, now: number, ua: stri
   if (method === "POST" && !id) { const b = govdeAl(body); return yuklemeIste(ctx, akis.id, Number(b.no), b); }
   if (method === "GET" && id) return indir(ctx, id, akis.id);
   throw new ApiHata(404, "Böyle bir uç yok.");
+}
+
+// ---------- Devir AI sohbeti (0.28.0, P8; karar 5.A–5.D) ----------
+// Sohbet MCP araçlarını sunucu içinden, kişinin kendi kapsamıyla kullanır. Okuma araçları hemen çalışır; yazan araçlar
+// önizleme kartı olarak döner ve kişi "Uygula" deyince aynı araçla yazılır. Kapatma ve atlama ayrıca onay ister.
+const SOHBET_OKUMA = new Set(["devir_akislar", "devir_akis", "devir_adim_oku", "devir_cikti_oku", "devir_kurallar", "devir_tasla"]);
+const SOHBET_YAZMA = new Set(["devir_adim_guncelle", "devir_adim_ekle", "devir_alt_gorev", "devir_cevapla", "devir_karar", "devir_akis_olustur", "devir_taslak_duzelt", "devir_akis_kapat"]);
+const sohbetAraclari = () => (TOOLS as any[]).filter((t) => SOHBET_OKUMA.has(t.name) || SOHBET_YAZMA.has(t.name)).map((t) => ({ name: t.name, description: t.description + (SOHBET_YAZMA.has(t.name) ? " (Sohbette bu araç hemen yazmaz: değişiklik kullanıcıya önizleme olarak gösterilir, kullanıcı Uygula derse yazılır.)" : ""), input_schema: t.inputSchema }));
+const onayGerekir = (arac: string, g: any) => arac === "devir_akis_kapat" || (arac === "devir_adim_guncelle" && (g?.durum === "atlandi" || g?.durum === "ertelendi"));
+const DURUM_AD: Record<string, string> = { suruyor: "sürüyor", engelli: "engelli", tamam: "tamam", atlandi: "atlandı", ertelendi: "ertelendi", hazir: "hazır" };
+export function oneriOzeti(arac: string, g: any): string {
+  const ak = g?.akis ? `${g.akis} · ` : "";
+  switch (arac) {
+    case "devir_adim_guncelle": {
+      const p: string[] = [];
+      if (g.durum) p.push(`durum → ${DURUM_AD[g.durum] || g.durum}`);
+      if (g.son_tarih) p.push(`son tarih → ${fmtD(g.son_tarih)}`);
+      if (g.sahip) p.push(`sahip → ${g.sahip}`);
+      if (g.ad) p.push(`ad → "${g.ad}"`);
+      if (g.ilerleme) p.push(`ilerleme: ${g.ilerleme}`);
+      if (g.cikti) p.push("çıktı eklenecek");
+      return `${ak}${g.no}. adım: ${p.join(", ") || "güncellenecek"}`;
+    }
+    case "devir_adim_ekle": return `${ak}yeni adım eklenecek: "${g.ad || "?"}"${g.sahip ? ` (${g.sahip})` : ""}`;
+    case "devir_alt_gorev": { const n = Array.isArray(g.alt_gorevler) ? g.alt_gorevler.length : 1; return `${ak}${g.adim}. adıma ${n} alt görev eklenecek`; }
+    case "devir_cevapla": return `${ak}açık soru cevaplanacak: ${g.soru || g.kod || ""} = ${g.cevap ?? ""}`;
+    case "devir_karar": return `Karar kaydedilecek: ${g.karar || g.metin || ""}`;
+    case "devir_akis_olustur": return `${g.taslak ? `${g.taslak} taslağından ` : ""}akış kurulacak${g.baslik ? `: ${g.baslik}` : ""}`;
+    case "devir_taslak_duzelt": return `${g.taslak || "Taslak"} düzeltilecek`;
+    case "devir_akis_kapat": return `${g.akis || "Akış"} kapatılacak`;
+    default: return arac;
+  }
+}
+function sohbetSistemi(ctx: Ctx, sayfa: any) {
+  const yer = sayfa?.akis ? `Kullanıcı şu an ${sayfa.akis} akışının${sayfa.adim ? ` ${sayfa.adim}. adımının` : ""} sayfasında; "bu akış", "bu görev" dediğinde onu kastediyor.` : "Kullanıcı ana sayfada.";
+  return `Sen Devir AI'sın: Devir'deki akışlar, görevler ve kararlar hakkında kullanıcıya yardım eden asistan. Bugün ${todayIst(ctx.now)}. Kullanıcı: ${ctx.key.kisi}. ${yer}
+Kurallar:
+- Soruları yalnız araçlardan okuduğun veriye dayanarak cevapla; bilmediğini uydurma. Kısa ve açık Türkçe yaz.
+- Değişiklik (adım güncelleme, ekleme, alt görev, karar, akış kurma ya da kapatma) gerekiyorsa ilgili aracı çağır. Bu araçlar hemen yazmaz; kullanıcıya önizleme kartı gösterilir ve kullanıcı Uygula derse yazılır. Cevabında değişikliği "önerdim, Uygula'ya basınca yazılır" diye anlat.
+- Silme yoktur: gerekmeyen adım atlanır (durum=atlandi ve atlama_nedeni), iş bitince akış kapatılır; ikisi de ayrıca onay ister.
+- Yeni bir iş planı istenirse devir_tasla ile taslak çıkar, soruları kullanıcıya sor; akışı kurmayı önizleme olarak öner.
+- Karar, onay ve ödeme adımlarında kararı kullanıcı verir; sen yalnız seçenekleri ve önerini özetle.`;
+}
+async function sohbet(ctx: Ctx, b: any) {
+  ekipMi(ctx); oturumMu(ctx); // karar 5.D: dış katılımcıda yok; yalnız web oturumu
+  if (!ctx.sohbet) throw new ApiHata(503, "Devir AI şu an kapalı (model anahtarı tanımlı değil).");
+  await aylikSinir(ctx);
+  const mesajlar = (Array.isArray(b.mesajlar) ? b.mesajlar : []).slice(-20)
+    .map((m: any) => ({ rol: m?.rol === "asistan" ? "assistant" as const : "user" as const, metin: String(m?.metin || "").slice(0, 4000) })).filter((m: any) => m.metin.trim());
+  if (!mesajlar.length || mesajlar[mesajlar.length - 1].rol !== "user") throw new ApiHata(400, "mesajlar: son mesaj kullanıcının olmalı.");
+  while (mesajlar.length && mesajlar[0].rol !== "user") mesajlar.shift();
+  const oneriler: any[] = [];
+  const calistir = async (ad: string, girdi: any) => {
+    try {
+      if (SOHBET_YAZMA.has(ad)) {
+        const id = `o${oneriler.length + 1}`;
+        oneriler.push({ id, arac: ad, girdi, ozet: oneriOzeti(ad, girdi), onay_gerekir: onayGerekir(ad, girdi) });
+        return { metin: `Önizleme ${id} kullanıcıya gösterildi: ${oneriOzeti(ad, girdi)}. Henüz yazılmadı; kullanıcı Uygula derse yazılır.` };
+      }
+      if (!SOHBET_OKUMA.has(ad)) return { metin: `${ad} sohbette kullanılamaz.`, hata: true };
+      return { metin: (await callTool(ad, girdi, ctx)).slice(0, 12000) };
+    } catch (e) { return { metin: (e as Error).message, hata: true }; }
+  };
+  const r = await ctx.sohbet({ system: sohbetSistemi(ctx, b.sayfa), gecmis: mesajlar, araclar: sohbetAraclari(), calistir, model: ctx.modeller?.hizli });
+  await kullanimYaz(ctx, "sohbet", r.model, r.kullanim);
+  return { mesaj: r.metin || (oneriler.length ? "Önerdiğim değişiklikler aşağıda; Uygula'ya basınca yazılır." : ""), oneriler, kullanim: await aiKullanimi(ctx) };
+}
+async function sohbetUygula(ctx: Ctx, b: any) {
+  ekipMi(ctx); oturumMu(ctx);
+  const L = Array.isArray(b.oneriler) ? b.oneriler.slice(0, 10) : [];
+  if (!L.length) throw new ApiHata(400, "oneriler gerekli.");
+  for (const o of L) {
+    if (!SOHBET_YAZMA.has(o?.arac)) throw new ApiHata(400, `${o?.arac} sohbetten uygulanamaz.`);
+    if (onayGerekir(o.arac, o.girdi) && b.onay !== true) throw new ApiHata(409, `"${oneriOzeti(o.arac, o.girdi)}" ayrıca onay ister; onay=true ile yeniden gönder.`);
+  }
+  const sonuclar: any[] = [];
+  for (const o of L) {
+    try { sonuclar.push({ arac: o.arac, ozet: oneriOzeti(o.arac, o.girdi), mesaj: await arac(ctx, o.arac, { ...(o.girdi || {}), arac: "Devir AI" }) }); }
+    catch (e) { sonuclar.push({ arac: o.arac, ozet: oneriOzeti(o.arac, o.girdi), hata: (e as Error).message }); }
+  }
+  return { sonuclar };
 }

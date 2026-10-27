@@ -47,10 +47,11 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 26. Sonradan belli olan bilgi. Cevabı ancak iş yürürken belli olacak sorular (ihale, başvuru ya da test sonucu, tetkik sonucu, gelen teklifin tutarı, randevu, duruşma, sınav ya da toplantı tarihi) kullanıcıya şimdi sorulmaz: ne_zaman "sonra" yaz, cevabın belli olduğu adımın id'sini cevaplayan_adim alanına yaz. Sonuca ya da tutara bağlı her dalın adımlarını kosul ile kur (ör. kosul {soru: "ihale_sonucu", deger: "kazanildi"}; diğer dal deger: "kaybedildi"); dal adımları cevaplayan adıma bağımlı olsun. Tarihse o tarihte gerçekleşen adıma tarih_capasi {soru} ver; tarihi uydurma. Devir cevap gelince seçilmeyen dalı atlar, takvimi yeniden kurar. Kullanıcının şimdi bilebileceği soruları (hedef tarih, kim onaylıyor, bütçe) "sonra"ya bırakma; ne_zaman "simdi" olsun.
 27. Geçmiş ve bilgi. "Benzer geçmiş işler" bu ekibin gerçekte yaşadığı işlerdir: sonradan eklenen adımlar, yanlış çıkan varsayımlar ve uzun beklemeler bu işte de olabilir; bu işe uyuyorsa baştan kur. "Kanıtlı dersler" geçmişten çıkmış kurallardır: kesin olanları bu işe uyuyorsa mutlaka uygula (adım ekle, soru sor, süreyi uzat); aday olanları yalnızca bu işe açıkça uyuyorsa uygula. "Alan bilgi kartları" kaynaklı kurallardır (yasal süre, kurum, belge); bu işe uyuyorsa adımları, süreleri ve kapıları onlara göre kur. Geçmişte yaşanmamış bir şeyi yaşanmış gibi yazma.
 28. dayanak. Bir adımı, süreyi ya da soruyu bir derse, karta ya da geçmiş işe dayanarak kurduysan o adımın ya da sorunun dayanak alanına kaynağın kodunu aynen yaz (ör. ["D12"], ["K:sgk-ise-giris"], ["G:Q3XB"]). Dayanağı olmayan adımda alanı boş bırak; uydurma kod yazma.
-29. Adlar. Her adımın ad'ı tam ve kendi başına anlaşılır cümledir: nesne + fiil, kimin neyi yaptığı belli ("Geçici teminat mektubunu bankadan al"); "ve" ile iki iş birleştirme, iki işse iki adım kur. Her adıma ayrıca kisa_ad yaz: en çok 40 karakter, akışta tekil, işi ayırt eden kelimeyi koruyan nesne + fiil ("Teminat mektubunu al", "Teminat iadesini al"); üç nokta, kısaltma ya da bağlaçla bitiş yok. Akışa da kisa_ad yaz: varlık + iş, 2–4 kelime ("Park aydınlatma ihalesi", "Hasat çiftçi kazanımı"). Ayrıntı ad'da değil aciklama, kriter ve beklenen_cikti'da durur; beklenen_cikti'yı boş bırakma (ör. "imzalı sözleşme PDF").
+29. Adlar. Her adımın ad'ı tam ve kendi başına anlaşılır cümledir: nesne + fiil, emir kipinde, kimin neyi yaptığı belli ("Geçici teminat mektubunu bankadan al"); "ve" ile iki iş birleştirme, iki işse iki adım kur. Ana görevin adı ulaşılacak sonucu söyler ("Tedarikçi sözleşmesini imzala", "imzalandı" değil). Ölçülebilir bir şey varsa (adet, tutar, oran, tarih) adın içinde ya da kriterde durur ("20 çiftçiyle ön görüşmeyi tamamla"). Her adıma ayrıca kisa_ad yaz: en çok 40 karakter, akışta tekil, işi ayırt eden kelimeyi koruyan nesne + fiil ("Teminat mektubunu al", "Teminat iadesini al"); üç nokta, kısaltma ya da bağlaçla bitiş yok. Akışa da kisa_ad yaz: varlık + iş, 2–4 kelime ("Park aydınlatma ihalesi", "Hasat çiftçi kazanımı"). Ayrıntı ad'da değil aciklama, kriter ve beklenen_cikti'da durur; beklenen_cikti'yı boş bırakma (ör. "imzalı sözleşme PDF").
 30. Karar ve çıktı. Her adım için karar_gerekli ve cikti_bekleniyor alanlarını doldur. karar_gerekli=true: adım bir seçim, onay, ödeme ya da imzayla biter ve son sözü insan verir; o zaman karar_kriteri de yaz. Hazırlık, toplama ve gönderme adımları karar değildir. cikti_bekleniyor=true: adım bir belge, dosya, metin, kayıt ya da teslim edilebilir bir şey üretir (beklenen_cikti'ya ne olduğunu yaz); yalnızca bir şeyin olmasını bekleyen ya da karar veren adımda false.
-31. Dil. Yalnız Türkçe yaz; İngilizce ya da yarım kalmış kelime kullanma (rapor, şahit numune, vadeli ödeme gibi yerleşik terimleri kullan). Bir adın içinde aynı kelimeyi ya da aynı liste ögesini tekrarlama. Varsayım cümleleri tam ve tek anlamlı olsun.
-32. Türkçe yaz.`;
+31. Görev ve alt görev (tek düzey). 6 ve daha çok adımlı taslakta işi ana görevlere ve alt görevlere böl: ana görev tek bir somut sonuçtur (teslim, karar, kilometre taşı); alt görev o sonuca giden ve ayrı izlenmesi gereken parçadır (farklı kişi, ayrı tarih ya da ayrı çıktı). Alt görevin ust alanına ana görevin id'sini yaz; ana görevlerde ust boş kalır. Alt görevi olan ana görev bir kaptır: kendi işi yoktur, sahibi sonucun sorumlusudur, süresi 0'dır; kendi işi varsa onu ayrı bir alt görev yaz. Alt görevin alt görevi olmaz. Tek kişinin tek oturuşta yapacağı işi alt göreve bölme. Her kalem için tekrar eden iş (her aday, her müşteri) alt görev değildir; tek adım kur. Bir ana görevin bağımlılığı alt görevlerine değil, başka ana görevlere ya da başka alt görevlere yazılır; alt görev başka bir ana görevin alt görevine bağımlı olabilir. 6'dan az adımlı taslakta bölme yapma, ust alanlarını boş bırak.
+32. Dil. Yalnız Türkçe yaz; İngilizce ya da yarım kalmış kelime kullanma (rapor, şahit numune, vadeli ödeme gibi yerleşik terimleri kullan). Bir adın içinde aynı kelimeyi ya da aynı liste ögesini tekrarlama. Varsayım cümleleri tam ve tek anlamlı olsun.
+33. Türkçe yaz.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -99,6 +100,7 @@ export const TASLAK_ARACI: LlmTool = {
             kosul: { type: ["object", "null"], properties: { soru: { type: "string" }, deger: { type: "string" } } },
             tarih_capasi: { type: ["object", "null"], description: "Adım belirli bir günde gerçekleşiyorsa: {tarih} ya da o günü soran {soru}.", properties: { soru: { type: "string" }, tarih: { type: "string" } } },
             dayanak: { type: "array", items: { type: "string" }, description: "Bu adımı ya da süresini belirleyen ders, kart ya da geçmiş iş kodları (D12, K:kod, G:akış)." },
+            ust: { type: ["string", "null"], description: "Alt görevse ana görevin id'si; ana görevse null. Tek düzey (ilke 31)." },
           },
         },
       },
@@ -461,6 +463,13 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
     }
     return { ad, aciklama: ac || null };
   };
+  // P3 (0.28.0): ana görev seçilmediyse ya da kendisi alt görevse alt görev ana göreve çıkar (tek düzey)
+  const ustNo = (s: any): number | null => {
+    if (s.ust == null || s.ust === "") return null;
+    const u = son.find((x) => String(x.id) === String(s.ust));
+    if (!u || u === s || (u.ust != null && u.ust !== "")) return null;
+    return noOf.get(u.id) ?? null;
+  };
   const out = son.map((s) => {
     let r = s.sahip_rol === "__sahip" ? { ad: sahip, tip: "insan" } : roller.get(s.sahip_rol) || { ad: s.sahip_rol, tip: "insan" };
     if (yalniz && r.tip === "insan" && !r.kisi && !ONAYCI.test(r.ad || "")) r = { ad: sahip, tip: "insan" }; // ekip yok: adı geçmeyen iş rolleri kullanıcıya; onaylayanlar üçüncü taraf olarak kalır
@@ -475,6 +484,7 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
       _kosul: s.kosul?.soru && acik(s.kosul.soru) ? { soru: s.kosul.soru, deger: String(s.kosul.deger) } : null,
       _capaSoru: s.tarih_capasi?.soru && acik(s.tarih_capasi.soru) ? s.tarih_capasi.soru : null,
       _cevapSoru: s._cevapSoru || null,
+      _ust: ustNo(s),
     };
   });
   let hedef: string | null = t.hedef_tarih || null;
