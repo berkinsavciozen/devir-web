@@ -15,6 +15,7 @@ import { C, f, planet, rng, ship, sparkle } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, doluSatir, gunAyUzun, ozelEk, tarihEk } from '../../metin/turkce';
 import { Segment } from '../akis/Adim';
 import { git } from '../../yonlendirme';
+import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 
 const GOK_F1 = { tohum: 47, yildiz: 240, bulutsu: [[60, 300, 260, 'neb2'], [360, 200, 220, 'neb1'], [200, 760, 260, 'neb3']] as [number, number, number, string][] };
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
@@ -111,7 +112,7 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
         <Metin y={116} fs={20} lh={26} serif as="h1" style={{ fontWeight: 400, whiteSpace: 'nowrap' }}>{satir.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
         <KararSeridi oz={v.akis?.karar_ozeti} style={{ left: 20, right: 20, top: 104 + satir.length * 26 }} />
         {a && <>
-          <Metin y={kart + 48} x={100} fs={21} lh={26} serif agirlik={700} as="h2" className="tek-satir" style={{ right: 32 }}>{a.ad}</Metin>
+          <Metin y={kart + 48} x={100} fs={21} lh={26} serif agirlik={700} as="h2" className="tek-satir" style={{ right: 32 }}><GorevAdi ad={a.ad} ust={ustAdi(a, adimlar)} /></Metin>
           <Metin y={kart + 70} x={100} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 32 }}>{alt}</Metin>
           {ey.includes('basladim') && (
             <Dugme yukseklik={56} fs={17} style={{ top: b1, left: 36, right: 36 }} ikonX={74} mesgul={eylem.isPending && eylem.variables?.eylem === 'basladim'} disabled={!!onizleme} onClick={() => eylem.mutate({ eylem: 'basladim' })}

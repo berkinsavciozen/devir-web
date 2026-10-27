@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { uyeRenkleri, tac, elmas, belge, TAKIM_RENGI } from './yol.js';
+import { uyeRenkleri, ajanSahipleri, tac, elmas, belge, TAKIM_RENGI } from './yol.js';
 import { galaksiSayilari } from '../ekranlar/akis/Lejant';
 
 // Plan 27 Eki, Epic 3: gezegen dili (P4)
@@ -19,6 +19,14 @@ describe('kişi renkleri', () => {
     expect(r.A).toBe(TAKIM_RENGI);
     expect(r.Berkin).not.toBe(TAKIM_RENGI);
     expect(r.Claude).toBe('#B9A6F2');
+  });
+  it('agent sahibinin renginde (agent_sahibi); sahibi olmayan Claude lila kalır', () => {
+    const G: any = { uyeler: [uye('Berkin'), uye('Selin'), uye('Claude', 'agent'), uye('Selin’in Claude’u', 'agent'), uye('Bot', 'agent')] };
+    const r = uyeRenkleri(G, 'Berkin', ajanSahipleri([{ sahip: 'Claude', tip: 'agent', agentSahibi: 'Berkin' }, { sahip: 'Selin’in Claude’u', tip: 'agent', agentSahibi: 'Selin' }]));
+    expect(r.Claude).toBe(r.Berkin);
+    expect(r['Selin’in Claude’u']).toBe(r.Selin);
+    expect(r.Bot).not.toBe(r.Selin);
+    expect(uyeRenkleri(G, 'Berkin').Claude).toBe('#B9A6F2');
   });
 });
 

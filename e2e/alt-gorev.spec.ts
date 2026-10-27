@@ -14,10 +14,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=alt', w, h);
     const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
     await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 1/3');
-    await expect(bolum.locator('.gd-bag')).toHaveCount(3);
+    await expect(bolum.locator('.gd-akordiyon')).toHaveCount(3);
     await expect(page.locator('.gd-bas small')).toContainText('1/3 alt görev');
     await expect(page.locator('.gd-ust')).toHaveCount(0);
-    await bolum.getByRole('button', { name: /Instagram içgörülerini çek/ }).click();
+    // 1.3: alt görev aynı sayfada akordiyonla açılır; ayrı sayfaya "Ayrıntılar" götürür
+    const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
+    await ig.locator('summary').click();
+    await expect(ig.locator('.gd-liste')).toBeVisible();
+    await expect(ig.locator('.gd-liste')).toContainText('Sahip');
+    await ig.getByRole('button', { name: 'Ayrıntılar' }).click();
     await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/12/);
     await expect(page.locator('.gd-tur')).toHaveText('ALT GÖREV');
     await expect(page.locator('.gd-bas h2')).toContainText('Instagram içgörüleri');
@@ -32,10 +37,10 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 test('alt görev · 390: detaydan eklenir; eklenen listede ve akış listesinde üstünün altında', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin', 390, 844);
   const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
-  await expect(bolum.locator('.gd-bag')).toHaveCount(0);
+  await expect(bolum.locator('.gd-akordiyon')).toHaveCount(0);
   await bolum.getByRole('textbox', { name: 'Yeni alt görevin adı' }).fill('TestFlight davet bağlantısını oluştur');
   await bolum.getByRole('button', { name: 'Alt görevi ekle' }).click();
-  await expect(bolum.locator('.gd-bag')).toHaveCount(1);
+  await expect(bolum.locator('.gd-akordiyon')).toHaveCount(1);
   await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 0/1');
   await expect(bolum.getByRole('textbox', { name: 'Yeni alt görevin adı' })).toHaveValue('');
   // açık alt görev varken üst görev "bitti" olarak işaretlenmez
@@ -66,4 +71,40 @@ test('alt görev · 390: haritada alt görev gezegen değil, üstünün uydusu',
   // uydu sistemi v2 (plan 27 Eki, 3.B): uzakta Satürn halkası ve biten oranı
   await expect(page.locator('.uydu-halka').first()).toBeAttached();
   await expect(page.locator('svg text', { hasText: '1/3' }).first()).toBeAttached();
+});
+
+test('alt görev · 390: akordiyonda yalnız sırası gelmiş kendi alt görevi bitirilir', async ({ page }) => {
+  await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=alt', 390, 844);
+  const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
+  // öncülü (9) bitmemiş: "Bitti" yok, ayrıntıya gidilir
+  const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
+  await ig.locator('summary').click();
+  await expect(ig.getByRole('button', { name: 'Bitti' })).toHaveCount(0);
+  await expect(ig.getByRole('button', { name: 'Ayrıntılar' })).toBeVisible();
+  await expect(bolum.locator('.gd-akordiyon[open]')).toHaveCount(1);
+});
+
+test('alt görev · 390: akış listesinde üst görev daraltılır, alt görevler girintili', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/akis/RTD5/bilgi?senaryo=berkin&hal=alt');
+  const liste = page.getByRole('list', { name: 'Adımlar' });
+  const dar = liste.getByRole('button', { name: /alt görevleri daralt/ });
+  await expect(dar).toHaveCount(1);
+  await expect(dar).toHaveAttribute('aria-expanded', 'true');
+  const ust = await liste.getByRole('button', { name: /^10\. adım/ }).boundingBox();
+  const alt = await liste.getByRole('button', { name: /^11\. alt görev/ }).boundingBox();
+  expect(alt!.x).toBeGreaterThan(ust!.x + 8);
+  const once = await liste.getByRole('listitem').count();
+  await dar.click();
+  await expect(liste.getByRole('listitem')).toHaveCount(once - 3);
+  await expect(liste.getByRole('button', { name: /alt görevleri aç/ })).toHaveAttribute('aria-expanded', 'false');
+});
+
+test('alt görev · 390: Görevler listesinde alt görev üst göreviyle, üst görev ilerlemesiyle', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/gorevler?senaryo=berkin&hal=alt&kisi=hepsi&durum=hepsi');
+  const L = page.getByRole('list', { name: 'Görevler' });
+  await expect(L.locator('.ust-kirinti').first()).toBeVisible();
+  await expect(L.getByRole('button', { name: /^Rapor › / }).first()).toBeVisible();
+  await expect(L.getByRole('button', { name: /1\/3 alt görev/ })).toHaveCount(1);
 });

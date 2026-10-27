@@ -20,6 +20,7 @@ import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { alanAdi, SatirKart } from '../hesap/Hesap';
 import { bagIsareti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
+import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 
 // Görevler (/gorevler, eski /bana; el notu 16): bağlı olduğun bütün akışlardaki işler. Kişi (varsayılan sen), Akış ve
 // Durum (varsayılan bitmemiş) süzgeçleri adreste; üstte görev haritası, altta durum grupları, en altta bekleyenler.
@@ -99,12 +100,15 @@ export function Gorevler({ ben }: { ben: Ben }) {
     const isaret = bagIsareti(a, kisi);
     const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : null) : a.son_tarih ? `son ${gunAy(tarihMs(a.son_tarih))}` : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : a.bekleme_saat ? `${paySure(a.bekleme_saat)} bekliyor` : null;
     const kim = a.sahip === kisi ? null : kisaAd(a.sahip);
+    // 1.4, 1.5: alt görevde üst görevin adı; üst görevde alt görev ilerlemesi
+    const DA: any[] | undefined = detay[a.akis]?.adimlar, ust = ustAdi(a, DA), altlar = (DA || []).filter((x) => x.ust_adim === a.no);
+    const altMetin = altlar.length ? `${altlar.filter((x) => BITTI(x.durum)).length}/${altlar.length} alt görev` : null;
     return {
       tur: 'satir', key: a.akis + ':' + a.no,
       ikon: `<circle cx="28" cy="29" r="24" fill="url(#bloom)" opacity=".18"/>${kucukGalaksi(detay[a.akis], kisi, 28, 29, 19, 2, NOW)}${gezegen(a, 43, 44, 6)}`,
-      ust: adimAdi(a), baslik: a.ad,
-      alt: [akisAdi(a), kim, isaret, t].filter(Boolean).join(' · '),
-      etiket: `${a.ad}. ${akisAdi(a)}. ${kim ? `Sahibi ${kim}. ` : ''}${a.durum === 'engelli' ? 'Engelli.' : a.durum === 'suruyor' ? 'Sürüyor.' : a.durum === 'hazir' ? 'Sırası geldi.' : BITTI(a.durum) ? 'Bitti.' : 'Sırada.'}${isaret ? ` ${isaret.replace(/^[←→] /, '')}.` : ''}`,
+      ust: <GorevAdi ad={adimAdi(a)} ust={ust} />, baslik: a.ad,
+      alt: [akisAdi(a), kim, altMetin, isaret, t].filter(Boolean).join(' · '),
+      etiket: `${ust ? `${ust} › ` : ''}${a.ad}. ${akisAdi(a)}.${altMetin ? ` ${altMetin}.` : ''} ${kim ? `Sahibi ${kim}. ` : ''}${a.durum === 'engelli' ? 'Engelli.' : a.durum === 'suruyor' ? 'Sürüyor.' : a.durum === 'hazir' ? 'Sırası geldi.' : BITTI(a.durum) ? 'Bitti.' : 'Sırada.'}${isaret ? ` ${isaret.replace(/^[←→] /, '')}.` : ''}`,
       sag: kim ? <svg aria-hidden className="satir-gemi" width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gemi(a.sahip, a.sahip_tip, 0, 0, .55, false) }} /> : undefined,
       git: () => git(`/akis/${enc(a.akis)}/${a.karar_adimi && !BITTI(a.durum) ? 'karar' : 'adim'}/${a.no}`),
     };

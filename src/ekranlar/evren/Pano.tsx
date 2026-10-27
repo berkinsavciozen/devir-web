@@ -18,6 +18,7 @@ import { kisaAd } from '../../cizim/yol.js';
 import { kucukGalaksi } from './Evren';
 import { aralikMetni, hedefEtiketi, KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 import { DurumNotu, type VeriDurumu } from '../../bilesen/VeriDurumu';
+import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 
 const SATIR = 60, ARA = 8, EN = 6;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
@@ -105,7 +106,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
           return (
             <div role="listitem" key={a.kod + a.no} style={{ display: 'contents' }}><button type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} title={a.ad} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)} {...vurguOlay(a.kod)}>
               <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: ikon }} />
-              <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{adimEkranAdi(a)}</b><small>{alt}</small></span>
+              <span className="satir-metin" style={{ left: 52, right: 16 }}><b><GorevAdi ad={adimEkranAdi(a)} ust={ustAdi(a, detay[a.kod]?.adimlar)} /></b><small>{alt}</small></span>
             </button></div>
           );
         })}</div> : durum === 'kismi' || durum === 'hata' || durum === 'yukleniyor'
@@ -153,7 +154,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
         {H.length > 0 && <>
           <h3 className="bolum-baslik" style={{ top: Y.hY }}>SON HAREKETLER</h3>
           {H.map((t, i) => {
-            const e = t.e, adim = adimAdi(e), y = Y.hY + 30 + i * (SATIR + ARA);
+            const e = t.e, adim0 = adimAdi(e), ust = adim0 ? ustAdi(e, detay[e.akis]?.adimlar) : null, adim = adim0 && ust ? `${ust} › ${adim0}` : adim0, y = Y.hY + 30 + i * (SATIR + ARA);
             const alt = [ad(e.akis), adim, saat(Date.parse(e.zaman))].filter(Boolean).join(' · ');
             return (
               <button key={t.ids.join('-')} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }}

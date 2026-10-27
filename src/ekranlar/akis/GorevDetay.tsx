@@ -95,6 +95,11 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
     mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`, { durum: 'tamam' }),
     onSuccess: yenile,
   });
+  // 1.3: alt görevi akordiyondan bitir
+  const altBitir = useMutation({
+    mutationFn: (n: number) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${n}`, { durum: 'tamam' }),
+    onSuccess: yenile,
+  });
   // W5: alt görev ekleme (tek düzey; alt görevin altına eklenmez)
   const [altAd, setAltAd] = useState('');
   const altEkle = useMutation({
@@ -160,6 +165,34 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
     </li>
   );
 
+  // 1.3: alt görevler aynı sayfada akordiyon; her biri kendi durum, sahip, tarih, çıktı ve düğmeleriyle
+  const altAkordiyon = (z: any) => {
+    const t = BITTI(z.durum) ? (z.durum_at ? `bitti ${gunAy(Date.parse(z.durum_at))}` : '–') : z.en_erken_bitis ? `en erken ${gunAyHafta(Date.parse(z.en_erken_bitis))}` : 'öncülleri bitince';
+    const zBenim = z.sahip === ben && !BITTI(z.durum);
+    return (
+      <li key={z.no}>
+        <details className="gd-akordiyon">
+          <summary aria-label={`${z.no}. alt görev: ${z.ad}. ${z.durum_etiket || z.durum}`}>
+            <svg aria-hidden width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gezegen(z, 9) }} />
+            <span><b>{adimAdi(z)}</b><small>{kisaAd(z.sahip)} · {z.durum_etiket || z.durum}</small></span>
+            <svg aria-hidden className="gd-akordiyon-ok" width="14" height="14" viewBox="-7 -7 14 14"><path d="M-4,-2 L0,2 L4,-2" /></svg>
+          </summary>
+          <dl className="gd-liste">
+            <div><dt>Sahip</dt><dd>{z.sahip}{ajanMi(z.sahip, z.sahip_tip) && z.agent_sahibi ? ` · ${kisaAd(z.agent_sahibi)} adına` : ''}</dd></div>
+            <div><dt>Durum</dt><dd>{z.durum_etiket || z.durum}{z.engel ? ` · ${z.engel}` : ''}</dd></div>
+            <div><dt>Bitiş</dt><dd>{t}{z.son_tarih ? ` · son tarih ${gunAy(tarihMs(z.son_tarih))}` : ''}</dd></div>
+            {z.kriter && <div><dt>Kabul kriteri</dt><dd>{z.kriter}</dd></div>}
+            <div><dt>Çıktı</dt><dd>{z.cikti_sayisi ? `${z.cikti_sayisi} çıktı` : 'henüz yok'}</dd></div>
+          </dl>
+          <div className="gd-akordiyon-eylem">
+            {zBenim && !z.karar_adimi && (z.durum === 'hazir' || z.durum === 'suruyor') && <button type="button" className="gd-alt-ekle-dugme" disabled={altBitir.isPending} onClick={() => altBitir.mutate(z.no)}>Bitti</button>}
+            <button type="button" className="metin-baglanti" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)}>{zBenim && z.karar_adimi ? 'Karar ver' : 'Ayrıntılar'}</button>
+          </div>
+        </details>
+      </li>
+    );
+  };
+
   return (
     <div className="gd" ref={kok}>
       {/* yol izi (plan 27 Eki, 2.7): Akış › Üst görev › Görev; adlar tam, kesilmez, satıra sarar */}
@@ -170,7 +203,7 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
       </nav>
       <header className={`gd-bas${ust ? ' gd-bas-alt' : ''}`}>
         {/* alt görev uydu boyunda (N24): üst görevinden küçük gezegen, "alt görev" etiketi */}
-        <svg aria-hidden className="gd-gezegen" width="64" height="64" viewBox="-32 -32 64 64" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 13 : 22) }} />
+        <svg aria-hidden className="gd-gezegen" width="64" height="64" viewBox="-32 -32 64 64" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 13 : 22) + (altGorevler.length ? `<ellipse rx="31" ry="8" fill="none" stroke="#B9A6F2" stroke-width="1.6" stroke-opacity=".8" transform="rotate(-16)"/><text x="0" y="31" text-anchor="middle" font-size="10" font-weight="700" fill="#D9CCFF">${altGorevler.length - acikAlt.length}/${altGorevler.length}</text>` : '') }} />
         <div className="gd-bas-metin">
           {ust && <span className="gd-tur">ALT GÖREV</span>}
           <h2>{adimAdi(A)}</h2>
@@ -198,6 +231,16 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
         {bitir.isError && <p className="canli-hata-satir" role="alert">{(bitir.error as Error).message}</p>}
       </div>
 
+      {(altGorevler.length > 0 || altEklenir) && <Bolum baslik={altGorevler.length ? `ALT GÖREVLER · ${altGorevler.length - acikAlt.length}/${altGorevler.length}` : 'ALT GÖREVLER'} id="gd-alt-gorevler">
+        {altGorevler.length > 0 && <ul className="gd-baglar gd-alt-liste">{altGorevler.map(altAkordiyon)}</ul>}
+        {altEklenir && <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const t = altAd.trim(); if (t && !altEkle.isPending) altEkle.mutate(t); }}>
+          <input className="alan" value={altAd} onChange={(e) => setAltAd(e.target.value)} placeholder="Alt görev ekle" aria-label="Yeni alt görevin adı" maxLength={120} />
+          <button type="submit" className="gd-alt-ekle-dugme" disabled={!altAd.trim() || altEkle.isPending} aria-label="Alt görevi ekle">Ekle</button>
+        </form>}
+        {altBitir.isError && <p className="canli-hata-satir" role="alert">{(altBitir.error as Error).message}</p>}
+        {altEkle.isError && <p className="canli-hata-satir" role="alert">{(altEkle.error as Error).message}</p>}
+      </Bolum>}
+
       {yapilacak.length > 0 && <Bolum baslik="NE YAPILACAK">
         <dl className="gd-liste">{yapilacak.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
       </Bolum>}
@@ -205,7 +248,7 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
       <Bolum baslik="KİM">
         <div className="gd-kim">
           <svg aria-hidden width="36" height="30" viewBox="-18 -15 36 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gemi }} />
-          <span><b>{A.sahip}</b><small>{tip}{A.arac ? ` · ${A.arac}` : ''}{krt ? ' · kritik yolda' : ''}</small></span>
+          <span><b>{A.sahip}</b><small>{tip}{A.arac ? ` · ${A.arac}` : ''}{sahipAjan && A.agent_sahibi ? ` · ${kisaAd(A.agent_sahibi)} adına çalışır` : ''}{krt ? ' · kritik yolda' : ''}</small></span>
         </div>
         {pay.length > 0 && <p className="gd-satir">Katkı: {pay.map((p) => `${kisaAd(p.ad)} ${p.n} kayıt`).join(' · ')}</p>}
       </Bolum>
@@ -228,15 +271,6 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
       {A.karar_adimi && <Bolum baslik="KARAR" id="gd-karar"><KararBolumu a={A} kod={kod} ben={ben} /></Bolum>}
 
       {ciktiVar && <div id="gd-ciktilar" className="gd-bolum gd-ciktilar"><Ciktilar a={A} kod={kod} /></div>}
-
-      {(altGorevler.length > 0 || altEklenir) && <Bolum baslik={altGorevler.length ? `ALT GÖREVLER · ${altGorevler.length - acikAlt.length}/${altGorevler.length}` : 'ALT GÖREVLER'} id="gd-alt-gorevler">
-        {altGorevler.length > 0 && <ul className="gd-baglar gd-alt-liste">{altGorevler.map((z) => gorevSatiri(z, `${z.durum_etiket || z.durum}${!BITTI(z.durum) && z.en_erken_bitis ? ` · en erken ${gunAy(Date.parse(z.en_erken_bitis))}` : ''}`))}</ul>}
-        {altEklenir && <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const t = altAd.trim(); if (t && !altEkle.isPending) altEkle.mutate(t); }}>
-          <input className="alan" value={altAd} onChange={(e) => setAltAd(e.target.value)} placeholder="Alt görev ekle" aria-label="Yeni alt görevin adı" maxLength={120} />
-          <button type="submit" className="gd-alt-ekle-dugme" disabled={!altAd.trim() || altEkle.isPending} aria-label="Alt görevi ekle">Ekle</button>
-        </form>}
-        {altEkle.isError && <p className="canli-hata-satir" role="alert">{(altEkle.error as Error).message}</p>}
-      </Bolum>}
 
       {altlar.length > 0 && <Bolum baslik={`KALEMLER · ${altlar.length}`}>
         <ul className="gd-baglar">{altlar.map((k) => <li key={k.ad}><button type="button" className="gd-bag" onClick={() => (k.akis ? git(`/akis/${encodeURIComponent(k.akis)}`) : git(`/akis/${encodeURIComponent(kod)}/tekrar/${A.no}`))}><span><b>{k.ad}</b><small>{A.tekrar.kalem_turu || 'kalem'}</small></span></button></li>)}</ul>
