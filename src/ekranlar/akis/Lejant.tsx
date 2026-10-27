@@ -35,19 +35,42 @@ const EVREN_SATIRLAR: Satir[] = [
   [bayrak(22, 22, .9), 'Karar', 'Karar bekleyen adımı var', 'karar'],
 ];
 
+/** Haritada odak (plan 27 Eki, 2.C): kişi ve durum; "?" sayfasının başında. Seçince sayfa kapanır, harita süzülür. */
+export interface OdakAyar {
+  kisiler: string[]; kisi: string | null; kisiSec: (k: string | null) => void;
+  durumlar: { k: string; ad: string; n: number }[]; durum: string | null; durumSec: (k: string | null) => void;
+}
+function OdakSecici({ o, kapat }: { o: OdakAyar; kapat: () => void }) {
+  const cip = (ad: string, basili: boolean, sec: () => void, etiket = ad) => <button key={etiket} type="button" className="filtre-cip" aria-pressed={basili} onClick={() => { sec(); kapat(); }}>{ad}</button>;
+  return (
+    <div className="odak-secici">
+      <h3 className="lejant-alt-baslik">Haritada göster</h3>
+      {o.kisiler.length > 1 && <div className="odak-cipler" role="group" aria-label="Kişi">
+        {cip('Herkes', !o.kisi, () => o.kisiSec(null), 'kisi-hepsi')}
+        {o.kisiler.map((k) => cip(k.replace(/\s*\(.*\)$/, ''), o.kisi === k, () => o.kisiSec(o.kisi === k ? null : k), 'kisi-' + k))}
+      </div>}
+      <div className="odak-cipler" role="group" aria-label="Durum">
+        {cip('Hepsi', !o.durum, () => o.durumSec(null), 'durum-hepsi')}
+        {o.durumlar.filter((d) => d.n > 0).map((d) => cip(`${d.ad} ${d.n}`, o.durum === d.k, () => o.durumSec(o.durum === d.k ? null : d.k), 'durum-' + d.k))}
+      </div>
+    </div>
+  );
+}
+
 /**
  * Harita dili. sayilar verilirse her işaretin yanında bu haritada kaç tane olduğu yazar; olay türü olan işaret
  * (bitti, sırası geldi, engel, atlandı, karar) o türün bildirimlerine gider (N2). akis: galaksinin kodu (bildirimler o akışa süzülür).
  */
-export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string }) {
+export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar }) {
   // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
   const K = yuzeyKodlamalari(yuzey).filter((k) => k.durum === 'var');
   const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SATIRLAR;
   const baslik = yuzey === 'evren' ? 'Evren dili' : 'Harita dili';
-  const y0 = Math.max(60, 844 - (SATIRLAR_.length * 52 + K.length * 40 + 150));
+  const y0 = Math.max(60, 844 - (SATIRLAR_.length * 52 + K.length * 40 + 150 + (odak ? 150 : 0)));
   return (
     <AltSayfa acik={acik} kapat={kapat} baslik={baslik} yukseklik={Math.max(110, y0)} duraklar={['orta']}>
       <div className="lejant">
+        {odak && <OdakSecici o={odak} kapat={kapat} />}
         <h2 className="lejant-baslik">{baslik}</h2>
         <ul aria-label="Harita işaretleri">
           {/* yalnız bu haritada olan işaretler (plan 27 Eki, 3.32): sayısı 0 olan satır gösterilmez */}

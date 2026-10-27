@@ -479,7 +479,7 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .ornek-menusu li button:hover, .ornek-menusu li button:focus-visible { background: color-mix(in srgb, var(--renk-vurgu-lila) 18%, transparent); outline: none; }
 
 /* ---------- Harita gezinme (B3 "Pinch", §12), küme yelpazesi (§3.7), sakin döngüler (§2.5) ---------- */
-.harita-gezinme { position: absolute; touch-action: none; pointer-events: auto; -webkit-user-select: none; user-select: none; }
+.harita-gezinme { position: absolute; touch-action: none; overscroll-behavior: contain; pointer-events: auto; -webkit-user-select: none; user-select: none; }
 .harita-gezinme .harita-katman { right: auto; bottom: auto; }
 /* tıklanır nesne: üstüne gelince ve odakta hale (parçacıklardan ayrılır) */
 .gezegen-hedef { transition: box-shadow var(--sure-anlik, 120ms) ease-out, background-color var(--sure-anlik, 120ms) ease-out; }
@@ -638,7 +638,6 @@ html.kaydir-otur { scroll-snap-type: y proximity; }
 .gorev-harita .gezegen-hedef { cursor: pointer; }
 .pano-satir .pano-ikon { position: absolute; left: 10px; top: 12px; overflow: visible; }
 .pano-baglanti { position: absolute; height: 44px; font-size: 14px; font-weight: 650; }
-.harita-gezinme.kaydirilir { touch-action: pan-y; }
 .harita-suzgec { position: absolute; left: 20px; height: 32px; padding: 0 30px 0 12px; border-radius: 16px; font-size: 12.5px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-seftali); }
 .harita-suzgec::after { content: "×"; position: absolute; right: 11px; top: 6px; font-size: 16px; line-height: 18px; font-weight: 600; }
 .harita-suzgec::before { content: ""; position: absolute; inset: -6px 0; }
@@ -779,11 +778,6 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-ciktilar .ciktilar { padding: 0; }
 .gd-ciktilar .ciktilar .bolum { margin-top: 0; }
 /* W5 · alt görev (N23, N24): üst göreve dönüş, uydu boyunda başlık, ekleme satırı */
-.gd-ust { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin: 0 0 2px; padding: 0 12px 0 8px; border: 0; border-radius: 22px; font: 500 13px/17px var(--font-sans); color: var(--renk-metin-ink2); background: color-mix(in srgb, var(--renk-vurgu-lila) 10%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; max-width: 100%; }
-.gd-ust b { font-weight: 650; color: var(--renk-metin-ink); }
-.gd-ust span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gd-ust svg { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--renk-metin-ink2); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.gd-ust:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
 .gd-tur { display: block; font-size: 11px; line-height: 14px; font-weight: 750; letter-spacing: .7px; color: var(--renk-vurgu-lila); }
 .gd-bas-alt .gd-bas-metin h2 { font-size: 20px; line-height: 25px; }
 .gd-alt-liste { margin-bottom: 8px; }
@@ -830,3 +824,13 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 /* galaksi: geçmişe ya da tahmine bakarken (plan 27 Eki, 3.25) */
 .zaman-seridi { position: absolute; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 2px 0 14px; border-radius: 24px; background: var(--renk-zemin-kart); border: 1px solid var(--renk-vurgu-altin); z-index: 3; font-size: 13px; font-weight: 650; color: var(--renk-metin-altin); }
 .zaman-seridi button { position: relative; height: 44px; padding: 0 14px; border-radius: 22px; font-size: 13px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-altin); }
+/* haritada odak (plan 27 Eki, 2.C): "?" sayfasının başında kişi ve durum */
+.odak-secici { margin-bottom: 14px; }
+.odak-cipler { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.odak-cipler .filtre-cip { flex: 0 1 auto; padding: 0 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* görev yol izi (plan 27 Eki, 2.7): Akış › Üst görev › Görev; tam adlar sarar */
+.gd-yol { display: flex; flex-wrap: wrap; align-items: center; column-gap: 4px; margin: 0 0 4px; font: 500 13px/17px var(--font-sans); color: var(--renk-metin-ink3); }
+.gd-yol button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 2px; text-align: left; color: var(--renk-metin-ink2); font-weight: 600; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--renk-metin-ink2) 35%, transparent); text-underline-offset: 3px; }
+.gd-yol i { font-style: normal; color: var(--renk-metin-ink3); }
+.gd-yol span { padding: 13px 0; color: var(--renk-metin-ink); font-weight: 600; overflow-wrap: anywhere; }
+.gd-yol button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }

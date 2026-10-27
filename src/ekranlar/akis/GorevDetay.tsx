@@ -6,7 +6,7 @@ import { hedefPayi } from '../../bilesen/KararSeridi';
 import { Dugme } from '../../bilesen/Dugme';
 import { C, planet, ship } from '../../cizim/ortak.js';
 import { gunAy, gunAyHafta, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, ozelEk } from '../../metin/turkce';
+import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
 import { adimCumlesi, AdimGecmis, Ciktilar, IHLAL_IPUCU, isPayi, sureKisa, takvimIhlali, tarihSayisi, tuttuklari } from './Adim';
 import { BaglantiGonder } from './BaglantiGonder';
@@ -121,8 +121,8 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
   ];
   const cumle = adimCumlesi(A, ben);
   const bekledigi: number[] = (A.bekledigi || []).filter((b: any) => !BITTI(b.durum)).map((b: any) => b.no);
-  // ne yapılacak (P1-F): adın tamamı kısa addan farklıysa, açıklama, kabul kriteri, beklenen çıktı
-  const yapilacak: [string, string][] = ([['Görev', A.ad !== adimAdi(A) ? A.ad : ''], ['Amaç', A.aciklama || ''], ['Kabul kriteri', A.kriter || ''], ['Beklenen çıktı', A.beklenen_cikti || '']] as [string, string][]).filter(([, v]) => v);
+  // ne yapılacak (P1-F): açıklama, kabul kriteri, beklenen çıktı (adın tamamı yol izinde, plan 27 Eki 2.7)
+  const yapilacak: [string, string][] = ([['Amaç', A.aciklama || ''], ['Kabul kriteri', A.kriter || ''], ['Beklenen çıktı', A.beklenen_cikti || '']] as [string, string][]).filter(([, v]) => v);
   // kim: sahip + iş payı (kim ne kadar yazdı)
   const pay = isPayi(A.olaylar).filter((p) => p.ad !== A.sahip);
   const tip = sahipAjan ? 'AI agent' : A.sahip_tip === 'dis' ? 'dış katılımcı' : A.sahip === ben ? 'sen' : 'ekip';
@@ -162,9 +162,12 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
 
   return (
     <div className="gd" ref={kok}>
-      {ust && <button type="button" className="gd-ust" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${ust.no}`)} aria-label={`Üst görev: ${ust.no}. ${ust.ad}`}>
-        <svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,3 L0,-3 L5,3" /></svg><span>Üst görev · <b>{adimAdi(ust)}</b></span>
-      </button>}
+      {/* yol izi (plan 27 Eki, 2.7): Akış › Üst görev › Görev; adlar tam, kesilmez, satıra sarar */}
+      <nav className="gd-yol" aria-label="Konum">
+        <button type="button" onClick={() => git(`/akis/${encodeURIComponent(kod)}`)} aria-label={`Akış: ${d.akis.baslik || akisAdi(d.akis)}`}>{d.akis.baslik || akisAdi(d.akis)}</button>
+        {ust && <><i aria-hidden>›</i><button type="button" className="gd-ust" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${ust.no}`)} aria-label={`Üst görev: ${ust.no}. ${ust.ad}`}>{ust.ad}</button></>}
+        <i aria-hidden>›</i><span aria-current="page">{A.ad}</span>
+      </nav>
       <header className={`gd-bas${ust ? ' gd-bas-alt' : ''}`}>
         {/* alt görev uydu boyunda (N24): üst görevinden küçük gezegen, "alt görev" etiketi */}
         <svg aria-hidden className="gd-gezegen" width="64" height="64" viewBox="-32 -32 64 64" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 13 : 22) }} />

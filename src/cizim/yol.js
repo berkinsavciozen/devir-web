@@ -92,7 +92,7 @@ function fenerDizisi(pts, ps = 1, aralik = 14) {
 }
 
 /**
- * Sarmal harita. M: akisModeli(). o: { cx, cy, R, ps, now, x (sürgü anı), focus (üye adı), sel (adım no), labels, states, sats, haric,
+ * Sarmal harita. M: akisModeli(). o: { cx, cy, R, ps, now, x (sürgü anı), focus (üye adı), durumOdak (no → bool), sel (adım no), labels, states, sats, haric,
  *   ships, lod: 'detay'|'kucuk', allLit, sira, spin, sis, ip, fener, kule, kuleEtiket, kuleDx, tw, shipSc, rk, rad, pr,
  *   ok (öğe katsayısı: gemi, gezegen), rf (gezegen yarıçap işlevi; verilirse ok yerine), yk (yazı katsayısı) }
  */
@@ -212,7 +212,9 @@ export function yolCiz(M, o = {}) {
     return t;
   };
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
-  for (const no of vis) if (!inCl.has(no)) L[sahipGrubu(no)] += pl(no);
+  // durum odağı (plan 27 Eki, 2.C): uymayan gezegen söner
+  const durumda = (no) => !o.durumOdak || o.durumOdak(+no);
+  for (const no of vis) if (!inCl.has(no)) L[sahipGrubu(no)] += durumda(no) ? pl(no) : `<g opacity=".16">${pl(no)}</g>`;
   for (const c of cl) { const g = G.gezegen[c[0]]; L[o.focus && c.some((n) => G.gezegen[n].uyeler.includes(o.focus)) ? o.focus : byNo[c[0]].sahip] += clusterBadge(g.x, g.y, c, radOf, (n) => [stOf(n) === 'tahmin' ? 'lit' : stOf(n), ex(n)], ps * .9); }
   const gemiler = [];
   if (o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
