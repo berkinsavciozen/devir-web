@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import { api, ApiHatasi, alanSecimi } from '../../api/istemci';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, ApiHatasi, alanSecimi, istek } from '../../api/istemci';
 import { kimlik } from '../../api/kimlik';
 import { oturumDegisti } from '../../api/sorgular';
 import type { Ben, Davet, Rol } from '../../api/turler';
@@ -114,7 +114,89 @@ const A5_CIZIM =
 
 const yerelAd = (e?: string) => { const x = (e || '').split('@')[0].split(/[._-]/)[0]; return x ? x[0].toLocaleUpperCase('tr') + x.slice(1) : ''; };
 
-/** A5 (açık kayıt): davetsiz kişi kendi çalışma alanını açar. POST /kayit {alan_adi, kisi} → acildi → boş evren. */
+/** Referans bağlantısıyla gelinen kod (/katil/KOD): girişten sonra kayıtta kullanılır, alan açılınca silinir. */
+const REFERANS = 'devir:referans';
+export const referansSecimi = {
+  al(): string | null { try { return localStorage.getItem(REFERANS); } catch { return null; } },
+  koy(kod: string | null) { try { if (kod) localStorage.setItem(REFERANS, kod); else localStorage.removeItem(REFERANS); } catch { /* yok */ } },
+};
+
+/** Referans sayfası (/katil/KOD, karar 4.B): kimin önerdiği; devam edince giriş, sonra katılım isteği. */
+export function Katil({ kod }: { kod: string }) {
+  const q = useQuery({ queryKey: ['referans-bilgi', kod], queryFn: () => istek<any>('GET', `/api/v1/referans/${encodeURIComponent(kod)}`, undefined, { kimliksiz: true }), retry: false });
+  const devam = () => { referansSecimi.koy(kod.toUpperCase()); git('/', { yerine: true }); };
+  return (
+    <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A4_CIZIM} etiket="Devir'e katıl" ortala>
+      <UstSatir />
+      {q.isError ? <>
+        <Metin y={400} fs={28} lh={34} serif agirlik={700} hiza="orta" as="h1">Bu bağlantı geçerli değil</Metin>
+        <Metin y={436} fs={17} lh={23} serif renk="ink2" hiza="orta">Seni öneren kişiden bağlantıyı<br />yeniden göndermesini iste.</Metin>
+        <Dugme style={{ top: 520 }} onClick={() => git('/', { yerine: true })}>Devir’e git</Dugme>
+      </> : <>
+        <Metin y={400} fs={28} lh={34} serif agirlik={700} hiza="orta" as="h1">{q.data?.davet_eden ? `${q.data.davet_eden} seni Devir’e çağırdı` : 'Devir’e katıl'}</Metin>
+        <Metin y={436} fs={17} lh={23} serif renk="ink2" hiza="orta">Ekibinle ve AI agent’larınla<br />aynı işi tek kayıtta yürüt.</Metin>
+        <Kutu y={494} h={58} className="kart bilgi-karti">
+          <Ikon svg={bilgiIkon()} w={18} />
+          <span>{q.data?.acik_kayit ? 'E-postanla giriş yapınca kendi alanını açarsın.' : 'E-postanla giriş yap; onaylanınca kendi alanını açarsın.'}</span>
+        </Kutu>
+        <Dugme mesgul={q.isPending} style={{ top: 580 }} onClick={devam}>Devam et</Dugme>
+      </>}
+    </Sahne>
+  );
+}
+
+/** Referansla gelen, açık kayıt kapalıyken: adını yazar, katılım ister; istek onay listesine düşer. */
+function KatilimIste({ ben, kod, yenile }: { ben: Ben; kod: string; yenile: () => void }) {
+  const [ad, setAd] = useState(() => yerelAd(ben.eposta));
+  const [mesgul, setMesgul] = useState(false);
+  const [hata, setHata] = useState<string | null>(null);
+  const iste = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ad.trim()) { setHata('Adını yaz.'); return; }
+    setMesgul(true); setHata(null);
+    try {
+      const r = await api.post<any>('/kayit', { referans: kod, kisi: ad.trim() });
+      if (r.acildi) { referansSecimi.koy(null); alanSecimi.koy(r.acildi.alan_id); }
+      yenile();
+    } catch (er) {
+      if (er instanceof ApiHatasi && er.durum === 404) referansSecimi.koy(null);
+      setHata(er instanceof ApiHatasi ? er.hata : 'Şu an bağlanılamadı. Yeniden dene.');
+    } finally { setMesgul(false); }
+  };
+  return (
+    <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A5_CIZIM} etiket="Katılım iste" ortala>
+      <UstSatir eposta={ben.eposta} />
+      <Metin y={400} fs={28} lh={34} serif agirlik={700} hiza="orta" as="h1">Katılım iste</Metin>
+      <Metin y={436} fs={17} lh={23} serif renk="ink2" hiza="orta">Devir şimdilik onayla açılıyor;<br />onaylanınca e-posta gelir.</Metin>
+      <form onSubmit={iste} noValidate>
+        <Metin y={492} x={22} fs={12} agirlik={600} renk="ink3" as="label" style={{ right: 'auto' }}><span id="ad-etiket">Adın</span></Metin>
+        {hata && <Metin y={492} x={368} fs={12} agirlik={600} renk="mercan" hiza="sag" style={{ left: 'auto' }}><span role="alert">{hata}</span></Metin>}
+        <Kutu y={500}><input className="alan" aria-labelledby="ad-etiket" autoComplete="given-name" value={ad} onChange={(e) => setAd(e.target.value)} /></Kutu>
+        <Dugme type="submit" mesgul={mesgul} style={{ top: 580 }}>Katılım iste</Dugme>
+      </form>
+      <Kutu y={646} h={44} as="button" className="metin-dugme" onClick={cikisYap}>Başka e-postayla gir</Kutu>
+    </Sahne>
+  );
+}
+
+/** İstek onay listesinde: onaylanınca giriş e-postası gelir. */
+function OnayBekliyor({ ben, yenile, yenileniyor }: { ben: Ben; yenile: () => void; yenileniyor: boolean }) {
+  return (
+    <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A5_CIZIM} etiket="Onay bekleniyor" ortala>
+      <UstSatir eposta={ben.eposta} />
+      <Metin y={400} fs={28} lh={34} serif agirlik={700} hiza="orta" as="h1">İsteğin alındı</Metin>
+      <Metin y={436} fs={17} lh={23} serif renk="ink2" hiza="orta">{ben.bekleme?.tarih ? `${gunAy(ben.bekleme.tarih)} tarihli isteğin` : 'İsteğin'} onay bekliyor;<br />onaylanınca e-posta gelir.</Metin>
+      <Kutu y={494} h={58} className="kart bilgi-karti">
+        <Ikon svg={bilgiIkon()} w={18} />
+        <span>Giriş bağlantısı bu adrese gelir: <span className="kirilmaz">{ben.eposta}</span></span>
+      </Kutu>
+      <Dugme mesgul={yenileniyor} style={{ top: 580 }} onClick={yenile}>Yeniden dene</Dugme>
+      <Dugme tur="ikincil" ton="lila" yukseklik={50} fs={15} style={{ top: 646 }} onClick={cikisYap}>Başka e-postayla gir</Dugme>
+    </Sahne>
+  );
+}
+
+/** A5 (açık kayıt ya da onaylanmış referans): davetsiz kişi kendi çalışma alanını açar. POST /kayit {alan_adi, kisi} → acildi → boş evren. */
 function AlanAc({ ben }: { ben: Ben }) {
   const [ad, setAd] = useState(() => yerelAd(ben.eposta));
   const [alan, setAlan] = useState('');
@@ -127,7 +209,9 @@ function AlanAc({ ben }: { ben: Ben }) {
     if (!kisi) { setHata('Adını yaz.'); return; }
     setMesgul(true); setHata(null);
     try {
-      const r = await api.post<{ acildi: { alan_id: string } }>('/kayit', { alan_adi: alanAdi, kisi });
+      const ref = referansSecimi.al();
+      const r = await api.post<{ acildi: { alan_id: string } }>('/kayit', { alan_adi: alanAdi, kisi, ...(ref ? { referans: ref } : {}) });
+      referansSecimi.koy(null);
       alanSecimi.koy(r.acildi.alan_id);
       await qc.invalidateQueries();
       git('/', { yerine: true });
@@ -155,7 +239,11 @@ function AlanAc({ ben }: { ben: Ben }) {
 
 /** A5 · Bekleyen davet yok. Kayıt açıksa kişi kendi alanını açar; kapalıysa davet ister. */
 export function DavetYok({ ben, yenile, yenileniyor }: { ben: Ben; yenile: () => void; yenileniyor: boolean }) {
-  if (ben.acik_kayit) return <AlanAc ben={ben} />;
+  // referansla gelen (karar 4.B): onaylanınca ya da açık kayıtta alanını açar; istek bekliyorsa onu söyler
+  const ref = referansSecimi.al();
+  if (ben.acik_kayit || ben.bekleme?.durum === 'onaylandi') return <AlanAc ben={ben} />;
+  if (ben.bekleme?.durum === 'bekliyor') return <OnayBekliyor ben={ben} yenile={yenile} yenileniyor={yenileniyor} />;
+  if (ref && !ben.bekleme) return <KatilimIste ben={ben} kod={ref} yenile={yenile} />;
   return (
     <Sahne gok={{ tohum: 23, yildiz: 220, parilti: 2 }} cizim={A5_CIZIM} etiket="Davet yok" ortala>
       <UstSatir eposta={ben.eposta} />

@@ -44,7 +44,7 @@ export const useUyeler = (etkin = true) => useQuery({ queryKey: ['uyeler'], quer
 /** Ayarlar · Ben grubu: kişi, çalışma alanları, davetler (eski Hesap çekmecesi K3); çıkış sayfanın sonunda. */
 export function hesapYuksekligi(ben: Ben | undefined, y: number, cikis = true) {
   const U = ben?.uyelikler?.length || 0, D = ben?.bekleyen_davetler?.length || 0;
-  return y + 80 + (U ? 34 + U * 66 : 0) + (D ? 34 + D * 66 : 0) + (cikis ? 24 + 50 : 0);
+  return y + 80 + (U > 1 ? 34 + U * 66 : 0) + (D ? 34 + D * 66 : 0) + (cikis ? 24 + 50 : 0);
 }
 export const CikisSatiri = ({ y }: { y: number }) => (
   <button type="button" className="hesap-satir cikis" style={{ top: y, left: 20, right: 20 }} onClick={cikisYap}>
@@ -63,7 +63,8 @@ export function HesapIcerik({ y, ben, cikis = true }: { y: number; ben: Ben | un
   let L = y;
   const kisi = <SatirKart y={L + 2} h={66} ikon={kisiGemi(ben.kisi || '', 'insan', true, 26, 33, .85)} ust={ben.kisi} alt={ben.eposta || rolAdi(ben.rol || '')} />;
   L += 80;
-  const alanL = U.length ? L : null; if (alanL != null) L += 34 + U.length * 66;
+  // çalışma alanı tek olduğu sürece gösterilmez (plan 27 Eki, Epic 4)
+  const alanL = U.length > 1 ? L : null; if (alanL != null) L += 34 + U.length * 66;
   const davetL = D.length ? L : null; if (davetL != null) L += 34 + D.length * 66;
   return <>
     {kisi}

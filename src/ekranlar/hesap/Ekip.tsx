@@ -9,8 +9,9 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { gunAy } from '../../cizim/yol.js';
 import { ozelEk } from '../../metin/turkce';
 import { Segment } from '../akis/Adim';
-import { git, tamAdres } from '../../yonlendirme';
-import { KopyaAlan } from './Ayarlar';
+import { arama, git, tamAdres } from '../../yonlendirme';
+import { KopyaAlan, katilimciDurumu } from './Ayarlar';
+import { BaglantiGonder } from '../akis/BaglantiGonder';
 import { kisiGemi, rolAdi, SatirKart, Svg, useUyeler } from './Hesap';
 import { useOzet } from '../../api/sorgular';
 import { akisAdi } from '../../metin/turkce';
@@ -42,6 +43,10 @@ export function Ekip() {
   const an = useQuery({ queryKey: ['anahtarlar'], queryFn: () => api.get<any>('/anahtarlar'), enabled: ben?.rol === 'sahip' });
   const [sayfa, setSayfa] = useState<null | { tur: 'davet' } | { tur: 'paylas'; davet: any } | { tur: 'uye'; uye: any } | { tur: 'cikar'; uye: any }>(null);
   const [geriAl, setGeriAl] = useState<any>(null);
+  // Epic 4: dış katılımcılar tek listede, akışa göre süzülür; satır paylaşım sayfasını açar (yeniden gönder, kapat)
+  const kt = useQuery({ queryKey: ['katilimcilar-tum'], queryFn: () => api.get<any>('/katilimcilar'), enabled: ben?.rol === 'sahip', staleTime: 60_000 });
+  const [disAkis, setDisAkis] = useState<string | null>(null);
+  const [paylas, setPaylas] = useState<any>(null);
   const tazele = () => void sorguIstemcisi.invalidateQueries({ queryKey: ['uyeler'] });
   const iptal = useMutation({ mutationFn: (d: any) => api.post<any>(`/davet/${d.id}/iptal`, {}), onSuccess: (_, d) => { setGeriAl(d); tazele(); } });
   const geriAlM = useMutation({ mutationFn: (d: any) => api.post<any>('/davet', { eposta: d.eposta, kisi: d.kisi, rol: d.rol, kapsam: d.kapsam }), onSuccess: () => { setGeriAl(null); tazele(); } });
@@ -56,10 +61,17 @@ export function Ekip() {
   const davetL = 160, uyeL = D.length ? 174 + D.length * 136 + 26 : 160;
   const bilgiY = uyeL + 44 + U.length * 74;
   const altY = Math.max(742, bilgiY + 40);
+  const KT0: any[] = kt.data?.katilimcilar || [];
+  const disAkislar = [...new Map(KT0.map((k) => [k.akis.kod, k.akis])).values()];
+  const KT = disAkis ? KT0.filter((k) => k.akis.kod === disAkis) : KT0;
+  const disY = altY + 54 + 46, disL = disY + 14 + (disAkislar.length > 1 ? 58 : 0);
+  const sonY = KT0.length ? disL + KT.length * 74 : disY + 40;
+  // ?bolum=dis: Ayarlar'daki "Dış katılımcılar" satırından gelindi
+  useEffect(() => { if (arama().get('bolum') === 'dis' && kt.data) document.getElementById('ekip-dis')?.scrollIntoView({ block: 'start' }); }, [kt.data]);
   if (ben && ben.rol !== 'sahip') return <Sahne gok={GOK} etiket="Ekip"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Ekip" geri={geri} /></Kutu><Metin y={112} fs={17} lh={22} serif renk="ink2">Ekibi yalnız alanın sahibi yönetir.</Metin></Sahne>;
   return (
     <>
-      <Sahne gok={GOK} etiket="Ekip" yukseklik={altY + 102}>
+      <Sahne gok={GOK} etiket="Ekip" yukseklik={sonY + 60}>
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Ekip" geri={geri} /></Kutu>
         {q.data && <Metin y={110} fs={17.5} lh={22} serif as="p" className="tek-satir">{ekipCumlesi(U, D)}</Metin>}
         {D.length > 0 && <h3 className="bolum-baslik" style={{ top: davetL - 12 }}>DAVETLER</h3>}
@@ -88,7 +100,22 @@ export function Ekip() {
         {geriAl && <span className="hap silindi-hap geri-al" role="status" style={{ top: altY - 50 }}>Davet iptal edildi · <button type="button" onClick={() => geriAlM.mutate(geriAl)}>Geri al</button></span>}
         <Dugme style={{ top: altY }} fs={16} ikonX={126 - 20} kayma={8} onClick={() => setSayfa({ tur: 'davet' })}
           ikon={<svg aria-hidden width="14" height="14" viewBox="-7 -7 14 14"><path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#2A1D4F" strokeWidth="2.4" strokeLinecap="round" /></svg>}>Kişi davet et</Dugme>
+        <h3 id="ekip-dis" className="bolum-baslik" style={{ top: disY - 12 }}>DIŞ KATILIMCILAR</h3>
+        {kt.data && <span className="bolum-not" style={{ top: disY - 12 }}>{KT0.length ? `${KT0.filter((k) => k.durum === 'acik').length} bağlantı açık` : ''}</span>}
+        {disAkislar.length > 1 && <div className="filtre-satir" role="group" aria-label="Akışa göre süz" style={{ top: disY + 14 }}>
+          <button type="button" className="filtre-cip" aria-pressed={!disAkis} onClick={() => setDisAkis(null)}>Hepsi</button>
+          {disAkislar.map((a: any) => <button key={a.kod} type="button" className="filtre-cip" aria-pressed={disAkis === a.kod} onClick={() => setDisAkis(a.kod)}>{akisAdi(a)}</button>)}
+        </div>}
+        {kt.data && !KT0.length && <Metin y={disY + 22} x={22} fs={13.5} renk="ink3" style={{ right: 22 }}>Bir görevden bağlantı paylaşınca dış katılımcılar burada görünür.</Metin>}
+        <div role="list" aria-label="Dış katılımcılar">{KT.map((k, i) => (
+          <div role="listitem" key={k.id} style={{ display: 'contents' }}>
+            <SatirKart y={disL + i * 74} h={66} ikon={kisiGemi(k.ad, 'dis', false, 26, 32, .85)} ust={k.ad.replace(/\s*\(.*\)$/, '')}
+              alt={[akisAdi(k.akis), katilimciDurumu(k), k.son_acilis ? `son açılış ${gunAy(Date.parse(k.son_acilis))}` : null, `${k.acik_adim}/${k.adim_sayisi} açık adım`].filter(Boolean).join(' · ')}
+              onClick={() => setPaylas(k)} etiket={`${k.ad}, ${akisAdi(k.akis)}: ${katilimciDurumu(k)}. Paylaşımı aç.`} />
+          </div>
+        ))}</div>
       </Sahne>
+      {paylas && <BaglantiGonder kod={paylas.akis.kod} kisi={paylas.ad} kisiId={paylas.kisi_id} adimSayisi={paylas.adim_sayisi} kapat={() => setPaylas(null)} />}
       {sayfa?.tur === 'davet' && <DavetEt kapat={() => setSayfa(null)} bitti={(r) => { tazele(); if (r.gonderildi) setSayfa(null); else { gitmedi(r.davet.id); setSayfa({ tur: 'paylas', davet: r.davet }); } }} />}
       {sayfa?.tur === 'paylas' && <DavetPaylas d={sayfa.davet} kapat={() => setSayfa(null)} />}
       {sayfa?.tur === 'uye' && <UyeSayfa u={sayfa.uye} kapat={() => setSayfa(null)} cikar={() => setSayfa({ tur: 'cikar', uye: sayfa.uye })} />}

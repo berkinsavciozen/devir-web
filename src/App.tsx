@@ -14,7 +14,7 @@ import { Evren } from './ekranlar/evren/Evren';
 import { Akislar } from './ekranlar/evren/Akislar';
 import { Arsiv } from './ekranlar/evren/Arsiv';
 import { ClaudeaBagla } from './ekranlar/evren/ClaudeaBagla';
-import { DavetKabul, DavetYok } from './ekranlar/giris/Davet';
+import { DavetKabul, DavetYok, Katil } from './ekranlar/giris/Davet';
 import { Giris } from './ekranlar/giris/Giris';
 import { GirisDonus } from './ekranlar/giris/GirisDonus';
 import { OauthOnay } from './ekranlar/giris/OauthOnay';
@@ -127,6 +127,8 @@ export function App() {
   if (yol === '/_iskelet') ekran = <><Gok tohum={21} yildiz={330} /><Iskelet /></>;
   else if (yol === '/giris') ekran = <GirisDonus />;
   else if (yol === '/oauth/onay') ekran = <OauthOnay />;
+  // referans bağlantısı (P7, karar 4.B): girişten önce kimin önerdiğini gösterir
+  else if (eslestir('/katil/:kod', yol)) ekran = <Katil kod={eslestir('/katil/:kod', yol)!.kod} />;
   // dış bağlantı: belirteç # parçasında (/l#…, N-3); eski /l/<belirteç> biçimi de açılır
   else if (yol === '/l' && location.hash.length > 1) ekran = <Baglanti token={decodeURIComponent(location.hash.slice(1))} />;
   else if (eslestir('/l/:token', yol)) ekran = <Baglanti token={eslestir('/l/:token', yol)!.token} />;

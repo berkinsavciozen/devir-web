@@ -151,3 +151,23 @@ export function evrenSayilari(kartlar: any[], detay: Record<string, any>): Parti
 
 /** "?" düğmesinin içi */
 export const SoruIkon = () => <svg aria-hidden viewBox="-10 -10 20 20"><path d="M-3.2,-3.4 Q-3.2,-7 0,-7 Q3.4,-7 3.4,-3.8 Q3.4,-1.6 0.8,-0.4 Q0,0 0,1.8" /><circle cx="0" cy="5.4" r=".6" /></svg>;
+
+/** Ayarlar · "Tüm harita dili" (plan 27 Eki, Epic 4): sayfalardaki lejant yalnız görünen işaretleri gösterir; burada hepsi. */
+export function TumHaritaDili({ acik, kapat }: { acik: boolean; kapat: () => void }) {
+  const satir = ([svg, ad, alt]: Satir) => <li key={ad} title={`${ad}: ${alt}`}><svg aria-hidden width="44" height="44" viewBox="0 0 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: svg }} /><span><b>{ad}</b><small>{alt}</small></span></li>;
+  const K = yuzeyKodlamalari('galaksi').filter((k) => k.durum === 'var');
+  return (
+    <AltSayfa acik={acik} kapat={kapat} baslik="Tüm harita dili" yukseklik={60} duraklar={['yuksek']}>
+      <div className="lejant">
+        <h2 className="lejant-baslik">Tüm harita dili</h2>
+        <h3 className="lejant-alt-baslik">Evren: bütün akışlar</h3>
+        <ul aria-label="Evren işaretleri">{EVREN_SATIRLAR.map(satir)}</ul>
+        <h3 className="lejant-alt-baslik">Akış haritası: görevler ve kişiler</h3>
+        <ul aria-label="Akış haritası işaretleri">{SATIRLAR.map(satir)}</ul>
+        <p className="lejant-not">Alt görevler ana görevin çevresinde halka olarak görünür; yakınlaşınca kendi küçük yollarında açılır. Yol üzerindeki sıra zamandır: kimin kimi beklediğini görmek için göreve dokun.</p>
+        <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
+        <dl className="lejant-kodlama">{K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k.galaksi}</dd></div>)}</dl>
+      </div>
+    </AltSayfa>
+  );
+}

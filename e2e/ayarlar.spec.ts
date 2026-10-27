@@ -62,8 +62,8 @@ test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır, şeritler kişi baş�
   await hedefler(page);
 });
 
-// tek sayfa (el notu 17): dört grup; adres grubu açar, eski ?sekme= adresleri de aynı gruba iner
-for (const [s, ad, baslik] of [['ekip', 'K1-alan', 'EKİP'], ['baglantilar', 'K1-baglantilar', 'BAĞLANTILAR'], ['ben', 'K1-hesap', 'BEN'], ['gorunum', 'K1-gorunum', 'GÖRÜNÜM VE BİLDİRİMLER']] as const) {
+// tek sayfa (plan 27 Eki, Epic 4): beş grup; adres grubu açar, eski ?bolum= / ?sekme= adresleri de aynı gruba iner
+for (const [s, ad, baslik] of [['kisiler', 'K1-alan', 'KİŞİLER'], ['gelismis', 'K1-baglantilar', 'GELİŞMİŞ'], ['ben', 'K1-hesap', 'BEN'], ['harita', 'K1-gorunum', 'HARİTA DİLİ'], ['oner', 'K1-oner', 'DEVİR’İ ÖNER'], ['ekip', 'K1-eski-ekip', 'KİŞİLER']] as const) {
   test(`${ad}: Ayarlar · ${s}`, async ({ page }) => {
     await ac(page, `/ayarlar?senaryo=berkin&hal=ekip&bolum=${s}`);
     const h = page.getByRole('heading', { name: baslik, exact: true });
@@ -74,10 +74,10 @@ for (const [s, ad, baslik] of [['ekip', 'K1-alan', 'EKİP'], ['baglantilar', 'K1
   });
 }
 
-test('K1-tek-sayfa: dört grup tek sayfada; rol tablosu "?" arkasında; avatar Ben grubunu açar', async ({ page }) => {
+test('K1-tek-sayfa: beş grup tek sayfada; rol tablosu "?" arkasında; avatar Ben grubunu açar', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=ekip&sekme=gorunum');
-  await expect(page.getByRole('heading', { name: 'GÖRÜNÜM VE BİLDİRİMLER' })).toBeInViewport();
-  for (const b of ['BEN', 'EKİP', 'BAĞLANTILAR']) await expect(page.getByRole('heading', { name: b, exact: true })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'HARİTA DİLİ' })).toBeInViewport();
+  for (const b of ['BEN', 'KİŞİLER', 'DEVİR’İ ÖNER', 'GELİŞMİŞ']) await expect(page.getByRole('heading', { name: b, exact: true })).toHaveCount(1);
   await expect(page.getByText('Bağlantı denetimi')).toBeVisible();
   // son satır alt çubuğun üstüne kadar kayabilir
   await page.mouse.wheel(0, 4000);
@@ -98,7 +98,7 @@ test('K1-sayilar: Ayarlar ekip satırı ile Ekip sayfası aynı sayıyı söyler
   await expect(satir).toContainText(/\d+ üye · \d+ kişide anahtar/);
   const metin = (await satir.textContent())!, uye = metin.match(/(\d+) üye/)![1], anahtar = metin.match(/(\d+) kişide anahtar/)![1];
   await satir.click();
-  await expect(page.locator('.bolum-not')).toHaveText(`${uye} üye · ${anahtar} kişide anahtar`);
+  await expect(page.locator('.bolum-not').first()).toHaveText(`${uye} üye · ${anahtar} kişide anahtar`);
   await expect(page.locator('.satir-kart', { hasText: 'anahtarı var' })).toHaveCount(Number(anahtar));
 });
 
@@ -135,4 +135,78 @@ test('M2-ayarlar: masaüstünde panel üstünden Ayarlar, yüzen gezinmeden Gör
   await page.goBack();
   await page.getByRole('button', { name: 'Ayarlar' }).click();
   await expect(page).toHaveURL(/\/ayarlar/);
+});
+
+test('K1-tek-alan: tek çalışma alanı gösterilmez; ikinci alan olunca liste görünür', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin');
+  await expect(page.getByRole('heading', { name: 'BEN', exact: true })).toBeVisible();
+  await expect(page.getByText('ÇALIŞMA ALANLARI')).toHaveCount(0);
+  await ac(page, '/ayarlar?senaryo=iki-alan');
+  await expect(page.getByText('ÇALIŞMA ALANLARI')).toBeVisible();
+});
+
+test('P7-agentlar: bağlı Claude listede; kaldırılınca çıkar, bağlama rehberi açılır', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin');
+  await expect(page.getByRole('heading', { name: 'AGENT’LARIM' })).toBeVisible();
+  await expect(page.locator('.satir-kart', { hasText: 'son kullanım 14 Eki' })).toHaveCount(1);
+  await page.getByRole('button', { name: 'Claude bağlantısını kaldır' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Kaldır', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Claude bağlantısını kaldır' })).toHaveCount(0);
+  await page.getByRole('button', { name: /Claude ya da ChatGPT bağla/ }).click();
+  await expect(page).toHaveURL(/\/bagla/);
+});
+
+test('P8-kullanim: Ayarlar oranı gösterir, tutarı göstermez', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin');
+  const k = page.getByRole('group', { name: 'Devir AI kullanımı' });
+  await expect(k).toContainText('Bu ayın kullanımı: %62');
+  await expect(k).toContainText('1 Kasım’da'.replace('’', "'"));
+  await expect(k).not.toContainText('$');
+  await expect(k).not.toContainText('USD');
+});
+
+test('P7-oner: referans bağlantısı ve onay listesi; onaylanan listeden düşer', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin&bolum=oner');
+  await expect(page.getByRole('heading', { name: 'DEVİR’İ ÖNER' })).toBeInViewport();
+  await expect(page.locator('.kopya-deger', { hasText: '/katil/BERK26' })).toBeVisible();
+  await page.waitForTimeout(300);
+  await cek(page, 'P7-oner');
+  await hedefler(page);
+  await page.getByRole('button', { name: /Onay bekleyenler/ }).click();
+  const d = page.getByRole('dialog', { name: 'Onay bekleyenler' });
+  await expect(d.getByRole('list', { name: 'Onay bekleyenler' })).toContainText('ayse@ornek.com');
+  await d.getByRole('button', { name: 'ayse@ornek.com: onayla' }).click();
+  await expect(d.getByRole('list', { name: 'Onay bekleyenler' }).getByRole('listitem')).toHaveCount(0);
+  await expect(d.getByRole('list', { name: 'Son kararlar' })).toContainText('onaylandı');
+});
+
+test('P7-dis: Kişiler · dış katılımcılar listesi; satır paylaşım sayfasını açar', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin');
+  await page.getByRole('button', { name: /Dış katılımcılar/ }).click();
+  await expect(page).toHaveURL(/\/ayarlar\/ekip\?bolum=dis/);
+  const L = page.getByRole('list', { name: 'Dış katılımcılar' });
+  await expect(L.getByRole('listitem')).toHaveCount(1);
+  await expect(L).toContainText('Emre');
+  await L.getByRole('button').first().click();
+  await expect(page.getByRole('dialog', { name: /Emre ile paylaş/ })).toBeVisible();
+});
+
+test('P7-katil: referans sayfası öneren kişiyi gösterir; girişten sonra katılım isteği onaya düşer', async ({ page }) => {
+  await ac(page, '/katil/BERK26?senaryo=davetsiz&kayit=kapali');
+  await expect(page.getByRole('heading', { name: 'Berkin seni Devir’e çağırdı' })).toBeVisible();
+  await cek(page, 'P7-katil');
+  await page.getByRole('button', { name: 'Devam et' }).click();
+  await expect(page.getByRole('heading', { name: 'Katılım iste' })).toBeVisible();
+  await page.getByRole('button', { name: 'Katılım iste' }).click();
+  await expect(page.getByRole('heading', { name: 'İsteğin alındı' })).toBeVisible();
+  await ac(page, '/katil/YOKKOD?senaryo=davetsiz');
+  await expect(page.getByRole('heading', { name: 'Bu bağlantı geçerli değil' })).toBeVisible();
+});
+
+test('P7-harita-dili: "Tüm harita dili" evren ve akış işaretlerinin hepsini açar', async ({ page }) => {
+  await ac(page, '/ayarlar?senaryo=berkin&bolum=harita');
+  await page.getByRole('button', { name: /Tüm harita dili/ }).click();
+  const d = page.getByRole('dialog', { name: 'Tüm harita dili' });
+  await expect(d.getByRole('list', { name: 'Evren işaretleri' }).getByRole('listitem')).toHaveCount(8);
+  await expect(d.getByRole('list', { name: 'Akış haritası işaretleri' }).getByRole('listitem')).toHaveCount(17);
 });
