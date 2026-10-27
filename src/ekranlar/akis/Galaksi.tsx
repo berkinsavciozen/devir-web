@@ -16,7 +16,7 @@ import { git, arama } from '../../yonlendirme';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
-import { galaksiSayilari, Lejant, SoruIkon, type OdakAyar } from './Lejant';
+import { galaksiSayilari, lejantGezegenleri, Lejant, SoruIkon, type OdakAyar } from './Lejant';
 import { AkisMenusu, useAkisBolumu, type AkisSuzgec } from './Bilgi';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { KapaliGalaksi } from './Kapali';
@@ -116,6 +116,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // durum odağı (plan 27 Eki, 2.C): "?" sayfasından; uymayan gezegenler söner
   const [durumOdak, setDurumOdak] = useState<GDurum | null>(null);
   const [lejant, setLejant] = useState(false);
+  // lejant satırı → o işaretli gezegenler kısa süre yanıp söner (plan 27 Eki, 3.G)
+  const [parla, setParla] = useState<Set<number> | null>(null);
+  useEffect(() => { if (!parla) return; const t = setTimeout(() => setParla(null), 2600); return () => clearTimeout(t); }, [parla]);
   const [menu, setMenu] = useState(false);
   const [gonder, setGonder] = useState<string | null>(null);
   const [neden, setNeden] = useState(false);
@@ -173,7 +176,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const yk = yaziKat(kat, 11), gemiK = Math.min(kat, 1.9), rf = (r: number) => buyut(r, kat, r0);
     // küme: yalnız tasarım boyunda da üst üste binenler (büyüyen gezegenler birbirinin üstüne çizilir, rozete düşmez)
     const kumeRad = (no: number) => temel.radOf(no) * Math.min(kat, 1.4);
-    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || zk >= 1.6 ? [] : labels, sats, satOn: A?.no, sel: selNo ?? undefined, shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
+    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || zk >= 1.6 ? [] : labels, sats, satOn: A?.no, sel: selNo ?? undefined, parla: parla || undefined, shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
     const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ps: SU.ps });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geoZ, now: NOW }) : { svg: '', hedefler: [] };
@@ -195,7 +198,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const YP = kume ? yelpaze(d, Y, kume, bolge, GD ? GD.W : 390, GD ? GD.H : 844) : null;
     if (YP) svg += YP.svg;
     return { svg, Y, Z, SK, YP };
-  }, [M, temel, d, X, NOW, odak, durumOdak, sahip, oynuyor, tarihNo, geo, geoZ, zk, yak, bolge, kuleAcik, kisiKarti, yelpazeNo, GD, selNo]);
+  }, [M, temel, d, X, NOW, odak, durumOdak, sahip, oynuyor, tarihNo, geo, geoZ, zk, yak, bolge, kuleAcik, kisiKarti, yelpazeNo, GD, selNo, parla]);
   // Esc: yelpaze ve kule kartı kapanır
   useEffect(() => {
     if (yelpazeNo == null && !kuleAcik) return;
@@ -252,6 +255,15 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   type Hedef = Daire & { key: string; etiket: string; olay: Record<string, any>; sinif?: string; basili?: boolean; ipucu?: string };
   const hedefler: Hedef[] = [];
   const gor = (x: number, y: number) => gz.icinde(x, y, 8);
+  // küme rozeti (3.24a): harita kümeye yumuşakça yakınlaşır; en yakında hâlâ üst üsteyse yelpaze açılır
+  const KUME_YAKIN = 3.9;
+  const kumeyeDokun = (c: number[], g: { x: number; y: number }) => {
+    if (yelpazeNo != null && c.includes(yelpazeNo)) { setYelpazeNo(null); return; }
+    const d0 = gz.g;
+    if (d0.k >= KUME_YAKIN) { setYelpazeNo(c[0]); return; }
+    const k = Math.min(4, d0.k * 2.5), r = k / d0.k, mx = bolge.x + bolge.w / 2, my = bolge.y + bolge.h / 2;
+    gz.git({ k, tx: g.x - (g.x - d0.tx) * r + (mx - g.x), ty: g.y - (g.y - d0.ty) * r + (my - g.y) });
+  };
   const kumede = new Set<number>((Y.clusters || []).flat());
   for (const g of Object.values(Y.G.gezegen)) {
     const a = byNo.get(g.no); if (!a || kumede.has(g.no) || !gor(g.x, g.y)) continue;
@@ -264,7 +276,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   for (const c of (Y.clusters || []) as number[][]) {
     const g = Y.G.gezegen[c[0]]; if (!gor(g.x, g.y)) continue;
     const adlar = c.map((no) => byNo.get(no)).filter(Boolean).map((a: any) => adimAdi(a));
-    hedefler.push({ key: 'k' + c[0], x: g.x, y: g.y, r: Math.max(22, Y.radOf(c[0]) + 12), etiket: `${c.length} adım bir arada: ${adlar.join(', ')}. Açmak için dokun.`, ipucu: `${c.length} adım: ${adlar.join(', ')}`, basili: yelpazeNo != null && c.includes(yelpazeNo), olay: { onClick: () => setYelpazeNo(yelpazeNo != null && c.includes(yelpazeNo) ? null : c[0]) } });
+    hedefler.push({ key: 'k' + c[0], x: g.x, y: g.y, r: Math.max(22, Y.radOf(c[0]) + 12), etiket: `${c.length} adım bir arada: ${adlar.join(', ')}. ${gz.g.k >= KUME_YAKIN ? 'Açmak' : 'Yakınlaşmak'} için dokun.`, ipucu: `${c.length} adım: ${adlar.join(', ')}`, basili: yelpazeNo != null && c.includes(yelpazeNo), olay: { onClick: () => kumeyeDokun(c, g) } });
   }
   SK.hedefler.forEach((h, i) => hedefler.push({ key: 'soru' + i, x: h.x, y: h.y, r: h.r, etiket: h.etiket, olay: { onClick: () => git(`/akis/${encodeURIComponent(kod)}/soru/${encodeURIComponent(h.soru)}`) } }));
   const koy = (h: Hedef) => { if (gor(h.x, h.y) && bos(h, hedefler)) hedefler.push(h); };
@@ -289,6 +301,10 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (yer) hedefler.push({ key: 'kisi' + sh.ad, ...yer, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
   }
 
+  // lejant: sayılar ve satıra dokununca yanıp sönecek gezegenler (yalnız haritada çizilen ana görevler)
+  const isaretli = lejantGezegenleri(d, temel?.G);
+  const lejantSayilari = { ...galaksiSayilari(d.adimlar, d), ortak: isaretli.ortak.length, ip: temel?.G.ipler.length ?? 0, darbogaz: isaretli.darbogaz.length || undefined };
+  const vurgula = (an: string) => { const n = (isaretli as Record<string, number[]>)[an]; if (n?.length) setParla(new Set(n)); };
   const kisiler = [...new Set<string>(d.adimlar.map((a: any) => a.sahip))];
   const odakAyar: OdakAyar = {
     kisiler, kisi: odak, kisiSec: (k) => { setKisiKarti(null); setOdak(k); },
@@ -349,7 +365,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
         <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar, d)} akis={kod} odak={odakAyar} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
         <div className="galaksi-ust" style={{ left: U.cumleX, top: U.cumleY - 14, width: GD.PX - U.cumleX - 80 }}>
           <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
         </div>
@@ -386,7 +402,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: BOLUM_Y }}>{ad}</h2>
       {B.dugum}
       <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar, d)} akis={kod} odak={odakAyar} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
     </Sahne>
   );

@@ -12,14 +12,19 @@ const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulam
 const kutular = (p: Page, sec: string) => p.locator(sec).evaluateAll((L) => L.map((e) => { const r = e.getBoundingClientRect(); return { x: r.left, y: r.top, w: r.width, h: r.height, t: e.textContent || '' }; }));
 const binmez = (B: { x: number; w: number }[]) => B.every((b, i) => !i || b.x >= B[i - 1].x + B[i - 1].w - 1);
 
-test('N2: lejant işaretleri sayılı; işarete dokununca o türün bildirimleri açılır', async ({ page }) => {
+test('N2: lejant işaretleri sayılı; satır haritada yakar, zil o türün bildirimlerini açar', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Harita dili' }).click();
   const engel = page.getByRole('button', { name: /^Engelli: \d+\./ });
   await expect(engel).toBeVisible();
   await expect(page.locator('.lejant-sayi').first()).toBeVisible();
   await cek(page, 'W3-lejant');
+  // 3.G: satır → sayfa kapanır, o işaretli gezegenler yanıp söner
   await engel.click();
+  await expect(page.locator('.dongu-parla')).toHaveCount(1);
+  await expect(page.locator('.dongu-parla')).toHaveCount(0, { timeout: 4000 });
+  await page.getByRole('button', { name: 'Harita dili' }).click();
+  await page.getByRole('button', { name: 'Engelli: bildirimlerde göster' }).click();
   await expect(page).toHaveURL(/\/bildirimler\?sekme=tum&akis=RTD5&tur=engel/);
   await expect(page.getByRole('button', { name: 'Tür: Engeller' })).toHaveAttribute('aria-pressed', 'true');
 });

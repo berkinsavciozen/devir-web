@@ -2,7 +2,7 @@
 // Geometrinin tamamı src/geometri/galaksi-geometri.ts (kur) modülünden gelir; bu dosya yalnız çizer.
 // Fark: girdi API detayından kurulur (akisModeli); üye renkleri ada göre değil role göre seçilir.
 import { kur, apidenAkis } from '../geometri/galaksi-geometri';
-import { C, f, pill, planet, ship, tower } from './ortak.js';
+import { C, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 
 export const GUN = 864e5;
 const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -177,11 +177,19 @@ export function yolCiz(M, o = {}) {
     }
     L[u.ad] += t;
   }
-  if (o.ip !== false) for (const ip of G.ipler) {
-    const p = G.konumAn(ip.uye, ip.t), g = G.gezegen[ip.no]; if (!p || !g) continue;
-    L[ip.uye] += `<path d="M${f(p.x)},${f(p.y)} L${f(g.x)},${f(g.y)}" stroke="${UYE_RENK(G.uyeOf[ip.uye])}" stroke-width=".9" stroke-dasharray="1.2 3.2" opacity=".75"/>`;
-  }
-  let ust = '';
+  // devir ipi (plan 27 Eki, 3.11): görevin sahibinin renginden devralanın rengine geçen ince ok
+  if (o.ip !== false) G.ipler.forEach((ip, i) => {
+    const p = G.konumAn(ip.uye, ip.t), g = G.gezegen[ip.no]; if (!p || !g) return;
+    const L0 = Math.hypot(p.x - g.x, p.y - g.y); if (L0 < 6) return;
+    const ux = (p.x - g.x) / L0, uy = (p.y - g.y) / L0, r0 = radOf(ip.no) + 2, ok = 4.5 * m13;
+    const ax = g.x + ux * r0, ay = g.y + uy * r0, bx = p.x - ux * 3, by = p.y - uy * 3, id = `ip-${F.kod}-${i}`;
+    const c0 = UYE_RENK(G.uyeOf[byNo[ip.no]?.sahip] || { ad: byNo[ip.no]?.sahip }), c1 = UYE_RENK(G.uyeOf[ip.uye]);
+    L[ip.uye] += `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(ax)}" y1="${f(ay)}" x2="${f(bx)}" y2="${f(by)}"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient></defs>`
+      + `<path d="M${f(ax)},${f(ay)} L${f(bx)},${f(by)}" stroke="url(#${id})" stroke-width="1.1" opacity=".9"/>`
+      + `<path d="M${f(bx)},${f(by)} L${f(bx - ux * ok - uy * ok * .6)},${f(by - uy * ok + ux * ok * .6)} L${f(bx - ux * ok + uy * ok * .6)},${f(by - uy * ok - ux * ok * .6)}Z" fill="${c1}"/>`;
+  });
+  // merkez = başlangıç yıldızı (plan 27 Eki, 3.G)
+  let ust = yildiz(G.cx, G.cy, .8 * m13);
   if (G.kuyruk && !F.kapandi) {
     const kp = G.kuyruk.pts.map((p) => [p.x, p.y]);
     ust += `<path d="${yolD(kp)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.4 * m13)}" stroke-dasharray="2 5" opacity=".8"/>`;
@@ -194,7 +202,8 @@ export function yolCiz(M, o = {}) {
     const kp = G.kesit(G.kuleUye, G.hedef, G.tSon);
     ust += `<path d="${yolD(kp)}" fill="none" stroke="#FF8A78" stroke-width="10" opacity=".3" filter="url(#blur6)"/><path d="${yolD(kp)}" fill="none" stroke="#FF8A78" stroke-width="2.4" stroke-dasharray="5 3"/>`;
   }
-  if (o.fener !== false && !F.kapandi) {
+  // fenerler kalktı (3.G): kritik yol gezegendeki altın elmasla ve seçimde zincirle görünür; o.fener: true eskisini çizer
+  if (o.fener === true && !F.kapandi) {
     const ch = (AK.kritik_yol || []).filter((no) => G.gezegen[no]).sort((a, b) => G.gezegen[a].t - G.gezegen[b].t);
     for (let i = 1; i < ch.length; i++) {
       const a = G.gezegen[ch[i - 1]], b = G.gezegen[ch[i]], ad = byNo[ch[i]].sahip, t0 = Math.max(a.t, X);
@@ -215,6 +224,8 @@ export function yolCiz(M, o = {}) {
     if (k === 'tahmin') t += `<g opacity=".55">${planet(g.x, g.y, r, 'lit', { life: false })}</g><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 4)}" fill="none" stroke="#FFD27A" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     else t += planet(g.x, g.y, r, k, ex(no));
     if (o.ikonAyri && k === 'block') ikonlar.push({ tur: 'bulut', no: +no, x: g.x + radOf(no) * .15, y: g.y - radOf(no) - ex(no).cloudGap - 3 });
+    // lejant satırından vurgu (3.G): kısa süre yanıp söner
+    if (o.parla && o.parla.has(+no)) t += `<circle class="dongu-parla" cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 9)}" fill="none" stroke="#FFF3E8" stroke-width="2.2"/>`;
     // kritik yol (açık): altın elmas sol üstte; çıktı: belge sağ altta
     if (g.kritik && !SONUK.includes(k)) t += elmas(g.x - r * .85 - 2, g.y - r * .85 - 2, Math.min(1.3, Math.max(.8, r / 9)));
     if (byNo[no].cikti) t += belge(g.x + r * .9 + 2, g.y + r * .8 + 2, Math.min(1.3, Math.max(.8, r / 9)));
@@ -224,10 +235,14 @@ export function yolCiz(M, o = {}) {
       t += `<circle cx="${f(bx)}" cy="${f(by)}" r="12" fill="#1A1238" stroke="#FFD27A" stroke-width="1.2"/><g transform="translate(${f(bx - 2)},${f(by + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7.5,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
       ikonlar.push({ tur: 'bayrak', no: +no, x: bx, y: by });
     }
-    if (g.ortak && !o.sis) g.uyeler.forEach((ad) => {
-      const pp = G.konumAn(ad, g.t - 36e5 * 3) || { x: G.cx, y: G.cy }, a = Math.atan2(pp.y - g.y, pp.x - g.x);
-      t += `<circle cx="${f(g.x + Math.cos(a) * (r + 3))}" cy="${f(g.y + Math.sin(a) * (r + 3))}" r="${f(2.4 * m13)}" fill="${UYE_RENK(G.uyeOf[ad])}" stroke="#1A1238" stroke-width=".8"/>`;
-    });
+    // ortak gezegen (3.11): halka kişilerin renginde dilimlere bölünür
+    if (g.ortak && !o.sis && g.uyeler.length > 1) {
+      const n = g.uyeler.length, R2 = r + 3.2, bos = .28;
+      g.uyeler.forEach((ad, i) => {
+        const a0 = -Math.PI / 2 + i * 2 * Math.PI / n + bos / 2, a1 = a0 + 2 * Math.PI / n - bos;
+        t += `<path d="M${f(g.x + Math.cos(a0) * R2)},${f(g.y + Math.sin(a0) * R2)} A${f(R2)},${f(R2)} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${f(g.x + Math.cos(a1) * R2)},${f(g.y + Math.sin(a1) * R2)}" fill="none" stroke="${UYE_RENK(G.uyeOf[ad])}" stroke-width="${f(2 * m13)}" stroke-linecap="round"/>`;
+      });
+    }
     // alt adımlar (madde 10): ilk bakışta seçilsin diye uydu 2 kat, yörünge öğe katıyla açılır; azsa baş harfli
     // yürüyen aşamada (o.satOn) uydu 2 kat ve baş harfli; başlamamış aşamada yalnız yörünge ve küçük uydular (kalabalık olmasın)
     if (o.sats && o.sats[no]) {
@@ -257,7 +272,7 @@ export function yolCiz(M, o = {}) {
   s += ust;
   if (G.kule && o.kule !== false) {
     const lit = !!F.kapandi;
-    s += `<circle cx="${f(G.kule.x)}" cy="${f(G.kule.y)}" r="${f(4 * m13)}" fill="#FFD27A"/>` + tower(G.kule.x, G.kule.y - 3, (o.tw ?? .24) * Math.min(ps, 1.5), lit);
+    s += `<circle cx="${f(G.kule.x)}" cy="${f(G.kule.y)}" r="${f(4 * m13)}" fill="#FFD27A"/>` + kapi(G.kule.x, G.kule.y - 3, (o.tw ?? .24) * 1.9 * Math.min(ps, 1.5), lit);
     if (o.kuleEtiket !== false) s += pill(G.kule.x + (o.kuleDx ?? 0), G.kule.y + 16 * m13, o.kuleEtiket || gunAy(G.hedef - 12 * 36e5), { fs: 11 * Math.min(ps, 1.2) * YK, fw: 650, col: C.ink });
   }
   let secim = '';
@@ -275,6 +290,11 @@ export function yolCiz(M, o = {}) {
       secim += `<path d="${yolD(k)}" fill="none" stroke="#FF8A78" stroke-width="7" opacity=".22" filter="url(#blur2)"/><path d="${yolD(k)}" fill="none" stroke="#FF9F8F" stroke-width="2.2" stroke-dasharray="5 4" stroke-linecap="round"/>`;
     }
     for (const no of [...bek, ...tut]) { const q = G.gezegen[no]; secim += planet(q.x, q.y, radOf(no), stOf(no) === 'tahmin' ? 'lit' : stOf(no), ex(no)) + `<circle cx="${f(q.x)}" cy="${f(q.y)}" r="${f(radOf(no) + 6)}" fill="none" stroke="${tut.includes(no) ? '#FF9F8F' : '#FFD9B8'}" stroke-width="1.4" ${tut.includes(no) ? 'stroke-dasharray="3 3"' : ''}/>`; }
+    // seçimde kritik zincir (3.G, 3.H): kritik yoldaki açık gezegenler zaman sırasıyla ince altın çizgiyle birleşir
+    if (G.gezegen[o.sel].kritik) {
+      const ch = (AK.kritik_yol || []).filter((no) => G.gezegen[no]).sort((a, b) => G.gezegen[a].t - G.gezegen[b].t).map((no) => [G.gezegen[no].x, G.gezegen[no].y]);
+      if (ch.length > 1) secim = `<path d="${yolD(ch)}" fill="none" stroke="#FFD27A" stroke-width="1.2" stroke-dasharray="1 3" stroke-linecap="round" opacity=".9"/>` + secim;
+    }
     secim += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(radOf(o.sel) + 15)}" fill="none" stroke="#FFF3E8" stroke-width="1.6" opacity=".55"/>` + planet(g.x, g.y, radOf(o.sel), stOf(o.sel), ex(o.sel));
     if (!o.selTop) s += secim;
   }
@@ -308,7 +328,7 @@ export function zamanCubugu(x, y, w, G, X, o = {}) {
   const xn = xOf(NOWx);
   if (!G.kapandi) s += `<line x1="${f(xn)}" y1="${y - 10 * ps}" x2="${f(xn)}" y2="${y + 10 * ps}" stroke="#FFC9A3" stroke-width="2"/>`;
   const xk = xOf(G.kapandi ? t1 : G.hedef);
-  s += tower(xk, y - 6 * ps, .18 * ps, !!G.kapandi);
+  s += kapi(xk, y - 4 * ps, .22 * ps, !!G.kapandi);
   if (G.gec) s += `<rect x="${f(xk)}" y="${y - 4 * ps}" width="${f(xOf(G.tSon) - xk)}" height="${8 * ps}" rx="${4 * ps}" fill="#FF8A78" opacity=".85"/>`;
   const xh = xOf(X);
   s += `<circle cx="${f(xh)}" cy="${y}" r="${14 * ps}" fill="url(#glowGold)"/><circle cx="${f(xh)}" cy="${y}" r="${9 * ps}" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.5"/><circle cx="${f(xh)}" cy="${y}" r="${3.2 * ps}" fill="#2A1D4F"/>`;

@@ -49,15 +49,24 @@ test.describe('dokunmatik', () => {
     expect(Math.round(b.x - a.x)).toBeGreaterThan(20);
   });
 
-  test('B3-yelpaze: küme rozeti → yelpaze; üye → adım', async ({ page }) => {
+  // 3.24a: rozet önce kümeye yakınlaşır; en yakında hâlâ üst üsteyse (aynı dakikada bitenler) yelpaze açılır
+  const kumeyiAc = async (page: Page) => {
+    const rozet = page.getByRole('listitem', { name: /4 adım bir arada/ }), kume = page.getByRole('list', { name: 'Küme' });
+    for (let i = 0; i < 4 && !(await kume.count()); i++) { await rozet.click(); await page.waitForTimeout(350); }
+  };
+  test('B3-yelpaze: küme rozeti → yakınlaşır, en yakında yelpaze; üye → adım', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     await page.getByRole('listitem', { name: /4 adım bir arada/ }).click();
+    await page.waitForTimeout(350);
+    await expect(page.getByRole('button', { name: 'Haritayı sığdır' })).toBeEnabled();
+    await expect(page.getByRole('list', { name: 'Küme' })).toHaveCount(0);
+    await kumeyiAc(page);
     await expect(page.getByRole('list', { name: 'Küme' }).getByRole('listitem')).toHaveCount(5);
     await page.waitForTimeout(100);
     await cek(page, 'B3-yelpaze');
     await page.keyboard.press('Escape');
     await expect(page.getByRole('list', { name: 'Küme' })).toHaveCount(0);
-    await page.getByRole('listitem', { name: /4 adım bir arada/ }).click();
+    await kumeyiAc(page);
     await page.getByRole('list', { name: 'Küme' }).getByRole('listitem', { name: /^1\. adım/ }).click();
     await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/1/);
   });

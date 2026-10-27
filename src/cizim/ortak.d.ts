@@ -12,6 +12,8 @@ export function planet(x: number, y: number, r: number, state: string, o?: O): s
 export function ship(x: number, y: number, ang: number, kind: string, initial: string, col?: string, sc?: number, o?: O): string;
 export function pill(x: number, y: number, text: string, o?: O): string;
 export function tower(x: number, y: number, sc?: number, lit?: boolean): string;
+export function kapi(x: number, y: number, sc?: number, lit?: boolean): string;
+export function yildiz(x: number, y: number, s?: number): string;
 export function shareRing(x: number, y: number, r: number, shares: { ad: string; n: number; agent?: boolean }[], o?: O): string;
 export function brackets(x: number, y: number, w: number, h: number, col: string, glyph?: string, gl?: boolean): string;
 export function flag(r: number, ang: number, col?: string): string;

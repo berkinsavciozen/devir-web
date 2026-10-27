@@ -1,5 +1,5 @@
 import { AltSayfa } from '../../bilesen/AltSayfa';
-import { planet, ship, tower } from '../../cizim/ortak.js';
+import { planet, ship, kapi } from '../../cizim/ortak.js';
 import { tac, elmas, belge } from '../../cizim/yol.js';
 import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
 import { yuzeyKodlamalari, type Yuzey } from '../../geometri/kodlama';
@@ -7,7 +7,7 @@ import { bSuzgecAdresi, type OlayTuru } from '../bildirimler/model';
 import { git } from '../../yonlendirme';
 
 /** Lejant satırının anahtarı: sayı bu anahtarla gelir; olay türü olan satır o türün bildirimlerine gider (N2). */
-export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi';
+export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'ortak' | 'ip' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi';
 const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 'sira', engel: 'engel', atlandi: 'atlandi', karar: 'karar' };
 
 // Harita dili (denetim planı, CELISKILER 64): haritadaki işaretlerin ne demek olduğu. "?" düğmesiyle açılır.
@@ -19,15 +19,17 @@ const SATIRLAR: Satir[] = [
   [planet(22, 22, 9, 'block', { life: false, cloudGap: 2 }), 'Engelli', 'Fırtına bulutu ve şimşek', 'engel'],
   [planet(22, 22, 9, 'dark', { life: false }), 'Sırada', 'Karanlık; önündeki adım bitince yanar', 'sirada'],
   [planet(22, 22, 9, 'ertele', { life: false }), 'Ertelendi', 'Soluk, saatli; açık iş olarak kalır', 'ertele'],
-  [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili', 'atlandi'],
+  [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili, üstü çizik', 'atlandi'],
   [planet(22, 22, 9, 'wait', { life: false, waitRings: 1, karar: true }), 'Karar', 'Bayraklı: son söz insanda', 'karar'],
   [tac(22, 22, 8, 1) + planet(22, 22, 8, 'dark', { life: false }), 'Darboğaz', 'Taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
   [planet(22, 22, 8, 'dark', { life: false }) + elmas(13, 13, 1.3), 'Kritik yol', 'Altın elmas: gecikirse hedef tarih kayar', 'kritik'],
   [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],
+  [`<circle cx="22" cy="22" r="8" fill="url(#pDark)" stroke="#8E80D6"/><path d="M22,11 A11,11 0 0 1 22,33" fill="none" stroke="#FFC9A3" stroke-width="2.2" stroke-linecap="round"/><path d="M22,33 A11,11 0 0 1 22,11" fill="none" stroke="#8EC5FF" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0 2.5 30"/>`, 'Ortak görev', 'Çok renkli halka: birden fazla kişinin ortak görevi', 'ortak'],
+  [`<defs><linearGradient id="lj-ip" x1="0" x2="1"><stop offset="0" stop-color="#FFC9A3"/><stop offset="1" stop-color="#8EC5FF"/></linearGradient></defs><path d="M6,30 L34,14" stroke="url(#lj-ip)" stroke-width="1.6"/><path d="M38,12 L31,13 L34,18Z" fill="#8EC5FF"/>`, 'Devir', 'Renk geçişli ok: iş bir kişiden ötekine geçiyor', 'ip'],
   [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Yuvarlak pencere, baş harf', 'insan'],
-  [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'İki anten, köşeli pencere', 'agent'],
-  [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'Yelkenli; yalnız kendi adımlarını görür', 'dis'],
-  [tower(22, 34, .34, true), 'Hedef tarih', 'Kule; dokununca pay ve kritik yol'],
+  [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'Füze; köşeli pencere, sahibinin renginde', 'agent'],
+  [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'UFO; yalnız kendi adımlarını görür', 'dis'],
+  [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol'],
 ];
 
 /** Evren dili (el notu 2): usturlap, yörünge ve işaretler (ip, plan 27 Eki 3.27 ile kalktı). */
@@ -67,7 +69,7 @@ function OdakSecici({ o, kapat }: { o: OdakAyar; kapat: () => void }) {
  * Harita dili. sayilar verilirse her işaretin yanında bu haritada kaç tane olduğu yazar; olay türü olan işaret
  * (bitti, sırası geldi, engel, atlandı, karar) o türün bildirimlerine gider (N2). akis: galaksinin kodu (bildirimler o akışa süzülür).
  */
-export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar }) {
+export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vurgula }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar; vurgula?: (an: LejantAnahtar) => void }) {
   // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
   const K = yuzeyKodlamalari(yuzey).filter((k) => k.durum === 'var');
   const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SATIRLAR;
@@ -87,10 +89,18 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: 
               <span><b>{ad}</b><small>{alt}</small></span>
               {n != null && <em className="lejant-sayi">{n}</em>}
             </>;
+            const bildirim = () => { kapat(); git(bSuzgecAdresi({ sekme: 'tum', kisi: null, akis: akis || null, tur })); };
+            // galaksi: satır haritada o işaretli gezegenleri yakar (3.G); olay türü olanın yanında bildirim düğmesi
+            if (vurgula && an && GEZEGEN_ISARETI.has(an) && n) return (
+              <li key={ad} className="lejant-cift">
+                <button type="button" className="lejant-satir" aria-label={`${ad}: ${n}. ${alt}. Haritada göster.`} onClick={() => { kapat(); vurgula(an); }}>{ic}</button>
+                {tur && <button type="button" className="lejant-bildirim" aria-label={`${ad}: bildirimlerde göster`} title="Bildirimlerde göster" onClick={bildirim}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,3 V-1 A5,5 0 0 1 5,-1 V3 L6.5,5 H-6.5Z M-1.8,6.5 A1.8,1.8 0 0 0 1.8,6.5" /></svg></button>}
+              </li>
+            );
             // sayısı olan olay türü: bildirimlerde o tür (akış haritasında o akış); diğerleri yalnız açıklama
             return tur && sayilar ? (
               <li key={ad}><button type="button" className="lejant-satir" title={`${ad}: ${alt}. Bildirimlerde göster.`} aria-label={`${ad}: ${n ?? 0}. ${alt}. Bildirimlerde göster.`}
-                onClick={() => { kapat(); git(bSuzgecAdresi({ sekme: 'tum', kisi: null, akis: akis || null, tur })); }}>{ic}</button></li>
+                onClick={bildirim}>{ic}</button></li>
             ) : <li key={ad} title={`${ad}: ${alt}`}>{ic}</li>;
           })}
         </ul>
@@ -102,6 +112,20 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: 
       </div>
     </AltSayfa>
   );
+}
+
+const GEZEGEN_ISARETI = new Set<LejantAnahtar>(['bitti', 'suruyor', 'sira', 'engel', 'sirada', 'ertele', 'atlandi', 'karar', 'kritik', 'cikti', 'darbogaz', 'ortak']);
+/** Lejant satırının haritadaki gezegenleri (yalnız çizilen ana görevler); darboğaz: taçlı ya da sunucunun darboğazı. */
+export function lejantGezegenleri(d: any, G?: { gezegen: Record<number, { kritik?: boolean; korona?: number; ortak?: boolean }> }): Record<string, number[]> {
+  const A = (d?.adimlar || []).filter((a: any) => a.ust_adim == null && G?.gezegen[a.no]);
+  const s = (f: (a: any) => boolean) => A.filter(f).map((a: any) => a.no as number);
+  const acik = (a: any) => !['tamam', 'atlandi', 'ertelendi'].includes(a.durum), sunucu = d?.akis?.karar_ozeti?.darbogaz?.no;
+  return {
+    bitti: s((a) => a.durum === 'tamam'), suruyor: s((a) => a.durum === 'suruyor'), sira: s((a) => a.durum === 'hazir'), engel: s((a) => a.durum === 'engelli'),
+    sirada: s((a) => a.durum === 'sirada'), ertele: s((a) => a.durum === 'ertelendi'), atlandi: s((a) => a.durum === 'atlandi'),
+    karar: s((a) => a.karar_adimi && acik(a)), kritik: s((a) => !!G?.gezegen[a.no].kritik && acik(a)), cikti: s((a) => (a.cikti_sayisi || 0) > 0),
+    darbogaz: s((a) => acik(a) && ((G?.gezegen[a.no].korona || 0) > 0 || a.no === sunucu)), ortak: s((a) => !!G?.gezegen[a.no].ortak),
+  };
 }
 
 /** Galaksi haritasının sayıları: adım durumları ve kişi türleri. */

@@ -46,3 +46,30 @@ describe('galaksi sayıları', () => {
     expect(galaksiSayilari(A, { akis: { karar_ozeti: { darbogaz: { no: 6 } } } }).darbogaz).toBe(1);
   });
 });
+
+describe('P4b işaretleri', async () => {
+  const { planet, ship, kapi, yildiz } = await import('./ortak.js');
+  const { lejantGezegenleri } = await import('../ekranlar/akis/Lejant');
+  it('atlandı üstü çizik; UFO ve füze insandan ayrı biçim', () => {
+    expect(planet(0, 0, 8, 'ghost')).toMatch(/M-6\.24,6\.24 L6\.24,-6\.24/);
+    const insan = ship(0, 0, 0, 'insan', 'A', '#8EC5FF'), agent = ship(0, 0, 0, 'agent', 'C', '#B9A6F2'), dis = ship(0, 0, 0, 'dis', '', '#F2B8D8');
+    expect(new Set([insan, agent, dis]).size).toBe(3);
+    expect(agent).toContain('<rect'); expect(insan).not.toContain('<rect');
+    expect(dis).toContain('<ellipse cx="0" cy="1"');
+  });
+  it('varış kapısı ve merkez yıldızı çizilir', () => {
+    expect(kapi(0, 0, 1, false)).toContain('r="22"');
+    expect(yildiz(0, 0)).toContain('<path');
+  });
+  it('lejant satırının gezegenleri yalnız çizilen ana görevler', () => {
+    const d = { akis: { karar_ozeti: { darbogaz: { no: 2 } } }, adimlar: [
+      { no: 1, durum: 'engelli' }, { no: 2, durum: 'sirada' }, { no: 3, durum: 'engelli', ust_adim: 1 }, { no: 4, durum: 'tamam' },
+    ] };
+    const G = { gezegen: { 1: { kritik: true, korona: 2 }, 2: { ortak: true }, 4: {} } } as any;
+    const L = lejantGezegenleri(d, G);
+    expect(L.engel).toEqual([1]);
+    expect(L.darbogaz).toEqual([1, 2]);
+    expect(L.kritik).toEqual([1]);
+    expect(L.ortak).toEqual([2]);
+  });
+});
