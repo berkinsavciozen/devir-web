@@ -94,7 +94,7 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: 
             ) : <li key={ad} title={`${ad}: ${alt}`}>{ic}</li>;
           })}
         </ul>
-        {yuzey === 'galaksi' && <p className="lejant-not">Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenin boyu, ona bağlı iş sayısıdır.</p>}
+        {yuzey === 'galaksi' && <p className="lejant-not">Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.</p>}
         <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
         <dl className="lejant-kodlama">
           {K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k[yuzey]}</dd></div>)}
