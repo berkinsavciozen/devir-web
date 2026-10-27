@@ -63,7 +63,7 @@ export function usePanoListeleri(kartlar: any[], detay: Record<string, any>, ben
 }
 
 const tarihMsKisa = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
-const kisiIkonu = (ad: string, tip: string) => tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : '#9EE6CF', .7, { flame: false });
+const kisiIkonu = (ad: string, tip: string) => tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : '#8EC5FF', .7, { flame: false });
 
 export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; ben: string; kartlar: any[]; detay: Record<string, any>; goster: PanoTur | null; secili: PanoTur | null; sec: (t: PanoTur | null) => void; durum?: VeriDurumu; yeniden?: () => void }>(
   function EvrenPano({ P, y0, ben, kartlar, detay, goster, secili, sec, durum = 'hazir', yeniden }, ref) {
@@ -158,7 +158,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
             return (
               <button key={t.ids.join('-')} type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }}
                 onClick={() => git(e.adim_no == null ? `/akis/${encodeURIComponent(e.akis)}` : `/akis/${encodeURIComponent(e.akis)}/adim/${e.adim_no}?sekme=gecmis`)}>
-                <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: e.kim_tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim[0] || '?').toLocaleUpperCase('tr'), e.kim_tip === 'agent' ? '#B9A6F2' : '#9EE6CF', .7, { flame: false }) }} />
+                <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: e.kim_tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim[0] || '?').toLocaleUpperCase('tr'), e.kim_tip === 'agent' ? '#B9A6F2' : '#8EC5FF', .7, { flame: false }) }} />
                 <span className="satir-metin" style={{ left: 52, right: 16 }}><b>{olayFiili(e)}</b><small>{alt}</small></span>
               </button>
             );

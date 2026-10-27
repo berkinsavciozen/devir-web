@@ -31,7 +31,7 @@ const taslakIkon = `<g transform="translate(28,29)"><circle r="12" fill="#B9A6F2
 const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22" height="16" rx="3" fill="#1A1238" stroke="#F2B8D8" stroke-width="1.3"/><path d="M-10,-7 L0,1 L10,-7" fill="none" stroke="#F2B8D8" stroke-width="1.3"/></g>`;
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean) => tip === 'dis'
   ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
-  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), ben ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#9EE6CF', k, { flame: false });
+  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), ben ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#8EC5FF', k, { flame: false });
 const gezegen = (a: any, x: number, y: number, r: number) => planet(x, y, r, durumGor(a), { life: false, waitRings: 1, cloudGap: 1.5, karar: a.karar_adimi && !BITTI(a.durum) });
 
 type Sec = 'kisi' | 'akis' | 'durum' | null;

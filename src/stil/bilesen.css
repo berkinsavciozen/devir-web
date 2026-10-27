@@ -507,8 +507,11 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 @keyframes simsek { 0%, 92%, 96% { opacity: 1; } 94% { opacity: .35; } 98% { opacity: .7; } }
 .dongu-gemi { transform-box: fill-box; transform-origin: center; animation: gemi 4s ease-in-out infinite alternate; }
 @keyframes gemi { from { transform: translate(0, -1.5px) rotate(-3deg); } to { transform: translate(0, 1.5px) rotate(3deg); } }
+/* darboğaz tacı 2. kademe (plan 27 Eki, 3.B): yavaş nabız */
+.dongu-tac { animation: tac-nabiz 1.8s ease-in-out infinite alternate; }
+@keyframes tac-nabiz { from { opacity: .6; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .dongu-halka, .dongu-halka.ic, .dongu-fener, .dongu-firtina, .dongu-simsek, .dongu-gemi, .yelpaze-acilis { animation: none; }
+  .dongu-tac, .dongu-halka, .dongu-halka.ic, .dongu-fener, .dongu-firtina, .dongu-simsek, .dongu-gemi, .yelpaze-acilis { animation: none; }
   .gezegen-hedef { transition: none; }
 }
 /* evren yakınlaşınca: çizgiler ölçekle kalınlaşmaz; yakında halka yazıları (ay adları) çekilir */
@@ -589,6 +592,7 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .lejant-satir:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 1px; }
 @media (hover: hover) { .lejant-satir:hover { background: color-mix(in srgb, var(--renk-vurgu-altin) 12%, transparent); } .lejant-satir:hover .lejant-sayi { background: color-mix(in srgb, var(--renk-vurgu-altin) 30%, transparent); } }
 .lejant-alt-baslik { margin: 18px 0 8px; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 750; color: var(--renk-metin-ink3); }
+.lejant-not { margin: 10px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--renk-metin-ink2); }
 .lejant-kodlama { margin: 0; display: grid; gap: 6px; }
 .lejant-kodlama div { display: grid; grid-template-columns: 112px 1fr; gap: 10px; font-size: 13px; line-height: 17px; }
 .lejant-kodlama dt { font-weight: 700; color: var(--renk-metin-ink); }

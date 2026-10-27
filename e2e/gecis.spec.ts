@@ -68,7 +68,7 @@ test('B3-lejant: "?" harita dilini açar', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Harita dili' }).click();
   const L = page.getByRole('list', { name: 'Harita işaretleri' });
-  await expect(L.getByRole('listitem')).toHaveCount(10);
+  await expect(L.getByRole('listitem')).toHaveCount(13);
   await page.waitForTimeout(150);
   await cek(page, 'B3-lejant');
   await page.keyboard.press('Escape');

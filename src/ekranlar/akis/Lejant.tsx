@@ -1,24 +1,30 @@
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { planet, ship, tower } from '../../cizim/ortak.js';
+import { tac, elmas, belge } from '../../cizim/yol.js';
 import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
 import { yuzeyKodlamalari, type Yuzey } from '../../geometri/kodlama';
 import { bSuzgecAdresi, type OlayTuru } from '../bildirimler/model';
 import { git } from '../../yonlendirme';
 
 /** Lejant satırının anahtarı: sayı bu anahtarla gelir; olay türü olan satır o türün bildirimlerine gider (N2). */
-export type LejantAnahtar = 'bitti' | 'sira' | 'engel' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi';
+export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi';
 const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 'sira', engel: 'engel', atlandi: 'atlandi', karar: 'karar' };
 
 // Harita dili (denetim planı, CELISKILER 64): haritadaki işaretlerin ne demek olduğu. "?" düğmesiyle açılır.
 type Satir = [string, string, string, LejantAnahtar?];
 const SATIRLAR: Satir[] = [
   [planet(22, 22, 9, 'lit', { life: false }), 'Bitti', 'Işıklı', 'bitti'],
-  [planet(22, 22, 9, 'wait', { life: false, waitRings: 1 }), 'Sırası geldi', 'Halkalı; sürüyorsa halka döner', 'sira'],
+  [planet(22, 22, 9, 'run', { life: false }), 'Sürüyor', 'Yeşil, dönen kesik halka', 'suruyor'],
+  [planet(22, 22, 9, 'wait', { life: false, waitRings: 1 }), 'Sırası geldi', 'Amber halka; sahibini bekliyor', 'sira'],
   [planet(22, 22, 9, 'block', { life: false, cloudGap: 2 }), 'Engelli', 'Fırtına bulutu ve şimşek', 'engel'],
   [planet(22, 22, 9, 'dark', { life: false }), 'Sırada', 'Karanlık; önündeki adım bitince yanar', 'sirada'],
+  [planet(22, 22, 9, 'ertele', { life: false }), 'Ertelendi', 'Soluk, saatli; açık iş olarak kalır', 'ertele'],
   [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili', 'atlandi'],
   [planet(22, 22, 9, 'wait', { life: false, waitRings: 1, karar: true }), 'Karar', 'Bayraklı: son söz insanda', 'karar'],
-  [ship(22, 22, -12, 'insan', 'B', '#9EE6CF', .62, { flame: false }), 'İnsan', 'Yuvarlak pencere, baş harf', 'insan'],
+  [tac(22, 22, 8, 1) + planet(22, 22, 8, 'dark', { life: false }), 'Darboğaz', 'Taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
+  [planet(22, 22, 8, 'dark', { life: false }) + elmas(13, 13, 1.3), 'Kritik yol', 'Altın elmas: gecikirse hedef tarih kayar', 'kritik'],
+  [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],
+  [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Yuvarlak pencere, baş harf', 'insan'],
   [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'İki anten, köşeli pencere', 'agent'],
   [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'Yelkenli; yalnız kendi adımlarını görür', 'dis'],
   [tower(22, 34, .34, true), 'Hedef tarih', 'Kule; dokununca pay ve kritik yol'],
@@ -88,6 +94,7 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: 
             ) : <li key={ad} title={`${ad}: ${alt}`}>{ic}</li>;
           })}
         </ul>
+        {yuzey === 'galaksi' && <p className="lejant-not">Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.</p>}
         <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
         <dl className="lejant-kodlama">
           {K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k[yuzey]}</dd></div>)}
@@ -98,12 +105,15 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak }: 
 }
 
 /** Galaksi haritasının sayıları: adım durumları ve kişi türleri. */
-export function galaksiSayilari(adimlar: any[]): Partial<Record<LejantAnahtar, number>> {
+export function galaksiSayilari(adimlar: any[], d?: { kritik_yol?: number[]; akis?: any }): Partial<Record<LejantAnahtar, number>> {
   const n = (f: (a: any) => boolean) => adimlar.filter(f).length;
+  const acik = (a: any) => !['tamam', 'atlandi', 'ertelendi'].includes(a.durum), kritik = new Set(d?.kritik_yol || []);
   const kisi = (t: string) => new Set(adimlar.filter((a) => (a.sahip_tip || 'insan') === t).map((a) => a.sahip)).size;
   return {
-    bitti: n((a) => a.durum === 'tamam'), sira: n((a) => a.durum === 'hazir' || a.durum === 'suruyor'), engel: n((a) => a.durum === 'engelli'),
-    sirada: n((a) => a.durum === 'sirada'), atlandi: n((a) => a.durum === 'atlandi' || a.durum === 'ertelendi'),
+    bitti: n((a) => a.durum === 'tamam'), suruyor: n((a) => a.durum === 'suruyor'), sira: n((a) => a.durum === 'hazir'), engel: n((a) => a.durum === 'engelli'),
+    sirada: n((a) => a.durum === 'sirada'), ertele: n((a) => a.durum === 'ertelendi'), atlandi: n((a) => a.durum === 'atlandi'),
+    kritik: n((a) => a.ust_adim == null && kritik.has(a.no) && acik(a)), cikti: n((a) => a.ust_adim == null && (a.cikti_sayisi || 0) > 0),
+    darbogaz: d?.akis?.karar_ozeti?.darbogaz?.no != null ? 1 : undefined,
     karar: n((a) => a.karar_adimi && a.durum !== 'tamam' && a.durum !== 'atlandi'), insan: kisi('insan'), agent: kisi('agent'), dis: kisi('dis'),
   };
 }

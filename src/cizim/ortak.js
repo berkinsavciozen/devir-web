@@ -42,6 +42,7 @@ function defs() {
   <radialGradient id="glowPeach"><stop offset="0" stop-color="#FFD9B8" stop-opacity=".9"/><stop offset=".35" stop-color="#FFB48F" stop-opacity=".35"/><stop offset="1" stop-color="#FF9F7A" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowGold"><stop offset="0" stop-color="#FFE7A8" stop-opacity="1"/><stop offset=".4" stop-color="#FFD27A" stop-opacity=".35"/><stop offset="1" stop-color="#FFD27A" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowCoral"><stop offset="0" stop-color="#FF8A78" stop-opacity=".75"/><stop offset=".45" stop-color="#FF6F6F" stop-opacity=".25"/><stop offset="1" stop-color="#FF6F6F" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowGreen"><stop offset="0" stop-color="#B8F5CF" stop-opacity=".85"/><stop offset=".4" stop-color="#6FE0A0" stop-opacity=".32"/><stop offset="1" stop-color="#6FE0A0" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowLilac"><stop offset="0" stop-color="#B9A6F2" stop-opacity=".45"/><stop offset="1" stop-color="#B9A6F2" stop-opacity="0"/></radialGradient>
   <radialGradient id="pLit" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#FFF0D9"/><stop offset=".35" stop-color="#FFC59E"/><stop offset=".75" stop-color="#EE8E86"/><stop offset="1" stop-color="#B35C8A"/></radialGradient>
   <radialGradient id="pLit2" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#FFF6DE"/><stop offset=".4" stop-color="#FFD98E"/><stop offset=".8" stop-color="#F0A070"/><stop offset="1" stop-color="#C06C78"/></radialGradient>
@@ -144,16 +145,36 @@ function flag(r, ang, col = '#FFD27A') {
   </g></g>`;
 }
 
-// state: lit | dark | wait | block | ghost ; opts: {karar, waitRings, life, grad, ring, moon}
+// state: lit (bitti) | run (sürüyor) | wait (sırası geldi, sahibini bekliyor) | dark (sırada) | block (engelli) | ghost (atlandı)
+// | ertele (ertelendi) ; opts: {karar, waitRings, life, grad, ring, moon}
+// Durum kanalları (plan 27 Eki, 3.A): bitti yeşil ışık, sürüyor yeşil halka, bekliyor kehribar halka, sırada karanlık,
+// engelli fırtına, atlandı kesik çizgi ve üstü çizili, ertelendi soluk ve saatli.
 function planet(x, y, r, state, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})">`;
+  if (state === 'ertele') {
+    s += `<g opacity=".45"><circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width="1"/></g>`;
+    const k = Math.max(3.2, r * .62);
+    s += `<g transform="translate(${f(r * .78)},${f(-r * .78)})"><circle r="${f(k)}" fill="#1A1238" stroke="#BFB0E0" stroke-width="1"/><path d="M0,${f(-k * .55)} V0 L${f(k * .45)},${f(k * .2)}" fill="none" stroke="#BFB0E0" stroke-width="1" stroke-linecap="round"/></g>`;
+    return s + '</g>';
+  }
+  if (state === 'run') {
+    // sürüyor: dönen yeşil halka
+    s += `<g class="dongu-halka"><circle r="${f(r + 5)}" fill="none" stroke="#6FE0A0" stroke-width="1.8" stroke-dasharray="7 3" opacity=".95"/></g>`;
+    s += `<circle r="${f(r * 2)}" fill="url(#glowGreen)" opacity=".3"/>`;
+    s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#B8F5CF" stroke-opacity=".6" stroke-width="1"/>`;
+    s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
+    if (o.life !== false) s += house(r, -15, true) + tree(r, 24, false);
+    if (o.karar) s += flag(r, 40);
+    return s + '</g>';
+  }
   if (state === 'ghost') {
     s += `<circle r="${f(r)}" fill="#2A2452" fill-opacity=".35" stroke="#A99BDB" stroke-width="1.2" stroke-dasharray="2 3" opacity=".8"/>`;
     s += `<path d="M${f(-r * .45)},0 L${f(r * .45)},0" stroke="#A99BDB" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`;
     return s + '</g>';
   }
   if (state === 'lit') {
-    s += `<circle r="${f(r * 2.6)}" fill="url(#glowPeach)" opacity=".85"/>`;
+    // bitti: yeşil ışık (plan 27 Eki, 3.A)
+    s += `<circle r="${f(r * 2.6)}" fill="url(#glowGreen)" opacity=".85"/>`;
     if (o.ring) s += `<ellipse rx="${f(r * 1.6)}" ry="${f(r * .38)}" fill="none" stroke="#FFD9B8" stroke-width="1.4" opacity=".55" transform="rotate(-14)"/>`;
     s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pLit'})"/>`;
     s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
@@ -183,9 +204,10 @@ function planet(x, y, r, state, o = {}) {
     return s + '</g>';
   }
   if (state === 'wait') {
-    const n = o.waitRings ?? 2;
+    // sırası geldi, sahibini bekliyor: kehribar halka (durağan)
+    const n = o.waitRings ?? 1;
     for (let i = n; i >= 1; i--) {
-      s += `<g class="dongu-halka${i === 1 ? ' ic' : ''}"><circle r="${f(r + 5 * i + 1)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.8 - i * .3)}" stroke-dasharray="${i === 1 ? '6 3' : '3 4'}" opacity="${f(.95 - i * .22)}"/></g>`;
+      s += `<circle r="${f(r + 5 * i)}" fill="none" stroke="#FFB547" stroke-width="${f(1.9 - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
     }
     s += `<circle r="${f(r * 2)}" fill="url(#glowGold)" opacity=".28"/>`;
     s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#FFD9B8" stroke-opacity=".6" stroke-width="1"/>`;

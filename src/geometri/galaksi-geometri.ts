@@ -20,7 +20,7 @@
 
 export type Durum = 'tamam' | 'atlandi' | 'ertelendi' | 'hazir' | 'suruyor' | 'engelli' | 'sirada' | string;
 export type SahipTip = 'insan' | 'agent' | 'dis' | string;
-export type GorselDurum = 'lit' | 'ghost' | 'tahmin' | 'block' | 'wait' | 'dark';
+export type GorselDurum = 'lit' | 'ghost' | 'ertele' | 'tahmin' | 'block' | 'run' | 'wait' | 'dark';
 
 export interface GirdiAdim {
   no: number;
@@ -95,6 +95,8 @@ export interface Gezegen {
   t: number;
   r: number;
   puan: number;
+  /** darboğaz tacı: 0 sönük, 1 ışıklı, 2 nabız (plan 27 Eki, 3.A) */
+  korona: 0 | 1 | 2;
   W: number;
   uyeler: string[];
   ortak: boolean;
@@ -204,21 +206,24 @@ export function dogal(A: Polar, L: number, b: number): Polar {
   return { r: b * phi1, th: psi + phi1 };
 }
 
-// ---------- darboğaz puanı → gezegen yarıçapı ----------
+// ---------- darboğaz puanı → taç (korona) ----------
 /**
- * puan = ln(1 + W) + 0.7·K + 0.5·ln(1 + E)
+ * Plan 27 Eki, 3.A: gezegen boyu sabit; darboğaz gezegenin çevresindeki taçla söylenir.
+ * puan = ln(1 + W) + 0.5·ln(1 + E)   (kritik yol artık puana girmez; altın elmasla ayrıca işaretli)
  *   W = geçişli bekleyen açık adım sayısı (adım bittiyse bütün geçişli bekleyenlerin yarısı: iz)
- *   K = kritik yoldaysa 1 ;  E = engelli gün (bekleme_saat / 24; yalnız engelli adımda)
- * yarıçap = clamp(5 + 4.2·puan, 5, 18)·ps ; en az (4 + 2.5·gelenYol)·ps (çok yol gelen gezegen büyür, yollar sığar)
- * atlandı = 4·ps
+ *   E = engelli gün (bekleme_saat / 24; yalnız engelli adımda)
+ * taç: puan < 0.7 → 0 (sönük), 0.7–1.6 → 1 (ışıklı), > 1.6 → 2 (nabız atan)
+ * yarıçap = 7·ps; çok yol gelen gezegende yollar sığsın diye en çok 11·ps'e kadar (4 + 2.5·gelenYol); atlandı 6·ps
  */
-export function darbogaz(adim: Pick<GirdiAdim, 'durum' | 'bekleme_saat' | 'engel_at'>, W: number, kritik: boolean, gelen: number, ps = 1, simdi = Date.now()) {
-  if (adim.durum === 'atlandi') return { puan: 0, r: 4 * ps };
+export const KORONA = { ISIKLI: 0.7, NABIZ: 1.6 };
+export function darbogaz(adim: Pick<GirdiAdim, 'durum' | 'bekleme_saat' | 'engel_at'>, W: number, _kritik: boolean, gelen: number, ps = 1, simdi = Date.now()) {
+  if (adim.durum === 'atlandi') return { puan: 0, r: 6 * ps, korona: 0 as const };
   const Wx = BITTI(adim.durum) ? W * 0.5 : W;
   const E = adim.durum !== 'engelli' ? 0 : adim.bekleme_saat != null ? adim.bekleme_saat / 24 : adim.engel_at != null ? Math.max(0, simdi - adim.engel_at) / GUN : 0;
-  const puan = Math.log(1 + Wx) + 0.7 * (kritik ? 1 : 0) + 0.5 * Math.log(1 + E);
-  const r = Math.max(Math.min(18, Math.max(5, 5 + 4.2 * puan)), 4 + 2.5 * gelen);
-  return { puan, r: r * ps };
+  const puan = Math.log(1 + Wx) + 0.5 * Math.log(1 + E);
+  const korona = (BITTI(adim.durum) || puan < KORONA.ISIKLI ? 0 : puan <= KORONA.NABIZ ? 1 : 2) as 0 | 1 | 2;
+  const r = Math.max(7, Math.min(11, 4 + 2.5 * gelen));
+  return { puan, r: r * ps, korona };
 }
 
 type Aday = { u: Uye; L: number; A: Polar; N: Polar; sahip: boolean };
@@ -353,7 +358,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   for (const no in gez) {
     const g = gez[no], a = byNo[no], [x, y] = px(...kart(g));
     const W = gecisli(+no, !BITTI(a.durum)), dz = darbogaz(a, W, kritik.has(+no), g.uyeler.length, ps, simdi);
-    gezegen[no] = { no: +no, x, y, t: g.t, r: dz.r, puan: dz.puan, W, uyeler: g.uyeler, ortak: g.uyeler.length > 1, kritik: kritik.has(+no) };
+    gezegen[no] = { no: +no, x, y, t: g.t, r: dz.r, puan: dz.puan, korona: dz.korona, W, uyeler: g.uyeler, ortak: g.uyeler.length > 1, kritik: kritik.has(+no) };
   }
   const ipP = ipler.map((x) => ({ ...x }));
   let kuleP: Kule | null = kule ? (() => { const [x, y] = px(...kart(kule!)); return { x, y, t: kule!.t, uye: kuleUye.ad }; })() : null;
@@ -380,12 +385,13 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   /** adımın x anındaki durumu (sürgü): x ≤ simdi geçmiş olaylardan; x > simdi tahmin */
   function durumAn(no: number, x: number): GorselDurum | null {
     const a = byNo[no]; if (!a) return null;
-    if (BITTI(a.durum) && a.t <= x) return a.durum === 'atlandi' ? 'ghost' : 'lit';
+    if (BITTI(a.durum) && a.t <= x) return a.durum === 'atlandi' ? 'ghost' : a.durum === 'ertelendi' ? 'ertele' : 'lit';
     if (x > simdi && !BITTI(a.durum) && a.t <= x) return 'tahmin';
     const xx = Math.min(x, simdi);
     if (a.durum === 'engelli' && a.engel_at != null && a.engel_at <= xx) return 'block';
-    if (a.hazir_at != null && a.hazir_at <= xx) return 'wait';
-    if (x > simdi && ['hazir', 'suruyor'].includes(a.durum)) return 'wait';
+    // sürüyor ile sırası geldi ayrı (R13): sürüyor yeşil halka, bekleyen kehribar
+    if (a.hazir_at != null && a.hazir_at <= xx) return a.durum === 'suruyor' && x >= simdi - 36e5 ? 'run' : 'wait';
+    if (x > simdi && ['hazir', 'suruyor'].includes(a.durum)) return a.durum === 'suruyor' ? 'run' : 'wait';
     return 'dark';
   }
   /** küme: ekranda üst üste düşen gezegenler */
