@@ -16,6 +16,7 @@ export function kisaAd(ad: string): string;
 export function tac(x: number, y: number, r: number, k: number): string;
 export function elmas(x: number, y: number, s?: number): string;
 export function belge(x: number, y: number, s?: number): string;
+export function uyduSistemi(x: number, y: number, r: number, ks: { ad: string; durum: string; t?: number; kalem?: boolean }[], ps?: number, o?: { yakin?: boolean; adlar?: boolean; ini?: boolean; bosluk?: number }): string;
 export const UYE_PALET: string[];
 export const TAKIM_RENGI: string;
 export function yolD(pts: number[][]): string;

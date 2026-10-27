@@ -5,7 +5,6 @@ import { KODLAMA } from './kodlama';
 describe('öğe ölçeği (madde 9, 15)', () => {
   it('seyrek akışta ana öğe 3, alt adım 2 kat', () => {
     expect(ogeKat('ana', 6)).toBeCloseTo(3);
-    expect(ogeKat('alt', 6)).toBeCloseTo(2);
   });
   it('öğe sayısı arttıkça kat azalır, sınırın altına inmez', () => {
     let son = Infinity;
@@ -13,7 +12,7 @@ describe('öğe ölçeği (madde 9, 15)', () => {
     expect(yogunluk(40)).toBeCloseTo(0.5);
   });
   it('yakınlaşınca öğe √k ile büyür, sahneden yavaş', () => {
-    expect(ogeKat('alt', 6, 4) / ogeKat('alt', 6, 1)).toBeCloseTo(2);
+    expect(ogeKat('ana', 6, 2) / ogeKat('ana', 6, 1)).toBeCloseTo(Math.SQRT2);
     expect(ogeKat('ana', 6, 9)).toBeLessThanOrEqual(OLCEK.EN_COK);
   });
   it('büyütme darboğaz sırasını korur; en küçük tam kat büyür', () => {

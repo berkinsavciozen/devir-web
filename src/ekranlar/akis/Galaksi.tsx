@@ -24,9 +24,12 @@ import { useBen } from '../../api/sorgular';
 import { haritaGelisi } from '../../cizim/yakinlas';
 import { haritaCercevesi, useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
-import { KararSeridi, seritYuksekligi } from '../../bilesen/KararSeridi';
+import { hedefPayi, KararSeridi, seritYuksekligi } from '../../bilesen/KararSeridi';
 import { TarihNeden } from './TarihNeden';
-import { buyut, hedefYaricap, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
+import { buyut, hedefYaricap, kademe, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
+
+/** kuyruk yazısı (R17): "hedefe 24 gün pay" → "24 gün pay"; yalnız pay varken */
+const payKisa = (d: any) => { const p = d ? hedefPayi(d.akis) : ''; return p.startsWith('hedefe ') ? p.slice(7) : ''; };
 
 export const useAkis = (kod: string) => useQuery({ queryKey: ['akis', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}`) });
 
@@ -176,7 +179,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const yk = yaziKat(kat, 11), gemiK = Math.min(kat, 1.9), rf = (r: number) => buyut(r, kat, r0);
     // küme: yalnız tasarım boyunda da üst üste binenler (büyüyen gezegenler birbirinin üstüne çizilir, rozete düşmez)
     const kumeRad = (no: number) => temel.radOf(no) * Math.min(kat, 1.4);
-    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || zk >= 1.6 ? [] : labels, sats, satOn: A?.no, sel: selNo ?? undefined, parla: parla || undefined, shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
+    const kad = kademe(zk);
+    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || kad >= 1 ? [] : labels, sats, satYakin: kad >= 2, satAdlar: kad >= 3, merkezTarih: kad >= 3, sel: selNo ?? undefined, parla: parla || undefined, payEtiket: payKisa(d), shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
     const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ps: SU.ps });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geoZ, now: NOW }) : { svg: '', hedefler: [] };
@@ -187,8 +191,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (tarihNo != null && Y.G.gezegen[tarihNo] && !GD && !yak) ust = tarihKarti(d, Y, Z, tarihNo, SU.y);
     // yakınlaşınca: adım etiketleri ve kişi adları ekranda (ölçekle büyümez); odaktaki kişinin adı her zaman
     const gemiD: Daire[] = (Y.gemiler || []).map((g: any) => ({ x: g.x, y: g.y, r: 14 }));
-    const YE = zk >= 1.6 ? yakinEtiketler(d, Y, bolge, zk, odak, gemiD) : { svg: '', kutular: [] };
-    let ek = YE.svg + kisiAdlari(d, Y, bolge, zk >= 1.6, kisiKarti && kisiKarti === odak ? kisiKarti : null, YE.kutular);
+    // kademeler (3.D): Z1 engel, karar ve süren işin adı; Z2 bütün adlar; Z3 tarihler ve bütün kişi adları
+    const YE = kad >= 1 ? yakinEtiketler(d, Y, bolge, zk, odak, gemiD, kad) : { svg: '', kutular: [] };
+    let ek = YE.svg + kisiAdlari(d, Y, bolge, kad >= 3, kisiKarti && kisiKarti === odak ? kisiKarti : null, YE.kutular);
     if (kuleAcik && Y.G.kule) ek += kuleKarti(d, Y.G.kule, bolge);
     let svg = yak
       ? `${haritaCercevesi('harita-kirp', bolge)}${Y.svg + SK.svg + ust + ek}</g>` + Z.svg
@@ -285,11 +290,14 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const h: Hedef = { key: 'kule', x: kule.x, y: kule.y + dy, r: 22, etiket: `Hedef${d.akis.hedef_tarih ? ' ' + gunAyUzun(d.akis.hedef_tarih) : ''}. En erken bitiş, pay ve kritik yol.`, basili: kuleAcik, olay: { onClick: () => setKuleAcik(!kuleAcik) } };
     if (bos(h, hedefler)) { koy(h); break; }
   }
+  // R18: bayrak ve bulut hedefi çakışırsa simgenin çevresinde boş yer aranır (tam boy, 44 px)
   for (const ik of (Y.ikonlar || []) as any[]) {
     const a = byNo.get(ik.no); if (!a) continue;
-    koy(ik.tur === 'bayrak'
-      ? { key: 'bayrak' + ik.no, x: ik.x, y: ik.y, r: 22, etiket: `Karar: ${a.ad}.`, olay: { onClick: () => git(`/akis/${encodeURIComponent(kod)}/karar/${ik.no}`) } }
-      : { key: 'bulut' + ik.no, x: ik.x, y: ik.y, r: 22, etiket: `Engel: ${a.engel ? a.engel.replace(/[.\s]+$/, '') : a.ad}.`, olay: { onClick: () => ac(ik.no) } });
+    const temel: Omit<Hedef, 'x' | 'y' | 'r'> = ik.tur === 'bayrak'
+      ? { key: 'bayrak' + ik.no, etiket: `Karar: ${a.ad}.`, olay: { onClick: () => git(`/akis/${encodeURIComponent(kod)}/karar/${ik.no}`) } }
+      : { key: 'bulut' + ik.no, etiket: `Engel: ${a.engel ? a.engel.replace(/[.\s]+$/, '') : a.ad}.`, olay: { onClick: () => ac(ik.no) } };
+    const yer = [[0, 0], [0, -10], [10, -6], [-10, -6], [12, 6], [-12, 6], [0, -18], [18, -8], [-18, -8], [20, 8], [-20, 8]].map(([dx, dy]) => ({ x: ik.x + dx, y: ik.y + dy, r: 22 })).find((c) => gor(c.x, c.y) && bos(c, hedefler));
+    if (yer) hedefler.push({ ...temel, ...yer } as Hedef);
   }
   for (const sh of (Y.gemiler || []) as any[]) {
     const n = d.adimlar.filter((a: any) => a.sahip === sh.ad && !BITTI(a.durum)).length;

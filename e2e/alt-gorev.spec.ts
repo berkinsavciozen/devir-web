@@ -63,6 +63,7 @@ test('alt görev · 1440: panel konumu akış › üst görev › alt görev', a
 test('alt görev · 390: haritada alt görev gezegen değil, üstünün uydusu', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/akis/RTD5?senaryo=berkin&hal=alt');
-  // uydu yörüngesi (cizim/yol.js uydular): kesikli halka ve ipler
-  await expect(page.locator('circle[stroke-dasharray="1.5 3"][opacity=".75"]').first()).toBeAttached();
+  // uydu sistemi v2 (plan 27 Eki, 3.B): uzakta Satürn halkası ve biten oranı
+  await expect(page.locator('.uydu-halka').first()).toBeAttached();
+  await expect(page.locator('svg text', { hasText: '1/3' }).first()).toBeAttached();
 });

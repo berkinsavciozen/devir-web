@@ -4,14 +4,13 @@
  *
  *   kat = taban(tür) × yoğunluk(N) × √k      (sınırlar: EN_AZ … EN_COK)
  *
- * - taban: ana öğe 3, alt adım (uydu) 2 — tasarımdaki boylara göre.
+ * - taban: ana öğe 3 (uydular gezegen boyunun yarısıyla sabit, UYDU.BOY).
  * - yoğunluk: ekrandaki öğe sayısı N, rahat sayı N0'ı geçince √(N0/N) ile küçülür.
  * - k: yakınlaşma. Sahne k ile büyürken öğeler √k ile büyür; yaklaşınca okunur, harita kadar şişmez.
  * Yazı ayrı sınırlanır: ekranda hiçbir harita yazısı EN_AZ_YAZI px'in altına inmez, YAZI_COK katını geçmez.
  */
 export const OLCEK = {
   ANA: 3,
-  ALT: 2,
   N0: 10,
   EN_AZ: 1.2,
   EN_COK: 4.5,
@@ -20,15 +19,14 @@ export const OLCEK = {
   EN_AZ_HEDEF: 44,
 } as const;
 
-export type OgeTuru = 'ana' | 'alt';
+export type OgeTuru = 'ana';
 
 /** Yoğunluk katsayısı: N ≤ N0 iken 1, sonra √(N0/N). */
 export const yogunluk = (n: number, n0: number = OLCEK.N0) => Math.min(1, Math.sqrt(n0 / Math.max(1, n)));
 
 /** Öğe katsayısı: tasarımdaki boy × bu sayı. Taban, ölçeğin 1 olduğu tasarım boyunu ifade eder; öğe türünün tabanına bölünür. */
-export function ogeKat(tur: OgeTuru, n: number, k = 1, taban = 1): number {
-  const b = tur === 'alt' ? OLCEK.ALT : OLCEK.ANA;
-  const v = (b / taban) * yogunluk(n) * Math.sqrt(Math.max(1, k));
+export function ogeKat(_tur: OgeTuru, n: number, k = 1, taban = 1): number {
+  const v = (OLCEK.ANA / taban) * yogunluk(n) * Math.sqrt(Math.max(1, k));
   return Math.min(OLCEK.EN_COK, Math.max(OLCEK.EN_AZ, v));
 }
 
@@ -62,3 +60,22 @@ export function uygunKat(G: { x: number; y: number; r: number }[], hedef: number
   for (let k = hedef; k > OLCEK.EN_AZ; k -= .1) if (2 * buyut(r, k, r0) <= oran * d) return k;
   return OLCEK.EN_AZ;
 }
+
+/*
+ * Harita sabitleri (plan 27 Eki, 3.37): her sabitin yanında dayandığı karar. Gezegen boyu ve darboğaz eşikleri
+ * geometri/galaksi-geometri.ts'te (darbogaz, KORONA; karar 3.A), çizgi kalınlıkları cizim/yol.js'te (karar 3.E).
+ */
+
+/** Yakınlaşma kademeleri (karar 3.D): Z0 uzak · Z1 aktif iş ve engel/karar adları · Z2 bütün adlar, uydu sarmalı · Z3 alt görev ve kişi adları, tarihler */
+export const KADEME = { Z1: 1.3, Z2: 1.6, Z3: 2.4 } as const;
+export type Kademe = 0 | 1 | 2 | 3;
+export const kademe = (zk: number): Kademe => (zk >= KADEME.Z3 ? 3 : zk >= KADEME.Z2 ? 2 : zk >= KADEME.Z1 ? 1 : 0);
+
+/** Zaman ölçeği (D grubu, 3.4): odak genişliği τ gün (yakınlaşmayla sabit; bkz. zaman-olcegi.ts) */
+export const ZAMAN = { TAU_UZAK: 7 } as const;
+
+/** Uydu sistemi v2 (karar 3.B, 3.20): uydu gezegenin yarısı boyunda sabit; mini sarmalda aralık en az bir uydu çapı */
+export const UYDU = { BOY: 0.5, ARALIK: 1.25, ILK_BOSLUK: 7 } as const;
+
+/** Etiket önceliği (karar 3.D): engelli > karar > kritik yol > sürüyor > sırada > bitti */
+export const ETIKET_ONCELIK = ['engelli', 'karar', 'kritik', 'suruyor', 'sirada', 'bitti'] as const;

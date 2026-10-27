@@ -1,7 +1,8 @@
 // Tasarım kaynağından (d3-son/kaynak/yol-ciz.js, galaksi-v3.js clusterBadge, son-ortak.js uydular) taşındı.
 // Geometrinin tamamı src/geometri/galaksi-geometri.ts (kur) modülünden gelir; bu dosya yalnız çizer.
 // Fark: girdi API detayından kurulur (akisModeli); üye renkleri ada göre değil role göre seçilir.
-import { kur, apidenAkis } from '../geometri/galaksi-geometri';
+import { apidenAkis } from '../geometri/galaksi-geometri';
+import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
 import { C, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 
 export const GUN = 864e5;
@@ -80,7 +81,7 @@ export function clusterBadge(x, y, members, radOf, stOf, ps = 1) {
   return s;
 }
 
-// uydular: tekrarlanan adımın kalemleri, gezegenin etrafında aylar
+// uydular (eski düzen): evren kartlarındaki mini kalem halkası; galaksi haritası uyduSistemi() kullanır
 export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
   const n = kalemler.length, orR = r + (o.gap ?? 15) * ps;
   let s = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(orR)}" fill="none" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3" opacity=".75"/>`;
@@ -99,6 +100,47 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
   });
   return s;
 }
+
+
+const UYDU_DURUM = { tamam: 'lit', suruyor: 'run', hazir: 'wait', engelli: 'block', atlandi: 'ghost', ertelendi: 'ertele' };
+/**
+ * Uydu sistemi v2 (plan 27 Eki, 3.B): alt görev ya da kalemi olan gezegen.
+ * Uzakta (o.yakin yok): Satürn halkası; altın yay biten oranı, yanında "k/n". Kalem (tekrar) halkası boncuklu.
+ * Yakında: uydular gezegenin çevresinde Arşimet sarmalına zaman sırasıyla dizilir (en erken en içte); uydu gezegenin
+ * yarısı boyunda sabit, sayısı artınca küçülmez, sarmal uzar. Uydu küçük bir gezegendir: aynı durum dili.
+ * ks: [{ ad, durum, t?, kalem? }]
+ */
+export function uyduSistemi(x, y, r, ks, ps = 1, o = {}) {
+  const n = ks.length; if (!n) return '';
+  const done = ks.filter((k) => k.durum === 'tamam').length, kalem = ks.some((k) => k.kalem);
+  if (!o.yakin) {
+    const rx = r * 1.95 + 2 * ps, ry = rx * .32, aci = -18 * Math.PI / 180, ca = Math.cos(aci), sa = Math.sin(aci);
+    const nok = (th) => [x + rx * Math.cos(th) * ca - ry * Math.sin(th) * sa, y + rx * Math.cos(th) * sa + ry * Math.sin(th) * ca];
+    const yay = (a0, a1) => { const P = []; for (let i = 0; i <= 28; i++) P.push(nok(a0 + (a1 - a0) * i / 28)); return yolD(P); };
+    const cizgi = kalem ? `stroke-dasharray="0 ${f(3.2 * ps)}" stroke-linecap="round" stroke-width="${f(2.2 * ps)}"` : `stroke-width="${f(1.3 * ps)}"`;
+    let s = `<path class="uydu-halka" d="${yay(0, Math.PI * 2)}" fill="none" stroke="#D9CCFF" opacity=".7" ${cizgi}/>`;
+    if (done) s += `<path d="${yay(Math.PI, Math.PI + done / n * Math.PI * 2)}" fill="none" stroke="#FFD27A" ${kalem ? cizgi : `stroke-width="${f(2 * ps)}" stroke-linecap="round"`}/>`;
+    const [tx, ty] = nok(0);
+    return s + sans(f(tx + 4 * ps), f(ty + 3.5 * ps), `${done}/${n}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
+  }
+  // adlar yazılınca (Z3) aralık yazı satırı kadar açılır
+  const mr = Math.max(2.6 * ps, r * .5), ara = Math.max(2 * mr * 1.25, o.adlar ? 17 : 0), b = ara / (2 * Math.PI);
+  const sira = ks.map((k, i) => ({ k, i })).sort((p, q) => (p.k.t ?? p.i) - (q.k.t ?? q.i) || p.i - q.i);
+  let th = -Math.PI / 2, s = '', yol = [];
+  const rho = (t) => r + mr + (o.bosluk ?? 7) * ps + b * (t + Math.PI / 2);
+  const P = sira.map(() => { const p = [x + Math.cos(th) * rho(th), y + Math.sin(th) * rho(th)]; th += ara / rho(th); return p; });
+  for (let t = -Math.PI / 2; t <= th - ara / rho(th) + .01; t += .12) yol.push([x + Math.cos(t) * rho(t), y + Math.sin(t) * rho(t)]);
+  if (yol.length > 1) s += `<path d="${yolD(yol)}" fill="none" stroke="#D9CCFF" stroke-width="${f(.8 * ps)}" stroke-dasharray="1.5 2.5" opacity=".6"/>`;
+  sira.forEach(({ k }, i) => {
+    const [mx, my] = P[i];
+    s += planet(mx, my, mr, UYDU_DURUM[k.durum] || 'dark', { life: false, mini: true, waitRings: 1 });
+    if (o.ini && !o.adlar) s += sans(f(mx), f(my + mr * .45), esc((k.ad[0] || '').toLocaleUpperCase('tr')), { fs: Math.max(7, mr * 1.2), fw: 800, col: '#FFF3E8', anchor: 'middle' });
+    // ad dışa doğru: gezegenin solundaki uydu sola, sağındaki sağa yazılır
+    if (o.adlar) { const sol = mx < x; s += sans(f(mx + (sol ? -1 : 1) * (mr + 3 * ps)), f(my + 3.5), esc(kisalt(k.ad, 18)), { fs: 10, fw: 600, col: C.ink2, anchor: sol ? 'end' : 'start' }); }
+  });
+  return s;
+}
+const kisalt = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
 
 // fenerler bir nokta dizisi boyunca (14 px aralık)
 function fenerDizisi(pts, ps = 1, aralik = 14) {
@@ -120,7 +162,8 @@ function fenerDizisi(pts, ps = 1, aralik = 14) {
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
-  const G = kur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric });
+  // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
+  const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU });
   const RENK = uyeRenkleri(G, M.sahip);
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
   const byNo = byNoOf(F), P = {}; for (const no in G.gezegen) P[no] = [G.gezegen[no].x, G.gezegen[no].y];
@@ -165,15 +208,21 @@ export function yolCiz(M, o = {}) {
     let t = '';
     if (u.hayalet) { t += `<path d="${yolD(tum)}" fill="none" stroke="#A99BDB" stroke-width="1" stroke-dasharray="1.5 4" opacity=".6"/>`; L[u.ad] += t; continue; }
     t += `<path d="${yolD(tum)}" fill="none" stroke="#9C8BE0" stroke-width="${f(G.R * .07)}" opacity=".08" stroke-linecap="round" filter="url(#blur6)"/>`;
-    t += `<path d="${yolD(tum)}" fill="none" stroke="${col}" stroke-width="${f(1.4 * m13)}" stroke-dasharray="3 4" opacity="${o.allLit ? 0 : .7}"/>`;
+    t += `<path d="${yolD(tum)}" fill="none" stroke="${col}" stroke-width="${f(.9 * m13)}" stroke-dasharray="3 4" opacity="${o.allLit ? 0 : .7}"/>`;
+    // hafta çentikleri (3.E): bugünden uzaklaştıkça sıklaşır; sıkışan zaman kalınlıkla değil yoğunlukla okunur
+    if (!o.allLit && o.cetik !== false) for (let tw = NOWx + 7 * GUN * Math.ceil((u.t0 - NOWx) / (7 * GUN)); tw < u.tSon; tw += 7 * GUN) {
+      const q = G.konumAn(u.ad, tw); if (!q || q.demir) continue;
+      const nx = -Math.sin(q.yon) * 3 * m13, ny = Math.cos(q.yon) * 3 * m13;
+      t += `<path d="M${f(q.x - nx)},${f(q.y - ny)} L${f(q.x + nx)},${f(q.y + ny)}" stroke="${col}" stroke-width=".8" opacity=".55"/>`;
+    }
     const gec = G.kesit(u.ad, u.t0, tSolid);
     if (gec.length > 1) {
-      t += `<path d="${yolD(gec)}" fill="none" stroke="#FFB47F" stroke-width="${f(8 * m13)}" opacity=".26" filter="url(#blur6)" stroke-linecap="round"/>`;
-      t += `<path d="${yolD(gec)}" fill="none" stroke="${o.allLit ? '#FFD9B8' : col}" stroke-width="${f(2.6 * m13)}" stroke-linecap="round"/>`;
+      t += `<path d="${yolD(gec)}" fill="none" stroke="#FFB47F" stroke-width="${f(5 * m13)}" opacity=".26" filter="url(#blur6)" stroke-linecap="round"/>`;
+      t += `<path d="${yolD(gec)}" fill="none" stroke="${o.allLit ? '#FFD9B8' : col}" stroke-width="${f(1.6 * m13)}" stroke-linecap="round"/>`;
     }
     if (X > NOWx && !F.kapandi) {
       const th = G.kesit(u.ad, NOWx, X);
-      if (th.length > 1) t += `<path d="${yolD(th)}" fill="none" stroke="${col}" stroke-width="${f(2.2 * m13)}" stroke-dasharray="6 4" stroke-linecap="round" opacity=".95"/>`;
+      if (th.length > 1) t += `<path d="${yolD(th)}" fill="none" stroke="${col}" stroke-width="${f(1.4 * m13)}" stroke-dasharray="6 4" stroke-linecap="round" opacity=".95"/>`;
     }
     L[u.ad] += t;
   }
@@ -181,8 +230,10 @@ export function yolCiz(M, o = {}) {
   if (o.ip !== false) G.ipler.forEach((ip, i) => {
     const p = G.konumAn(ip.uye, ip.t), g = G.gezegen[ip.no]; if (!p || !g) return;
     const L0 = Math.hypot(p.x - g.x, p.y - g.y); if (L0 < 6) return;
-    const ux = (p.x - g.x) / L0, uy = (p.y - g.y) / L0, r0 = radOf(ip.no) + 2, ok = 4.5 * m13;
-    const ax = g.x + ux * r0, ay = g.y + uy * r0, bx = p.x - ux * 3, by = p.y - uy * 3, id = `ip-${F.kod}-${i}`;
+    // ok kısa kalır (en çok 34 px): devralanın yönünü gösterir, haritayı boydan boya kesmez
+    const ux = (p.x - g.x) / L0, uy = (p.y - g.y) / L0, r0 = radOf(ip.no) + 2, ok = 4.5 * m13, Lok = Math.min(L0 - 3, r0 + 34 * m13);
+    if (Lok <= r0 + 4) return;
+    const ax = g.x + ux * r0, ay = g.y + uy * r0, bx = g.x + ux * Lok, by = g.y + uy * Lok, id = `ip-${F.kod}-${i}`;
     const c0 = UYE_RENK(G.uyeOf[byNo[ip.no]?.sahip] || { ad: byNo[ip.no]?.sahip }), c1 = UYE_RENK(G.uyeOf[ip.uye]);
     L[ip.uye] += `<defs><linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f(ax)}" y1="${f(ay)}" x2="${f(bx)}" y2="${f(by)}"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient></defs>`
       + `<path d="M${f(ax)},${f(ay)} L${f(bx)},${f(by)}" stroke="url(#${id})" stroke-width="1.1" opacity=".9"/>`
@@ -190,9 +241,15 @@ export function yolCiz(M, o = {}) {
   });
   // merkez = başlangıç yıldızı (plan 27 Eki, 3.G)
   let ust = yildiz(G.cx, G.cy, .8 * m13);
+  // Z3 (3.D): merkezin altında başlangıç tarihi
+  if (o.merkezTarih) ust += pill(G.cx, G.cy + 16 * m13, gunAy(G.T0), { fs: 10 * m13 * YK, fw: 650, col: C.ink2, bgo: .75 });
   if (G.kuyruk && !F.kapandi) {
     const kp = G.kuyruk.pts.map((p) => [p.x, p.y]);
-    ust += `<path d="${yolD(kp)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.4 * m13)}" stroke-dasharray="2 5" opacity=".8"/>`;
+    ust += `<path d="${yolD(kp)}" fill="none" stroke="#FFD27A" stroke-width="${f(1.1 * m13)}" stroke-dasharray="2 5" opacity=".8"/>`;
+    // R17: kuyruk kesilmez (zaman ölçeği uzağı sıkıştırır); pay yazıyla. Sayı tek kaynaktan (sunucunun karar özeti):
+    // o.payEtiket ör. "24 gün pay"; verilmezse yazı yok
+    let kpL = 0; for (let i = 1; i < kp.length; i++) kpL += Math.hypot(kp[i][0] - kp[i - 1][0], kp[i][1] - kp[i - 1][1]);
+    if (o.payEtiket && kpL > 70 * m13) { const m = kp[Math.floor(kp.length * .45)]; ust += pill(m[0], m[1] - 10 * m13, esc(o.payEtiket), { fs: 9.5 * m13 * YK, fw: 650, col: '#FFD27A', bgo: .75 }); }
     if (G.kuyruk.kirik && kp.length > 2) {
       const i0 = Math.floor(kp.length * .55), m = kp[i0], n2 = kp[i0 + 1] || m, a = Math.atan2(n2[1] - m[1], n2[0] - m[0]) + Math.PI / 2, q = 6 * m13;
       for (const d of [-3, 3]) { const cx_ = m[0] + Math.cos(a - Math.PI / 2) * d, cy_ = m[1] + Math.sin(a - Math.PI / 2) * d; ust += `<path d="M${f(cx_ - Math.cos(a - .5) * q)},${f(cy_ - Math.sin(a - .5) * q)} L${f(cx_ + Math.cos(a - .5) * q)},${f(cy_ + Math.sin(a - .5) * q)}" stroke="#FFD27A" stroke-width="1.6" stroke-linecap="round"/>`; }
@@ -243,13 +300,8 @@ export function yolCiz(M, o = {}) {
         t += `<path d="M${f(g.x + Math.cos(a0) * R2)},${f(g.y + Math.sin(a0) * R2)} A${f(R2)},${f(R2)} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${f(g.x + Math.cos(a1) * R2)},${f(g.y + Math.sin(a1) * R2)}" fill="none" stroke="${UYE_RENK(G.uyeOf[ad])}" stroke-width="${f(2 * m13)}" stroke-linecap="round"/>`;
       });
     }
-    // alt adımlar (madde 10): ilk bakışta seçilsin diye uydu 2 kat, yörünge öğe katıyla açılır; azsa baş harfli
-    // yürüyen aşamada (o.satOn) uydu 2 kat ve baş harfli; başlamamış aşamada yalnız yörünge ve küçük uydular (kalabalık olmasın)
-    if (o.sats && o.sats[no]) {
-      const ks = o.sats[no], n = ks.length, on = o.satOn == null || o.satOn === no, basladi = ks.some((k) => k.durum !== 'sirada');
-      t += on ? uydular(g.x, g.y, r, ks, ps, { mr: Math.min(r * .4 / ps, 9.2 * 8 / Math.max(8, n)), gap: 16 * Math.sqrt(OK), ini: n <= 6, ip: true })
-        : uydular(g.x, g.y, r, basladi ? ks : [], ps, { mr: 3.6 * Math.min(OK, 1.3), gap: 9 * Math.sqrt(OK) });
-    }
+    // uydu sistemi v2 (3.B): uzakta Satürn halkası, Z2'den itibaren mini sarmal, Z3'te adlar (etkin aşama kuralı kalktı, 3.23a)
+    if (o.sats && o.sats[no]) t += uyduSistemi(g.x, g.y, r, o.sats[no], ps, { yakin: !!o.satYakin, adlar: !!o.satAdlar && o.sats[no].length <= 6, ini: o.sats[no].length <= 8 });
     return t;
   };
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
