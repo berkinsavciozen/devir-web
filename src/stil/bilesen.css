@@ -86,9 +86,6 @@
 .alt-gezinme .sekme svg { overflow: visible; }
 .alt-gezinme .sekme.aktif { color: var(--renk-metin-ink); font-weight: 700; }
 .alt-gezinme .sekme-sayi { position: absolute; top: 4px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-size: 10.5px; font-weight: 800; line-height: 16px; text-align: center; }
-.alt-gezinme .yeni-is { position: absolute; left: calc(100% - 38px); top: -8px; width: 60px; height: 60px; transform: translateX(-50%); border-radius: 30px; }
-.alt-gezinme .yeni-is svg { overflow: visible; }
-.alt-gezinme .yeni-is:active { transform: translateX(-50%) scale(.97); }
 
 /* ---------- Alt sayfa ---------- */
 .alt-sayfa-kok { position: fixed; inset: 0; z-index: 200; }
@@ -199,14 +196,11 @@
 
 /* ---------- Akış haritası (B3) ---------- */
 .harita-katman { position: absolute; inset: 0; pointer-events: none; }
-.gezegen-hedef, .serit-etiket, .surgu-oynat, .surgu-hap, .serit-ok { position: absolute; border-radius: 50%; background: transparent; pointer-events: auto; }
-.serit-etiket { border-radius: 21px; }
+.gezegen-hedef, .surgu-oynat, .surgu-hap { position: absolute; border-radius: 50%; background: transparent; pointer-events: auto; }
 .surgu-oynat { width: 44px; height: 44px; }
 .surgu-hap { width: 96px; height: 26px; border-radius: 13px; }
-.serit-ok { width: 44px; height: 56px; border-radius: 22px; }
 .surgu-ray { position: absolute; height: 44px; touch-action: none; cursor: pointer; border-radius: 22px; }
-.serit-kaydir { position: absolute; touch-action: pan-y; cursor: grab; }
-.gezegen-hedef:focus-visible, .serit-etiket:focus-visible, .surgu-ray:focus-visible, .surgu-oynat:focus-visible, .surgu-hap:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.gezegen-hedef:focus-visible, .surgu-ray:focus-visible, .surgu-oynat:focus-visible, .surgu-hap:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
 .donen-sarmal { animation: don 2.4s linear infinite; }
 .iskelet-serit { position: absolute; left: 20px; height: 14px; border-radius: 6px; background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 80%, var(--renk-vurgu-lila)); animation: nabiz-serit 1.2s ease-in-out infinite alternate; }
 @keyframes nabiz-serit { from { opacity: .6; } to { opacity: 1; } }
@@ -539,9 +533,6 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .zincir-hedef:focus-visible { outline: 2px solid var(--renk-vurgu-altin); }
 .gecmis-satir.baglanti { cursor: pointer; }
 .gecmis-satir.baglanti b { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
-.cumle-hedef { position: absolute; border: 0; background: none; border-radius: 12px; cursor: pointer; }
-.cumle-hedef:focus-visible { outline: 2px solid var(--renk-vurgu-altin); }
-@media (hover: hover) { .cumle-hedef:hover + .sahne-metin, .cumle-hedef:hover { text-decoration: underline; } }
 
 /* Görünüm ayarı "Hareketi azalt" (data-hareket="az"): döngüler durur, geçişler anında */
 :root[data-hareket="az"] *, :root[data-hareket="az"] *::before, :root[data-hareket="az"] *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; scroll-behavior: auto !important; }
@@ -828,3 +819,14 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .satir-isaretler i { font-style: normal; font-size: 11.5px; font-weight: 700; color: var(--renk-metin-ink3); }
 .akis-menu-baslik { margin: 20px 0 6px; font-size: 12px; line-height: 15px; font-weight: 700; letter-spacing: .6px; color: var(--renk-metin-ink3); }
 .gd-kaydir.genis-liste { background: none; box-shadow: none; border-radius: 0; }
+/* sayfa üstü düğme kümesi (plan 27 Eki, 2.8): yeni iş, zil, ayarlar */
+.ust-dugmeler { position: absolute; right: 8px; display: flex; gap: 4px; z-index: 3; }
+.ust-dugmeler .zil-dugme { position: relative; }
+/* evrende en yakında: akışa geçmeden önce sorulur (plan 27 Eki, 3.28) */
+.gecis-onay { position: absolute; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 16px; background: var(--renk-zemin-kart); border: 1px solid var(--renk-vurgu-cizgi-koyu); z-index: 4; }
+.gecis-onay p { flex: 1; margin: 0; font-size: 14px; line-height: 18px; color: var(--renk-metin-ink); }
+.gecis-onay button { min-width: 64px; height: 44px; padding: 0 14px; border-radius: 22px; font-size: 14px; font-weight: 650; color: var(--renk-metin-ink2); background: var(--renk-zemin-hap); }
+.gecis-onay button.birincil { color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-seftali); }
+/* galaksi: geçmişe ya da tahmine bakarken (plan 27 Eki, 3.25) */
+.zaman-seridi { position: absolute; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 2px 0 14px; border-radius: 24px; background: var(--renk-zemin-kart); border: 1px solid var(--renk-vurgu-altin); z-index: 3; font-size: 13px; font-weight: 650; color: var(--renk-metin-altin); }
+.zaman-seridi button { position: relative; height: 44px; padding: 0 14px; border-radius: 22px; font-size: 13px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-altin); }

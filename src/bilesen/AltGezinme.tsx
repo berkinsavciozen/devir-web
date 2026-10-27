@@ -29,25 +29,18 @@ const BanaIkon = ({ on }: { on: boolean }) => (
     <circle r="7.5" fill="none" stroke={renk(on)} strokeWidth="1.3" strokeDasharray="2.2 2.6" />
   </svg>
 );
-const AyarlarIkon = ({ on }: { on: boolean }) => (
-  <svg width="24" height="24" viewBox="-12 -12 24 24" aria-hidden>
-    <Parilti on={on} />
-    <path d="M-7,-4 L7,-4 M-7,4 L7,4" stroke={renk(on)} strokeWidth="1.5" strokeLinecap="round" />
-    <circle cx="-2.5" cy="-4" r="2.4" fill="var(--renk-zemin-kart)" stroke={renk(on)} strokeWidth="1.5" />
-    <circle cx="3" cy="4" r="2.4" fill="var(--renk-zemin-kart)" stroke={renk(on)} strokeWidth="1.5" />
-  </svg>
-);
 
 const SEKMELER: [Sekme, string, (p: { on: boolean }) => JSX.Element, string][] = [
-  ['evren', 'Evren', EvrenIkon, '10%'], ['akislar', 'Akışlar', AkislarIkon, '29%'],
-  ['bana', 'Görevler', BanaIkon, '48%'], ['ayarlar', 'Ayarlar', AyarlarIkon, '67%'],
+  ['evren', 'Evren', EvrenIkon, '18%'], ['akislar', 'Akışlar', AkislarIkon, '50%'], ['bana', 'Görevler', BanaIkon, '82%'],
 ];
 
+
+
 /**
- * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, Görevler, Ayarlar ve en sağda + (yeni iş; el notu 23 Eki N12).
- * Tasarımda üç yuva vardı; dört sekme denetim planından (CELISKILER 60). Masaüstü kabuğunun panelinde çizilmez (N13).
+ * Alt gezinme (358 × 58, yarıçap 29): Evren, Akışlar, Görevler (plan 27 Eki, 2.8). Yeni iş (+) ve Ayarlar sayfanın
+ * üstünde zilin yanında (UstDugmeler). Masaüstü kabuğunun panelinde çizilmez (N13).
  */
-export function AltGezinme({ aktif, git, yeni }: { aktif: Sekme | null; git?: (s: Sekme) => void; yeni: () => void }) {
+export function AltGezinme({ aktif, git }: { aktif: Sekme | null; git?: (s: Sekme) => void; yeni?: () => void }) {
   const panelde = usePanelIcinde();
   const ozet = useOzet();
   const bekleyen = (ozet.data?.benim || []).filter((b: any) => b.durum !== 'suruyor').length;
@@ -62,13 +55,6 @@ export function AltGezinme({ aktif, git, yeni }: { aktif: Sekme | null; git?: (s
           {s === 'bana' && bekleyen > 0 && <b className="sekme-sayi" aria-hidden>{bekleyen}</b>}
         </button>
       ))}
-      <button type="button" className="yeni-is" onClick={yeni} aria-label="Yeni iş">
-        <svg width="60" height="60" viewBox="-30 -30 60 60" aria-hidden>
-          <circle r="30" fill="url(#bloom)" opacity=".7" />
-          <circle r="22" fill="url(#btn)" />
-          <path d="M0,-8 L0,8 M-8,0 L8,0" stroke="var(--renk-metin-koyu-uzerine)" strokeWidth="2.6" strokeLinecap="round" />
-        </svg>
-      </button>
     </nav>
   );
 }

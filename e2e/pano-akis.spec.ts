@@ -35,14 +35,14 @@ test('atlanan adım bitmiş sayılmaz: Hasat postu ilerlemesi atlananı ayrı s�
   await expect(page.getByRole('list', { name: 'Pano akışları' }).getByRole('button', { name: /^Hasat postu: \d+\/\d+ adım · \d+ atlandı/ })).toBeAttached();
 });
 
-test('N16 · 1440: şeritlerin hepsi görünür, altında adım listesi; adım seçilince detay, geri listeye', async ({ page }) => {
+test('N16 · 1440: şerit yok, panelin üstünde adım listesi; adım seçilince detay, geri listeye', async ({ page }) => {
   await ac(page, '/akis/U422?senaryo=berkin', 1440, 900);
-  const etiketler = page.getByRole('list', { name: 'Şeritler' }).getByRole('listitem');
-  await expect(etiketler).toHaveCount(6);
+  // plan 27 Eki, 2.5: şeritler kalktı; liste panelin üstünden başlar
+  await expect(page.getByRole('list', { name: 'Şeritler' })).toHaveCount(0);
   const liste = page.getByRole('list', { name: 'Adımlar' });
   await expect(liste.getByRole('button').first()).toBeVisible();
-  const son = await etiketler.last().boundingBox(), ilk = await liste.getByRole('button').first().boundingBox();
-  expect(son!.y + son!.height).toBeLessThan(ilk!.y);
+  const ilk = await liste.getByRole('button').first().boundingBox();
+  expect(ilk!.y).toBeLessThan(260);
   await expect(page.getByRole('tab')).toHaveCount(0);
   await cek(page, 'W4-akis-1440');
   await liste.getByRole('button', { name: /^15\. adım/ }).click();

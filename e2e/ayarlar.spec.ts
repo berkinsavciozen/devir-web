@@ -20,11 +20,18 @@ async function hedefler(p: Page, kok = 'body') {
   }
 }
 
-test('B1-gezinme: dört sekme; Görevler sayılı, ≤ 1 dokunuş', async ({ page }) => {
+test('B1-gezinme: üç sekme (Evren · Akışlar · Görevler); yeni iş, zil ve ayarlar sağ üstte', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
-  await expect(nav.getByRole('button')).toHaveCount(5);
+  await expect(nav.getByRole('button')).toHaveCount(3);
   await hedefler(page, '.alt-gezinme');
+  // plan 27 Eki, 2.8: +, zil ve ayarlar sağ üstte
+  const ust = page.locator('.ust-dugmeler');
+  for (const ad of ['Yeni iş', /^Bildirimler/, 'Ayarlar']) await expect(ust.getByRole('button', { name: ad })).toBeVisible();
+  await hedefler(page, '.ust-dugmeler');
+  await ust.getByRole('button', { name: 'Ayarlar' }).click();
+  await expect(page).toHaveURL(/\/ayarlar/);
+  await page.goBack();
   await nav.getByRole('button', { name: /^Görevler/ }).click();
   await expect(page).toHaveURL(/\/gorevler/);
   await expect(nav.getByRole('button', { name: /^Görevler/ })).toHaveAttribute('aria-current', 'page');
