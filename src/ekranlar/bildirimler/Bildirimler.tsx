@@ -17,6 +17,7 @@ import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { SatirKart } from '../hesap/Hesap';
 import { adimAdi, bSuzgecAdresi, gecmistenOlaylar, bSuzgecOku, gunlere, kisa, olayAciklamasi, olayFiili, olayTuru, suz, topla, TUR_AD, type BSuzgec, type OlayTuru, type Toplu } from './model';
+import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 
 // Bildirimler (/bildirimler; el notu 18): görünen akışlardaki başkalarının hareketleri. "Senin için" (senin adımın ya da
 // seni bekleyen) ve "Tüm etkinlik" sekmeleri, Kişi ve Akış süzgeçleri adreste; güne göre gruplar, aynı adımdaki art arda
@@ -71,15 +72,15 @@ export function Bildirimler({ ben }: { ben: Ben }) {
     const akis = e.akis_kisa_ad || e.akis_baslik;
     // toplu "sırası geldi": adımlar alt satırda, satır galaksiye gider
     const fiil = t.sira ? `${t.n} adımın sırası geldi` : olayFiili(e);
-    const adim = t.sira ? null : adimAdi(e), acik = t.sira ? t.adimlar.join(', ') : olayAciklamasi(e);
+    const adim = t.sira ? null : adimAdi(e), ust = adim ? ustAdi(e, d?.adimlar) : null, acik = t.sira ? t.adimlar.join(', ') : olayAciklamasi(e);
     const sistem = e.kim_tip === 'sistem';
     const yol = e.adim_no == null || t.sira ? `/akis/${enc(e.akis)}` : `/akis/${enc(e.akis)}/adim/${e.adim_no}${e.tip === 'cikti' ? '?bolum=ciktilar' : '?sekme=gecmis'}`;
     return {
       tur: 'satir', key: t.ids.join('-'),
       ikon: `<circle cx="28" cy="29" r="24" fill="url(#bloom)" opacity=".18"/>${kucukGalaksi(d, kisi, 28, 29, 19, 2, NOW)}${a ? planet(43, 44, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1.5 }) : ''}`,
-      ust: <>{!t.okundu && <i className="okunmamis-nokta" aria-hidden />}{fiil}{adim ? <span className="soluk"> · {adim}</span> : null}</>,
+      ust: <>{!t.okundu && <i className="okunmamis-nokta" aria-hidden />}{fiil}{adim ? <span className="soluk"> · <GorevAdi ad={adim} ust={ust} /></span> : null}</>,
       alt: [akis, acik, t.n > 1 && !t.sira ? `${t.n} hareket` : null, saat(Date.parse(e.zaman))].filter(Boolean).join(' · '),
-      etiket: `${t.okundu ? '' : 'Yeni. '}${fiil}${adim ? `: ${adim}` : ''}. ${akis}.${acik ? ` ${acik}.` : ''}${t.n > 1 && !t.sira ? ` ${t.n} hareket.` : ''} ${saat(Date.parse(e.zaman))}.`,
+      etiket: `${t.okundu ? '' : 'Yeni. '}${fiil}${adim ? `: ${ust ? `${ust} › ` : ''}${adim}` : ''}. ${akis}.${acik ? ` ${acik}.` : ''}${t.n > 1 && !t.sira ? ` ${t.n} hareket.` : ''} ${saat(Date.parse(e.zaman))}.`,
       sag: sistem ? undefined : <svg aria-hidden className="satir-gemi" width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gemi(e.kim, e.kim_tip, 0, 0, .55) }} />,
       git: () => git(yol),
     };

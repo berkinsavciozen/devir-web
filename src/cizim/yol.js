@@ -30,7 +30,7 @@ export function akisModeli(detay0, o = {}) {
   const k = detay.akis;
   const F = {
     kod: k.kod, baslik: k.baslik, kapandi: k.kapandi_at ? Date.parse(k.kapandi_at) : null,
-    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0 })),
+    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0, agentSahibi: a.agent_sahibi || null })),
     // sunucunun darboğazı (R11): haritadaki taç en az ışıklı
     darbogaz: k.karar_ozeti?.darbogaz?.no ?? null,
   };
@@ -47,11 +47,23 @@ const byNoOf = (F) => F.steps.reduce((m, s) => (m[s.no] = s, m), {});
  */
 export const UYE_PALET = ['#8EC5FF', '#FFE08A', '#D9B3FF', '#7FD6E8', '#F5B3A3', '#C7B8FF'];
 export const TAKIM_RENGI = '#C9C2E8';
-export function uyeRenkleri(G, sahip) {
+export function uyeRenkleri(G, sahip, ajanSahibi = {}) {
   const r = {}, kalabalik = G.uyeler.length > 6;
   let i = 0;
-  for (const u of G.uyeler) r[u.ad] = u.ad === sahip ? '#FFC9A3' : u.tip === 'agent' && /^Claude\b/i.test(u.ad) ? '#B9A6F2' : u.tip === 'dis' ? '#F2B8D8' : kalabalik ? TAKIM_RENGI : UYE_PALET[i++ % UYE_PALET.length];
+  // agent sahibinin renginde (0.28.0 agent_sahibi): sahibi bilinen agent renk sırası tüketmez
+  const sahipli = (u) => u.tip === 'agent' && ajanSahibi[u.ad] && ajanSahibi[u.ad] !== u.ad;
+  for (const u of G.uyeler) if (!sahipli(u)) r[u.ad] = u.ad === sahip ? '#FFC9A3' : u.tip === 'agent' && /^Claude\b/i.test(u.ad) ? '#B9A6F2' : u.tip === 'dis' ? '#F2B8D8' : kalabalik ? TAKIM_RENGI : UYE_PALET[i++ % UYE_PALET.length];
+  for (const u of G.uyeler) if (sahipli(u)) {
+    const o = ajanSahibi[u.ad];
+    r[u.ad] = o === sahip ? '#FFC9A3' : r[o] || UYE_PALET[[...o].reduce((t, c) => t + c.charCodeAt(0), 0) % UYE_PALET.length];
+  }
   return r;
+}
+/** agent adı → sahibi (adımların agent_sahibi alanından; ilk yazan kazanır) */
+export function ajanSahipleri(steps) {
+  const m = {};
+  for (const s of steps) if (s.tip === 'agent' && s.agentSahibi && !m[s.sahip]) m[s.sahip] = s.agentSahibi;
+  return m;
 }
 export const kisaAd = (ad) => ad.replace(/\s*\(.*\)$/, '').replace(/ agent’ı| agent'ı/, '').split(' ')[0];
 export const yolD = (pts) => pts.length < 2 ? '' : pts.map((p, i) => (i ? 'L' : 'M') + f(p[0]) + ',' + f(p[1])).join('');
@@ -164,7 +176,7 @@ export function yolCiz(M, o = {}) {
   const AK = M.AK;
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
   const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU });
-  const RENK = uyeRenkleri(G, M.sahip);
+  const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps));
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
   const byNo = byNoOf(F), P = {}; for (const no in G.gezegen) P[no] = [G.gezegen[no].x, G.gezegen[no].y];
   const stOf = (no) => (o.states && o.states[no]) || (o.allLit ? (byNo[no].durum === 'atlandi' ? 'ghost' : 'lit') : G.durumAn(+no, X)) || 'dark';

@@ -855,3 +855,23 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .akis-secim-satir[aria-pressed="true"] .akis-secim-kutu { background: var(--renk-vurgu-altin); border-color: var(--renk-vurgu-altin); box-shadow: inset 0 0 0 3px var(--renk-zemin-kart); }
 .akis-secim-hap { position: absolute; z-index: 3; height: 44px; padding: 0 16px; border-radius: 22px; font-size: 13px; font-weight: 700; color: var(--renk-metin-ink); background: color-mix(in srgb, var(--renk-zemin-kart) 80%, transparent); border: 1px solid color-mix(in srgb, var(--renk-vurgu-altin) 55%, transparent); }
 .akis-secim-hap:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+/* üst görev kırıntısı (plan 27 Eki, 1.5) */
+.ust-kirinti { font-weight: 500; color: var(--renk-metin-ink3); }
+/* üst görevi daralt / aç (plan 27 Eki, 1.2) */
+.grup-ac { position: absolute; right: 20px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(185, 166, 242, .35); border-radius: 12px; background: rgba(30, 22, 69, .7); cursor: pointer; padding: 0; }
+.grup-ac:focus-visible { outline: 2px solid var(--renk-metin-altin); outline-offset: 2px; }
+/* 1.3 · alt görev akordiyonu */
+.gd-akordiyon { border-radius: 14px; background: color-mix(in srgb, #FFFFFF 4%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.gd-akordiyon summary { list-style: none; min-height: 48px; display: flex; align-items: center; gap: 10px; padding: 6px 12px; cursor: pointer; border-radius: 14px; }
+.gd-akordiyon summary::-webkit-details-marker { display: none; }
+.gd-akordiyon summary span { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.gd-akordiyon summary b { font-size: 14.5px; line-height: 19px; font-weight: 650; color: var(--renk-metin-ink); }
+.gd-akordiyon summary small { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--renk-metin-ink3); }
+.gd-akordiyon summary svg { flex: none; overflow: visible; }
+.gd-akordiyon-ok path { fill: none; stroke: var(--renk-metin-ink2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.gd-akordiyon[open] .gd-akordiyon-ok { transform: rotate(180deg); }
+.gd-akordiyon summary:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.gd-akordiyon .gd-liste { padding: 4px 12px 8px 50px; }
+.gd-akordiyon .gd-liste > div { grid-template-columns: 96px 1fr; }
+.gd-akordiyon-eylem { display: flex; align-items: center; gap: 12px; padding: 0 12px 10px 50px; }
+.gd-akordiyon-eylem .metin-baglanti { min-height: 44px; font-size: 14px; }
