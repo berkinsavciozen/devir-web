@@ -6,7 +6,7 @@ import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { f, galaxy, pill, ship, sparkle, tower } from '../../cizim/ortak.js';
+import { f, galaxy, pill, ship, sparkle, kapi } from '../../cizim/ortak.js';
 import { sarSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 
@@ -23,7 +23,7 @@ function rozet(b: string | null, x: number, y: number): string {
   let s = `<circle cx="${f(x)}" cy="${f(y)}" r="13" fill="#150E33" stroke="#FFD27A" stroke-opacity=".6"/>`;
   if (b === 'karar') s += `<g transform="translate(${f(x - 2)},${f(y + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
   else if (b === 'kisit' || b === 'kapi') s += `<g transform="translate(${f(x)},${f(y)})"><rect x="-5" y="-2" width="10" height="8" rx="2" fill="#FFD27A"/><path d="M-3,-2 L-3,-4 A3,3 0 0 1 3,-4 L3,-2" fill="none" stroke="#FFD27A" stroke-width="1.5"/></g>`;
-  else if (b === 'sonuc') s += tower(x, y + 7, .14, true);
+  else if (b === 'sonuc') s += kapi(x, y + 7, .14, true);
   else if (b === 'dis') s += ship(x, y + 2, 0, 'dis', '', '#FFC9A3', .45);
   else s += sparkle(x, y, 6, '#FFE7A8', 1);
   return s;

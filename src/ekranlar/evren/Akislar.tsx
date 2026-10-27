@@ -11,7 +11,7 @@ import { useVurgu, vurgula } from '../../bilesen/vurgu';
 import { Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { iconCloud, iconRings, TAKVIM1 } from '../../cizim/ekran';
 import { uydular } from '../../cizim/yol.js';
-import { brackets, f, shareRing, sparkle, tower } from '../../cizim/ortak.js';
+import { brackets, f, shareRing, sparkle, kapi } from '../../cizim/ortak.js';
 import { akisAdi, doluSatir, ozelEk, paySure, yaziTipleriHazir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { isPayi } from '../akis/Adim';
@@ -83,7 +83,7 @@ export function Akislar({ ben }: { ben: Ben }) {
         const [renk, r] = boncukRenk(st.durum), bekl = st.durum === 'hazir' || st.durum === 'suruyor';
         s += `<circle cx="${f(108 + j * ara)}" cy="${cy + 2}" r="${r}" fill="${renk}" ${bekl ? 'stroke="#FFD27A" stroke-width=".8"' : ''}/>`;
       });
-      s += tower(b, cy + 16, .17, k.durum === 'kapandi');
+      s += kapi(b, cy + 16, .17, k.durum === 'kapandi');
       s += `<rect x="${f(tx(NOW) - 1)}" y="${cy + 4}" width="2" height="16" rx="1" fill="#FFC9A3"/>`;
       // alt akışlı kart: mini uydular + "N kalem"
       const t = d?.tekrar?.[0];

@@ -1,4 +1,4 @@
-import { planet, ship, tower } from '../../cizim/ortak.js';
+import { planet, ship, kapi } from '../../cizim/ortak.js';
 import { kisaAd } from '../../cizim/yol.js';
 import type { Cip, CipTur } from './ozet';
 
@@ -6,7 +6,7 @@ import type { Cip, CipTur } from './ozet';
 const SIMGE: Record<CipTur, (ben: string) => string> = {
   engel: () => planet(11, 12, 6, 'block', { life: false, cloudGap: 1 }),
   karar: () => planet(11, 12, 6, 'wait', { life: false, waitRings: 1, karar: true }),
-  risk: () => tower(11, 19, .2, false),
+  risk: () => kapi(11, 19, .2, false),
   sira: () => planet(11, 11, 6, 'wait', { life: false, waitRings: 1 }),
   sende: (ben) => ship(11, 11, -12, 'insan', kisaAd(ben)[0] || '', '#9EE6CF', .4, { flame: false }),
   bitti: () => planet(11, 11, 6, 'lit', { life: false }),

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { SAHTE } from '../../api/ortam';
-import { galaxy, planet, ship, tower } from '../../cizim/ortak.js';
+import { galaxy, planet, ship, kapi } from '../../cizim/ortak.js';
 import { arama } from '../../yonlendirme';
 
 // İlk açılış tanıtımı (denetim planı, CELISKILER 65): üç kart, bir kez. Seçim bu cihazda kalır.
@@ -13,7 +13,7 @@ const KARTLAR: { cizim: string; baslik: string; metin: string }[] = [
     metin: 'Adımlar sırayla yanar: ışıklı olan bitti, halkalı olanın sırası geldi.',
   },
   {
-    cizim: ship(78, 82, -12, 'insan', 'B', '#FFC9A3', 1.1, { flame: false }) + ship(124, 66, -12, 'agent', 'C', '#B9A6F2', 1.05, { flame: false }) + ship(166, 92, 0, 'dis', '', '#F2B8D8', 1) + tower(206, 112, .45, true),
+    cizim: ship(78, 82, -12, 'insan', 'B', '#FFC9A3', 1.1, { flame: false }) + ship(124, 66, -12, 'agent', 'C', '#B9A6F2', 1.05, { flame: false }) + ship(166, 92, 0, 'dis', '', '#F2B8D8', 1) + kapi(206, 112, .45, true),
     baslik: 'Kimde, ne zaman',
     metin: 'Her kişinin ve agent’ın yolu ayrı renkte; kule hedef tarihi gösterir.',
   },

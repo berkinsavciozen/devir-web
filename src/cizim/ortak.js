@@ -169,7 +169,8 @@ function planet(x, y, r, state, o = {}) {
   }
   if (state === 'ghost') {
     s += `<circle r="${f(r)}" fill="#2A2452" fill-opacity=".35" stroke="#A99BDB" stroke-width="1.2" stroke-dasharray="2 3" opacity=".8"/>`;
-    s += `<path d="M${f(-r * .45)},0 L${f(r * .45)},0" stroke="#A99BDB" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`;
+    // atlandı (plan 27 Eki, 3.10): kesik çizgi + gezegenin üstünü çizen çapraz çizik
+    s += `<path d="M${f(-r * .78)},${f(r * .78)} L${f(r * .78)},${f(-r * .78)}" stroke="#A99BDB" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>`;
     return s + '</g>';
   }
   if (state === 'lit') {
@@ -242,14 +243,23 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(ang)}) scale(${sc})">`;
   const son = '</g></g></g>';
   if (kind === 'dis') {
-    // yelkenli
-    s += `<ellipse cx="0" cy="10" rx="20" ry="5" fill="url(#glowPeach)" opacity=".6"/>`;
-    s += `<path d="M-15,3 Q0,13 15,3 Z" fill="#FFF1E2" stroke="${col}" stroke-width="1.2"/>`;
-    s += `<rect x="-.8" y="-20" width="1.6" height="23" fill="#FFF1E2"/>`;
-    s += `<path d="M1.5,-19 Q12,-8 11,1 L1.5,1Z" fill="${col}"/>`;
-    s += `<path d="M-1.5,-15 Q-10,-6 -10,1 L-1.5,1Z" fill="#FFF1E2" opacity=".9"/>`;
-    s += `<path d="M2,-19 L8,-22 L2,-24Z" fill="#FFD27A"/>`;
-    s += `<circle cx="-4" cy="6" r="2" fill="#2B2160"/><circle cx="4" cy="6" r="2" fill="#2B2160"/>`;
+    // UFO (plan 27 Eki, 3.17): Devir kullanıcısıysa (o.kullanici) kubbe dolu, değilse boş
+    s += `<ellipse cx="0" cy="9" rx="13" ry="7" fill="url(#glowPeach)" opacity=".55"/>`;
+    s += `<path d="M-8,-1 A8,8 0 0 1 8,-1Z" fill="${o.kullanici ? col : '#2B2160'}" stroke="${col}" stroke-width="1.4"/>`;
+    s += `<ellipse cx="0" cy="1" rx="17" ry="5.5" fill="#FFF1E2" stroke="${col}" stroke-width="1.4"/>`;
+    s += `<circle cx="-9" cy="1.5" r="1.4" fill="${col}"/><circle cx="0" cy="3" r="1.4" fill="${col}"/><circle cx="9" cy="1.5" r="1.4" fill="${col}"/>`;
+    return s + son;
+  }
+  if (kind === 'agent') {
+    // füze (plan 27 Eki, 3.16): ince uzun gövde, sahip renginde sivri burun ve üç kanat; köşeli pencere
+    if (o.flame !== false) s += `<path d="M-17,-3 Q-34,0 -17,3Z" fill="url(#flame)"/>`;
+    s += `<path d="M-10,-4.5 L-18,-11 L-17,-4.5Z M-10,4.5 L-18,11 L-17,4.5Z" fill="${col}"/>`;
+    s += `<rect x="-17" y="-4.8" width="25" height="9.6" rx="2" fill="#FFF1E2"/>`;
+    s += `<path d="M8,-4.8 Q17,-3 21,0 Q17,3 8,4.8Z" fill="${col}"/>`;
+    s += `<path d="M-17,-1 L-21,0 L-17,1Z M-13,-.8 H-6 V.8 H-13Z" fill="${col}"/>`;
+    s += `<rect x="-4" y="-4" width="8.5" height="8" rx="1.5" fill="#2B2160" stroke="${col}" stroke-width="1.4"/>`;
+    s += `<text x=".25" y="2.9" transform="rotate(${f(-ang)} .25 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="7.5" fill="#FFF3E8">${initial}</text>`;
+    if (o.sira) s += `<text x="12" y="-8" transform="rotate(${f(-ang)} 12 -9)" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
     return s + son;
   }
   if (o.flame !== false) s += `<path d="M-11,-4 Q-30,0 -11,4Z" fill="url(#flame)"/>`;
@@ -257,14 +267,7 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
   s += `<path d="M15,0 C11,-8.5 -1,-10 -10,-7.5 Q-13,0 -10,7.5 C-1,10 11,8.5 15,0Z" fill="#FFF1E2"/>`;
   s += `<path d="M15,0 C11,8.5 -1,10 -10,7.5 Q-11,4 -11,2 C0,4 9,3 15,0Z" fill="${col}" opacity=".55"/>`;
   s += `<path d="M15,0 C13,-3 11,-5 9,-6 L9,6 C11,5 13,3 15,0Z" fill="${col}"/>`;
-  if (kind === 'agent') {
-    // agent: iki anten, ışıklı uç, köşeli pencere (insandan şekille ayrılır, renge dayanmaz)
-    s += `<path d="M0,-8.5 L-2,-16 M4,-8 L6.5,-14" stroke="#FFF1E2" stroke-width="1.2" stroke-linecap="round"/>`;
-    s += sparkle(-2.2, -17.5, 4.2, '#9EE6CF', 1) + `<circle cx="6.5" cy="-14.6" r="1.3" fill="#9EE6CF"/>`;
-    s += `<rect x="-6" y="-5.5" width="11" height="11" rx="1.8" fill="#2B2160" stroke="${col}" stroke-width="1.8"/>`;
-  } else {
-    s += `<circle cx="-.5" cy="0" r="6" fill="#2B2160" stroke="${col}" stroke-width="1.6"/>`;
-  }
+  s += `<circle cx="-.5" cy="0" r="6" fill="#2B2160" stroke="${col}" stroke-width="1.6"/>`;
   s += `<text x="-.5" y="3.2" transform="rotate(${f(-ang)} -.5 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="8.5" fill="#FFF3E8">${initial}</text>`;
   return s + son;
 }
@@ -293,6 +296,25 @@ function tower(x, y, sc = 1, lit = true) {
     <path d="M.7,-92 L10,-88 L.7,-84Z" fill="${lit ? '#FFD27A' : '#8E80D6'}"/>
     <path d="M-22,0 L22,0 L16,7 L-16,7Z" fill="${lit ? '#C9768F' : '#2D2660'}"/>
   </g>`;
+}
+
+// varış kapısı (hedef, plan 27 Eki 3.G): halka biçimli geçit; tabanı y'de, boyu tower ile aynı ölçekte
+function kapi(x, y, sc = 1, lit = true) {
+  // açık akışta da altın (hedef her zaman bulunsun); kapanınca içi ışır
+  const c = lit ? '#FFE29A' : '#FFD27A';
+  return `<g transform="translate(${f(x)},${f(y)}) scale(${sc})">
+    <circle cx="0" cy="-42" r="40" fill="url(#glowGold)" opacity="${lit ? .8 : .45}"/>
+    <circle cx="0" cy="-42" r="22" fill="#1A1238" fill-opacity=".55"/>
+    <circle cx="0" cy="-42" r="22" fill="none" stroke="${c}" stroke-width="7"/>
+    <circle cx="0" cy="-42" r="22" fill="none" stroke="#FFF1E0" stroke-width="1.6" stroke-dasharray="4 7" opacity=".8"/>
+    <circle cx="0" cy="-42" r="9" fill="url(#${lit ? 'glowPeach' : 'glowLilac'})" opacity=".9"/>
+    <path d="M-10,-18 L-14,0 L14,0 L10,-18" fill="${lit ? '#C9768F' : '#2D2660'}"/>
+    <path d="M-20,0 L20,0 L16,6 L-16,6Z" fill="${lit ? '#E8738A' : '#3A3170'}"/>
+  </g>`;
+}
+// merkez (başlangıç) yıldızı
+function yildiz(x, y, s = 1) {
+  return `<g transform="translate(${f(x)},${f(y)})"><circle r="${f(12 * s)}" fill="url(#glowGold)" opacity=".9"/>${sparkle(0, 0, 8 * s, '#FFF1D6', 1)}<circle r="${f(2.2 * s)}" fill="#FFFFFF"/></g>`;
 }
 
 // kübik eğri yardımcıları (rota)
@@ -444,4 +466,4 @@ function brackets(x, y, w, h, col, glyph = '', gl = false) {
   return s + '</g>';
 }
 
-export { vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
+export { kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
