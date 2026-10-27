@@ -29,7 +29,9 @@ export function akisModeli(detay0, o = {}) {
   const k = detay.akis;
   const F = {
     kod: k.kod, baslik: k.baslik, kapandi: k.kapandi_at ? Date.parse(k.kapandi_at) : null,
-    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi })),
+    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0 })),
+    // sunucunun darboğazı (R11): haritadaki taç en az ışıklı
+    darbogaz: k.karar_ozeti?.darbogaz?.no ?? null,
   };
   const AK = apidenAkis(detay, { sahip: o.sahip });
   if (o.haric) AK.haric = o.haric;
@@ -37,15 +39,34 @@ export function akisModeli(detay0, o = {}) {
 }
 const byNoOf = (F) => F.steps.reduce((m, s) => (m[s.no] = s, m), {});
 
-/** Üye rengi (§3.3): akış sahibi şeftali, Claude lila, öteki agent'lar ve insanlar nane, dış katılımcı pembe. */
+/**
+ * Üye rengi (plan 27 Eki, 3.C): yeşil artık yalnız "tamam" demek, kişilere verilmez.
+ * Akış sahibi şeftali, Claude lila, dış katılımcı pembe; öteki herkes sırayla kendi rengini alır.
+ * 6 kişiyi aşan akışta ötekiler tek takım rengine düşer, gemideki baş harf ayırır.
+ */
+export const UYE_PALET = ['#8EC5FF', '#FFE08A', '#D9B3FF', '#7FD6E8', '#F5B3A3', '#C7B8FF'];
+export const TAKIM_RENGI = '#C9C2E8';
 export function uyeRenkleri(G, sahip) {
-  const r = {};
-  for (const u of G.uyeler) r[u.ad] = u.ad === sahip ? '#FFC9A3' : u.tip === 'agent' ? (/^Claude\b/i.test(u.ad) ? '#B9A6F2' : '#9EE6CF') : u.tip === 'dis' ? '#F2B8D8' : '#9EE6CF';
+  const r = {}, kalabalik = G.uyeler.length > 6;
+  let i = 0;
+  for (const u of G.uyeler) r[u.ad] = u.ad === sahip ? '#FFC9A3' : u.tip === 'agent' && /^Claude\b/i.test(u.ad) ? '#B9A6F2' : u.tip === 'dis' ? '#F2B8D8' : kalabalik ? TAKIM_RENGI : UYE_PALET[i++ % UYE_PALET.length];
   return r;
 }
 export const kisaAd = (ad) => ad.replace(/\s*\(.*\)$/, '').replace(/ agent’ı| agent'ı/, '').split(' ')[0];
 export const yolD = (pts) => pts.length < 2 ? '' : pts.map((p, i) => (i ? 'L' : 'M') + f(p[0]) + ',' + f(p[1])).join('');
-const PRI = { block: 0, wait: 1, dark: 2, lit: 3, ghost: 4, tahmin: 3 };
+const PRI = { block: 0, wait: 1, run: 1, dark: 2, lit: 3, ertele: 4, ghost: 4, tahmin: 3 };
+const SONUK = ['lit', 'ghost', 'ertele'];
+
+/**
+ * Küçük işaretler (plan 27 Eki, 3.A): altın elmas = kritik yol, belge = çıktı; bayrak (karar) planet() içinde.
+ * Darboğaz tacı: 1 ışıklı, 2 nabız atan (dongu-tac); 0'da taç yok.
+ */
+export function tac(x, y, r, k) {
+  if (!k) return '';
+  return `<g transform="translate(${f(x)},${f(y)})"${k === 2 ? ' class="dongu-tac"' : ''}><circle r="${f(r * 2.6)}" fill="url(#glowCoral)" opacity="${k === 2 ? .8 : .45}"/>${k === 2 ? `<circle r="${f(r + 8)}" fill="none" stroke="#FF8A78" stroke-width="1" opacity=".55"/>` : ''}</g>`;
+}
+export const elmas = (x, y, s = 1) => `<path d="M${f(x)},${f(y - 4.2 * s)} L${f(x + 3.2 * s)},${f(y)} L${f(x)},${f(y + 4.2 * s)} L${f(x - 3.2 * s)},${f(y)}Z" fill="#FFD27A" stroke="#2A1D4F" stroke-width=".8"/>`;
+export const belge = (x, y, s = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${f(s)})"><path d="M-3,-4 H1.6 L3.4,-2.2 V4 H-3Z" fill="#E2D6F5" stroke="#2A1D4F" stroke-width=".7"/><path d="M-1.6,-.6 H1.8 M-1.6,1.4 H1.8" stroke="#2A1D4F" stroke-width=".6"/></g>`;
 
 // küme rozeti: öndeki gezegen + arkasında silik eşleri + sayı rozeti (renge değil sayıya dayanır)
 export function clusterBadge(x, y, members, radOf, stOf, ps = 1) {
@@ -101,7 +122,7 @@ export function yolCiz(M, o = {}) {
   const AK = M.AK;
   const G = kur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric });
   const RENK = uyeRenkleri(G, M.sahip);
-  const UYE_RENK = (u) => RENK[u.ad] || '#9EE6CF';
+  const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
   const byNo = byNoOf(F), P = {}; for (const no in G.gezegen) P[no] = [G.gezegen[no].x, G.gezegen[no].y];
   const stOf = (no) => (o.states && o.states[no]) || (o.allLit ? (byNo[no].durum === 'atlandi' ? 'ghost' : 'lit') : G.durumAn(+no, X)) || 'dark';
   const OK = o.ok ?? 1, YK = o.yk ?? 1;
@@ -184,15 +205,20 @@ export function yolCiz(M, o = {}) {
   const vis = Object.keys(G.gezegen).map(Number);
   const cl = G.kumeler(o.kumeRad || ((no) => radOf(no)), vis), inCl = new Set(cl.flat());
   // ikonAyri (yakınlaşınca): bulut ve bayrak gezegenden ayrılır, kendi dokunma alanları olur
-  const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !['lit', 'ghost'].includes(stOf(no)), waitRings: 2, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
+  const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !SONUK.includes(stOf(no)), waitRings: 1, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
   const ikonlar = [];
   const pl = (no) => {
     const g = G.gezegen[no], k = stOf(no), r = k === 'dark' && o.minR ? Math.max(radOf(no), o.minR * ps) : radOf(no);
     let t = '';
+    // darboğaz tacı: açık adımda; sunucunun darboğazı en az ışıklı (R11)
+    if (!SONUK.includes(k) && k !== 'tahmin') t += tac(g.x, g.y, r, Math.max(g.korona || 0, F.darbogaz === +no ? 1 : 0));
     if (k === 'tahmin') t += `<g opacity=".55">${planet(g.x, g.y, r, 'lit', { life: false })}</g><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 4)}" fill="none" stroke="#FFD27A" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     else t += planet(g.x, g.y, r, k, ex(no));
     if (o.ikonAyri && k === 'block') ikonlar.push({ tur: 'bulut', no: +no, x: g.x + radOf(no) * .15, y: g.y - radOf(no) - ex(no).cloudGap - 3 });
-    if (o.ikonAyri && byNo[no].karar && !['lit', 'ghost'].includes(k)) {
+    // kritik yol (açık): altın elmas sol üstte; çıktı: belge sağ altta
+    if (g.kritik && !SONUK.includes(k)) t += elmas(g.x - r * .85 - 2, g.y - r * .85 - 2, Math.min(1.3, Math.max(.8, r / 9)));
+    if (byNo[no].cikti) t += belge(g.x + r * .9 + 2, g.y + r * .8 + 2, Math.min(1.3, Math.max(.8, r / 9)));
+    if (o.ikonAyri && byNo[no].karar && !SONUK.includes(k)) {
       const D = Math.max(44, radOf(no) + 30), a = 35 * Math.PI / 180, bx = g.x + Math.sin(a) * D, by = g.y - Math.cos(a) * D;
       t += `<path d="M${f(g.x + Math.sin(a) * (r + 3))},${f(g.y - Math.cos(a) * (r + 3))} L${f(g.x + Math.sin(a) * (D - 12))},${f(g.y - Math.cos(a) * (D - 12))}" stroke="#FFD27A" stroke-width="1" stroke-dasharray="1.5 3" opacity=".8"/>`;
       t += `<circle cx="${f(bx)}" cy="${f(by)}" r="12" fill="#1A1238" stroke="#FFD27A" stroke-width="1.2"/><g transform="translate(${f(bx - 2)},${f(by + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7.5,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;

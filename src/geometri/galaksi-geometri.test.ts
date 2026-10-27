@@ -21,23 +21,38 @@ describe('galaksi geometrisi', () => {
     it(`${kod}: her yol parçasında uzunluk ∝ zaman (%1 altında)`, () => {
       expect(GG.test(akis, { simdi: SIMDI }).hata).toBeLessThan(0.01);
     });
-    it(`${kod}: kaynak modülle birebir aynı`, () => {
+    // plan 27 Eki (3.A): gezegen boyu sabit (darboğaz taçla), sürüyor ve ertelendi ayrı durum; geri kalanı kaynakla birebir
+    it(`${kod}: kaynak modülle birebir aynı (boy ve yeni durumlar dışında)`, () => {
       const a = GG.kur(akis, MOBIL), b = Ref.kur(akis, MOBIL);
       expect(a.k).toBeCloseTo(b.k, 9);
       expect(Object.keys(a.gezegen)).toEqual(Object.keys(b.gezegen));
       for (const no of Object.keys(b.gezegen)) {
         const p = a.gezegen[+no], q = b.gezegen[no];
-        expect([p.x, p.y, p.r]).toEqual([q.x, q.y, q.r]);
+        expect([p.x, p.y]).toEqual([q.x, q.y]);
+        expect(p.r).toBeGreaterThanOrEqual(6 * MOBIL.ps - 1e-9);
+        expect(p.r).toBeLessThanOrEqual(11 * MOBIL.ps + 1e-9);
         expect(p.uyeler).toEqual(q.uyeler);
       }
       expect(a.uyeler.map((u) => [u.ad, u.t0, u.yol.length])).toEqual(b.uyeler.map((u: any) => [u.ad, u.t0, u.yol.length]));
       expect(a.kule).toEqual(b.kule);
       expect(a.ipler).toEqual(b.ipler);
       for (const u of a.uyeler) for (const t of [a.T0, SIMDI, a.tSon]) expect(a.konumAn(u.ad, t)).toEqual(b.konumAn(u.ad, t));
-      for (const no of Object.keys(b.gezegen)) expect(a.durumAn(+no, SIMDI)).toEqual(b.durumAn(+no, SIMDI));
-      expect(a.kumeler()).toEqual(b.kumeler());
+      const eski = (d: string | null) => (d === 'run' ? 'wait' : d === 'ertele' ? 'lit' : d);
+      for (const no of Object.keys(b.gezegen)) expect(eski(a.durumAn(+no, SIMDI))).toEqual(b.durumAn(+no, SIMDI));
+      expect(a.kumeler((no) => b.gezegen[no].r)).toEqual(b.kumeler());
     });
   }
+
+  it('darboğaz tacı: puan = ln(1+W) + 0.5·ln(1+E); eşikler 0.7 ve 1.6; kritik yol puana girmez', () => {
+    const a = (durum: string, bekleme_saat?: number) => ({ durum, bekleme_saat, engel_at: null } as any);
+    expect(GG.darbogaz(a('hazir'), 0, true, 1).korona).toBe(0);
+    expect(GG.darbogaz(a('hazir'), 1, false, 1).korona).toBe(0); // ln2 = 0.69
+    expect(GG.darbogaz(a('hazir'), 2, false, 1).korona).toBe(1); // ln3 = 1.10
+    expect(GG.darbogaz(a('hazir'), 5, false, 1).korona).toBe(2); // ln6 = 1.79
+    expect(GG.darbogaz(a('engelli', 24 * 20), 1, false, 1).korona).toBe(2); // 0.69 + 0.5·ln21
+    expect(GG.darbogaz(a('tamam'), 9, false, 1).korona).toBe(0);
+    expect(GG.darbogaz(a('hazir'), 0, true, 1, .78).r).toBeCloseTo(7 * .78);
+  });
 
   it('bütün yollar merkezden çıkıyor', () => {
     for (const akis of Object.values(akislar)) {

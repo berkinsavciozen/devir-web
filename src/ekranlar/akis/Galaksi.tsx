@@ -283,7 +283,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const n = d.adimlar.filter((a: any) => a.sahip === sh.ad && !BITTI(a.durum)).length;
     const tur = sh.tip === 'agent' ? 'agent' : sh.tip === 'dis' ? 'dış katılımcı' : 'insan';
     // gemi kalabalıkta kalırsa hedef küçülür ve gemi gövdesi içinde boş yere kayar (kişi her zaman seçilebilir)
-    const yer = [22, 18, 15].flatMap((r) => [[0, 0], [0, 8], [8, 4], [-8, 4], [0, -8], [10, 10], [-10, 10]].map(([dx, dy]) => ({ x: sh.x + dx, y: sh.y + dy, r }))).find((c) => gor(c.x, c.y) && bos(c, hedefler));
+    // önce tam boy (44 px) hedef gemi çevresinde aranır, sonra küçülür
+    const yakin = [[0, 0], [0, 8], [8, 4], [-8, 4], [0, -8], [10, 10], [-10, 10]], uzak = [[0, 14], [14, 0], [-14, 0], [0, -14], [12, 12], [-12, 12], [12, -12], [-12, -12]];
+    const yer = [...[...yakin, ...uzak].map(([dx, dy]) => ({ x: sh.x + dx, y: sh.y + dy, r: 22 })), ...[18, 15].flatMap((r) => yakin.map(([dx, dy]) => ({ x: sh.x + dx, y: sh.y + dy, r })))].find((c) => gor(c.x, c.y) && bos(c, hedefler));
     if (yer) hedefler.push({ key: 'kisi' + sh.ad, ...yer, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
   }
 
@@ -347,7 +349,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <button type="button" className="akis-menu" style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22, width: 44, height: 44 }} aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></button>
         <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar)} akis={kod} odak={odakAyar} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar, d)} akis={kod} odak={odakAyar} />
         <div className="galaksi-ust" style={{ left: U.cumleX, top: U.cumleY - 14, width: GD.PX - U.cumleX - 80 }}>
           <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
         </div>
@@ -384,7 +386,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: BOLUM_Y }}>{ad}</h2>
       {B.dugum}
       <AltSayfa acik={menu} kapat={() => setMenu(false)} baslik="Akış menüsü" yukseklik={560} duraklar={['orta']}><AkisMenusu kod={kod} d={d} kapat={() => setMenu(false)} /></AltSayfa>
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar)} akis={kod} odak={odakAyar} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={galaksiSayilari(d.adimlar, d)} akis={kod} odak={odakAyar} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
     </Sahne>
   );
