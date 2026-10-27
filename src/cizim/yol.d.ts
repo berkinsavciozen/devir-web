@@ -17,6 +17,4 @@ export function yolD(pts: number[][]): string;
 export function clusterBadge(x: number, y: number, members: number[], radOf: (no: number) => number, stOf: (no: number) => [string, O], ps?: number): string;
 export function uydular(x: number, y: number, r: number, kalemler: { ad: string; durum: string }[], ps?: number, o?: O): string;
 export function yolCiz(M: Model, o?: O): YolSonuc;
-export function seritOlcu(b: { x: number; y: number; w: number; h: number }, o?: O): { lw: number; X0: number; XW: number };
-export function seritler(M: Model, Y: YolSonuc, b: { x: number; y: number; w: number; h: number }, o?: O): { svg: string; xOf: (t: number) => number; yOf: (i: number) => number; eksenY: number; X0: number; XW: number; us: any[]; kopyalar: { no: number; x: number; y: number; r: number; uye: string }[]; lw: number; satir: number };
 export function zamanCubugu(x: number, y: number, w: number, G: Galaksi, X: number, o?: O): { svg: string; xOf: (t: number) => number; tOf: (px: number) => number; x0: number; x1: number; t0: number; t1: number };

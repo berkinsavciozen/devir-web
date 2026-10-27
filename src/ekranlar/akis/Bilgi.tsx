@@ -214,22 +214,14 @@ export function akisKisileri(d: any): { ad: string; tip: 'insan' | 'agent' | 'di
 }
 
 /** Akış menüsü (etkin akış, "…"): listeyi karar ya da çıktıya süzer, bağlantı, kişiler (kişi sayfası). */
-export function AkisMenusu({ kod, kapat, d, bolumAc }: { kod: string; kapat: () => void; d: any; bolumAc?: (s: AkisSuzgec) => void }) {
+/** Üç nokta menüsü: bağlantı ve kişiler. Liste süzgeci haritanın altındaki listede (plan 27 Eki, 2.6). */
+export function AkisMenusu({ kod, kapat, d }: { kod: string; kapat: () => void; d: any }) {
   const [kopyalandi, setKopyalandi] = useState(false);
-  // aynı sayfadaki liste varsa oraya kayar (madde 12); yoksa bilgi sayfası açılır
-  const ac = (s: AkisSuzgec) => { kapat(); if (bolumAc) bolumAc(s); else git(`/akis/${enc(kod)}/bilgi${s === 'hepsi' ? '' : `?suz=${s}`}`); };
-  const A: any[] = d.adimlar;
-  const satirlar: [AkisSuzgec, string, string][] = [
-    ['hepsi', 'Adımlar', `${A.length} adım, ${A.filter((a) => !BITTI(a.durum)).length} açık`],
-    ['karar', 'Kararlar', `${A.filter((a) => a.karar_adimi).length} karar adımı`],
-    ['cikti', 'Çıktılar', `${A.reduce((t, a) => t + (a.cikti_sayisi || 0), 0)} çıktı`],
-  ];
   const kopyala = async () => { try { await navigator.clipboard.writeText(tamAdres(`/akis/${enc(kod)}`)); setKopyalandi(true); } catch { setKopyalandi(false); } };
   const K = akisKisileri(d);
   return (
     <div className="akis-menu-liste">
       <h2 className="gorunmez">Akış menüsü</h2>
-      {satirlar.map(([s, b, k]) => <button key={s} type="button" className="akis-menu-satir dugmeli" onClick={() => ac(s)}><b>{b}</b><small>{k}</small></button>)}
       <button type="button" className="akis-menu-satir dugmeli" onClick={() => void kopyala()}><b>{kopyalandi ? 'Bağlantı kopyalandı' : 'Bağlantıyı kopyala'}</b><small>{d.akis.hedef_tarih ? `Hedef ${gunAyUzun(tarihMs(d.akis.hedef_tarih))}` : akisAdi(d.akis)}</small></button>
       <h3 className="akis-menu-baslik">KİŞİLER</h3>
       <div role="list" aria-label="Kişiler">

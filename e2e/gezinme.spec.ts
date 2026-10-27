@@ -73,7 +73,7 @@ test.describe('dokunmatik', () => {
   test('B3-kisi: kişi işareti → odak ve kişi kartı', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     await page.getByRole('listitem', { name: /^Berkin \(insan\)/ }).click();
-    await expect(page.getByRole('listitem', { name: /^Berkin yolu/ })).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('listitem', { name: /^Berkin \(insan\)/ })).toHaveAttribute('aria-pressed', 'true');
     await page.waitForTimeout(100);
     await cek(page, 'B3-kisi');
   });
@@ -120,4 +120,39 @@ test.describe('evren', () => {
     await adim.click();
     await expect(page).toHaveURL(new RegExp(`/akis/RTD5/adim/${no}`));
   });
+});
+
+// plan 27 Eki, 3.28: en yakında daha da yaklaşmak akışa kendiliğinden girmez, önce sorar
+test.describe('evren geçiş onayı', () => {
+  test.use({ hasTouch: true });
+  test('B1-gecis: en yakında yaklaşmaya devam → "akışına geçilsin mi?"; Kal kapatır, Geç açar', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/?senaryo=berkin');
+    const g = page.getByRole('listitem', { name: /^Hasat postu/ });
+    await g.waitFor();
+    const b = (await g.boundingBox())!;
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    const kart = page.getByRole('dialog', { name: 'Akışa geçiş' });
+    for (let i = 0; i < 60 && !(await kart.count()); i++) { await page.mouse.wheel(0, -80); await page.waitForTimeout(16); }
+    await expect(kart).toContainText('Hasat postu akışına geçilsin mi?');
+    expect(page.url()).not.toContain('/akis/');
+    await page.screenshot({ path: 'karsilastirma/uygulama/B1-gecis.png' });
+    await kart.getByRole('button', { name: 'Kal' }).click();
+    await expect(kart).toHaveCount(0);
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    for (let i = 0; i < 10 && !(await kart.count()); i++) { await page.mouse.wheel(0, -80); await page.waitForTimeout(16); }
+    await kart.getByRole('button', { name: 'Geç' }).click();
+    await expect(page).toHaveURL(/\/akis\/RTD5/);
+  });
+});
+
+// plan 27 Eki, 3.25: geçmişe ya da tahmine bakarken şerit ve "Bugüne dön"
+test('B3-zaman: başka günde şerit görünür; Bugüne dön sürgüyü bugüne alır', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&an=2026-10-17T12:00');
+  const s = page.getByRole('status').filter({ hasText: 'bakıyorsun' });
+  await expect(s).toContainText('Tahmine bakıyorsun · 17 Eki');
+  await s.getByRole('button', { name: 'Bugüne dön' }).click();
+  await expect(s).toHaveCount(0);
+  await expect(page.getByRole('slider', { name: 'Zaman' })).toHaveAttribute('aria-valuetext', /^Bugün/);
 });

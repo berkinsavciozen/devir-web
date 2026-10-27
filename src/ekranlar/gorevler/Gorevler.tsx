@@ -5,7 +5,7 @@ import { simdi } from '../../api/ortam';
 import { useBen, useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
-import { Zil } from '../../bilesen/Zil';
+import { UstDugmeler } from '../../bilesen/Zil';
 import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { useBoyut } from '../../bilesen/Gok';
 import { AltSayfa } from '../../bilesen/AltSayfa';
@@ -131,7 +131,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     <>
       <Sahne gok={GOK} etiket="Görevler" cizim={svg} yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Görevler</Metin>
-        <Zil y={36} />
+        <UstDugmeler y={36} />
         <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
         {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdiK(ak)} ac={() => git(`/akis/${enc(ak.kod)}`)} style={{ left: 20, right: 20, top: 98 + cumle.length * 22 }} />}
         {!eski ? (

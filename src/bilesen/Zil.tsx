@@ -34,3 +34,23 @@ export function Zil({ x, y, stil, kabukta }: { x?: number; y: number; stil?: Rea
     </button>
   );
 }
+
+/**
+ * Sayfa üstündeki düğme kümesi (plan 27 Eki, 2.8): yeni iş, bildirim zili ve ayarlar, sağ üstte yan yana.
+ * Telefonda alt gezinmeden çıkan + ve Ayarlar buraya taşındı; masaüstü panelinde PanelUst aynı üçlüyü çizer.
+ */
+export function UstDugmeler({ y, aktif }: { y: number; aktif?: 'ayarlar' | 'bildirimler' }) {
+  const panelde = usePanelIcinde();
+  if (panelde) return null;
+  return (
+    <div className="ust-dugmeler" style={{ top: y }}>
+      <button type="button" className="zil-dugme ust-arti" aria-label="Yeni iş" onClick={() => git('/yeni')}>
+        <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26"><circle r="11" fill="url(#btn)" /><path d="M0,-5 L0,5 M-5,0 L5,0" stroke="var(--renk-metin-koyu-uzerine)" strokeWidth="2.2" strokeLinecap="round" /></svg>
+      </button>
+      {aktif !== 'bildirimler' && <Zil y={0} stil={{ position: 'relative', top: 'auto', right: 'auto', left: 'auto' }} />}
+      {aktif !== 'ayarlar' && <button type="button" className="zil-dugme" aria-label="Ayarlar" onClick={() => git('/ayarlar')}>
+        <svg aria-hidden width="24" height="24" viewBox="-12 -12 24 24"><path d="M-7,-4 L7,-4 M-7,4 L7,4" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" strokeLinecap="round" /><circle cx="-2.5" cy="-4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /><circle cx="3" cy="4" r="2.4" fill="var(--renk-zemin-kart)" stroke="var(--renk-vurgu-lila)" strokeWidth="1.5" /></svg>
+      </button>}
+    </div>
+  );
+}

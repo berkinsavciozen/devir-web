@@ -6,7 +6,7 @@ import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { hedefParcasi, KararSeridi } from '../../bilesen/KararSeridi';
-import { Zil } from '../../bilesen/Zil';
+import { UstDugmeler } from '../../bilesen/Zil';
 import { useVurgu, vurgula } from '../../bilesen/vurgu';
 import { Metin, metinUst, Sahne } from '../../bilesen/Sahne';
 import { iconCloud, iconRings, TAKVIM1 } from '../../cizim/ekran';
@@ -104,7 +104,7 @@ export function Akislar({ ben }: { ben: Ben }) {
   return (
     <Sahne gok={{ tohum: 52, yildiz: 260 }} cizim={cizim.svg} etiket="Akışlar">
       <Metin y={70} fs={26} serif agirlik={700} as="h1">Akışlar</Metin>
-      <Zil y={36} />
+      <UstDugmeler y={36} />
       <Metin y={106} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
       <ul className="akis-liste" aria-label="Akışlar">
         {satirlar.map((k, i) => {

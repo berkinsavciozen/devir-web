@@ -51,14 +51,16 @@ test('N1, N3: evrende galaksi adı kendi çerçevesine takılı (1440 ve 360)', 
   }
 });
 
-test('N7: masaüstünde cümleler evren halkasına binmez (1280×720)', async ({ page }) => {
+test('N7: üst cümle yok; evren halkası üst satıra binmez (1280×720)', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', 1280, 720);
-  const cumle = page.locator('p', { hasText: 'Test Bank’te Selin’in sızma testi' });
-  const c = await cumle.boundingBox();
+  // plan 27 Eki, 2.3: evrenin üstünde akıllı cümle yok
+  await page.locator('.harita-gezinme .gezegen-hedef').first().waitFor();
+  await expect(page.locator('.cumle-hedef')).toHaveCount(0);
+  const ad = await page.getByText('Berkin', { exact: true }).first().boundingBox();
   const ay = await kutular(page, 'svg text');
   const aylar = ay.filter((a) => /^(Eki|Kas|Ara)$/.test(a.t));
   expect(aylar.length).toBeGreaterThan(0);
-  for (const a of aylar) expect(a.y, a.t).toBeGreaterThan(c!.y + c!.height);
+  for (const a of aylar) expect(a.y, a.t).toBeGreaterThan(ad!.y + ad!.height);
   await cek(page, 'W3-evren-1280');
 });
 

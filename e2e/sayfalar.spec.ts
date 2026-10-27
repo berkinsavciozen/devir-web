@@ -9,16 +9,16 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('B3-menu: "…" menüsü → haritanın altındaki listede karar süzgeci', async ({ page }) => {
+test('B3-menu: "…" menüsünde liste süzgeci yok; bağlantı ve kişiler var', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Akış menüsü' }).click();
+  const menu = page.getByRole('dialog', { name: 'Akış menüsü' });
+  await expect(menu.getByRole('button', { name: 'Bağlantıyı kopyala' })).toBeVisible();
   await page.waitForTimeout(200);
   await cek(page, 'B3-menu');
-  await page.getByRole('button', { name: /^Kararlar/ }).click();
-  // telefonda aynı sayfada kalır (el notu 12); bölüm başlığı görünür olur
-  await expect(page).toHaveURL(/\/akis\/RTD5\?/);
-  await expect(page.locator('.bolum-durak')).toBeInViewport();
-  await expect(page.getByRole('button', { name: /^Karar/ })).toHaveAttribute('aria-pressed', 'true');
+  // plan 27 Eki, 2.6: süzgeç haritanın altındaki listede kalır
+  for (const ad of [/^Adımlar/, /^Kararlar/, /^Çıktılar/]) await expect(menu.getByRole('button', { name: ad })).toHaveCount(0);
+  await expect(menu.getByRole('list', { name: 'Kişiler' }).getByRole('listitem').first()).toBeVisible();
 });
 
 test('B9-bilgi: adımlar sekmesi süzülür, satır adıma açılır', async ({ page }) => {
@@ -93,10 +93,11 @@ test('B4-zincir: "bunu bekleyenler" satırı o göreve gider', async ({ page }) 
   await expect(page).toHaveURL(new RegExp(`/adim/${no}`));
 });
 
-test('B1-cumle: evren cümlesi anlattığı adıma açılır', async ({ page }) => {
+test('B1-ust: evrende üst cümle yok; harita ilk ekranın büyük kısmı', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
-  const c = page.locator('.cumle-hedef').first();
-  await c.waitFor();
-  await c.click();
-  await expect(page).toHaveURL(/\/akis\/[^/]+\/adim\/\d+/);
+  const g = page.locator('.harita-gezinme');
+  await g.waitFor();
+  await expect(page.locator('.cumle-hedef')).toHaveCount(0);
+  const b = (await g.boundingBox())!;
+  expect(b.height / 844).toBeGreaterThan(.7);
 });

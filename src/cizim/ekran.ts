@@ -139,21 +139,22 @@ export function usturlap(o: {
   const pol = (a: number, r: number) => [cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r];
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
   let s = `<circle cx="${cx}" cy="${cy}" r="${R + 40}" fill="url(#glowLilac)" opacity=".35"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="22"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R + 11}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/><circle cx="${cx}" cy="${cy}" r="${R - 11}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/>`;
+  // ince halka (plan 27 Eki, 3.29): 12 px bant, ±6 kenar
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="12"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R + 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/><circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/>`;
   const aNow = Math.min(270, Math.max(-90, ang(NOW)));
-  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="#FFB47F" stroke-width="20" opacity=".35" filter="url(#blur6)"/>`;
-  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="url(#brass)" stroke-width="10" stroke-linecap="round"/>`;
+  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="#FFB47F" stroke-width="12" opacity=".35" filter="url(#blur6)"/>`;
+  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>`;
   const days = Math.round((CB - CA) / GUN);
   for (let d = 0; d < days; d++) {
     const ms = CA + d * GUN, a = ang(ms), first = tl(ms).getUTCDate() === 1;
-    const [x0, y0] = pol(a, R - (first ? 11 : 6)), [x1, y1] = pol(a, R + (first ? 11 : 6));
+    const [x0, y0] = pol(a, R - (first ? 6 : 3.5)), [x1, y1] = pol(a, R + (first ? 6 : 3.5));
     s += `<line x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}" stroke="${ms < NOW ? '#3A1F2E' : '#B9A6F2'}" stroke-width="${first ? 1.6 : .7}" opacity="${first ? .95 : .6}"/>`;
   }
   // ay adları: ayın 5'i; ekran dışına taşarsa ayın ilerisine kayar
   for (let m = tl(CA); m.getTime() < CB + 3 * 36e5; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
     for (const gun of [5, 12, 22]) {
-      const ms = Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), gun) - 3 * 36e5, [x, y] = pol(ang(ms), R + 24);
+      const ms = Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), gun) - 3 * 36e5, [x, y] = pol(ang(ms), R + 18);
       if (x < 30 || x > 360) continue;
       s += `<text x="${f(x)}" y="${f(y + 4)}" font-family="Inter" font-size="11.5" font-weight="600" fill="#BFB0E0" text-anchor="middle">${AY_KISA[m.getUTCMonth()]}</text>`;
       break;
@@ -184,12 +185,6 @@ export function usturlap(o: {
       const a0 = Math.max(-90, g.yay[0]), a1 = Math.min(270, Math.max(a0 + .5, g.yay[1])), an = Math.min(a1, Math.max(a0, aNow));
       s += `<path d="${arc(a0, a1, g.rho)}" fill="none" stroke="#B9A6F2" stroke-width="1.2" opacity=".28" stroke-linecap="round"/>`;
       if (an > a0 + .3) s += `<path d="${arc(a0, an, g.rho)}" fill="none" stroke="#FFD27A" stroke-width="1.6" opacity=".6" stroke-linecap="round"/>`;
-    }
-    // ortak kişi ipleri: merkeze doğru eğilen ince bağlar
-    for (const ip of EY.ipler) {
-      const p = EY.yer.find((g) => g.kod === ip.a)!, q = EY.yer.find((g) => g.kod === ip.b)!;
-      const mx = (p.x + q.x) / 2, my = (p.y + q.y) / 2, kx = mx + (cx - mx) * .45, ky = my + (cy - my) * .45;
-      s += `<path d="M${f(p.x)},${f(p.y)} Q${f(kx)},${f(ky)} ${f(q.x)},${f(q.y)}" fill="none" stroke="#D9CCFF" stroke-width="${f(.7 + .5 * Math.min(ip.n, 4))}" opacity=".2" stroke-dasharray="2 3"/>`;
     }
     // etiket galaksinin çerçevesine takılı (N3): altta, üstte, merkeze bakan yanda, dış yanda; halkaya, başka etikete,
     // taslak hapına ve başka galaksiye binmeyen ilk yer. Hap ortası çerçeve çizgisinde durur.
@@ -268,18 +263,20 @@ export function evrenOlcek(o: {
   simdi: number; akislar: UAkis[];
   kucuk: (kod: string, x: number, y: number, r: number, pr: number) => string;
   c?: { cx: number; cy: number; R: number }; bantlar?: number[];
+  /** takvim penceresi (evrenTakvimi); yoksa sabit Eki–Ara (J1 sarma hatası: hedefi pencere dışındaki akış başa dolanırdı) */
+  takvim?: { CA: number; CB: number };
 }) {
-  const { cx, cy, R } = o.c || { cx: 195, cy: 452, R: 158 }, NOW = o.simdi, CA = TAKVIM0, CB = TAKVIM1;
+  const { cx, cy, R } = o.c || { cx: 195, cy: 452, R: 158 }, NOW = o.simdi, CA = o.takvim?.CA ?? TAKVIM0, CB = o.takvim?.CB ?? TAKVIM1;
   const ang = (ms: number) => -90 + (ms - CA) / (CB - CA) * 360;
   const pol = (a: number, r: number) => [cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r];
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
   let s = `<circle cx="${cx}" cy="${cy}" r="${R + 40}" fill="url(#glowLilac)" opacity=".35"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="20"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R + 10}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/><circle cx="${cx}" cy="${cy}" r="${R - 10}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="12"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R + 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/><circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/>`;
   const aNow = Math.min(270, Math.max(-90, ang(NOW)));
-  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="url(#brass)" stroke-width="9" stroke-linecap="round"/>`;
+  s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>`;
   const days = Math.round((CB - CA) / GUN);
-  for (let d = 0; d < days; d++) { const ms = CA + d * GUN, a = ang(ms), first = tl(ms).getUTCDate() === 1; const [x0, y0] = pol(a, R - (first ? 10 : 5)), [x1, y1] = pol(a, R + (first ? 10 : 5)); s += `<line x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}" stroke="${ms < NOW ? '#3A1F2E' : '#B9A6F2'}" stroke-width="${first ? 1.5 : .6}" opacity="${first ? .95 : .55}"/>`; }
+  for (let d = 0; d < days; d++) { const ms = CA + d * GUN, a = ang(ms), first = tl(ms).getUTCDate() === 1; const [x0, y0] = pol(a, R - (first ? 6 : 3.5)), [x1, y1] = pol(a, R + (first ? 6 : 3.5)); s += `<line x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}" stroke="${ms < NOW ? '#3A1F2E' : '#B9A6F2'}" stroke-width="${first ? 1.5 : .6}" opacity="${first ? .95 : .55}"/>`; }
   const RO = R + 26;
   s += `<circle cx="${cx}" cy="${cy}" r="${RO}" fill="none" stroke="#FFD27A" stroke-width=".8" stroke-dasharray="1 5" opacity=".6"/>`;
   const bantlar = o.bantlar || [124, 94, 64, 34];

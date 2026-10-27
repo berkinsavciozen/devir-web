@@ -16,33 +16,28 @@ export interface GenisDuzen {
   tur: 'M' | 'T'; W: number; H: number; PX: number;
   harita: { cx: number; cy: number; R: number; ps: number };
   surgu: { x: number; y: number; w: number; ps: number };
-  serit: { x: number; y: number; w: number; h: number; satir: number; pxGun: number; lw: number; ps: number };
   etiket: { dx: number; dy: number };
   ust: { geriX: number; geriY: number; geriR: number; baslikX: number; baslikY: number; fs: number; cumleX: number; cumleY: number; cumleFs: number; tekSatir: boolean };
-  bolum: { x: number; y: number; alt?: { y: number } };
   kart: KartDuzen;
 }
 
 /**
  * Duyarlı kırılım (§5 M, T1): < 1024 mobil (null); 1024–1279 T1 (sağda 424 px panel); ≥ 1280 M1 (panel 660).
- * Harita alanı pencereyle orantılı büyür; panel içi ölçüler tasarımdaki gibi sabittir. Şerit kartı kişi sayısına göre
- * uzar, satır kalabalıkta incelir; kart (liste ya da görev) şeritlerin altından başlar, hiçbir şerit onun altında kalmaz (N16).
+ * Harita alanı pencereyle orantılı büyür; panel içi ölçüler tasarımdaki gibi sabittir. Kart (liste ya da görev) panelin
+ * üstünden başlar (plan 27 Eki, 2.5: şeritler kalktı).
  */
-export function genisDuzen(W: number, H: number, uye = 4): GenisDuzen | null {
-  const n = Math.max(1, uye);
+export function genisDuzen(W: number, H: number): GenisDuzen | null {
   if (W < 1024 || H < 600) return null;
   if (W >= 1280) {
     const PX = W - 660, R = Math.min(PX * .385, H * .333), k = R / 300;
-    const satir = n <= 4 ? 72 : n <= 6 ? 54 : Math.max(34, Math.floor((H * .5 - 60) / n)), sh = Math.min(Math.round(H * .5), 14 + n * satir + 46), ky = 106 + sh + 30;
+    const ky = 112;
     return {
       tur: 'M', W, H, PX,
       harita: { cx: PX / 2, cy: H * .52, R, ps: 1.35 * k },
       // sürgü yüzen gezinmenin üstünde (N14)
       surgu: { x: 44, y: H - 112, w: PX - 90, ps: 1.1 },
-      serit: { x: PX + 20, y: 106, w: 620, h: sh, satir, pxGun: 52, lw: 112, ps: 1.3 },
       etiket: { dx: 1.5, dy: 34 / 26 },
       ust: { geriX: 48, geriY: 54, geriR: 18, baslikX: 80, baslikY: 63, fs: 28, cumleX: 48, cumleY: 108, cumleFs: 19, tekSatir: true },
-      bolum: { x: PX + 32, y: 96 },
       kart: {
         x: PX + 20, y: ky, w: 620, h: 384, rx: 26,
         pl: { dx: 76, dy: 96, r: 34, ring: 50, br: 7.5, bead: 1.9 }, baslik: { dx: 148, dy: 72, fs: 26 }, meta: { dy: 96, fs: 13.5 },
@@ -52,15 +47,13 @@ export function genisDuzen(W: number, H: number, uye = 4): GenisDuzen | null {
     };
   }
   const PX = W - 424, R = Math.min(PX * .357, H * .279), k = R / 214;
-  const satir = n <= 3 ? 62 : n <= 5 ? 48 : Math.max(32, Math.floor((H * .45 - 58) / n)), sh = Math.min(Math.round(H * .45), 14 + n * satir + 44), ky = 100 + sh + 8;
+  const ky = 104;
   return {
     tur: 'T', W, H, PX,
     harita: { cx: PX / 2, cy: H * .51, R, ps: 1.05 * k },
     surgu: { x: 24, y: H - 108, w: PX - 48, ps: 1 },
-    serit: { x: PX + 12, y: 100, w: 400, h: sh, satir, pxGun: 38, lw: 96, ps: 1.1 },
     etiket: { dx: 52 / 44, dy: 30 / 26 },
     ust: { geriX: 40, geriY: 50, geriR: 20, baslikX: 72, baslikY: 59, fs: 25, cumleX: 32, cumleY: 100, cumleFs: 17, tekSatir: false },
-    bolum: { x: PX + 24, y: 92 },
     kart: {
       x: PX + 12, y: ky, w: 400, h: 372, rx: 24,
       pl: { dx: 56, dy: 70, r: 26, ring: 39, br: 6.5, bead: 1.7 }, baslik: { dx: 108, dy: 60, fs: 22 }, meta: { dy: 82, fs: 12.5 },
