@@ -2,7 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { git } from '../yonlendirme';
 import { Gok, useBoyut } from './Gok';
 import { Zil } from './Zil';
-import { DevirAiDugme } from '../ekranlar/ai/DevirAi';
+import { DevirAiDugme, DevirAiPanel, devirAiKapat, useAiAcik } from '../ekranlar/ai/DevirAi';
 
 /**
  * Masaüstü kabuğu (el notu 23 Eki, N13–N14): ≥ 1024 × 600 her sayfa solda harita, sağda o haritanın paneli;
@@ -60,11 +60,13 @@ export function PanelUst({ geri, konum, sag = true }: { geri?: () => void; konum
  * (alt sayfa, düğme) kapsayıcısı yapar; böylece mobil alt sayfalar panelin içinde açılır.
  */
 export function KabukPanel({ X, H, geri, konum, children }: { X: number; H: number; geri?: () => void; konum?: string; children: ReactNode }) {
+  // Devir AI açıksa panelin içeriği sohbettir (plan 28 Eki, Q1); geri sayfaya döner
+  const ai = useAiAcik();
   return (
-    <aside className="kabuk-panel" style={{ left: X, width: PANEL_EN, height: H }} aria-label={konum || 'Panel'}>
-      <PanelUst geri={geri} konum={konum} />
+    <aside className="kabuk-panel" style={{ left: X, width: PANEL_EN, height: H }} aria-label={ai ? 'Devir AI' : konum || 'Panel'}>
+      <PanelUst geri={ai ? devirAiKapat : geri} konum={ai ? 'Devir AI' : konum} />
       <div className="kabuk-panel-icerik">
-        <PanelBaglam.Provider value>{children}</PanelBaglam.Provider>
+        <PanelBaglam.Provider value>{ai ? <DevirAiPanel /> : children}</PanelBaglam.Provider>
       </div>
     </aside>
   );

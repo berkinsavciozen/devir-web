@@ -32,7 +32,7 @@ test('Devir AI · 390: akışta bağlamı bilir; önerilen değişiklik Uygula i
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Devir AI' }).click();
   const d = pencere(page);
-  await expect(d.locator('.ai-bas small')).toHaveText('RTD5 hakkında');
+  await expect(d.locator('.ai-bas small')).toHaveText('Hasat postu hakkında');
   await sor(page, '3. adım bitti');
   const k = d.locator('.ai-oneri');
   await expect(k).toContainText('ÖNERİLEN DEĞİŞİKLİK');
@@ -84,10 +84,15 @@ test('Devir AI · 390: model anahtarı yoksa kapalı olduğunu söyler', async (
 test('Devir AI · 1440: panel üstünde düğme, sağda panel; adım sayfasında adımı bilir', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin', 1440, 900);
   await page.locator('.panel-ust').getByRole('button', { name: 'Devir AI' }).click();
-  const d = pencere(page);
-  await expect(d.locator('.ai-bas small')).toHaveText('RTD5 · 3. adım hakkında');
+  // plan 28 Eki, Q1: masaüstünde AI ayrı pencere değil, sağ panelin içeriği; panelin üstünde geri
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const d = page.getByRole('region', { name: 'Devir AI' });
+  await expect(d.locator('.ai-bas small')).toHaveText(/· 3\. görev hakkında$/);
+  await expect(d.locator('.ai-bas small')).not.toContainText('RTD5');
   const b = await d.boundingBox();
-  expect(b!.x).toBeGreaterThan(900);
+  expect(b!.x).toBeGreaterThan(720);
+  await page.locator('.panel-ust').getByRole('button', { name: /^Geri/ }).click();
+  await expect(d).toHaveCount(0);
 });
 
 test('Devir AI · 390: yazarken odak yazı alanında kalır, Enter gönderir', async ({ page }) => {

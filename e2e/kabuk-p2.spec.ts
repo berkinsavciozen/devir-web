@@ -58,15 +58,20 @@ test('2.C: galaksi "?" → durum odağı; uymayan gezegenler söner, hap ile kal
   await page.getByRole('button', { name: 'Harita dili' }).click();
   const durum = page.getByRole('group', { name: 'Durum' });
   await durum.getByRole('button', { name: /^Engelli/ }).click();
-  const hap = page.getByRole('button', { name: /^Odak: Engelli/ });
+  // seçim kutuda bekler; Uygula ile haritaya geçer (plan 28 Eki, Q1)
+  await expect(page.getByRole('button', { name: /^Durum: Engelli/ })).toHaveCount(0);
+  await page.getByRole('dialog', { name: 'Harita dili' }).getByRole('button', { name: 'Uygula' }).click();
+  const hap = page.getByRole('button', { name: /^Durum: Engelli/ });
   await expect(hap).toBeVisible();
   await cek(page, 'P2-odak-galaksi');
   await hap.click();
   await expect(hap).toHaveCount(0);
-  // kişi odağı: "?" → kişi
-  await page.getByRole('button', { name: 'Harita dili' }).click();
-  await page.getByRole('group', { name: 'Kişi' }).getByRole('button', { name: 'Berkin', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Odak: Berkin/ })).toBeVisible();
+  // kişi odağı: Kişiler kutusu → kişi → Uygula; çip haritada
+  await page.getByRole('button', { name: /^Kişiler/ }).click();
+  const kutu = page.getByRole('dialog', { name: 'Kişiler' });
+  await kutu.getByRole('radio', { name: /^Berkin/ }).click();
+  await kutu.getByRole('button', { name: 'Uygula' }).click();
+  await expect(page.getByRole('button', { name: /^Kişi: Berkin/ })).toBeVisible();
 });
 
 test('2.C: evren "?" → kişi odağı; o kişinin işi olmayan akışlar söner', async ({ page }) => {
@@ -75,7 +80,8 @@ test('2.C: evren "?" → kişi odağı; o kişinin işi olmayan akışlar söner
   const kisi = page.getByRole('group', { name: 'Kişi' });
   await expect(kisi.getByRole('button', { name: 'Herkes' })).toHaveAttribute('aria-pressed', 'true');
   await kisi.getByRole('button').nth(1).click();
-  const hap = page.getByRole('button', { name: /^Süzgeç: / });
+  await page.getByRole('dialog', { name: 'Evren dili' }).getByRole('button', { name: 'Uygula' }).click();
+  const hap = page.getByRole('button', { name: /^Kişi: / });
   await expect(hap).toBeVisible();
   await cek(page, 'P2-odak-evren');
   await hap.click();

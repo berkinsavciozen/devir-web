@@ -130,7 +130,7 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
   const yapilacak: [string, string][] = ([['Amaç', A.aciklama || ''], ['Kabul kriteri', A.kriter || ''], ['Beklenen çıktı', A.beklenen_cikti || '']] as [string, string][]).filter(([, v]) => v);
   // kim: sahip + iş payı (kim ne kadar yazdı)
   const pay = isPayi(A.olaylar).filter((p) => p.ad !== A.sahip);
-  const tip = sahipAjan ? 'AI agent' : A.sahip_tip === 'dis' ? 'dış katılımcı' : A.sahip === ben ? 'sen' : 'ekip';
+  const tip = A.sahip === ben ? 'sen' : sahipAjan ? 'AI agent' : A.sahip_tip === 'dis' ? 'dış katılımcı' : 'ekip';
   const gemi = ship(0, 0, -8, sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahipDis ? '' : kisaAd(A.sahip)[0], sahipAjan ? C.lilac : C.peach, .62, { flame: false });
   // ne zaman
   const bas = baslangic(A, by);

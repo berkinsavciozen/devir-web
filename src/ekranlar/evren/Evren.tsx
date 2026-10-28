@@ -28,6 +28,8 @@ import { PANO_AD, pano, type Pano as PanoV, type PanoTur } from './pano';
 import { EvrenPano, panoYerlesimi, sonHareketler, usePanoListeleri } from './Pano';
 import { DurumNotu, veriDurumu, type VeriDurumu } from '../../bilesen/VeriDurumu';
 import { AltSayfa } from '../../bilesen/AltSayfa';
+import { Dugme } from '../../bilesen/Dugme';
+import { HaritaCipleri, type HaritaCipi } from '../akis/HaritaSuzgec';
 import { hedefEtiketi } from '../../bilesen/KararSeridi';
 import { akisIlerlemesi, ilerlemeMetni } from '../../api/ilerleme';
 
@@ -360,9 +362,8 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} merkez={cizim.U.merkez} minR={24} />
-      <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} lejant={() => setLejant(true)} />
-      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + (secimOz ? 58 : 8)} />
-      {secimOz && <AkisSecimi s={secimOz} top={EVREN_BOLGE.y + 4} />}
+      <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
+      <EvrenCipleri o={odak} P={P} secim={secimOz} x={12} y={EVREN_BOLGE.y + 4} en={390 - 82} lejant={() => setLejant(true)} />
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': '724px' } as React.CSSProperties} onClick={panoAc}>Pano ve bekleyen işler</button>
       <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={panoDurum} yeniden={DD.yeniden} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
@@ -380,36 +381,45 @@ export function enRiskliSirasi(kartlar: any[], detay: Record<string, any>, cumle
   return [...kartlar].sort((a, b) => puan(a) - puan(b) || (a.pay_saat ?? 1e9) - (b.pay_saat ?? 1e9) || String(a.kod).localeCompare(String(b.kod))).map((k) => k.kod);
 }
 type AkisSecimOz = { kartlar: any[]; secili: Set<string>; sec: (k: string[] | null) => void; acik: boolean; ac: (a: boolean) => void };
-/** Akış süzgeci: "10/14 akış" hapı ve seçim sayfası (3.30). Sıra en riskliden; 10'dan çok seçilirse ölçek düzeni. */
-function AkisSecimi({ s, top, left = 16 }: { s: AkisSecimOz; top: number; left?: number }) {
-  const n = s.secili.size, N = s.kartlar.length;
-  const degistir = (kod: string) => { const y = new Set(s.secili); if (y.has(kod)) { if (y.size > 1) y.delete(kod); } else y.add(kod); s.sec([...y]); };
+/** Akış süzgeci kutusu (3.30): sıra en riskliden; 10'dan çok seçilirse ölçek düzeni. Seçim Uygula ile geçer (plan 28 Eki, B6). */
+function AkisSecimKutusu({ s }: { s: AkisSecimOz }) {
+  const N = s.kartlar.length;
+  const [b, setB] = useState<Set<string>>(s.secili);
+  useEffect(() => { if (s.acik) setB(new Set(s.secili)); }, [s.acik]); // eslint-disable-line react-hooks/exhaustive-deps
+  const degistir = (kod: string) => { const y = new Set(b); if (y.has(kod)) { if (y.size > 1) y.delete(kod); } else y.add(kod); setB(y); };
+  const enRiskli = () => setB(new Set(s.kartlar.slice(0, OLCEK).map((k) => k.kod)));
+  const kapat = () => s.ac(false);
+  const ayni = b.size === s.secili.size && [...b].every((k) => s.secili.has(k));
+  const alt = <><Dugme tur="ikincil" yukseklik={48} onClick={kapat}>Vazgeç</Dugme><Dugme yukseklik={48} onClick={() => { if (!ayni) s.sec([...b]); kapat(); }}>Uygula</Dugme></>;
   return (
-    <>
-      <button type="button" className="akis-secim-hap" style={{ top, left }} aria-haspopup="dialog" aria-label={`Haritada ${n} / ${N} akış. Seç.`} onClick={() => s.ac(true)}>{n}/{N} akış</button>
-      <AltSayfa acik={s.acik} kapat={() => s.ac(false)} baslik="Haritadaki akışlar" yukseklik="yuksek">
-        <div className="akis-secim">
-          <div className="odak-cipler">
-            <button type="button" className="filtre-cip" onClick={() => s.sec(null)}>En riskli {OLCEK}</button>
-            <button type="button" className="filtre-cip" aria-pressed={n === N} onClick={() => s.sec(s.kartlar.map((k) => k.kod))}>Hepsi</button>
-          </div>
-          <p className="lejant-not">{OLCEK} akışa kadar usturlap tam görünür; daha çoğu seçilince kalabalık düzene geçer.</p>
-          <ul aria-label="Akışlar">
-            {s.kartlar.map((k) => <li key={k.kod}><button type="button" className="akis-secim-satir" aria-pressed={s.secili.has(k.kod)} onClick={() => degistir(k.kod)}><span aria-hidden className="akis-secim-kutu" />{akisAdi(k)}</button></li>)}
-          </ul>
+    <AltSayfa acik={s.acik} kapat={kapat} baslik="Haritadaki akışlar" yukseklik="yuksek" kutu alt={alt}>
+      <div className="akis-secim">
+        <div className="odak-cipler">
+          <button type="button" className="filtre-cip" onClick={enRiskli}>En riskli {OLCEK}</button>
+          <button type="button" className="filtre-cip" aria-pressed={b.size === N} onClick={() => setB(new Set(s.kartlar.map((k) => k.kod)))}>Hepsi</button>
         </div>
-      </AltSayfa>
-    </>
+        <p className="lejant-not">{OLCEK} akışa kadar usturlap tam görünür; daha çoğu seçilince kalabalık düzene geçer. {b.size}/{N} seçili.</p>
+        <ul aria-label="Akışlar">
+          {s.kartlar.map((k) => <li key={k.kod}><button type="button" className="akis-secim-satir" aria-pressed={b.has(k.kod)} onClick={() => degistir(k.kod)}><span aria-hidden className="akis-secim-kutu" />{akisAdi(k)}</button></li>)}
+        </ul>
+      </div>
+    </AltSayfa>
   );
 }
 
 type PanoOz = { P: ReturnType<typeof pano>; suz: PanoTur | null; setSuz: (t: PanoTur | null) => void; soluk: Set<string> | null; durum: VeriDurumu; yeniden: () => void; odak: OdakAyar };
-/** Haritadaki süzgeç hapı: kişi ve durum odağı; dokununca ikisi de kalkar. */
-function OdakHapi({ o, P, top, left }: { o: OdakAyar; P: PanoV; top: number; left?: number }) {
+/** Evrenin süzgeç satırı: "N/M akış ▾", evren dili, kişi ve durum çipleri (plan 28 Eki, B10, K9). */
+function EvrenCipleri({ o, P, secim, x, y, en, lejant }: { o: OdakAyar; P: PanoV; secim: AkisSecimOz | null; x: number; y: number; en: number; lejant: () => void }) {
   const t = o.durum as PanoTur | null;
-  const ad = [o.kisi && o.kisi.replace(/\s*\(.*\)$/, ''), t && `${PANO_AD[t]} · ${P.adimlar[t].length}`].filter(Boolean).join(' · ');
-  if (!ad) return null;
-  return <button type="button" className="harita-suzgec" style={{ top, left }} onClick={() => { o.kisiSec(null); o.durumSec(null); }} aria-label={`Süzgeç: ${ad}. Kaldır.`}>{ad}</button>;
+  const cipler = [o.kisi && { ad: o.kisi.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => o.kisiSec(null) }, t && { ad: `${PANO_AD[t]} · ${P.adimlar[t].length}`, etiket: 'Durum', kaldir: () => o.durumSec(null) }].filter(Boolean) as HaritaCipi[];
+  const n = secim?.secili.size ?? 0, N = secim?.kartlar.length ?? 0;
+  return (
+    <>
+      <HaritaCipleri x={x} y={y} en={en} lejantAc={lejant} lejantEtiket="Evren dili" cipler={cipler}
+        secici={secim ? { yazi: `${n}/${N} akış`, etiket: `Haritada ${n} / ${N} akış. Seç.`, ac: () => secim.ac(true) } : undefined} />
+      {secim && <AkisSecimKutusu s={secim} />}
+    </>
+  );
 }
 function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak }, secim }: { kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz; secim: AkisSecimOz | null }) {
   const tum = [...kartlar, ...kapanan];
@@ -419,6 +429,7 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
   const olaylar = useOlaylar();
   const PL = usePanoListeleri(kartlar, detay, kisi);
   const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, PANO_Y, sonHareketler(olaylar.data?.olaylar).length, 54, PL.katilimcilar.length, PL.akislar.length);
+  const [lejant, setLejant] = useState(false);
   return (
     <Sahne yukseklik={Math.max(PY.son + 110, PANO_Y + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, OLCEK_MERKEZ.cy, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
@@ -426,11 +437,11 @@ function EvrenOlcek({ kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: {
       <UstDugmeler y={36} />
       <EvrenHedefleri E={E} b={EVREN_BOLGE} yer={O.yer} tum={tum} detay={detay} merkez={O.merkez} minR={16} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={EVREN_BOLGE.y + 4} hep={false} />
-      <OdakHapi o={odak} P={P} top={EVREN_BOLGE.y + (secim ? 58 : 8)} />
-      {secim && <AkisSecimi s={secim} top={EVREN_BOLGE.y + 4} />}
+      <EvrenCipleri o={odak} P={P} secim={secim} x={12} y={EVREN_BOLGE.y + 4} en={390 - 82} lejant={() => setLejant(true)} />
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': '724px' } as React.CSSProperties} onClick={() => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' })}>Pano ve bekleyen işler</button>
       <EvrenPano ref={panoRef} P={P} y0={PANO_Y} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={durum} yeniden={yeniden} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
     </Sahne>
   );
 }
@@ -469,9 +480,8 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
       </button>
       <Metin y={64} x={80} fs={17} agirlik={650} style={{ right: 'auto', pointerEvents: 'none' }}>{kisi}</Metin>
       <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} merkez={cizim.U.merkez} minR={24} />
-      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep={!cizim.serbest} lejant={() => setLejant(true)} />
-      <OdakHapi o={odak} P={P} top={B.y + 8} left={40} />
-      {secim && <AkisSecimi s={secim} top={B.y + 52} left={40} />}
+      <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep={!cizim.serbest} />
+      <EvrenCipleri o={odak} P={P} secim={secim} x={40} y={B.y + 8} en={X - 128} lejant={() => setLejant(true)} />
       <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
       <YuzenGezinme aktif={aktif} solEn={X} />
       {/* pano (N10): telefondaki panoyla aynı bölüm, panelde kayar */}

@@ -9,16 +9,18 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('B3-menu: "…" menüsünde liste süzgeci yok; bağlantı ve kişiler var', async ({ page }) => {
+test('B3-menu: üç nokta menüsü yok; Kişiler kutusu haritada, bağlantı bilgi sayfasının üstünde', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
-  await page.getByRole('button', { name: 'Akış menüsü' }).click();
-  const menu = page.getByRole('dialog', { name: 'Akış menüsü' });
-  await expect(menu.getByRole('button', { name: 'Bağlantıyı kopyala' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Akış menüsü' })).toHaveCount(0);
+  await page.getByRole('toolbar', { name: 'Harita süzgeçleri' }).getByRole('button', { name: /^Kişiler/ }).click();
+  const kutu = page.getByRole('dialog', { name: 'Kişiler' });
+  await expect(kutu.getByRole('radio', { name: /Herkes/ })).toHaveAttribute('aria-checked', 'true');
+  await expect(kutu.getByRole('button', { name: 'Uygula' })).toBeVisible();
   await page.waitForTimeout(200);
   await cek(page, 'B3-menu');
-  // plan 27 Eki, 2.6: süzgeç haritanın altındaki listede kalır
-  for (const ad of [/^Adımlar/, /^Kararlar/, /^Çıktılar/]) await expect(menu.getByRole('button', { name: ad })).toHaveCount(0);
-  await expect(menu.getByRole('list', { name: 'Kişiler' }).getByRole('listitem').first()).toBeVisible();
+  // plan 28 Eki, Q1: bağlantı akış bilgisinin başında
+  await ac(page, '/akis/RTD5/bilgi?senaryo=berkin');
+  await expect(page.getByRole('button', { name: 'Bağlantıyı kopyala' })).toBeVisible();
 });
 
 test('B9-bilgi: adımlar sekmesi süzülür, satır adıma açılır', async ({ page }) => {
@@ -51,8 +53,8 @@ for (const [s, ad] of [['suz=karar', 'B9-kararlar'], ['suz=cikti', 'B9-ciktilar'
 
 test('B10-kisi: menüde kişiler → kişi sayfası → haritada yolu', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
-  await page.getByRole('button', { name: 'Akış menüsü' }).click();
-  await page.getByRole('list', { name: 'Kişiler' }).getByRole('listitem').first().click();
+  await page.getByRole('toolbar', { name: 'Harita süzgeçleri' }).getByRole('button', { name: /^Kişiler/ }).click();
+  await page.getByRole('dialog', { name: 'Kişiler' }).getByRole('button', { name: /: kişi sayfası$/ }).first().click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/kisi\//);
   await page.waitForTimeout(200);
   await cek(page, 'B10-kisi');

@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { boyutYaz } from '../../api/dosya';
@@ -175,7 +175,7 @@ export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
   const q = useAkis(kod);
   const d = q.data;
   const ad = d ? akisAdi(d.akis) : 'Akış';
-  const B = useAkisBolumu({ d, kod, ben, y0: 136, adres: true });
+  const B = useAkisBolumu({ d, kod, ben, y0: 194, adres: true });
   const geri = () => (history.length > 1 ? history.back() : git(`/akis/${enc(kod)}`));
   if (!d) return <Sahne gok={GOK} etiket={ad}><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>{q.isError && <Metin y={112} fs={16} renk="ink2">{(q.error as Error).message}</Metin>}</Sahne>;
   const A: any[] = d.adimlar;
@@ -184,7 +184,8 @@ export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
   return (
     <Sahne gok={GOK} etiket={`${ad} · ${B.ad}`} yukseklik={B.y + 40}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={geri} /></Kutu>
-      <Metin y={110} fs={17} lh={22} serif renk="ink2" as="p" className="tek-satir">{cumle}</Metin>
+      <BaglantiKopyala kod={kod} style={{ position: 'absolute', left: 20, top: 96 }} />
+      <Metin y={168} fs={17} lh={22} serif renk="ink2" as="p" className="tek-satir">{cumle}</Metin>
       {B.dugum}
     </Sahne>
   );
@@ -231,20 +232,17 @@ export function akisKisileri(d: any): { ad: string; tip: 'insan' | 'agent' | 'di
   return S.map((k) => ({ ad: k.ad, tip: k.tip === 'agent' || ajan({ sahip: k.ad, sahip_tip: k.tip }) ? 'agent' : k.tip === 'dis' ? 'dis' : 'insan', acik: k.acik, adim: k.adimlar.length }));
 }
 
-/** Akış menüsü (etkin akış, "…"): listeyi karar ya da çıktıya süzer, bağlantı, kişiler (kişi sayfası). */
-/** Üç nokta menüsü: bağlantı ve kişiler. Liste süzgeci haritanın altındaki listede (plan 27 Eki, 2.6). */
-export function AkisMenusu({ kod, kapat, d }: { kod: string; kapat: () => void; d: any }) {
+/** Akışın bağlantısını panoya kopyalar (plan 28 Eki, Q1: üç nokta menüsü kalktı; bilgi sayfasının üstünde, masaüstünde başlığın yanında). */
+export function BaglantiKopyala({ kod, ikon, style, className = '' }: { kod: string; ikon?: boolean; style?: CSSProperties; className?: string }) {
   const [kopyalandi, setKopyalandi] = useState(false);
+  useEffect(() => { if (!kopyalandi) return; const t = setTimeout(() => setKopyalandi(false), 2400); return () => clearTimeout(t); }, [kopyalandi]);
   const kopyala = async () => { try { await navigator.clipboard.writeText(tamAdres(`/akis/${enc(kod)}`)); setKopyalandi(true); } catch { setKopyalandi(false); } };
-  const K = akisKisileri(d);
+  const yazi = kopyalandi ? 'Bağlantı kopyalandı' : 'Bağlantıyı kopyala';
   return (
-    <div className="akis-menu-liste">
-      <h2 className="gorunmez">Akış menüsü</h2>
-      <button type="button" className="akis-menu-satir dugmeli" onClick={() => void kopyala()}><b>{kopyalandi ? 'Bağlantı kopyalandı' : 'Bağlantıyı kopyala'}</b><small>{d.akis.hedef_tarih ? `Hedef ${gunAyUzun(tarihMs(d.akis.hedef_tarih))}` : akisAdi(d.akis)}</small></button>
-      <h3 className="akis-menu-baslik">KİŞİLER</h3>
-      <div role="list" aria-label="Kişiler">
-        {K.map((k) => <button key={k.ad} role="listitem" type="button" className="akis-menu-satir dugmeli" onClick={() => { kapat(); git(`/akis/${enc(kod)}/kisi/${enc(k.ad)}`); }}><b>{k.ad}</b><small>{k.tip === 'agent' ? 'agent · ' : k.tip === 'dis' ? 'dış · ' : ''}{k.acik} açık · {k.adim} adım</small></button>)}
-      </div>
-    </div>
+    <button type="button" className={`baglanti-kopyala${ikon ? ' ikon' : ''} ${className}`} style={style} aria-label={ikon ? yazi : undefined} title={ikon ? yazi : undefined} onClick={() => void kopyala()}>
+      <svg aria-hidden width="18" height="18" viewBox="-9 -9 18 18"><path d="M-1.5,2.5 L2.5,-1.5 M-3,-0.5 L-5,1.5 A2.8,2.8 0 0 0 -1,5.5 L1,3.5 M3,0.5 L5,-1.5 A2.8,2.8 0 0 0 1,-5.5 L-1,-3.5" /></svg>
+      {!ikon && <span aria-live="polite">{yazi}</span>}
+      {ikon && <span className="gorunmez" aria-live="polite">{kopyalandi ? 'Bağlantı kopyalandı' : ''}</span>}
+    </button>
   );
 }

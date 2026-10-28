@@ -6,6 +6,7 @@ import { API_TABAN, SAHTE } from '../../api/ortam';
 import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
+import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { gunAy, saat } from '../../cizim/yol.js';
@@ -63,6 +64,8 @@ export const katilimciDurumu = (k: any) => (k.durum === 'iptal' ? 'bağlantı ka
  * sürece gösterilmez. Yönetim satırları yalnız sahibe.
  */
 export function Ayarlar() {
+  // masaüstü panelinde geri panelin üstünde (PanelUst); sayfanın ikinci geri düğmesi çizilmez (plan 28 Eki, K3)
+  const panelde = usePanelIcinde();
   const ben = useBen().data as Ben | undefined;
   const sahip = ben?.rol === 'sahip', dis = ben?.rol === 'dis', oturum = !!ben?.eposta;
   const an = useQuery({ queryKey: ['anahtarlar'], queryFn: () => api.get<any>('/anahtarlar'), enabled: sahip });
@@ -142,7 +145,7 @@ export function Ayarlar() {
   return (
     <>
       <Sahne gok={GOK} etiket="Ayarlar" yukseklik={Math.max(844, h + 120)}>
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Ayarlar" geri={geri} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Ayarlar" geri={panelde ? undefined : geri} /></Kutu>
         <Metin y={110} fs={13} lh={16} agirlik={600} renk="ink3" className="tek-satir">{ben?.kisi} · {rolAdi(ben?.rol || '')}{(ben?.uyelikler?.length || 0) > 1 ? ` · ${alanAdi(ben?.calisma_alani?.ad || '', ben?.kisi)}` : ''}</Metin>
 
         {baslik('ben')}
