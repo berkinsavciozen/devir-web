@@ -5,6 +5,7 @@
  * Yalnız `--mode sahte` derlemesinde yüklenir (dinamik içe aktarma).
  */
 import { handle } from '../../../sunucu/server.ts';
+import type { SohbetFn } from '../../../sunucu/llm.ts';
 import ornek from '../../../tasarim/veri/ornek-veri.json';
 
 export const SAHTE_SIMDI = Date.parse('2026-10-14T10:00:00+03:00');
@@ -244,10 +245,33 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
         const t = await handle(new Request(TABAN + '/api/v1/taslak/TEURX', { headers: req.headers }), db as any, saat, { taban: TABAN, kimlik, depo });
         return new Response(JSON.stringify({ mesaj: 'Taslak TEURX hazır.', taslak: await t.json() }), { headers: { 'content-type': 'application/json' } });
       }
-      return handle(req, db as any, saat, { taban: TABAN, kimlik, depo });
+      return handle(req, db as any, saat, { taban: TABAN, kimlik, depo, sohbet: o.hal === 'ai-kapali' ? undefined : sahteSohbet });
     },
   };
 }
+
+/**
+ * Devir AI sahte motoru (P8): model yerine birkaç kalıp. Sunucunun sohbet döngüsü aynen çalışır; okuma araçları gerçek
+ * veriden okur, yazan araçlar önizleme kartına döner (kredi harcanmaz). "N. adım bitti" → tamam önerisi, "N. adımı atla"
+ * → onay isteyen atlama önerisi; başka her şeye akış özeti.
+ */
+export const sahteSohbet: SohbetFn = async ({ system, gecmis, calistir }) => {
+  await new Promise((r) => setTimeout(r, 300));
+  const son = gecmis[gecmis.length - 1]?.metin || '';
+  const akis = /şu an (\S+) akışının/.exec(system)?.[1];
+  const no = Number(/(\d+)\.\s*adım/i.exec(son)?.[1] || /akışının (\d+)\. adımının/.exec(system)?.[1] || 0);
+  const bos = { metin: '', model: 'sahte', kullanim: { girdi: 0, onbellek: 0, cikti: 0 }, tur: 1 };
+  if (akis && no && /bitti|tamam/i.test(son)) {
+    await calistir('devir_adim_guncelle', { akis, no, durum: 'tamam', kim_tip: 'insan' });
+    return { ...bos, metin: `${no}. adımı tamam olarak işaretlemeyi önerdim; Uygula'ya basınca yazılır.` };
+  }
+  if (akis && no && /atla/i.test(son)) {
+    await calistir('devir_adim_guncelle', { akis, no, durum: 'atlandi', atlama_nedeni: 'gerek_kalmadi', not: 'Devir AI sohbetinden' });
+    return { ...bos, metin: `${no}. adımı atlamayı önerdim. Atlama ayrıca onay ister.` };
+  }
+  const r = await calistir('devir_akislar', {});
+  return { ...bos, tur: 2, metin: r.metin.split('\n').filter((x) => x.trim()).slice(0, 3).join('\n') };
+};
 
 /** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';

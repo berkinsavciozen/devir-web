@@ -40,6 +40,9 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
   const id = useId();
   const kapatRef = useRef(kapat);
   kapatRef.current = kapat;
+  // kirli bir ref'ten okunur: yazı girildikçe etki yeniden kurulmaz (kurulsa odak yazı alanından sayfaya kaçar)
+  const kirliRef = useRef(kirli);
+  kirliRef.current = kirli;
 
   useEffect(() => { if (acik) setDurak(yukseklik); }, [acik, yukseklik]);
 
@@ -50,7 +53,7 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
     if (history.state?.altSayfa !== id) history.pushState({ altSayfa: id }, '');
     let bizden = false;
     const geri = () => {
-      if (kirli && !window.confirm('Vazgeçilsin mi?')) { history.pushState({ altSayfa: id }, ''); return; }
+      if (kirliRef.current && !window.confirm('Vazgeçilsin mi?')) { history.pushState({ altSayfa: id }, ''); return; }
       bizden = true;
       kapatRef.current();
     };
@@ -68,7 +71,7 @@ export function AltSayfa({ acik, kapat, baslik, yukseklik = 'orta', duraklar, gu
       // odak geri döner ama sayfa kaydırılmaz (menüden bir bölüme inilmiş olabilir)
       onceki?.focus?.({ preventScroll: true });
     };
-  }, [acik, id, guclu, kirli]);
+  }, [acik, id, guclu]);
 
   const kapanis = useCallback(() => history.back(), []);
 

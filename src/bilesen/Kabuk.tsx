@@ -2,6 +2,7 @@ import { createContext, useContext, type ReactNode } from 'react';
 import { git } from '../yonlendirme';
 import { Gok, useBoyut } from './Gok';
 import { Zil } from './Zil';
+import { DevirAiDugme } from '../ekranlar/ai/DevirAi';
 
 /**
  * Masaüstü kabuğu (el notu 23 Eki, N13–N14): ≥ 1024 × 600 her sayfa solda harita, sağda o haritanın paneli;
@@ -45,6 +46,7 @@ export function PanelUst({ geri, konum, sag = true }: { geri?: () => void; konum
       {geri && <button type="button" className="panel-geri" aria-label={konum ? `Geri: ${konum}` : 'Geri'} onClick={geri}><GeriIkon /></button>}
       {konum && <span className="panel-konum">{konum}</span>}
       {sag && <span className="panel-ust-sag">
+        <DevirAiDugme />
         <Zil y={0} kabukta stil={{ position: 'relative', right: 'auto', left: 'auto' }} />
         <button type="button" className="genis-geri genis-ayarlar panel-ayarlar" aria-label="Ayarlar" onClick={() => git('/ayarlar')}><AyarlarIkon /></button>
         <button type="button" className="panel-arti" aria-label="Yeni iş" onClick={() => git('/yeni')}><ArtiIkon /></button>
