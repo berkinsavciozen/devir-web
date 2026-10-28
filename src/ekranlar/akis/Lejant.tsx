@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { AltSayfa } from '../../bilesen/AltSayfa';
+import { Dugme } from '../../bilesen/Dugme';
 import { planet, ship, kapi } from '../../cizim/ortak.js';
 import { tac, elmas, belge } from '../../cizim/yol.js';
 import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
@@ -44,23 +46,24 @@ const EVREN_SATIRLAR: Satir[] = [
   [bayrak(22, 22, .9), 'Karar', 'Karar bekleyen adımı var', 'karar'],
 ];
 
-/** Haritada odak (plan 27 Eki, 2.C): kişi ve durum; "?" sayfasının başında. Seçince sayfa kapanır, harita süzülür. */
+/** Haritada odak (plan 27 Eki, 2.C): kişi ve durum; "?" kutusunun başında. Seçim Uygula ile haritaya geçer (plan 28 Eki, Q1). */
 export interface OdakAyar {
   kisiler: string[]; kisi: string | null; kisiSec: (k: string | null) => void;
   durumlar: { k: string; ad: string; n: number }[]; durum: string | null; durumSec: (k: string | null) => void;
 }
-function OdakSecici({ o, kapat }: { o: OdakAyar; kapat: () => void }) {
-  const cip = (ad: string, basili: boolean, sec: () => void, etiket = ad) => <button key={etiket} type="button" className="filtre-cip" aria-pressed={basili} onClick={() => { sec(); kapat(); }}>{ad}</button>;
+type Bekleyen = { kisi: string | null; durum: string | null };
+function OdakSecici({ o, b, setB }: { o: OdakAyar; b: Bekleyen; setB: (b: Bekleyen) => void }) {
+  const cip = (ad: string, basili: boolean, sec: () => void, etiket = ad) => <button key={etiket} type="button" className="filtre-cip" aria-pressed={basili} onClick={sec}>{ad}</button>;
   return (
     <div className="odak-secici">
       <h3 className="lejant-alt-baslik">Haritada göster</h3>
       {o.kisiler.length > 1 && <div className="odak-cipler" role="group" aria-label="Kişi">
-        {cip('Herkes', !o.kisi, () => o.kisiSec(null), 'kisi-hepsi')}
-        {o.kisiler.map((k) => cip(k.replace(/\s*\(.*\)$/, ''), o.kisi === k, () => o.kisiSec(o.kisi === k ? null : k), 'kisi-' + k))}
+        {cip('Herkes', !b.kisi, () => setB({ ...b, kisi: null }), 'kisi-hepsi')}
+        {o.kisiler.map((k) => cip(k.replace(/\s*\(.*\)$/, ''), b.kisi === k, () => setB({ ...b, kisi: b.kisi === k ? null : k }), 'kisi-' + k))}
       </div>}
       <div className="odak-cipler" role="group" aria-label="Durum">
-        {cip('Hepsi', !o.durum, () => o.durumSec(null), 'durum-hepsi')}
-        {o.durumlar.filter((d) => d.n > 0).map((d) => cip(`${d.ad} ${d.n}`, o.durum === d.k, () => o.durumSec(o.durum === d.k ? null : d.k), 'durum-' + d.k))}
+        {cip('Hepsi', !b.durum, () => setB({ ...b, durum: null }), 'durum-hepsi')}
+        {o.durumlar.filter((d) => d.n > 0).map((d) => cip(`${d.ad} ${d.n}`, b.durum === d.k, () => setB({ ...b, durum: b.durum === d.k ? null : d.k }), 'durum-' + d.k))}
       </div>
     </div>
   );
@@ -76,10 +79,15 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
   const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SATIRLAR;
   const baslik = yuzey === 'evren' ? 'Evren dili' : 'Harita dili';
   const y0 = Math.max(60, 844 - (SATIRLAR_.length * 52 + K.length * 40 + 150 + (odak ? 150 : 0)));
+  // seçim kutuda bekler; Uygula haritaya geçirir, Vazgeç bırakır
+  const [b, setB] = useState<Bekleyen>({ kisi: odak?.kisi ?? null, durum: odak?.durum ?? null });
+  useEffect(() => { if (acik) setB({ kisi: odak?.kisi ?? null, durum: odak?.durum ?? null }); }, [acik]); // eslint-disable-line react-hooks/exhaustive-deps
+  const uygula = () => { if (odak) { if (b.kisi !== odak.kisi) odak.kisiSec(b.kisi); if (b.durum !== odak.durum) odak.durumSec(b.durum); } kapat(); };
+  const alt = odak ? <><Dugme tur="ikincil" yukseklik={48} onClick={kapat}>Vazgeç</Dugme><Dugme yukseklik={48} onClick={uygula}>Uygula</Dugme></> : undefined;
   return (
-    <AltSayfa acik={acik} kapat={kapat} baslik={baslik} yukseklik={Math.max(110, y0)} duraklar={['orta']}>
+    <AltSayfa acik={acik} kapat={kapat} baslik={baslik} yukseklik={Math.max(110, y0)} duraklar={['orta']} kutu alt={alt}>
       <div className="lejant">
-        {odak && <OdakSecici o={odak} kapat={kapat} />}
+        {odak && <OdakSecici o={odak} b={b} setB={setB} />}
         <h2 className="lejant-baslik">{baslik}</h2>
         <ul aria-label="Harita işaretleri">
           {/* yalnız bu haritada olan işaretler (plan 27 Eki, 3.32): sayısı 0 olan satır gösterilmez */}

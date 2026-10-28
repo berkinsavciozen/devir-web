@@ -1,18 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
+import { useBoyut } from '../../bilesen/Gok';
+import { akisAdi } from '../../metin/turkce';
 import { Dugme } from '../../bilesen/Dugme';
 import { eslestir, yolAl } from '../../yonlendirme';
 
 /**
  * Devir AI sohbeti (plan 27 Eki, Epic 5; sunucu 0.28.0 /sohbet). Sohbet bulunduğu sayfayı bilir (akış, adım);
  * okuma hemen olur, değişiklikler önizleme kartı olarak gelir ve "Uygula" ile yazılır. Atlama ve kapatma ayrıca onay ister.
- * Dış katılımcıda yoktur. Düğmeler (üst küme, panel üstü, akış başlığı) tek pencereyi olayla açar.
+ * Dış katılımcıda yoktur. Düğmeler (üst küme, panel üstü, akış başlığı) tek pencereyi açar.
+ * Masaüstünde sağ panelin içeriği olur (plan 28 Eki, Q1: üst üste panel yok); telefonda alt sayfa. Sohbet kapanınca kaybolmaz.
  */
-const OLAY = 'devir:ai-ac';
-export const devirAiAc = () => window.dispatchEvent(new Event(OLAY));
+let aiAcik = false;
+const dinleyenler = new Set<() => void>();
+const yay = () => dinleyenler.forEach((f) => f());
+export const devirAiAc = () => { aiAcik = true; yay(); };
+export const devirAiKapat = () => { if (aiAcik) { aiAcik = false; yay(); } };
+export const useAiAcik = () => useSyncExternalStore((f) => { dinleyenler.add(f); return () => { dinleyenler.delete(f); }; }, () => aiAcik);
+// sohbet pencere kapanıp açılınca sürer (aynı oturumda)
+const kayit: { mesajlar: Mesaj[]; yazi: string } = { mesajlar: [], yazi: '' };
 
 export type Oneri = { id: string; arac: string; girdi: unknown; ozet: string; onay_gerekir?: boolean };
 type Sonuc = { arac: string; ozet: string; mesaj?: string; hata?: string };
@@ -41,15 +50,32 @@ export function DevirAiDugme({ sinif = '' }: { sinif?: string }) {
   return <button type="button" className={`zil-dugme ai-dugme ${sinif}`} aria-label="Devir AI" aria-haspopup="dialog" onClick={devirAiAc}><YildizIkon /></button>;
 }
 
-/** Uygulamaya bir kez yerleşir; düğmeler olayla açar. */
+/** Uygulamaya bir kez yerleşir. Telefonda alt sayfa; masaüstünde panel sahipleri (DevirAiPanel) çizer. */
 export function DevirAiKok() {
-  const [acik, setAcik] = useState(false);
+  const acik = useAiAcik();
+  const boy = useBoyut();
+  const genis = boy.w >= 1024 && boy.h >= 600;
+  // başka sayfaya geçilince masaüstü paneli o sayfaya döner
   useEffect(() => {
-    const ac = () => setAcik(true);
-    window.addEventListener(OLAY, ac);
-    return () => window.removeEventListener(OLAY, ac);
+    window.addEventListener('devir:yol', devirAiKapat);
+    return () => window.removeEventListener('devir:yol', devirAiKapat);
   }, []);
-  return <DevirAi acik={acik} kapat={() => setAcik(false)} />;
+  if (genis) return null;
+  return (
+    <AltSayfa acik={acik} kapat={devirAiKapat} baslik="Devir AI" yukseklik={60}>
+      <DevirAiIcerik acik={acik} />
+    </AltSayfa>
+  );
+}
+
+/** Masaüstü: sağ panelin içeriği. Esc kapatır. */
+export function DevirAiPanel() {
+  useEffect(() => {
+    const t = (e: KeyboardEvent) => { if (e.key === 'Escape') devirAiKapat(); };
+    window.addEventListener('keydown', t);
+    return () => window.removeEventListener('keydown', t);
+  }, []);
+  return <section className="ai-panel" role="region" aria-label="Devir AI"><DevirAiIcerik acik /></section>;
 }
 
 function hataMetni(e: unknown) {
@@ -61,9 +87,10 @@ function hataMetni(e: unknown) {
   return (e as Error)?.message || 'Bir şey ters gitti.';
 }
 
-function DevirAi({ acik, kapat }: { acik: boolean; kapat: () => void }) {
-  const [mesajlar, setMesajlar] = useState<Mesaj[]>([]);
-  const [yazi, setYazi] = useState('');
+function DevirAiIcerik({ acik }: { acik: boolean }) {
+  const [mesajlar, setMesajlar] = useState<Mesaj[]>(kayit.mesajlar);
+  const [yazi, setYazi] = useState(kayit.yazi);
+  useEffect(() => { kayit.mesajlar = mesajlar; kayit.yazi = yazi; }, [mesajlar, yazi]);
   const [bekle, setBekle] = useState(false);
   const [hata, setHata] = useState<string | null>(null);
   const [sayfa, setSayfa] = useState<{ akis?: string; adim?: number }>({});
@@ -113,14 +140,16 @@ function DevirAi({ acik, kapat }: { acik: boolean; kapat: () => void }) {
   }
 
   const ornekler = sayfa.akis ? ORNEKLER_AKIS : ORNEKLER_GENEL;
+  // başlıkta akışın kısa adı (K7); veri önbellekte yoksa kod
+  const ak = useQuery({ queryKey: ['akis', sayfa.akis], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(sayfa.akis!)}`), enabled: !!sayfa.akis, staleTime: 60_000 });
+  const akAd = sayfa.akis ? (ak.data?.akis ? akisAdi(ak.data.akis) : sayfa.akis) : '';
   return (
-    <AltSayfa acik={acik} kapat={kapat} baslik="Devir AI" yukseklik="yuksek" kirli={!!yazi.trim()}>
       <div className="ai-sohbet">
         <header className="ai-bas">
           <YildizIkon />
           <div>
             <h2>Devir AI</h2>
-            <small>{sayfa.akis ? `${sayfa.akis}${sayfa.adim ? ` · ${sayfa.adim}. adım` : ''} hakkında` : 'Tüm akışların hakkında'}</small>
+            <small>{sayfa.akis ? `${akAd}${sayfa.adim ? ` · ${sayfa.adim}. görev` : ''} hakkında` : 'Tüm akışların hakkında'}</small>
           </div>
         </header>
         {k && <p className={`ai-kullanim ${doldu ? 'doldu' : ''}`} aria-label="Devir AI kullanımı">
@@ -155,7 +184,6 @@ function DevirAi({ acik, kapat }: { acik: boolean; kapat: () => void }) {
           </button>
         </form>
       </div>
-    </AltSayfa>
   );
 }
 

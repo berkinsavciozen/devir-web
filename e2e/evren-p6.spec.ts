@@ -19,7 +19,8 @@ test('3.J: 10\'dan çok akışta ilk açılış en riskli 10, usturlap; Hepsi se
   const sayfa = page.getByRole('dialog', { name: 'Haritadaki akışlar' });
   await expect(sayfa.getByRole('list', { name: 'Akışlar' }).getByRole('button', { pressed: true })).toHaveCount(10);
   await sayfa.getByRole('button', { name: 'Hepsi' }).click();
-  await page.keyboard.press('Escape');
+  // seçim Uygula ile geçer (plan 28 Eki, Q1)
+  await sayfa.getByRole('button', { name: 'Uygula' }).click();
   await expect(page.getByRole('button', { name: /^Haritada (\d+) \/ \1 akış/ })).toBeVisible();
 });
 
