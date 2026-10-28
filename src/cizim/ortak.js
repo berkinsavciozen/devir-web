@@ -241,37 +241,38 @@ function planet(x, y, r, state, o = {}) {
 
 // --- gemiler ---
 // kind: insan | agent | dis
+// gemiler (plan 28 Eki, Q6 · A "yumuşak hatlar"): ortak 1,5 çizgi, krem gövde, sahibin rengi.
+// insan: damla roket, baş harfi pencerede (yöne döner); agent: kubbeli UFO, kubbe ışığı ve ışını sahibinin renginde;
+// dış katılımcı: yelkenli. UFO ve yelkenli yöne dönmez, dik durur.
 function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
-  let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(ang)}) scale(${sc})">`;
+  const K = 1.5, KREM = '#FFF1E2', GECE = '#2B2160';
+  const dik = kind === 'dis' || kind === 'agent';
+  let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(dik ? 0 : ang)}) scale(${sc})">`;
   const son = '</g></g></g>';
   if (kind === 'dis') {
-    // UFO (plan 27 Eki, 3.17): Devir kullanıcısıysa (o.kullanici) kubbe dolu, değilse boş
-    s += `<g transform="scale(.78)">`;
-    s += `<ellipse cx="0" cy="9" rx="13" ry="7" fill="url(#glowPeach)" opacity=".55"/>`;
-    s += `<path d="M-8,-1 A8,8 0 0 1 8,-1Z" fill="${o.kullanici ? col : '#2B2160'}" stroke="${col}" stroke-width="1.4"/>`;
-    s += `<ellipse cx="0" cy="1" rx="17" ry="5.5" fill="#FFF1E2" stroke="${col}" stroke-width="1.4"/>`;
-    s += `<circle cx="-9" cy="1.5" r="1.4" fill="${col}"/><circle cx="0" cy="3" r="1.4" fill="${col}"/><circle cx="9" cy="1.5" r="1.4" fill="${col}"/></g>`;
+    // Devir kullanıcısıysa (o.kullanici) büyük yelken dolu, değilse yarı saydam
+    s += `<path d="M-14,4 L14,4 L9.5,10 L-9.5,10Z" fill="${KREM}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
+    s += `<path d="M0,-15 V4" stroke="${col}" stroke-width="${K}"/>`;
+    s += `<path d="M1.5,-13 L12,2 L1.5,2Z" fill="${col}" fill-opacity="${o.kullanici ? 1 : .5}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
+    s += `<path d="M-1.5,-9 L-1.5,2 L-9,2Z" fill="${KREM}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
+    s += `<path d="M-16,12.5 Q-12,10.5 -8,12.5 T0,12.5 T8,12.5 T16,12.5" fill="none" stroke="${col}" stroke-opacity=".5" stroke-width="1"/>`;
     return s + son;
   }
   if (kind === 'agent') {
-    // füze (plan 27 Eki, 3.16): ince uzun gövde, sahip renginde sivri burun ve üç kanat; köşeli pencere
-    if (o.flame !== false) s += `<path d="M-17,-3 Q-34,0 -17,3Z" fill="url(#flame)"/>`;
-    s += `<path d="M-10,-4.5 L-18,-11 L-17,-4.5Z M-10,4.5 L-18,11 L-17,4.5Z" fill="${col}"/>`;
-    s += `<rect x="-17" y="-4.8" width="25" height="9.6" rx="2" fill="#FFF1E2"/>`;
-    s += `<path d="M8,-4.8 Q17,-3 21,0 Q17,3 8,4.8Z" fill="${col}"/>`;
-    s += `<path d="M-17,-1 L-21,0 L-17,1Z M-13,-.8 H-6 V.8 H-13Z" fill="${col}"/>`;
-    s += `<rect x="-4" y="-4" width="8.5" height="8" rx="1.5" fill="#2B2160" stroke="${col}" stroke-width="1.4"/>`;
-    s += `<text x=".25" y="2.9" transform="rotate(${f(-ang)} .25 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="7.5" fill="#FFF3E8">${initial}</text>`;
-    if (o.sira) s += `<text x="12" y="-8" transform="rotate(${f(-ang)} 12 -9)" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
+    if (o.flame !== false) s += `<path d="M-6,4 L-11,16 L11,16 L6,4Z" fill="${col}" opacity=".16"/>`;
+    s += `<path d="M-8,-1 A8,8 0 0 1 8,-1Z" fill="${col}" fill-opacity=".75" stroke="${col}" stroke-width="${K}"/>`;
+    s += `<ellipse cx="0" cy="1" rx="16" ry="5" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
+    s += `<circle cx="-9" cy="1.6" r="1.3" fill="${col}"/><circle cx="0" cy="2.6" r="1.3" fill="${col}"/><circle cx="9" cy="1.6" r="1.3" fill="${col}"/>`;
+    if (initial) s += `<text x="0" y="-2.4" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6.5" fill="${GECE}">${initial}</text>`;
+    else s += `<circle cx="0" cy="-4" r="2.2" fill="${col}"/>`;
+    if (o.sira) s += `<text x="14" y="-6" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
     return s + son;
   }
-  if (o.flame !== false) s += `<path d="M-11,-4 Q-30,0 -11,4Z" fill="url(#flame)"/>`;
-  s += `<path d="M-9,-6 L-15,-11 L-12,-3Z M-9,6 L-15,11 L-12,3Z" fill="${col}"/>`;
-  s += `<path d="M15,0 C11,-8.5 -1,-10 -10,-7.5 Q-13,0 -10,7.5 C-1,10 11,8.5 15,0Z" fill="#FFF1E2"/>`;
-  s += `<path d="M15,0 C11,8.5 -1,10 -10,7.5 Q-11,4 -11,2 C0,4 9,3 15,0Z" fill="${col}" opacity=".55"/>`;
-  s += `<path d="M15,0 C13,-3 11,-5 9,-6 L9,6 C11,5 13,3 15,0Z" fill="${col}"/>`;
-  s += `<circle cx="-.5" cy="0" r="6" fill="#2B2160" stroke="${col}" stroke-width="1.6"/>`;
-  s += `<text x="-.5" y="3.2" transform="rotate(${f(-ang)} -.5 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="8.5" fill="#FFF3E8">${initial}</text>`;
+  if (o.flame !== false) s += `<path d="M-11,-3.5 Q-26,0 -11,3.5Z" fill="url(#flame)"/>`;
+  s += `<path d="M-7,-6 L-14,-12 L-12,-3Z M-7,6 L-14,12 L-12,3Z" fill="${col}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
+  s += `<path d="M17,0 C11,-9.5 -4,-9.5 -11,-5.5 Q-13.5,0 -11,5.5 C-4,9.5 11,9.5 17,0Z" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
+  s += `<circle cx="2" cy="0" r="5.8" fill="${GECE}" stroke="${col}" stroke-width="${K}"/>`;
+  s += `<text x="2" y="2.9" transform="rotate(${f(-ang)} 2 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="8" fill="#FFF3E8">${initial}</text>`;
   return s + son;
 }
 

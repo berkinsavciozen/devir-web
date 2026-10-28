@@ -58,12 +58,14 @@ describe('galaksi sayıları', () => {
 describe('P4b işaretleri', async () => {
   const { planet, ship, kapi, yildiz } = await import('./ortak.js');
   const { lejantGezegenleri } = await import('../ekranlar/akis/Lejant');
-  it('atlandı üstü çizik; UFO ve füze insandan ayrı biçim', () => {
+  it('atlandı üstü çizik; gemiler (Q6 · A): insan roket, agent UFO, dış yelkenli', () => {
     expect(planet(0, 0, 8, 'ghost')).toMatch(/M-6\.24,6\.24 L6\.24,-6\.24/);
     const insan = ship(0, 0, 0, 'insan', 'A', '#8EC5FF'), agent = ship(0, 0, 0, 'agent', 'C', '#B9A6F2'), dis = ship(0, 0, 0, 'dis', '', '#F2B8D8');
     expect(new Set([insan, agent, dis]).size).toBe(3);
-    expect(agent).toContain('<rect'); expect(insan).not.toContain('<rect');
-    expect(dis).toContain('<ellipse cx="0" cy="1"');
+    expect(agent).toContain('<ellipse cx="0" cy="1"'); expect(insan).not.toContain('<ellipse');
+    expect(dis).toContain('M0,-15 V4'); expect(dis).not.toContain('<ellipse');
+    // ortak 1,5 çizgi
+    for (const g of [insan, agent, dis]) expect(g).toContain('stroke-width="1.5"');
   });
   it('varış kapısı ve merkez yıldızı çizilir', () => {
     expect(kapi(0, 0, 1, false)).toContain('r="22"');

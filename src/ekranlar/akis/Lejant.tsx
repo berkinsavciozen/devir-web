@@ -28,9 +28,9 @@ const SATIRLAR: Satir[] = [
   [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],
   [`<circle cx="22" cy="22" r="8" fill="url(#pDark)" stroke="#8E80D6"/><path d="M22,11 A11,11 0 0 1 22,33" fill="none" stroke="#FFC9A3" stroke-width="2.2" stroke-linecap="round"/><path d="M22,33 A11,11 0 0 1 22,11" fill="none" stroke="#8EC5FF" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0 2.5 30"/>`, 'Ortak görev', 'Çok renkli halka: birden fazla kişinin ortak görevi', 'ortak'],
   [`<defs><linearGradient id="lj-ip" x1="0" x2="1"><stop offset="0" stop-color="#FFC9A3"/><stop offset="1" stop-color="#8EC5FF"/></linearGradient></defs><path d="M6,30 L34,14" stroke="url(#lj-ip)" stroke-width="1.6"/><path d="M38,12 L31,13 L34,18Z" fill="#8EC5FF"/>`, 'Devir', 'Renk geçişli ok: iş bir kişiden ötekine geçiyor', 'ip'],
-  [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Yuvarlak pencere, baş harf', 'insan'],
-  [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'Füze; köşeli pencere, sahibinin renginde', 'agent'],
-  [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'UFO; yalnız kendi adımlarını görür', 'dis'],
+  [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Roket; penceresinde baş harfi', 'insan'],
+  [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'UFO; ışığı sahibinin renginde', 'agent'],
+  [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'Yelkenli; yalnız kendi adımlarını görür', 'dis'],
   [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol'],
 ];
 
