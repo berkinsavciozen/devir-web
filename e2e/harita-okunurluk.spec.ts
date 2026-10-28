@@ -57,16 +57,19 @@ test('N1, N3: evrende galaksi adı kendi çerçevesine takılı (1440 ve 360)', 
   }
 });
 
-test('N7: üst cümle yok; evren halkası üst satıra binmez (1280×720)', async ({ page }) => {
+test('N7: üst cümle yok; evren halkası ad satırına binmez (1280×720)', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', 1280, 720);
   // plan 27 Eki, 2.3: evrenin üstünde akıllı cümle yok
   await page.locator('.harita-gezinme .gezegen-hedef').first().waitFor();
   await expect(page.locator('.cumle-hedef')).toHaveCount(0);
-  const ad = await page.getByText('Berkin', { exact: true }).first().boundingBox();
+  // adın kendi metin kutusu (öğe satır boyunca geniş)
+  const ad = await page.getByText('Berkin', { exact: true }).first().evaluate((e) => { const r = document.createRange(); r.selectNodeContents(e); const b = r.getBoundingClientRect(); return { x: b.left, y: b.top, width: b.width, height: b.height }; });
   const ay = await kutular(page, 'svg text');
   const aylar = ay.filter((a) => /^(Eki|Kas|Ara)$/.test(a.t));
   expect(aylar.length).toBeGreaterThan(0);
-  for (const a of aylar) expect(a.y, a.t).toBeGreaterThan(ad!.y + ad!.height);
+  // halka büyüdü (plan 28 Eki, B7): üstteki ay adı ad satırıyla aynı yükseklikte olabilir ama ona binmez
+  const adaBinmez = (a: { x: number; y: number; w: number; h: number }) => a.x > ad!.x + ad!.width + 8 || a.y > ad!.y + ad!.height;
+  for (const a of aylar) expect(adaBinmez(a), a.t).toBe(true);
   await cek(page, 'W3-evren-1280');
 });
 

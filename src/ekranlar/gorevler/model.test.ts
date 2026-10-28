@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bagIsareti, gorevCumlesi, gorevHaritasi, gruplar, suzgecAdresi, suzgecOku } from './model';
+import { bagIsareti, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const g = (o: any) => ({ akis: 'A', akis_baslik: 'Hasat', sahip: 'Berkin', sahip_tip: 'insan', durum: 'hazir', onceki: [], sonraki: [], ...o });
@@ -36,5 +36,12 @@ describe('görevler', () => {
     expect(H.bugunX).toBeGreaterThan(H.x0);
     expect(H.bugunX).toBeLessThan(p.x);
     expect(gorevHaritasi(G, { kisiBasina: true, now: NOW }).seritler).toHaveLength(1);
+  });
+  it('K8: haftalık çizgiler İstanbul saatiyle pazartesi 00:00', () => {
+    const T = haftaCizgileri(NOW - 2 * 864e5, NOW + 30 * 864e5);
+    const tr = (t: number) => new Intl.DateTimeFormat('tr-TR', { timeZone: 'Europe/Istanbul', weekday: 'long', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }).format(t);
+    for (const t of T) expect(tr(t)).toMatch(/Pazartesi.*00:00/);
+    // 14 Eki çarşamba: sonraki çizgi 19 Eki, bugünün yanına 15 Eki düşmez
+    expect(tr(T[0])).toContain('19 Eki');
   });
 });

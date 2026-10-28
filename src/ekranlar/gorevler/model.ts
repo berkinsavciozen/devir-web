@@ -104,3 +104,14 @@ export function gorevHaritasi(G: any[], o: { kisiBasina: boolean; now: number; x
   });
   return { seritler, noktalar, t0, t1, x0, x1, bugunX: X(o.now), h: Math.max(1, sirali.length) * S };
 }
+
+/**
+ * Haftalık eksen çizgileri (plan 28 Eki, K8): İstanbul saatiyle pazartesi 00:00. Eskiden UTC çağ başından 7 günlük
+ * adımlar (perşembe 03:00) kullanılıyordu; bugünün hemen yanına ertesi günün tarihi düşüyordu.
+ */
+const HAFTA = 7 * GUN, PAZARTESI_TR = Date.UTC(1970, 0, 4, 21);
+export function haftaCizgileri(t0: number, t1: number): number[] {
+  const out: number[] = [];
+  for (let t = PAZARTESI_TR + Math.ceil((t0 - PAZARTESI_TR) / HAFTA) * HAFTA; t <= t1; t += HAFTA) out.push(t);
+  return out;
+}

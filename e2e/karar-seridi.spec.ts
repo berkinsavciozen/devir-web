@@ -27,7 +27,9 @@ for (const [w, h] of [[360, 780], [1440, 900]] as const) {
       if (y.once) await y.once(page, w);
       await expect(s).toBeInViewport({ ratio: 1 });
       await expect(s).toHaveText(TARIH);
+      // telefon haritasında şerit bilerek tek satır ("…"); tamamı ok düğmesiyle açılır (plan 28 Eki, B8)
       const tasan = await page.locator('.karar-seridi').evaluateAll((L) => L
+        .filter((e) => !e.closest('.serit-daralt:not(.acik)'))
         .filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > window.innerWidth + .5)
         .map((e) => e.textContent));
       expect(tasan).toEqual([]);
@@ -37,6 +39,7 @@ for (const [w, h] of [[360, 780], [1440, 900]] as const) {
 
 test('galaksi: "Bu tarih neden?" varsayımları ve üst ucu belirleyen adımları gösterir', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin', 360, 780);
+  await page.getByRole('button', { name: 'Özetin tamamı' }).click();
   await page.getByRole('button', { name: 'Bu tarih neden?' }).click();
   const panel = page.getByRole('dialog');
   await expect(panel.getByRole('heading', { name: 'Varsayımlar' })).toBeVisible();

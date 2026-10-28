@@ -44,14 +44,24 @@ const GDURUM: Record<GDurum, { ad: string; uyar: (a: any, ben: string) => boolea
   sira: { ad: 'Sırası gelen', uyar: (a) => a?.durum === 'hazir' || a?.durum === 'suruyor' },
   sende: { ad: 'Sende', uyar: (a, ben) => a?.sahip === ben && !BITTI(a.durum) },
 };
-/** Harita düzeni (mobil, §5 B3; plan 27 Eki 2.2, 2.5: şeritler ve üst cümle kalktı, harita ilk ekranın ~%75'i) */
+/** Harita düzeni (mobil, §5 B3; plan 27 Eki 2.2, 2.5): tasarım boyunda (844) yarıçap ve öğe ölçeği */
 export const HARITA = { cx: 195, cy: 420, R: 164, ps: .8 };
-/** Zaman sürgüsü: küçük (plan 27 Eki, 2.4) */
-const SURGU = { x: 16, y: 766, w: 358, ps: .8 };
 /** Haritanın üstü: başlığın altı (karar şeridi varsa onun da altı). */
 const HARITA_UST = 92;
-/** Telefonda haritanın altındaki bölümün üstü (sayfa kaydırılınca buraya oturur). */
-const BOLUM_Y = 852;
+
+/**
+ * Telefon düzeni ekranın gerçek boyuna göre (plan 28 Eki, B8, K5): zaman sürgüsü ve "Adımlar" ipucu ilk ekranda,
+ * harita süzgeç satırıyla sürgü arasındaki alana ortalanır. Uzun ekranda tasarım boyu (844) aşılmaz.
+ */
+export function telefonDuzeni(boy: number, seritH = 0) {
+  const H = Math.min(844, Math.max(560, boy));
+  const surgu = { x: 16, y: H - 78, w: 358, ps: .8 };
+  const y0 = HARITA_UST + (seritH ? seritH + 10 : 0);
+  const bolge: Bolge = { x: 0, y: y0, w: 390, h: surgu.y - 56 - y0 };
+  // sarmal dikeyde yarıçapın ~%85'i kadar yer kaplar; süzgeç satırının (56) altı ile bölgenin altı arası
+  const ust = y0 + 56, alt = y0 + bolge.h, R = Math.min(HARITA.R, (alt - ust) / 2 / .88);
+  return { H, surgu, bolge, harita: { ...HARITA, cy: Math.round((ust + alt) / 2 + R * .04), R }, ipucuY: H - 32, bolumY: H + 8 };
+}
 
 export const gecenGun = (d: any, now: number) => (d.akis.hedef_tarih && !d.akis.kapandi_at ? Math.floor((now - Date.parse(d.akis.hedef_tarih + 'T00:00:00+03:00')) / GUN) : 0);
 
@@ -141,24 +151,27 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   };
   const d = q.data;
   // haritanın altındaki bölüm (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler; telefonda aynı sayfada
-  const B = useAkisBolumu({ d, kod, ben: sahip, y0: GD ? 12 : BOLUM_Y + 44, en: GD ? GD.kart.w : undefined });
+  // karar şeridi (P1-A2) başlığın altında tek satır; dokununca tamamı haritanın üstünde açılır (plan 28 Eki, B8)
+  const seritTam = !GD && d && !d.akis.kapandi_at ? seritYuksekligi(d.akis.karar_ozeti, 350, { neden: !!d.bitis }) : 0;
+  const seritH = Math.min(seritTam, 18);
+  const [seritAcik, setSeritAcik] = useState(false);
+  const TD = useMemo(() => telefonDuzeni(boy.h, seritH), [boy.h, seritH]);
+  const B = useAkisBolumu({ d, kod, ben: sahip, y0: GD ? 12 : TD.bolumY + 44, en: GD ? GD.kart.w : undefined });
   const bolumRef = useRef<HTMLHeadingElement>(null);
   // alt sayfa kapanırken geçmiş bir adım geri gider; kaydırma ondan sonra yapılır
   const bolumAc = (s?: AkisSuzgec) => { if (s) B.sec(s); if (GD) { if (secim != null) git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }); return; } setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
-  const geo = useMemo(() => (GD ? GD.harita : HARITA), [GD]);
-  const SU = GD ? GD.surgu : SURGU;
+  const geo = useMemo(() => (GD ? GD.harita : TD.harita), [GD, TD]);
+  const SU = GD ? GD.surgu : TD.surgu;
   // masaüstünde seçim adreste (/adim/:no); seçim yokken panelde adım listesi (N16)
   // alt görev seçiliyse haritada üst görevi (uydusunun gezegeni) seçili
   const selNo = GD && d ? (secim != null ? d.adimlar.find((a: any) => a.no === secim)?.ust_adim ?? secim : null) : null;
-  // karar şeridi (P1-A2) başlığın altında tek kısa satır; bugünde ve kişi odağı yokken
-  const seritH = !GD && d && !d.akis.kapandi_at ? seritYuksekligi(d.akis.karar_ozeti, 350, { neden: !!d.bitis }) : 0;
   // yakınlaşma, kaydırma (B3 "Pinch", §12): bölge sarmalın alanı; başlığın (ve karar şeridinin) altı, sürgünün üstü
   const [yelpazeNo, setYelpazeNo] = useState<number | null>(null);
   const [kuleAcik, setKuleAcik] = useState(false);
   const [kisiKarti, setKisiKarti] = useState<string | null>(null);
-  const bolge = useMemo<Bolge>(() => { if (GD) { const y0 = GD.ust.cumleY + 44; return { x: 0, y: y0, w: GD.PX, h: GD.surgu.y - 34 - y0 }; } const y0 = HARITA_UST + (seritH ? seritH + 10 : 0); return { x: 0, y: y0, w: 390, h: SURGU.y - 56 - y0 }; }, [GD, seritH]);
+  const bolge = useMemo<Bolge>(() => { if (GD) { const y0 = GD.ust.cumleY + 44; return { x: 0, y: y0, w: GD.PX, h: GD.surgu.y - 34 - y0 }; } return TD.bolge; }, [GD, TD]);
   const gz = useGezinme(bolge, { hareket: () => { clearTimeout(bas.current.zm); setKuleAcik(false); } });
   const zk = gz.g.k, yak = gz.yaklasik;
   // seçilen gezegene yumuşak kayma (plan 28 Eki, B9, B4): tasarım konumu (yakınlaşmasız çizim) bölgenin ortasına; alt görevi
@@ -213,12 +226,14 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const YE = kad >= 1 ? yakinEtiketler(d, Y, bolge, zk, odak, gemiD, kad) : { svg: '', kutular: [] };
     let ek = YE.svg + kisiAdlari(d, Y, bolge, kad >= 3, kisiKarti && kisiKarti === odak ? kisiKarti : null, YE.kutular);
     if (kuleAcik && Y.G.kule) ek += kuleKarti(d, Y.G.kule, bolge);
-    let svg = yak
+    // telefonda haritanın ince çerçevesi (plan 28 Eki, B8): harita alanı sürgüden ve sayfadan ayrılır
+    const cerceve = GD ? '' : `<rect class="harita-cerceve" x="8" y="${bolge.y - 6}" width="374" height="${bolge.h + 14}" rx="22" fill="none" stroke="#8E80D6" stroke-opacity=".26"/>`;
+    let svg = cerceve + (yak
       ? `${haritaCercevesi('harita-kirp', bolge)}${Y.svg + SK.svg + ust + ek}</g>` + Z.svg
-      : Y.svg + SK.svg + Z.svg + ust + ek;
+      : Y.svg + SK.svg + Z.svg + ust + ek);
     // küme yelpazesi (§3.7): küme hâlâ varsa
     const kume = yelpazeNo != null ? (Y.clusters || []).find((c: number[]) => c.includes(yelpazeNo)) : null;
-    const YP = kume ? yelpaze(d, Y, kume, bolge, GD ? GD.W : 390, GD ? GD.H : 844) : null;
+    const YP = kume ? yelpaze(d, Y, kume, bolge, GD ? GD.W : 390, GD ? GD.H : TD.H) : null;
     if (YP) svg += YP.svg;
     return { svg, Y, Z, SK, YP };
   }, [M, temel, d, X, NOW, odak, durumOdak, sahip, oynuyor, tarihNo, geo, geoZ, zk, yak, bolge, kuleAcik, kisiKarti, yelpazeNo, GD, selNo, parla]);
@@ -430,11 +445,12 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </div>
 
       {kontroller}
-      {serit && <div className="galaksi-ust" style={{ left: 20, right: 20, top: HARITA_UST }}>
+      {serit && <div className={`galaksi-ust serit-daralt${seritAcik ? ' acik' : ''}${seritTam > seritH ? ' tasar' : ''}`} style={{ left: 20, right: 20, top: HARITA_UST }}>
         <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
+        {seritTam > seritH && <button type="button" className="serit-ac" aria-expanded={seritAcik} aria-label={seritAcik ? 'Özeti daralt' : 'Özetin tamamı'} onClick={() => setSeritAcik(!seritAcik)} />}
       </div>}
-      <button type="button" className="bolum-ipucu" style={{ top: 812 }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
-      <h2 ref={bolumRef} className="bolum-durak" style={{ top: BOLUM_Y }}>{ad}</h2>
+      <button type="button" className="bolum-ipucu" style={{ top: TD.ipucuY }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
+      <h2 ref={bolumRef} className="bolum-durak" style={{ top: TD.bolumY }}>{ad}</h2>
       {B.dugum}
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
@@ -444,7 +460,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
 
 /** Yükleniyor: merkez ışığı + tek soluk sarmal + boş sürgü rayı (§5 B3). */
 export function HaritaYukleniyor() {
-  const { cx, cy, R } = HARITA;
+  const T = telefonDuzeni(useBoyut().h), SURGU = T.surgu, { cx, cy, R } = T.harita;
   let p = '';
   for (let i = 0; i <= 80; i++) { const th = i / 80 * Math.PI * 2.4, r = R * .1 + R * .85 * i / 80; p += (i ? 'L' : 'M') + (cx + Math.cos(th) * r).toFixed(1) + ',' + (cy + Math.sin(th) * r).toFixed(1); }
   const s = `<circle cx="${cx}" cy="${cy}" r="${R * .3}" fill="url(#bloom)" opacity=".8"/><g class="donen-sarmal" style="transform-origin:${cx}px ${cy}px"><path d="${p}" fill="none" stroke="#B9A6F2" stroke-width="1.4" opacity=".3"/></g>` +
