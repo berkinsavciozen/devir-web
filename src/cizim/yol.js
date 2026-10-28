@@ -136,19 +136,28 @@ export function uyduSistemi(x, y, r, ks, ps = 1, o = {}) {
     return s + sans(f(tx + 4 * ps), f(ty + 3.5 * ps), `${done}/${n}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
   }
   // adlar yazılınca (Z3) aralık yazı satırı kadar açılır
-  const mr = Math.max(2.6 * ps, r * .5), ara = Math.max(2 * mr * 1.25, o.adlar ? 17 : 0), b = ara / (2 * Math.PI);
+  // dokunulur uydular (o.hedef, plan 28 Eki B4): 44 px hedefler birbirine ve gezegenin hedefine binmesin diye aralık açılır
+  const mr = Math.max(2.6 * ps, r * .5), ara = Math.max(2 * mr * 1.25, o.adlar ? 17 : 0, o.hedef ? 46 : 0), b = ara / (2 * Math.PI);
+  const bosluk = o.hedef ? Math.max((o.bosluk ?? 7) * ps, Math.max(22, r + 6) + 23 - r - mr) : (o.bosluk ?? 7) * ps;
   const sira = ks.map((k, i) => ({ k, i })).sort((p, q) => (p.k.t ?? p.i) - (q.k.t ?? q.i) || p.i - q.i);
   let th = -Math.PI / 2, s = '', yol = [];
-  const rho = (t) => r + mr + (o.bosluk ?? 7) * ps + b * (t + Math.PI / 2);
+  const rho = (t) => r + mr + bosluk + b * (t + Math.PI / 2);
   const P = sira.map(() => { const p = [x + Math.cos(th) * rho(th), y + Math.sin(th) * rho(th)]; th += ara / rho(th); return p; });
   for (let t = -Math.PI / 2; t <= th - ara / rho(th) + .01; t += .12) yol.push([x + Math.cos(t) * rho(t), y + Math.sin(t) * rho(t)]);
   if (yol.length > 1) s += `<path d="${yolD(yol)}" fill="none" stroke="#D9CCFF" stroke-width="${f(.8 * ps)}" stroke-dasharray="1.5 2.5" opacity=".6"/>`;
   sira.forEach(({ k }, i) => {
     const [mx, my] = P[i];
     s += planet(mx, my, mr, UYDU_DURUM[k.durum] || 'dark', { life: false, mini: true, waitRings: 1 });
+    // dokunma hedefleri için uydunun yeri (plan 28 Eki, B4)
+    if (o.yerler && k.no != null) o.yerler.push({ no: k.no, ust: o.ust, x: mx, y: my, r: mr });
     if (o.ini && !o.adlar) s += sans(f(mx), f(my + mr * .45), esc((k.ad[0] || '').toLocaleUpperCase('tr')), { fs: Math.max(7, mr * 1.2), fw: 800, col: '#FFF3E8', anchor: 'middle' });
     // ad dışa doğru: gezegenin solundaki uydu sola, sağındaki sağa yazılır
-    if (o.adlar) { const sol = mx < x; s += sans(f(mx + (sol ? -1 : 1) * (mr + 3 * ps)), f(my + 3.5), esc(kisalt(k.ad, 18)), { fs: 10, fw: 600, col: C.ink2, anchor: sol ? 'end' : 'start' }); }
+    // dokunulur sarmalda (o.hedef) ad gezegenden dışa doğru, uydunun açısında (komşu uydunun adına binmez)
+    if (o.adlar && o.hedef) {
+      const ux = (mx - x) / Math.hypot(mx - x, my - y), uy = (my - y) / Math.hypot(mx - x, my - y), dd = mr + 4 * ps;
+      const anchor = ux > .35 ? 'start' : ux < -.35 ? 'end' : 'middle';
+      s += sans(f(mx + ux * dd), f(my + uy * dd + (anchor === 'middle' ? (uy > 0 ? 9 : -2) : 3.5)), esc(kisalt(k.ad, 18)), { fs: 10, fw: 600, col: C.ink2, anchor });
+    } else if (o.adlar) { const sol = mx < x; s += sans(f(mx + (sol ? -1 : 1) * (mr + 3 * ps)), f(my + 3.5), esc(kisalt(k.ad, 18)), { fs: 10, fw: 600, col: C.ink2, anchor: sol ? 'end' : 'start' }); }
   });
   return s;
 }
@@ -284,7 +293,7 @@ export function yolCiz(M, o = {}) {
   const cl = G.kumeler(o.kumeRad || ((no) => radOf(no)), vis), inCl = new Set(cl.flat());
   // ikonAyri (yakınlaşınca): bulut ve bayrak gezegenden ayrılır, kendi dokunma alanları olur
   const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !SONUK.includes(stOf(no)), waitRings: 1, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
-  const ikonlar = [];
+  const ikonlar = [], uyduYer = [];
   const pl = (no) => {
     const g = G.gezegen[no], k = stOf(no), r = k === 'dark' && o.minR ? Math.max(radOf(no), o.minR * ps) : radOf(no);
     let t = '';
@@ -313,7 +322,7 @@ export function yolCiz(M, o = {}) {
       });
     }
     // uydu sistemi v2 (3.B): uzakta Satürn halkası, Z2'den itibaren mini sarmal, Z3'te adlar (etkin aşama kuralı kalktı, 3.23a)
-    if (o.sats && o.sats[no]) t += uyduSistemi(g.x, g.y, r, o.sats[no], ps, { yakin: !!o.satYakin, adlar: !!o.satAdlar && o.sats[no].length <= 6, ini: o.sats[no].length <= 8 });
+    if (o.sats && o.sats[no]) t += uyduSistemi(g.x, g.y, r, o.sats[no], ps, { yakin: !!o.satYakin, adlar: !!o.satAdlar && o.sats[no].length <= 6, ini: o.sats[no].length <= 8, yerler: uyduYer, ust: +no, hedef: !!o.satHedef });
     return t;
   };
   const sahipGrubu = (no) => o.focus && G.gezegen[no].uyeler.includes(o.focus) ? o.focus : byNo[no].sahip;
@@ -363,7 +372,7 @@ export function yolCiz(M, o = {}) {
     if (!o.selTop) s += secim;
   }
   if (o.labels) for (const [no, text, dx, dy, col, st] of o.labels) { const g = G.gezegen[no]; if (g) s += pill(g.x + dx * ps * YK, g.y + dy * ps * YK, esc(text), { fs: 11 * m13 * YK, fw: 650, col: col || C.ink, stroke: st }); }
-  return { svg: s, G, P, radOf, stOf, clusters: cl, secim, RENK, gemiler, ikonlar };
+  return { svg: s, G, P, radOf, stOf, clusters: cl, secim, RENK, gemiler, ikonlar, uydular: uyduYer };
 }
 
 /**

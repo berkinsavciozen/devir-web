@@ -43,6 +43,16 @@ export function gecis(yon: Yon, degistir: () => void) {
   } catch { delete kok.dataset.gecis; degistir(); }
 }
 
+/**
+ * Masaüstünde aynı akışın haritası ile o akışın adımı arasında geçiş animasyonu yok (plan 28 Eki, B9): harita yerinde
+ * kalır, yalnız sağ panel değişir.
+ */
+const AYNI_HARITA = /^\/akis\/([^/]+)(?:\/adim\/\d+)?$/;
+export function ayniHarita(a: string, b: string) {
+  const x = a.match(AYNI_HARITA), y = b.match(AYNI_HARITA);
+  return !!x && !!y && x[1] === y[1] && innerWidth >= 1024 && innerHeight >= 600;
+}
+
 /** Küçük geçmiş tabanlı yönlendirici: /, /akislar, /akis/:kod, /giris, /l/:token … */
 export function useYol(): string {
   const [yol, setYol] = useState(yolAl);
@@ -52,7 +62,7 @@ export function useYol(): string {
       const yeni = yolAl(), yon = sonrakiYon ?? 'geri';
       sonrakiYon = null;
       // alt sayfanın kendi geçmiş kaydı ya da aynı yol: geçiş yok
-      if (yeni === sonYol.current || yon === 'yok') { setYol(yeni); return; }
+      if (yeni === sonYol.current || yon === 'yok' || ayniHarita(sonYol.current, yeni)) { setYol(yeni); return; }
       gecis(yon, () => flushSync(() => setYol(yeni)));
     };
     window.addEventListener('popstate', d);

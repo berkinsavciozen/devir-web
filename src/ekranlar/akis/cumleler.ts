@@ -76,14 +76,14 @@ export function tekrarAsamasi(d: any): { no: number; ad: string; n: number; k: n
   return null;
 }
 /** Uydular: tekrarlanan her üst adım için kalem durumları; alt görevli adım için alt görevlerin durumları. */
-export type Uydu = { ad: string; durum: string; t?: number; kalem?: boolean };
+export type Uydu = { ad: string; durum: string; t?: number; kalem?: boolean; no?: number };
 /** t: sarmal sırası (bitiş ya da tahmini bitiş; plan 27 Eki 3.B, en erken en içte). kalem: tekrar kalemi (boncuklu halka). */
 export function uydular(d: any): Record<number, Uydu[]> {
   const out: Record<number, Uydu[]> = {};
   const an = (x: any) => { const v = Date.parse(x?.durum === 'tamam' ? x?.durum_at : x?.en_erken_bitis || x?.son_tarih || x?.durum_at || ''); return Number.isNaN(v) ? undefined : v; };
   for (const g of d.tekrar || []) for (const no of g.adimlar || []) out[no] = (g.kalemler || []).map((k: any) => { const x = k.adimlar?.find((y: any) => y.ust_no === no); return { ad: k.ad, durum: x?.durum || 'sirada', t: an(x), kalem: true }; });
   // W5: alt görevler üst görevin uyduları
-  for (const a of d.adimlar || []) if (a.ust_adim != null) (out[a.ust_adim] ||= []).push({ ad: adimAdi(a), durum: a.durum, t: an(a) });
+  for (const a of d.adimlar || []) if (a.ust_adim != null) (out[a.ust_adim] ||= []).push({ ad: adimAdi(a), durum: a.durum, t: an(a), no: a.no });
   return out;
 }
 /** D1: "5 çiftçiden 2’si belgeleri tamamladı; Hemşin Koop’ta IBAN eksik." */

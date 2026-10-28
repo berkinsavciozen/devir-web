@@ -28,7 +28,7 @@ import { haritaCercevesi, useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
 import { hedefPayi, KararSeridi, seritYuksekligi } from '../../bilesen/KararSeridi';
 import { TarihNeden } from './TarihNeden';
-import { buyut, hedefYaricap, kademe, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
+import { buyut, hedefYaricap, kademe, KADEME, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
 /** kuyruk yazısı (R17): "hedefe 24 gün pay" → "24 gün pay"; yalnız pay varken */
 const payKisa = (d: any) => { const p = d ? hedefPayi(d.akis) : ''; return p.startsWith('hedefe ') ? p.slice(7) : ''; };
@@ -161,11 +161,26 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const bolge = useMemo<Bolge>(() => { if (GD) { const y0 = GD.ust.cumleY + 44; return { x: 0, y: y0, w: GD.PX, h: GD.surgu.y - 34 - y0 }; } const y0 = HARITA_UST + (seritH ? seritH + 10 : 0); return { x: 0, y: y0, w: 390, h: SURGU.y - 56 - y0 }; }, [GD, seritH]);
   const gz = useGezinme(bolge, { hareket: () => { clearTimeout(bas.current.zm); setKuleAcik(false); } });
   const zk = gz.g.k, yak = gz.yaklasik;
+  // seçilen gezegene yumuşak kayma (plan 28 Eki, B9, B4): tasarım konumu (yakınlaşmasız çizim) bölgenin ortasına; alt görevi
+  // olan gezegende Z3'e (uydu sarmalı, adlar), diğerlerinde en az Z2'ye; zaten daha yakınsa yakınlık kalır
+  const altli = useMemo(() => new Set<number>((d?.adimlar || []).filter((a: any) => a.ust_adim != null).map((a: any) => a.ust_adim)), [d]);
+  const gezegeneKay = (no: number) => {
+    const g = temelRef.current?.G.gezegen[no]; if (!g) return;
+    const k = Math.min(4, Math.max(gz.g.k, altli.has(no) ? KADEME.Z3 + .1 : KADEME.Z2));
+    gz.git({ k, tx: bolge.x + bolge.w / 2 - g.x * k, ty: bolge.y + bolge.h / 2 - g.y * k });
+  };
+  const temelRef = useRef<any>(null);
+  const oncekiSecim = useRef<number | null | undefined>(undefined);
+  useEffect(() => {
+    if (oncekiSecim.current !== undefined && selNo != null && selNo !== oncekiSecim.current) gezegeneKay(selNo);
+    oncekiSecim.current = selNo;
+  }, [selNo]); // eslint-disable-line react-hooks/exhaustive-deps
   const geoZ = useMemo(() => (yak ? { ...geo, cx: geo.cx * zk + gz.g.tx, cy: geo.cy * zk + gz.g.ty, R: geo.R * zk } : geo), [geo, yak, zk, gz.g.tx, gz.g.ty]);
   const sakin = useMemo<[number, number, number]>(() => [geo.cx, geo.cy, geo.R * 1.15], [geo]);
 
   // ilk çizim: geometri (etiket konumları için gezegen yerleri)
   const temel = useMemo(() => (M ? yolCiz(M, { ...geo, now: NOW, x: NOW }) : null), [M, NOW, geo]);
+  temelRef.current = temel;
   const cizim = useMemo(() => {
     if (!M || !temel || !d) return null;
     // etiket: yalnız bugün ve ileride, x anında hâlâ açık olan adımlar (yanık/tahmin olanlar etiketsiz)
@@ -183,7 +198,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     // küme: yalnız tasarım boyunda da üst üste binenler (büyüyen gezegenler birbirinin üstüne çizilir, rozete düşmez)
     const kumeRad = (no: number) => temel.radOf(no) * Math.min(kat, 1.4);
     const kad = kademe(zk);
-    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || kad >= 1 ? [] : labels, sats, satYakin: kad >= 2, satAdlar: kad >= 3, merkezTarih: kad >= 3, sel: selNo ?? undefined, parla: parla || undefined, payEtiket: payKisa(d), shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
+    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || kad >= 1 ? [] : labels, sats, satYakin: kad >= 2, satAdlar: kad >= 3, satHedef: kad >= 3, merkezTarih: kad >= 3, sel: selNo ?? undefined, parla: parla || undefined, payEtiket: payKisa(d), shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
     const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ps: SU.ps });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geoZ, now: NOW }) : { svg: '', hedefler: [] };
@@ -193,7 +208,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (gec > 0 && kule && !odak) ust += pill(kule.x, kule.y - 34, `${gec} gün geçti`, { fs: 11.5, fw: 750, bg: '#FF8A78', bgo: 1, col: '#2A1D4F' });
     if (tarihNo != null && Y.G.gezegen[tarihNo] && !GD && !yak) ust = tarihKarti(d, Y, Z, tarihNo, SU.y);
     // yakınlaşınca: adım etiketleri ve kişi adları ekranda (ölçekle büyümez); odaktaki kişinin adı her zaman
-    const gemiD: Daire[] = (Y.gemiler || []).map((g: any) => ({ x: g.x, y: g.y, r: 14 }));
+    const gemiD: Daire[] = [...(Y.gemiler || []).map((g: any) => ({ x: g.x, y: g.y, r: 14 })), ...(Y.uydular || []).map((u) => ({ x: u.x, y: u.y, r: u.r + 4 }))];
     // kademeler (3.D): Z1 engel, karar ve süren işin adı; Z2 bütün adlar; Z3 tarihler ve bütün kişi adları
     const YE = kad >= 1 ? yakinEtiketler(d, Y, bolge, zk, odak, gemiD, kad) : { svg: '', kutular: [] };
     let ek = YE.svg + kisiAdlari(d, Y, bolge, kad >= 3, kisiKarti && kisiKarti === odak ? kisiKarti : null, YE.kutular);
@@ -276,7 +291,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   for (const g of Object.values(Y.G.gezegen)) {
     const a = byNo.get(g.no); if (!a || kumede.has(g.no) || !gor(g.x, g.y)) continue;
     hedefler.push({ key: 'g' + g.no, x: g.x, y: g.y, r: hedefYaricap(Y.radOf(g.no)), etiket: gezegenEtiketi(a, kritik.has(g.no)), ipucu: gezegenIpucu(a), olay: {
-      onClick: () => { if (bas.current.acildi) { bas.current.acildi = false; return; } ac(g.no); },
+      // alt görevi olan gezegen (B4): telefonda önce uydu sarmalına yakınlaşır, yakındayken görevi açar; masaüstünde seçer ve yakınlaşır
+      onClick: () => { if (bas.current.acildi) { bas.current.acildi = false; return; } if (!GD && altli.has(g.no) && kademe(gz.g.k) < 3) { gezegeneKay(g.no); return; } ac(g.no); },
       onPointerDown: () => basiliBasla(g.no), onPointerUp: basiliBirak, onPointerLeave: () => clearTimeout(bas.current.zm),
       onContextMenu: (e: any) => { e.preventDefault(); setTarihNo(g.no); bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000); },
     } });
@@ -285,6 +301,12 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const g = Y.G.gezegen[c[0]]; if (!gor(g.x, g.y)) continue;
     const adlar = c.map((no) => byNo.get(no)).filter(Boolean).map((a: any) => adimAdi(a));
     hedefler.push({ key: 'k' + c[0], x: g.x, y: g.y, r: Math.max(22, Y.radOf(c[0]) + 12), etiket: `${c.length} adım bir arada: ${adlar.join(', ')}. ${gz.g.k >= KUME_YAKIN ? 'Açmak' : 'Yakınlaşmak'} için dokun.`, ipucu: `${c.length} adım: ${adlar.join(', ')}`, basili: yelpazeNo != null && c.includes(yelpazeNo), olay: { onClick: () => kumeyeDokun(c, g) } });
+  }
+  // uydular (B4): Z3'te dokunulur; alt görev seçilir, harita yerinde kalır
+  for (const u of Y.uydular || []) {
+    const a = byNo.get(u.no); if (!a) continue;
+    const h: Hedef = { key: 'u' + u.no, x: u.x, y: u.y, r: 22, etiket: `${u.no}. alt görev (${u.ust}. görevin), ${a.ad}. ${a.durum_etiket || a.durum}.`, ipucu: `${adimAdi(a)} · ${a.durum_etiket || a.durum}`, basili: secim === u.no, olay: { onClick: () => ac(u.no) } };
+    if (gor(h.x, h.y) && bos(h, hedefler)) hedefler.push(h);
   }
   SK.hedefler.forEach((h, i) => hedefler.push({ key: 'soru' + i, x: h.x, y: h.y, r: h.r, etiket: h.etiket, olay: { onClick: () => git(`/akis/${encodeURIComponent(kod)}/soru/${encodeURIComponent(h.soru)}`) } }));
   const koy = (h: Hedef) => { if (gor(h.x, h.y) && bos(h, hedefler)) hedefler.push(h); };
