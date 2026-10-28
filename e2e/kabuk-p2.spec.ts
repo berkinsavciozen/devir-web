@@ -42,12 +42,13 @@ test.describe('dokunmatik', () => {
   });
 });
 
-test('2.7: görev sayfasında yol izi Akış › Üst görev › Alt görev; tam adlar, dokununca gider', async ({ page }) => {
+// alt görevin adresi üst görevi açar (plan 28 Eki, karar 4): yol izi Akış › Üst görev
+test('2.7: görev sayfasında yol izi Akış › Görev; tam adlar, dokununca gider', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/12?senaryo=berkin&hal=alt');
   const yol = page.getByRole('navigation', { name: 'Konum' });
   await expect(yol.getByRole('button', { name: /^Akış: / })).toBeVisible();
-  await expect(yol.getByRole('button', { name: /^Üst görev: 10\./ })).toBeVisible();
-  await expect(yol.locator('[aria-current=page]')).toContainText('Instagram içgörüleri');
+  await expect(yol.locator('[aria-current=page]')).toContainText('raporla');
+  await expect(page.locator('.gd-akordiyon[open]')).toContainText('Instagram içgörülerini çek');
   await cek(page, 'P2-yol-izi');
   await yol.getByRole('button', { name: /^Akış: / }).click();
   await expect(page).toHaveURL(/\/akis\/RTD5(\?|$)/);

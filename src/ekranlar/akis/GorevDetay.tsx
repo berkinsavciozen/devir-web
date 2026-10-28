@@ -52,7 +52,15 @@ function Bolum({ baslik, children, id }: { baslik: string; children: ReactNode; 
  * Başlık ve durum → ne yapılacak → kim → ne zaman → etkileyen / etkilediği → karar (yalnız karar adımı) →
  * çıktı (bekleniyorsa ya da varsa) → alt görevler (varsa) → geçmiş (katlı).
  */
-export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; ben: string; kapat?: () => void }) {
+export function GorevDetay(o: { kod: string; no: number; ben: string; kapat?: () => void }) {
+  // alt görevin adresi (plan 28 Eki, karar 4): üst görev sayfası, o alt görevin akordiyonu açık
+  const akis = useAkis(o.kod);
+  if (!akis.data) return <div className="gd"><div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div></div>;
+  const ust = akis.data.adimlar.find((x: any) => x.no === o.no)?.ust_adim;
+  return ust != null ? <GorevIci {...o} no={ust} secAlt={o.no} /> : <GorevIci {...o} />;
+}
+
+function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; ben: string; kapat?: () => void; secAlt?: number }) {
   const akis = useAkis(kod);
   const q = useQuery({ queryKey: ['adim', kod, no], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`) });
   const d = akis.data, a = q.data?.adim;
@@ -76,7 +84,8 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
     kap?.scrollTo({ top: 0 });
   }, [no]);
   // önceki / sonraki görev (numara sırası); ← → tuşları (yazı alanında değilken)
-  const nolar: number[] = d ? d.adimlar.map((x: any) => x.no).sort((p: number, r: number) => p - r) : [];
+  // alt görevler üst görevlerinin akordiyonunda; gezinme yalnız üst düzey görevler arasında
+  const nolar: number[] = d ? d.adimlar.filter((x: any) => x.ust_adim == null).map((x: any) => x.no).sort((p: number, r: number) => p - r) : [];
   const i = nolar.indexOf(no), onceki = i > 0 ? nolar[i - 1] : null, sonraki = i >= 0 && i < nolar.length - 1 ? nolar[i + 1] : null;
   const adimaGit = (n: number | null) => { if (n != null) git(`/akis/${encodeURIComponent(kod)}/adim/${n}`, { yerine: true }); };
   useEffect(() => {
@@ -84,7 +93,7 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
       if (e.altKey || e.ctrlKey || e.metaKey || (e.target as HTMLElement)?.closest?.('input, textarea, select, [contenteditable], [role=slider], [role=tablist]')) return;
       if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
       // adres çizimden önce değişmiş olabilir (hızlı basış): komşu, adresteki görevden hesaplanır
-      const m = location.pathname.match(/\/adim\/(\d+)/), j = nolar.indexOf(m ? +m[1] : no);
+      const m = location.pathname.match(/\/adim\/(\d+)/), an = m ? +m[1] : no, j = nolar.indexOf(d?.adimlar.find((x: any) => x.no === an)?.ust_adim ?? an);
       const h = j < 0 ? null : e.key === 'ArrowLeft' ? nolar[j - 1] : nolar[j + 1];
       if (h != null) { e.preventDefault(); adimaGit(h); }
     };
@@ -93,11 +102,6 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
   const yenile = () => { for (const k of [['akis', kod], ['adim', kod, no], ['ozet']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); };
   const bitir = useMutation({
     mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`, { durum: 'tamam' }),
-    onSuccess: yenile,
-  });
-  // 1.3: alt görevi akordiyondan bitir
-  const altBitir = useMutation({
-    mutationFn: (n: number) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${n}`, { durum: 'tamam' }),
     onSuccess: yenile,
   });
   // W5: alt görev ekleme (tek düzey; alt görevin altına eklenmez)
@@ -119,7 +123,7 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
   const benim = A.sahip === ben && !BITTI(A.durum);
   const claude = A.linkler?.claude;
   const ihlal = takvimIhlali(A);
-  const sayilar: [string, string][] = [
+  let sayilar: [string, string][] = [
     [A.durum === 'engelli' || A.durum === 'hazir' || A.durum === 'suruyor' ? sureKisa(A.bekleme_saat) : BITTI(A.durum) ? gunAy(Date.parse(A.durum_at)) : '–', A.durum === 'engelli' ? 'engelli' : A.durum === 'hazir' ? 'bekliyor' : A.durum === 'suruyor' ? 'sürüyor' : A.durum_etiket || A.durum],
     [`${tut.length} görev`, 'tutuyor'],
     tarihSayisi(A),
@@ -155,6 +159,12 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
   const altGorevler: any[] = (A.alt_gorevler || []).map((n: number) => by.get(n)).filter(Boolean);
   const acikAlt = altGorevler.filter((z) => !BITTI(z.durum));
   const ust = A.ust_adim != null ? by.get(A.ust_adim) : null;
+  // K2: alt görevli üst görevde sayılar alt görevlerden: biten/toplam, en erken bitiş, son tarih
+  if (altGorevler.length) sayilar = [
+    [`${altGorevler.length - acikAlt.length}/${altGorevler.length}`, 'alt görev'],
+    [BITTI(A.durum) ? gunAy(Date.parse(A.durum_at)) : A.en_erken_bitis ? gunAy(Date.parse(A.en_erken_bitis)) : '–', BITTI(A.durum) ? 'bitti' : 'en erken bitiş'],
+    [A.son_tarih ? gunAy(tarihMs(A.son_tarih)) : 'yok', 'son tarih'],
+  ];
   const altEklenir = !ust && !BITTI(A.durum) && !A.tekrar;
   const gorevSatiri = (z: any, not: string) => (
     <li key={z.no}>
@@ -165,33 +175,8 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
     </li>
   );
 
-  // 1.3: alt görevler aynı sayfada akordiyon; her biri kendi durum, sahip, tarih, çıktı ve düğmeleriyle
-  const altAkordiyon = (z: any) => {
-    const t = BITTI(z.durum) ? (z.durum_at ? `bitti ${gunAy(Date.parse(z.durum_at))}` : '–') : z.en_erken_bitis ? `en erken ${gunAyHafta(Date.parse(z.en_erken_bitis))}` : 'öncülleri bitince';
-    const zBenim = z.sahip === ben && !BITTI(z.durum);
-    return (
-      <li key={z.no}>
-        <details className="gd-akordiyon">
-          <summary aria-label={`${z.no}. alt görev: ${z.ad}. ${z.durum_etiket || z.durum}`}>
-            <svg aria-hidden width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gezegen(z, 9) }} />
-            <span><b>{adimAdi(z)}</b><small>{kisaAd(z.sahip)} · {z.durum_etiket || z.durum}</small></span>
-            <svg aria-hidden className="gd-akordiyon-ok" width="14" height="14" viewBox="-7 -7 14 14"><path d="M-4,-2 L0,2 L4,-2" /></svg>
-          </summary>
-          <dl className="gd-liste">
-            <div><dt>Sahip</dt><dd>{z.sahip}{ajanMi(z.sahip, z.sahip_tip) && z.agent_sahibi ? ` · ${kisaAd(z.agent_sahibi)} adına` : ''}</dd></div>
-            <div><dt>Durum</dt><dd>{z.durum_etiket || z.durum}{z.engel ? ` · ${z.engel}` : ''}</dd></div>
-            <div><dt>Bitiş</dt><dd>{t}{z.son_tarih ? ` · son tarih ${gunAy(tarihMs(z.son_tarih))}` : ''}</dd></div>
-            {z.kriter && <div><dt>Kabul kriteri</dt><dd>{z.kriter}</dd></div>}
-            <div><dt>Çıktı</dt><dd>{z.cikti_sayisi ? `${z.cikti_sayisi} çıktı` : 'henüz yok'}</dd></div>
-          </dl>
-          <div className="gd-akordiyon-eylem">
-            {zBenim && !z.karar_adimi && (z.durum === 'hazir' || z.durum === 'suruyor') && <button type="button" className="gd-alt-ekle-dugme" disabled={altBitir.isPending} onClick={() => altBitir.mutate(z.no)}>Bitti</button>}
-            <button type="button" className="metin-baglanti" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)}>{zBenim && z.karar_adimi ? 'Karar ver' : 'Ayrıntılar'}</button>
-          </div>
-        </details>
-      </li>
-    );
-  };
+  // alt görevler aynı sayfada akordiyon (plan 28 Eki, B5): bütün yönetimi içinde; ayrı sayfa yok
+  const altAkordiyon = (z: any) => <AltGorev key={z.no} kod={kod} z={z} d={d} ben={ben} ustNo={A.no} acik={secAlt === z.no} />;
 
   return (
     <div className="gd" ref={kok}>
@@ -237,7 +222,6 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
           <input className="alan" value={altAd} onChange={(e) => setAltAd(e.target.value)} placeholder="Alt görev ekle" aria-label="Yeni alt görevin adı" maxLength={120} />
           <button type="submit" className="gd-alt-ekle-dugme" disabled={!altAd.trim() || altEkle.isPending} aria-label="Alt görevi ekle">Ekle</button>
         </form>}
-        {altBitir.isError && <p className="canli-hata-satir" role="alert">{(altBitir.error as Error).message}</p>}
         {altEkle.isError && <p className="canli-hata-satir" role="alert">{(altEkle.error as Error).message}</p>}
       </Bolum>}
 
@@ -283,6 +267,88 @@ export function GorevDetay({ kod, no, ben, kapat }: { kod: string; no: number; b
 
       {neden && <TarihNeden acik kapat={() => setNeden(false)} d={d} adimaGit={(n) => { setNeden(false); adimaGit(n); }} />}
       {paylas && <BaglantiGonder kod={kod} kisi={A.sahip} kisiId={A.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === A.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === A.sahip).length} kapat={() => setPaylas(false)} />}
+    </div>
+  );
+}
+
+/**
+ * Alt görev akordiyonu (plan 28 Eki, B5): durum düğmeleri, sahip, son tarih, çıktılar, notlar, karar ve "Claude'da aç"
+ * aynı yerde. Açılınca alt görevin ayrıntısı yüklenir; alt görevin adresi bu akordiyonu açık getirir.
+ */
+function AltGorev({ kod, z, d, ben, ustNo, acik: ilkAcik }: { kod: string; z: any; d: any; ben: string; ustNo: number; acik: boolean }) {
+  const [acik, setAcik] = useState(ilkAcik);
+  const ref = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    if (!ilkAcik) return;
+    setAcik(true);
+    const t = setTimeout(() => ref.current?.scrollIntoView({ block: 'start' }), 80);
+    return () => clearTimeout(t);
+  }, [ilkAcik]);
+  return (
+    <li>
+      <details ref={ref} className="gd-akordiyon" open={acik} onToggle={(e) => setAcik((e.target as HTMLDetailsElement).open)}>
+        <summary aria-label={`${z.no}. alt görev: ${z.ad}. ${z.durum_etiket || z.durum}`}>
+          <svg aria-hidden width="28" height="28" viewBox="-14 -14 28 28" dangerouslySetInnerHTML={{ __html: gezegen(z, 9) }} />
+          <span><b>{adimAdi(z)}</b><small>{kisaAd(z.sahip)} · {z.durum_etiket || z.durum}{z.son_tarih ? ` · son tarih ${gunAy(tarihMs(z.son_tarih))}` : ''}</small></span>
+          <svg aria-hidden className="gd-akordiyon-ok" width="14" height="14" viewBox="-7 -7 14 14"><path d="M-4,-2 L0,2 L4,-2" /></svg>
+        </summary>
+        {acik && <AltGorevIcerik kod={kod} z={z} d={d} ben={ben} ustNo={ustNo} />}
+      </details>
+    </li>
+  );
+}
+
+function AltGorevIcerik({ kod, z, d, ben, ustNo }: { kod: string; z: any; d: any; ben: string; ustNo: number }) {
+  const q = useQuery({ queryKey: ['adim', kod, z.no], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`) });
+  const Z = { ...z, ...(q.data?.adim || {}) };
+  const yenile = () => { for (const k of [['akis', kod], ['adim', kod, z.no], ['adim', kod, ustNo], ['ozet']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); };
+  const yaz = useMutation({ mutationFn: (g: Record<string, unknown>) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`, g), onSuccess: yenile });
+  const [engelAc, setEngelAc] = useState(false);
+  const [engel, setEngel] = useState('');
+  const [not, setNot] = useState('');
+  const bitti = BITTI(Z.durum), benim = Z.sahip === ben && !bitti, sirada = Z.durum === 'hazir' || Z.durum === 'suruyor' || Z.durum === 'engelli';
+  const t = bitti ? (Z.durum_at ? `bitti ${gunAy(Date.parse(Z.durum_at))}` : '–') : Z.en_erken_bitis ? `en erken ${gunAyHafta(Date.parse(Z.en_erken_bitis))}` : 'öncülleri bitince';
+  const kisiler: { ad: string; tip: string }[] = (d.sahipler || []).map((x: any) => ({ ad: x.ad, tip: x.tip }));
+  if (!kisiler.some((x) => x.ad === Z.sahip)) kisiler.unshift({ ad: Z.sahip, tip: Z.sahip_tip });
+  const notlar = (Z.olaylar || []).filter((e: any) => e.tip === 'not' && e.ozet).slice(0, 3);
+  const id = `alt-${z.no}`;
+  return (
+    <div className="gd-alt-icerik">
+      {/* durum: yalnız kendi alt görevin ve sırası geldiyse */}
+      {benim && sirada && <div className="gd-alt-durum" role="group" aria-label="Durum">
+        {Z.durum !== 'suruyor' && <button type="button" className="gd-alt-ekle-dugme ikincil" disabled={yaz.isPending} onClick={() => yaz.mutate({ durum: 'suruyor' })}>Başladım</button>}
+        {Z.durum !== 'engelli' && <button type="button" className="gd-alt-ekle-dugme ikincil" aria-expanded={engelAc} disabled={yaz.isPending} onClick={() => setEngelAc(!engelAc)}>Takıldım</button>}
+        {!Z.karar_adimi && <button type="button" className="gd-alt-ekle-dugme" disabled={yaz.isPending} onClick={() => yaz.mutate({ durum: 'tamam' })}>Bitti</button>}
+      </div>}
+      {engelAc && <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const v = engel.trim(); if (v) yaz.mutate({ durum: 'engelli', engel: v }, { onSuccess: () => { setEngelAc(false); setEngel(''); } }); }}>
+        <input className="alan" value={engel} onChange={(e) => setEngel(e.target.value)} placeholder="Ne ya da kim bekleniyor?" aria-label="Neye takıldın" maxLength={160} />
+        <button type="submit" className="gd-alt-ekle-dugme" disabled={!engel.trim() || yaz.isPending}>Kaydet</button>
+      </form>}
+      <dl className="gd-liste">
+        <div><dt><label htmlFor={`${id}-sahip`}>Sahip</label></dt><dd>
+          <select id={`${id}-sahip`} className="gd-alt-secim" value={Z.sahip} disabled={bitti || yaz.isPending} onChange={(e) => { const k = kisiler.find((x) => x.ad === e.target.value); if (k) yaz.mutate({ sahip: k.ad, sahip_tip: k.tip }); }}>
+            {kisiler.map((k) => <option key={k.ad} value={k.ad}>{k.ad}</option>)}
+          </select>
+          {ajanMi(Z.sahip, Z.sahip_tip) && Z.agent_sahibi ? <small> {kisaAd(Z.agent_sahibi)} adına</small> : null}
+        </dd></div>
+        <div><dt>Durum</dt><dd>{Z.durum_etiket || Z.durum}{Z.engel ? ` · ${Z.engel}` : ''}</dd></div>
+        <div><dt>Bitiş</dt><dd>{t}</dd></div>
+        <div><dt><label htmlFor={`${id}-son`}>Son tarih</label></dt><dd>
+          <input id={`${id}-son`} type="date" className="gd-alt-secim" value={(Z.son_tarih || '').slice(0, 10)} disabled={bitti || yaz.isPending} onChange={(e) => { if (e.target.value) yaz.mutate({ son_tarih: e.target.value }); }} />
+        </dd></div>
+        {Z.kriter && <div><dt>Kabul kriteri</dt><dd>{Z.kriter}</dd></div>}
+      </dl>
+      {Z.karar_adimi && q.data && <div className="gd-alt-karar"><KararBolumu a={Z} kod={kod} ben={ben} /></div>}
+      {/* çıktılar ve "Claude'da aç" (Ciktilar içinde) */}
+      {q.data && <div className="gd-alt-cikti gd-ciktilar"><Ciktilar a={Z} kod={kod} /></div>}
+      <div className="gd-alt-notlar">
+        {notlar.length > 0 && <ul aria-label="Notlar">{notlar.map((e: any) => <li key={e.id}><small>{gunAy(Date.parse(e.zaman))} · {kisaAd(e.kim)}</small>{e.ozet}</li>)}</ul>}
+        <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const v = not.trim(); if (v) yaz.mutate({ not: v }, { onSuccess: () => setNot('') }); }}>
+          <input className="alan" value={not} onChange={(e) => setNot(e.target.value)} placeholder="Not ekle" aria-label={`${z.no}. alt göreve not`} maxLength={500} />
+          <button type="submit" className="gd-alt-ekle-dugme" aria-label="Notu ekle" disabled={!not.trim() || yaz.isPending}>Ekle</button>
+        </form>
+      </div>
+      {yaz.isError && <p className="canli-hata-satir" role="alert">{(yaz.error as Error).message}</p>}
     </div>
   );
 }
