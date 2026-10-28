@@ -10,29 +10,47 @@ const ac = async (p: Page, yol: string, w: number, h: number) => {
 };
 
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {
-  test(`alt görev · ${w}: üst görevde liste ve sayı; alt görev sayfası ayrı, üstüne döner`, async ({ page }) => {
+  test(`alt görev · ${w}: üst görevde liste ve sayılar; akordiyonda yönetim, "Ayrıntılar" yok`, async ({ page }) => {
     await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=alt', w, h);
     const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
     await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 1/3');
     await expect(bolum.locator('.gd-akordiyon')).toHaveCount(3);
     await expect(page.locator('.gd-bas small')).toContainText('1/3 alt görev');
-    await expect(page.locator('.gd-ust')).toHaveCount(0);
-    // 1.3: alt görev aynı sayfada akordiyonla açılır; ayrı sayfaya "Ayrıntılar" götürür
+    // K2: üst görevin sayıları alt görevlerden
+    await expect(page.locator('.gd-sayilar')).toContainText('1/3alt görev');
+    await expect(page.locator('.gd-sayilar')).toContainText('en erken bitiş');
+    await expect(page.locator('.gd-sayilar')).toContainText('son tarih');
+    // plan 28 Eki, B5: alt görev aynı yerde yönetilir
     const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
     await ig.locator('summary').click();
-    await expect(ig.locator('.gd-liste')).toBeVisible();
-    await expect(ig.locator('.gd-liste')).toContainText('Sahip');
-    await ig.getByRole('button', { name: 'Ayrıntılar' }).click();
-    await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/12/);
-    await expect(page.locator('.gd-tur')).toHaveText('ALT GÖREV');
-    await expect(page.locator('.gd-bas h2')).toContainText('Instagram içgörüleri');
-    // alt görevin altına alt görev eklenmez
-    await expect(page.getByRole('textbox', { name: 'Yeni alt görevin adı' })).toHaveCount(0);
-    await page.locator('.gd-ust').click();
-    await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/10/);
-    await expect(page.locator('.gd-tur')).toHaveCount(0);
+    await expect(ig.getByRole('combobox', { name: 'Sahip' })).toBeVisible();
+    await expect(ig.getByLabel('Son tarih')).toBeVisible();
+    await expect(ig.getByRole('textbox', { name: /alt göreve not/ })).toBeVisible();
+    await expect(ig.getByRole('button', { name: 'Ayrıntılar' })).toHaveCount(0);
   });
 }
+
+test('alt görev · 390: alt görevin adresi üst görevi o akordiyon açık getirir', async ({ page }) => {
+  await ac(page, '/akis/RTD5/adim/12?senaryo=berkin&hal=alt', 390, 844);
+  await expect(page.locator('.gd-bas h2')).toContainText('Rapor');
+  const ig = page.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
+  await expect(ig).toHaveAttribute('open', '');
+  await expect(page.locator('.gd-akordiyon[open]')).toHaveCount(1);
+  await expect(ig.getByRole('combobox', { name: 'Sahip' })).toBeInViewport();
+});
+
+test('alt görev · 390: akordiyondan not ve son tarih yazılır', async ({ page }) => {
+  await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=alt', 390, 844);
+  const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
+  const ak = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
+  await ak.locator('summary').click();
+  await ak.getByRole('textbox', { name: /alt göreve not/ }).fill('Müşteriye soruldu');
+  await ak.getByRole('button', { name: 'Notu ekle' }).click();
+  await expect(ak.getByRole('list', { name: 'Notlar' })).toContainText('Müşteriye soruldu');
+  await ak.getByLabel('Son tarih').fill('2026-11-20');
+  await expect(ak.locator('summary')).toContainText('son tarih 20 Kas');
+  await page.screenshot({ path: 'karsilastirma/uygulama/Q4-akordiyon-390.png', fullPage: false });
+});
 
 test('alt görev · 390: detaydan eklenir; eklenen listede ve akış listesinde üstünün altında', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin', 390, 844);
@@ -76,11 +94,11 @@ test('alt görev · 390: haritada alt görev gezegen değil, üstünün uydusu',
 test('alt görev · 390: akordiyonda yalnız sırası gelmiş kendi alt görevi bitirilir', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=alt', 390, 844);
   const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
-  // öncülü (9) bitmemiş: "Bitti" yok, ayrıntıya gidilir
+  // öncülü (9) bitmemiş: durum düğmeleri yok
   const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
   await ig.locator('summary').click();
   await expect(ig.getByRole('button', { name: 'Bitti' })).toHaveCount(0);
-  await expect(ig.getByRole('button', { name: 'Ayrıntılar' })).toBeVisible();
+  await expect(ig.getByRole('group', { name: 'Durum' })).toHaveCount(0);
   await expect(bolum.locator('.gd-akordiyon[open]')).toHaveCount(1);
 });
 
