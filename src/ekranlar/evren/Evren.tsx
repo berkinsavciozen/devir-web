@@ -10,7 +10,7 @@ import { GenisSahne, Metin, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { KabukPanel, masaustu, PANEL_EN, YuzenGezinme, type KabukSekme } from '../../bilesen/Kabuk';
 import { useVurgu, vurgula } from '../../bilesen/vurgu';
-import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, hapEni, usturlap } from '../../cizim/ekran';
+import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, hapEni, MERKEZ_AC, MERKEZ_KAPA, usturlap } from '../../cizim/ekran';
 import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { C, pill, ship } from '../../cizim/ortak.js';
 import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
@@ -133,20 +133,31 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
       ayrinti.push({ kod, Y: yolCiz(akisModeli(detay[kod], { sahip: kisi }), { cx: e.x, cy: e.y, R, ps: Math.max(.36, Math.min(.78, R * .005)), now, x: now, labels: [], shipSc: .9, minR: 6.5, kuleEtiket: false }) });
       return '';
     });
-    const svg = `${haritaCercevesi('evren-kirp', b)}<g class="evren-olcekli${k > 1.6 ? ' yazisiz' : ''}">${sar(tabanSvg, K, TX, TY)}</g>${ayrinti.map((a) => sonuk(a.kod, a.Y.svg)).join('')}${haplar(true)}</g>`;
+    // merkez ışığı (K6): konumu ölçeklenir, boyu sabit kalır
+    const mi = tabanSvg.indexOf(MERKEZ_AC), mj = tabanSvg.indexOf(MERKEZ_KAPA);
+    let merkezSvg = '', taban2 = tabanSvg;
+    if (mi >= 0 && mj > mi) {
+      const parca = tabanSvg.slice(mi, mj), m = parca.match(/cx="([-\d.]+)" cy="([-\d.]+)"/);
+      taban2 = tabanSvg.slice(0, mi) + tabanSvg.slice(mj + MERKEZ_KAPA.length);
+      if (m) { const x = +m[1], y = +m[2], ex = x * K + TX, ey = y * K + TY; merkezSvg = `<g transform="translate(${(ex - x * taban.k).toFixed(2)},${(ey - y * taban.k).toFixed(2)}) scale(${taban.k.toFixed(4)})">${parca}</g>`; }
+    }
+    const svg = `${haritaCercevesi('evren-kirp', b)}<g class="evren-olcekli${k > 1.6 ? ' yazisiz' : ''}">${sar(taban2, K, TX, TY)}</g>${merkezSvg}${ayrinti.map((a) => sonuk(a.kod, a.Y.svg)).join('')}${haplar(true)}</g>`;
     return { svg, ayrinti };
   }, [cizim, kucukler, gz.yaklasik, k, tx, ty, detay, kisi, now, b, taban.k, taban.x, taban.y, soluk]); // eslint-disable-line react-hooks/exhaustive-deps
   return { gz, sonuc, ekran, girisRef: ref };
 }
 
 /** Evren dokunma katmanı: galaksiler (dokun → Z1), yakınken adımlar ve kişiler. */
-function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; merkez?: { x: number; y: number; n: number } | null; minR?: number }) {
+function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22, alt = 0, sagUst = 60 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; merkez?: { x: number; y: number; n: number } | null; minR?: number; alt?: number; sagUst?: number }) {
   const { gz, sonuc, ekran } = E;
   // en yakında daha da yaklaşmak akışa kendiliğinden girmez; önce sorulur (plan 27 Eki, 3.28)
-  const [gecis, setGecis] = useState<string | null>(null);
-  E.girisRef.current = (kod) => { if (kod) setGecis(kod); };
-  const gec = (kod: string) => { setGecis(null); const el = document.querySelector<HTMLElement>(`[data-kod="${CSS.escape(kod)}"]`); if (el) yakinlas(kod, el); else git(`/akis/${encodeURIComponent(kod)}`); };
-  const gecisAd = gecis ? (() => { const k = tum.find((x) => x.kod === gecis); return k ? akisAdi(k) : gecis; })() : '';
+  // akış bilgi kartı (plan 28 Eki, B1): dokununca ya da bir akış ortada yeterince yakınken; ikinci dokunuş ya da "Akışa geç" girer
+  const [kart, setKart] = useState<string | null>(null);
+  const [kapatilan, setKapatilan] = useState<string | null>(null);
+  E.girisRef.current = (kod) => { if (kod) { setKart(kod); setKapatilan(null); } };
+  useEffect(() => { if (!gz.yaklasik) { setKapatilan(null); setKart(null); } }, [gz.yaklasik]);
+  const gec = (kod: string) => { setKart(null); const el = document.querySelector<HTMLElement>(`[data-kod="${CSS.escape(kod)}"]`); if (el) yakinlas(kod, el); else git(`/akis/${encodeURIComponent(kod)}`); };
+  const dokun = (kod: string) => { if (kart === kod) gec(kod); else { setKart(kod); setKapatilan(null); } };
   const hedef: (Daire & { key: string; etiket: string; tikla: (e: any) => void; kod?: string; ipucu?: string })[] = [];
   const gor = (x: number, y: number) => gz.icinde(x, y, 8);
   const ayrintili = new Set((sonuc?.ayrinti || []).map((a) => a.kod));
@@ -167,9 +178,19 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22 }: { 
     const etiket = k ? `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı.' : `${k.ilerleme?.tamam ?? 0}/${k.ilerleme?.toplam ?? 0} adım tamam. Hedef ${gunAy(tarihMs(k.hedef_tarih))}.`}` : g.kod;
     if (!gor(e.x, e.y)) continue;
     const ipucu = k ? `${akisAdi(k)} · ${k.durum === 'kapandi' ? 'kapandı' : `${ilerlemeMetni(akisIlerlemesi(k, detay[g.kod]))}${k.hedef_tarih ? ` · hedef ${gunAy(tarihMs(k.hedef_tarih))}` : ''}${hedefEtiketi(k.karar_ozeti) ? ` · ${hedefEtiketi(k.karar_ozeti)}` : ''}`}` : g.kod;
-    const h = { key: g.kod, kod: g.kod, x: e.x, y: e.y, r: ayrintili.has(g.kod) ? 22 : Math.max(minR, e.r), etiket: ayrintili.has(g.kod) ? `${etiket} Akışı aç.` : etiket, ipucu, tikla: (ev: any) => yakinlas(g.kod, ev.currentTarget) };
+    const h = { key: g.kod, kod: g.kod, x: e.x, y: e.y, r: ayrintili.has(g.kod) ? 22 : Math.max(minR, e.r), etiket: kart === g.kod ? `${etiket} Akışa geç.` : `${etiket} Bilgi kartı.`, ipucu, tikla: () => dokun(g.kod) };
     if (!ayrintili.has(g.kod) || bos(h, hedef)) hedef.push(h);
   }
+  // kendiliğinden kart: ayrıntılı çizilen galaksilerden bölgenin ortasına en yakını, ortaya yeterince yakınsa
+  let oto: string | null = null;
+  if (gz.yaklasik) {
+    const mx = b.x + b.w / 2, my = b.y + b.h / 2; let d0 = Math.min(b.w, b.h) * .3;
+    for (const a of sonuc?.ayrinti || []) { const g = yer.find((y) => y.kod === a.kod); if (!g) continue; const e = ekran({ x: g.x, y: g.y, r: g.rr, pr: 0 }), dd = Math.hypot(e.x - mx, e.y - my); if (dd < d0) { d0 = dd; oto = a.kod; } }
+  }
+  const gosterilen = kart ?? (oto !== kapatilan ? oto : null);
+  // telefonda kart "Pano" hapının ve alt menünün üstünde kalır (küçük ekranda bölge onların altına uzanır)
+  const kartB = alt ? b : { ...b, h: Math.min(b.h, Math.min(724, innerHeight - 140) - 8 - b.y) };
+  const kartYeri = gosterilen ? bilgiKartiYeri(kartB, yer.map((g) => ({ ...ekran({ x: g.x, y: g.y, r: g.rr, pr: 0 }), kod: g.kod })), gosterilen, alt, sagUst) : null;
   return (
     <div ref={gz.ref} className="harita-gezinme" style={{ left: b.x, top: b.y, width: b.w, height: b.h }} {...gz.olaylar}>
       <div role="list" aria-label="Akışlar" className="harita-katman" style={{ left: -b.x, top: -b.y }}>
@@ -179,14 +200,61 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22 }: { 
         {merkez && merkez.n > 0 && (() => { const e = ekran({ x: merkez.x, y: merkez.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button role="listitem" className="gezegen-hedef" style={{ left: e.x - 22, top: e.y - 22, width: 44, height: 44 }} aria-label={`${merkez.n} akış bitti. Biten akışları aç.`} data-ipucu={`${merkez.n} akış bitti`} onClick={() => git('/akislar/arsiv')} />; })()}
         {taslak && (() => { const e = ekran({ x: taslak.x, y: taslak.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button className="gezegen-hedef" style={{ left: e.x - 52 * e.r, top: e.y - 58 * e.r, width: 104 * e.r, height: 72 * e.r }} aria-label={`${taslak.n} taslak`} onClick={() => git('/yeni')} />; })()}
       </div>
-      {gecis && (
-        <div className="gecis-onay" role="dialog" aria-label="Akışa geçiş" style={{ bottom: 12 }} onPointerDown={(e) => e.stopPropagation()}>
-          <p>{gecisAd} akışına geçilsin mi?</p>
-          <button type="button" onClick={() => setGecis(null)}>Kal</button>
-          <button type="button" className="birincil" onClick={() => gec(gecis)}>Geç</button>
-        </div>
-      )}
+      {gosterilen && <AkisBilgiKarti k={tum.find((x) => x.kod === gosterilen)} d={detay[gosterilen]} yer={kartYeri} gec={() => gec(gosterilen)}
+        kapat={() => { setKart(null); setKapatilan(gosterilen); }} />}
     </div>
+  );
+}
+
+type KartYeri = { x: number; y?: number; alt?: number; w: number };
+const KART_H = 196;
+/**
+ * Bilgi kartının yeri (B1): bölgenin dört köşesinden galaksilere en az binen; üstte süzgeç satırının (sol) ve yakınlaşma
+ * düğmelerinin (sağ, sagUst) altı, altta alt menünün (alt) üstü. Bölgeye göre (harita-gezinme kutusunun içi).
+ */
+export function bilgiKartiYeri(b: Bolge, galaksiler: { x: number; y: number; r: number; kod: string }[], kod: string, alt = 0, sagUst = 60): KartYeri {
+  const w = Math.min(300, b.w - 24), h = KART_H;
+  const adaylar: (KartYeri & { top: number })[] = [
+    { x: 12, alt: 12 + alt, top: b.h - 12 - alt - h, w },
+    { x: b.w - 12 - w, alt: 12 + alt, top: b.h - 12 - alt - h, w },
+    { x: 12, y: 60, top: 60, w },
+    { x: b.w - 12 - w, y: sagUst, top: sagUst, w },
+  ];
+  const puan = (c: { x: number; top: number }) => galaksiler.reduce((t, g) => {
+    const gx = g.x - b.x, gy = g.y - b.y, nx = Math.max(c.x, Math.min(c.x + w, gx)), ny = Math.max(c.top, Math.min(c.top + h, gy));
+    return t + (Math.hypot(gx - nx, gy - ny) < Math.max(g.r, 18) ? (g.kod === kod ? 5 : 1) : 0);
+  }, 0);
+  let en = adaylar[0], p0 = Infinity;
+  for (const c of adaylar) { const p = puan(c); if (p < p0) { p0 = p; en = c; } }
+  return { x: en.x, y: en.y, alt: en.y == null ? en.alt : undefined, w: en.w };
+}
+
+/** Akış bilgi kartı (B1): ad, ilerleme yüzdesi, hedef ve pay, kişilerin baş harfleri, takılan görev, "Akışa geç". */
+function AkisBilgiKarti({ k, d, yer, gec, kapat }: { k: any; d: any; yer: KartYeri | null; gec: () => void; kapat: () => void }) {
+  if (!k || !yer) return null;
+  const i = akisIlerlemesi(k, d), yuzde = i.toplam ? Math.round((100 * i.tamam) / i.toplam) : 0;
+  const pay = hedefEtiketi(k.karar_ozeti);
+  const A: any[] = d?.adimlar || [];
+  const kisiler = [...new Map(A.map((a) => [a.sahip, a])).values()].slice(0, 6);
+  const takili = A.find((a) => a.durum === 'engelli');
+  return (
+    <section className="akis-bilgi-karti" role="region" aria-label={`${akisAdi(k)}: akış bilgisi`} style={{ left: yer.x, width: yer.w, ...(yer.y != null ? { top: yer.y } : { bottom: yer.alt }) }}
+      onPointerDown={(e) => e.stopPropagation()} onWheel={(e) => e.stopPropagation()}>
+      <div className="abk-ust">
+        <h2>{akisAdi(k)}</h2>
+        <button type="button" className="abk-kapat" aria-label="Kartı kapat" onClick={kapat}>×</button>
+      </div>
+      <div className="abk-ilerleme" role="img" aria-label={`Yüzde ${yuzde} tamam`}><i style={{ width: `${yuzde}%` }} /></div>
+      <p className="abk-satir"><b>%{yuzde}</b> · {ilerlemeMetni(i)}</p>
+      {(k.hedef_tarih || pay) && <p className="abk-satir">{k.hedef_tarih ? `Hedef ${gunAy(tarihMs(k.hedef_tarih))}` : ''}{k.hedef_tarih && pay ? ' · ' : ''}{pay && <span className={/geç|riskte/.test(pay) ? 'abk-gec' : ''}>{pay}</span>}</p>}
+      {takili && <p className="abk-satir abk-takili">Takılan: {takili.ad}</p>}
+      <div className="abk-alt">
+        <span className="abk-kisiler" aria-label={`Kişiler: ${kisiler.map((a) => a.sahip).join(', ')}`}>
+          {kisiler.map((a) => <span key={a.sahip} aria-hidden className={`abk-kisi ${a.sahip_tip === 'agent' || /agent|Claude/i.test(a.sahip) ? 'agent' : a.sahip_tip === 'dis' ? 'dis' : 'insan'}`}>{(a.sahip[0] || '?').toLocaleUpperCase('tr')}</span>)}
+        </span>
+        <button type="button" className="abk-gir" onClick={gec}>Akışa geç</button>
+      </div>
+    </section>
   );
 }
 
@@ -479,7 +547,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
         <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -20, 'insan', (kisi[0] || '?').toLocaleUpperCase('tr'), C.peach, 1.1, { flame: false }) }} />
       </button>
       <Metin y={64} x={80} fs={17} agirlik={650} style={{ right: 'auto', pointerEvents: 'none' }}>{kisi}</Metin>
-      <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} merkez={cizim.U.merkez} minR={24} />
+      <EvrenHedefleri E={E} b={B} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: taslak } : null} merkez={cizim.U.merkez} minR={24} alt={96} sagUst={cizim.serbest ? 60 : 180} />
       <YakinDugmeleri gz={E.gz} x={X - 68} y={B.y + 8} hep={!cizim.serbest} />
       <EvrenCipleri o={odak} P={P} secim={secim} x={40} y={B.y + 8} en={X - 128} lejant={() => setLejant(true)} />
       <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />

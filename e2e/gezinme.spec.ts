@@ -132,10 +132,10 @@ test.describe('evren', () => {
   });
 });
 
-// plan 27 Eki, 3.28: en yakında daha da yaklaşmak akışa kendiliğinden girmez, önce sorar
+// plan 27 Eki, 3.28 + plan 28 Eki, B1: en yakında daha da yaklaşmak akışa kendiliğinden girmez; akış bilgi kartı açılır
 test.describe('evren geçiş onayı', () => {
   test.use({ hasTouch: true });
-  test('B1-gecis: en yakında yaklaşmaya devam → "akışına geçilsin mi?"; Kal kapatır, Geç açar', async ({ page }) => {
+  test('B1-gecis: yakınlaşınca akış bilgi kartı; kapatılır, "Akışa geç" açar', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/?senaryo=berkin');
@@ -143,16 +143,16 @@ test.describe('evren geçiş onayı', () => {
     await g.waitFor();
     const b = (await g.boundingBox())!;
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    const kart = page.getByRole('dialog', { name: 'Akışa geçiş' });
+    const kart = page.getByRole('region', { name: 'Hasat postu: akış bilgisi' });
     for (let i = 0; i < 60 && !(await kart.count()); i++) { await page.mouse.wheel(0, -80); await page.waitForTimeout(16); }
-    await expect(kart).toContainText('Hasat postu akışına geçilsin mi?');
+    await expect(kart).toContainText('Akışa geç');
     expect(page.url()).not.toContain('/akis/');
     await page.screenshot({ path: 'karsilastirma/uygulama/B1-gecis.png' });
-    await kart.getByRole('button', { name: 'Kal' }).click();
+    await kart.getByRole('button', { name: 'Kartı kapat' }).click();
     await expect(kart).toHaveCount(0);
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     for (let i = 0; i < 10 && !(await kart.count()); i++) { await page.mouse.wheel(0, -80); await page.waitForTimeout(16); }
-    await kart.getByRole('button', { name: 'Geç' }).click();
+    await kart.getByRole('button', { name: 'Akışa geç' }).click();
     await expect(page).toHaveURL(/\/akis\/RTD5/);
   });
 });

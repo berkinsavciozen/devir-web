@@ -123,7 +123,9 @@ export interface UAkis { kod: string; ad: string; hedef: number; kapandi?: numbe
 export interface UYer { kod: string; x: number; y: number; rr: number; a: number; etiket: { x: number; y: number; w: number }; isik?: number; gec?: boolean }
 
 /** Merkez = bitti (karar 3.I): kapanan akışlar halkada çizilmez; merkezde altın çekirdek ve sayısı, dokununca arşiv. */
-const bittiMerkezi = (cx: number, cy: number, n: number) => `<circle cx="${cx}" cy="${cy}" r="22" fill="url(#bloom)" opacity="${n ? .9 : .45}"/><circle cx="${cx}" cy="${cy}" r="9" fill="url(#brass)"/>` + (n ? `<circle cx="${cx + 10}" cy="${cy - 10}" r="8" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${cx + 10}" y="${cy - 6.2}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10" fill="#2A1D4F">${n}</text>` : '');
+/** Merkez ışığı işaretleri: yakınlaşınca evren ışığı ölçeklemeden ayrı çizer (plan 28 Eki, K6). */
+export const MERKEZ_AC = '<!--merkez-->', MERKEZ_KAPA = '<!--/merkez-->';
+export const bittiMerkezi = (cx: number, cy: number, n: number) => `<circle cx="${cx}" cy="${cy}" r="22" fill="url(#bloom)" opacity="${n ? .9 : .45}"/><circle cx="${cx}" cy="${cy}" r="9" fill="url(#brass)"/>` + (n ? `<circle cx="${cx + 10}" cy="${cy - 10}" r="8" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${cx + 10}" y="${cy - 6.2}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10" fill="#2A1D4F">${n}</text>` : '');
 
 /**
  * B1 · usturlap (ekranlar.js astrolabe, §3.10): R 170 bant 22; pirinç yay 1 Eki → bugün; ay adları dışta;
@@ -246,7 +248,7 @@ export function usturlap(o: {
   s += `<line x1="${f(bx)}" y1="${f(by)}" x2="${f(nx)}" y2="${f(ny)}" stroke="#FFD9B8" stroke-width="6" opacity=".25" filter="url(#blur2)"/>`;
   s += `<path d="M${f(bx)},${f(by)} L${f(nx)},${f(ny)}" stroke="url(#brass)" stroke-width="2.2" stroke-linecap="round"/>`;
   s += sparkle(nx, ny, 9, '#FFF1D6', 1) + `<circle cx="${f(nx)}" cy="${f(ny)}" r="18" fill="url(#glowGold)"/>`;
-  s += bittiMerkezi(cx, cy, kapananSay);
+  s += MERKEZ_AC + bittiMerkezi(cx, cy, kapananSay) + MERKEZ_KAPA;
   // bugün hapı ekranda kalsın (54 px geniş)
   return { svg: s, yer, taslak: o.taslak ? { x: dx + 8, y: dy + 32 } : null, hap: { x: Math.min(cx + 195 - 35, Math.max(cx - 195 + 35, hx + 4)), y: hy - 4 }, ang, pol, merkez: { x: cx, y: cy, n: kapananSay } };
 }
@@ -312,6 +314,6 @@ export function evrenOlcek(o: {
   const kapanan = o.akislar.filter((x) => x.kapandi);
   const [nx, ny] = pol(aNow, R + 2), [bx, by] = pol(aNow + 180, 22);
   s += `<path d="M${f(bx)},${f(by)} L${f(nx)},${f(ny)}" stroke="url(#brass)" stroke-width="2" stroke-linecap="round"/>` + sparkle(nx, ny, 8, '#FFF1D6', 1) + `<circle cx="${f(nx)}" cy="${f(ny)}" r="16" fill="url(#glowGold)"/>`;
-  s += bittiMerkezi(cx, cy, kapanan.length);
+  s += MERKEZ_AC + bittiMerkezi(cx, cy, kapanan.length) + MERKEZ_KAPA;
   return { svg: s, yer, etiketler, kapanan: kapanan.length, merkez: { x: cx, y: cy, n: kapanan.length } };
 }

@@ -32,6 +32,9 @@ test('gecis-z1: evrenden akışa ≤ 560 ms', async ({ page }) => {
   await ac(page, '/?senaryo=berkin', { azalt: false });
   const g = page.getByRole('listitem', { name: /^Hasat postu/ });
   await g.waitFor();
+  // ilk dokunuş bilgi kartını açar (plan 28 Eki, B1); süre "Akışa geç"ten ölçülür
+  await g.click();
+  const gir = page.getByRole('region', { name: /akış bilgisi/ }).getByRole('button', { name: 'Akışa geç' });
   // süre sayfanın içinde ölçülür (dokunuştan adres değişimine); Playwright'ın tıklama ve adres yoklaması gecikmesi sayılmaz
   await page.evaluate(() => {
     const w = window as any;
@@ -39,7 +42,7 @@ test('gecis-z1: evrenden akışa ≤ 560 ms', async ({ page }) => {
     const it = history.pushState.bind(history);
     history.pushState = (...a: Parameters<History['pushState']>) => { it(...a); if (/\/akis\/RTD5$/.test(location.pathname)) w.__t1 ??= performance.now(); };
   });
-  await g.click();
+  await gir.click();
   await expect(page).toHaveURL(/\/akis\/RTD5$/);
   const gecen = Math.round(await page.evaluate(() => (window as any).__t1 - (window as any).__t0));
   const a = await animasyonlar(page);
