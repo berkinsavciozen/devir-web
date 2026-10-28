@@ -19,7 +19,7 @@ import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { alanAdi, SatirKart } from '../hesap/Hesap';
-import { bagIsareti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
+import { bagIsareti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
 import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 
 // Görevler (/gorevler, eski /bana; el notu 16): bağlı olduğun bütün akışlardaki işler. Kişi (varsayılan sen), Akış ve
@@ -76,7 +76,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const svg = useMemo(() => {
     if (!L.length || panelde) return '';
     let s = `<rect x="16" y="${HY - 4}" width="358" height="${H.h + 54}" rx="20" fill="#120B2C" fill-opacity=".55" stroke="#FFFFFF" stroke-opacity=".06"/>`;
-    for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) {
+    for (const t of haftaCizgileri(H.t0, H.t1)) {
       const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
       s += `<line x1="${x.toFixed(1)}" y1="${HY + 4}" x2="${x.toFixed(1)}" y2="${HY + 8 + H.h}" stroke="#FFFFFF" stroke-opacity=".05"/>`;
     }
@@ -174,11 +174,12 @@ export function Gorevler({ ben }: { ben: Ben }) {
 }
 
 /** Haftalık eksen tarihleri: yalnız birbirine en az `en` px uzak olanlar (soldan, açgözlü). */
-function eksenTarihleri(H: { t0: number; t1: number; x0: number; x1: number }, en: number) {
+function eksenTarihleri(H: { t0: number; t1: number; x0: number; x1: number; bugunX: number }, en: number) {
   const out: { t: number; x: number }[] = [];
-  for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) {
+  for (const t of haftaCizgileri(H.t0, H.t1)) {
     const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
-    if (x - en / 2 < H.x0 - 4 || x + en / 2 > H.x1 + 14 || (out.length && x - out[out.length - 1].x < en + 6)) continue;
+    // bugün çizgisinin dibindeki tarih yazılmaz ("bugün" yazısı orada; K8)
+    if (x - en / 2 < H.x0 - 4 || x + en / 2 > H.x1 + 14 || Math.abs(x - H.bugunX) < en * .6 || (out.length && x - out[out.length - 1].x < en + 6)) continue;
     out.push({ t, x });
   }
   return out;
@@ -200,7 +201,7 @@ export function GorevlerSol({ ben }: { ben: Ben }) {
   const svg = useMemo(() => {
     if (!L.length) return '';
     let s = `<rect x="40" y="${y0 - 24}" width="${SW - 80}" height="${H.h + 92}" rx="26" fill="#120B2C" fill-opacity=".5" stroke="#FFFFFF" stroke-opacity=".06"/>`;
-    for (let t = Math.ceil(H.t0 / (7 * 864e5)) * 7 * 864e5; t <= H.t1; t += 7 * 864e5) {
+    for (const t of haftaCizgileri(H.t0, H.t1)) {
       const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
       s += `<line x1="${x.toFixed(1)}" y1="${y0 - 6}" x2="${x.toFixed(1)}" y2="${y0 + H.h + 10}" stroke="#FFFFFF" stroke-opacity=".06"/>`;
     }
