@@ -11,7 +11,7 @@ import { git } from '../../yonlendirme';
 export const alanAdi = (ad: string, kisi?: string | null) => (kisi && ad.startsWith(`${kisi} · `) ? ad.slice(kisi.length + 3) : ad);
 export const rolAdi = (r: string) => (r === 'dis' ? 'dış' : r);
 
-/** Kişi gemisi (insan: baş harf; dış: yelkenli). */
+/** Kişi gemisi (insan: baş harfli kapsül; dış: balon). */
 export function kisiGemi(ad: string, rol: string, sahip: boolean, x: number, y: number, sc = .85) {
   return rol === 'dis' ? ship(x, y + 2, 0, 'dis', '', '#F2B8D8', sc * .96) : ship(x, y, -12, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), sahip ? '#FFC9A3' : '#9EE6CF', sc, { flame: false });
 }
