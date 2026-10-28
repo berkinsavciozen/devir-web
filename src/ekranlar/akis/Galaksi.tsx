@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
 import { Baslik } from '../../bilesen/Baslik';
+import { DevirAiDugme } from '../ai/DevirAi';
 import { GenisSahne, Kutu, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
@@ -398,7 +399,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     <Sahne gok={{ tohum: 33, yildiz: 280, sakin }} cizim={cizim.svg} etiket={ad} sinif={gelis ? 'harita-gelis' : ''} yukseklik={B.y + 40}>
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} sagBos={96} /></Kutu>
+      <Kutu x={278} y={40} w={44} h={44}><DevirAiDugme /></Kutu>
       <Kutu as="button" x={326} y={40} w={44} h={44} className="akis-menu" aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></Kutu>
       </div>
 

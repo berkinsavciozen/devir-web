@@ -32,6 +32,7 @@ import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
 import { OrnekMenusu } from './bilesen/OrnekMenusu';
+import { DevirAiKok } from './ekranlar/ai/DevirAi';
 import { eslestir, git, useYol, arama } from './yonlendirme';
 
 /** Henüz yapılmamış ekran (geliştirme sırasında). */
@@ -138,6 +139,7 @@ export function App() {
       <div className="uygulama">
         <SvgTanimlar />
         {ekran}
+        {ekran.type === Uygulama && <DevirAiKok />}
         <Gren />
         {import.meta.env.VITE_HASH === '1' && <OrnekMenusu />}
       </div>

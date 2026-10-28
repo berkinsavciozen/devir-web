@@ -890,3 +890,33 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .onay-satir b { font-size: 14.5px; line-height: 19px; font-weight: 650; }
 .onay-satir small { font-size: 12px; line-height: 16px; color: var(--renk-metin-ink3); overflow-wrap: anywhere; }
 .onay-satir .satir-eylem { position: static; flex: none; }
+
+/* Devir AI sohbeti (plan 27 Eki, Epic 5; P8) */
+.ai-dugme { position: relative; }
+.ai-sohbet { display: flex; flex-direction: column; min-height: 100%; padding: 4px 20px 16px; box-sizing: border-box; }
+.ai-bas { display: flex; align-items: center; gap: 10px; }
+.ai-bas h2 { margin: 0; font: 700 20px/24px var(--font-sans); color: var(--renk-metin-ink); }
+.ai-bas small { display: block; font-size: 13px; color: var(--renk-metin-ink2); }
+.ai-kullanim { margin: 10px 0 0; font-size: 12.5px; color: var(--renk-metin-ink2); }
+.ai-kullanim.doldu { padding: 10px 12px; border-radius: 14px; border: 1px solid var(--renk-vurgu-mercan); color: var(--renk-metin-ink); }
+.ai-mesajlar { flex: 1; display: flex; flex-direction: column; gap: 10px; padding: 14px 0; }
+.ai-bos p { margin: 0 0 12px; font: 400 16px/21px var(--font-serif); color: var(--renk-metin-ink2); }
+.ai-ornekler { display: flex; flex-wrap: wrap; gap: 8px; }
+.ai-ornekler .filtre-cip { flex: 1 1 140px; padding: 0 12px; }
+.ai-mesaj { max-width: 88%; padding: 10px 14px; border-radius: 18px; font-size: 14.5px; line-height: 20px; color: var(--renk-metin-ink); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-mesaj p { margin: 0; }
+.ai-mesaj.kullanici { align-self: flex-end; background: color-mix(in srgb, var(--renk-vurgu-lila) 22%, var(--renk-zemin-kart)); border-bottom-right-radius: 6px; }
+.ai-mesaj.asistan { align-self: flex-start; background: var(--renk-zemin-kart); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); border-bottom-left-radius: 6px; }
+.ai-oneri { margin-top: 10px; padding: 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--renk-zemin-alan) 70%, transparent); white-space: normal; }
+.ai-oneri h3 { margin: 0 0 6px; font-size: 11.5px; letter-spacing: .08em; font-weight: 750; color: var(--renk-metin-altin); }
+.ai-oneri ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+.ai-oneri li span { display: block; font-weight: 600; }
+.ai-oneri li small { display: block; font-size: 12.5px; color: var(--renk-metin-ink2); }
+.ai-oneri li.hata small { color: var(--renk-metin-mercan); }
+.ai-oneri-eylem { display: flex; gap: 8px; margin-top: 10px; }
+.ai-onay-cumle { margin: 10px 0 0; font-size: 13.5px; color: var(--renk-metin-ink); }
+.ai-hata { margin: 0 0 8px; }
+.ai-giris { position: sticky; bottom: 0; display: flex; gap: 8px; align-items: flex-end; padding-top: 8px; background: linear-gradient(transparent, var(--renk-zemin-kart) 30%); }
+.ai-giris textarea { flex: 1; min-height: 44px; max-height: 140px; box-sizing: border-box; padding: 11px 14px; border-radius: 18px; border: 1px solid var(--renk-vurgu-cizgi-lila); background: var(--renk-zemin-kart); color: var(--renk-metin-ink); font: 400 15px/20px var(--font-sans); resize: none; }
+.ai-gonder { flex: none; width: 44px; height: 44px; border: 0; border-radius: 22px; display: grid; place-items: center; background: var(--renk-vurgu-seftali); cursor: pointer; }
+.ai-gonder:disabled { opacity: .45; cursor: default; }
