@@ -67,7 +67,7 @@ export function genisDuzen(W: number, H: number): GenisDuzen | null {
 export function panelZemini(G: GenisDuzen): string {
   const { PX, W, H } = G, w = W - PX;
   return `<rect x="${PX}" y="0" width="${w}" height="${H}" fill="url(#sheet)"/><rect x="${PX}" y="0" width="${w}" height="${H}" filter="url(#paper)" opacity=".5"/><rect x="${PX}" y="0" width="1" height="${H}" fill="#FFC9A3" opacity=".35"/>` +
-    `<g transform="translate(${G.ust.geriX},${G.ust.geriY})"><circle r="${G.ust.geriR}" fill="#1E1645" stroke="#FFFFFF" stroke-opacity=".14"/><path d="M3,-6 L-4,0 L3,6" stroke="${C.ink}" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
+    `<g transform="translate(${G.ust.geriX},${G.ust.geriY})"><circle r="${G.ust.geriR}" fill="#0A2838" stroke="#FFFFFF" stroke-opacity=".14"/><path d="M3,-6 L-4,0 L3,6" stroke="${C.ink}" stroke-width="2" fill="none" stroke-linecap="round"/></g>`;
 }
 
 /** Ekrandaki varsayılan seçim: engelli, yoksa kritik yolun ilk açık adımı, yoksa sırası gelmiş ilk adım. */

@@ -29,7 +29,7 @@ export function Cevapla({ kod, soru, ben }: { kod: string; soru: string; ben: st
     const M = akisModeli(d, { sahip: ben, haric: dalHaric(d) });
     const Y = yolCiz(M, { ...GEO, now: NOW, kuleEtiket: false, labels: [] });
     const K = soruKatmani(d, M, Y, { ...GEO, now: NOW }, { sec: dal ? secili : undefined, hap: false });
-    return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#07051A" opacity=".3"/>` + K.svg;
+    return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".3"/>` + K.svg;
   }, [d, ben, NOW, secili, dal]);
   const geri = () => (history.length > 1 ? history.back() : git(`/akis/${encodeURIComponent(kod)}`));
   const cevap = useMutation({

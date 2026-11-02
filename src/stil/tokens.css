@@ -1,16 +1,16 @@
 /* Üretildi: npm run tokens (kaynak tasarim/tokens.json). Elle düzenleme. */
 :root {
-  --renk-zemin-gok-0: #090619;
-  --renk-zemin-gok-1: #120C2E;
-  --renk-zemin-gok-2: #1D1240;
-  --renk-zemin-gok-3: #2B1546;
-  --renk-zemin-sayfa-ust: #2F2468;
-  --renk-zemin-sayfa-orta: #231A52;
-  --renk-zemin-sayfa-alt: #1A1440;
-  --renk-zemin-kart: #120B2C;
-  --renk-zemin-alan: #0E0A26;
-  --renk-zemin-hap: #1A1440;
-  --renk-zemin-sayfa-govde: #090619;
+  --renk-zemin-gok-0: #030E14;
+  --renk-zemin-gok-1: #06192A;
+  --renk-zemin-gok-2: #082533;
+  --renk-zemin-gok-3: #0A2F2C;
+  --renk-zemin-sayfa-ust: #12405A;
+  --renk-zemin-sayfa-orta: #0E3346;
+  --renk-zemin-sayfa-alt: #0A2736;
+  --renk-zemin-kart: #061A24;
+  --renk-zemin-alan: #05151E;
+  --renk-zemin-hap: #0A2736;
+  --renk-zemin-sayfa-govde: #030E14;
   --renk-metin-ink: #FFF3E8;
   --renk-metin-ink2: #E2D6F5;
   --renk-metin-ink3: #BFB0E0;
@@ -40,8 +40,8 @@
   --renk-dosya-turu-tablo: #B8E39A;
   --renk-dosya-turu-belge: #A9C4FF;
   --renk-dosya-turu-diger: #D9CCFF;
-  --degrade-gok: linear-gradient(180deg, #090619 0%, #120C2E 40%, #1D1240 80%, #2B1546 100%);
-  --degrade-sayfa: linear-gradient(180deg, #2F2468 0%, #231A52 50%, #1A1440 100%);
+  --degrade-gok: linear-gradient(180deg, #030E14 0%, #06192A 40%, #082533 80%, #0A2F2C 100%);
+  --degrade-sayfa: linear-gradient(180deg, #12405A 0%, #0E3346 50%, #0A2736 100%);
   --degrade-dugme: linear-gradient(135deg, #FFE0C2 0%, #FFB08C 100%);
   --degrade-pirinc: linear-gradient(135deg, #FFE3B8 0%, #E9A879 50%, #B9708F 100%);
   --font-serif: Caladea, 'Cambria', Georgia, 'Times New Roman', serif;

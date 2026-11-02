@@ -62,7 +62,7 @@ export function KapaliGalaksi({ d, kod, sahipMi, sahip }: { d: any; kod: string;
   const Z = cizim.Z;
   return (
     <>
-      <Sahne gok={{ tohum: 71, yildiz: 300, parilti: 8 }} cizim={cizim.svg + (K ? `<rect x="16" y="600" width="358" height="154" rx="22" fill="#120B2C" fill-opacity=".72" stroke="#FFD27A" stroke-opacity=".35"/>` : '')} etiket={ad}>
+      <Sahne gok={{ tohum: 71, yildiz: 300, parilti: 8 }} cizim={cizim.svg + (K ? `<rect x="16" y="600" width="358" height="154" rx="22" fill="#061A24" fill-opacity=".72" stroke="#FFD27A" stroke-opacity=".35"/>` : '')} etiket={ad}>
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
         {sahipMi && <Kutu as="button" x={326} y={40} w={44} h={44} className="akis-menu" aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></Kutu>}
         <Metin y={110} fs={17} lh={22} serif renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>

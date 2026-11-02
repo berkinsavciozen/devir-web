@@ -102,7 +102,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
           const kim = a.sahip === ben ? 'Sende' : a.sahip.replace(/\s*\(.*\)$/, '');
           const alt = [ad(a.kod), kim, a.tuttugu ? `${a.tuttugu} adımı tutuyor` : null, son].filter(Boolean).join(' · ');
           const durumIkon = planet(0, 0, 4.5, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 0, life: false, karar: a.karar });
-          const ikon = miniHarita[a.kod] ? `${miniHarita[a.kod]}<g transform="translate(11,11)"><circle r="6.5" fill="#120B2C"/>${durumIkon}</g>` : planet(0, 0, 9, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: a.karar });
+          const ikon = miniHarita[a.kod] ? `${miniHarita[a.kod]}<g transform="translate(11,11)"><circle r="6.5" fill="#061A24"/>${durumIkon}</g>` : planet(0, 0, 9, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: a.karar });
           return (
             <div role="listitem" key={a.kod + a.no} style={{ display: 'contents' }}><button type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} title={a.ad} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)} {...vurguOlay(a.kod)}>
               <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: ikon }} />

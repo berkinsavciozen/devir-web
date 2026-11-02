@@ -29,7 +29,7 @@ const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const enc = encodeURIComponent;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const taslakIkon = `<g transform="translate(28,29)"><circle r="12" fill="#B9A6F2" fill-opacity=".12" stroke="#D9CCFF" stroke-dasharray="1.5 3"/>${sparkle(0, 0, 5, '#FFF1D6', .95)}</g>`;
-const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22" height="16" rx="3" fill="#1A1238" stroke="#F2B8D8" stroke-width="1.3"/><path d="M-10,-7 L0,1 L10,-7" fill="none" stroke="#F2B8D8" stroke-width="1.3"/></g>`;
+const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22" height="16" rx="3" fill="#08222E" stroke="#F2B8D8" stroke-width="1.3"/><path d="M-10,-7 L0,1 L10,-7" fill="none" stroke="#F2B8D8" stroke-width="1.3"/></g>`;
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean) => tip === 'dis'
   ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
   : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), ben ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#8EC5FF', k, { flame: false });
@@ -75,7 +75,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   // harita çizimi: şerit çizgileri, bugün, hafta işaretleri, görevler; bağımlılık bağı aynı haritadaki görevler arasında
   const svg = useMemo(() => {
     if (!L.length || panelde) return '';
-    let s = `<rect x="16" y="${HY - 4}" width="358" height="${H.h + 54}" rx="20" fill="#120B2C" fill-opacity=".55" stroke="#FFFFFF" stroke-opacity=".06"/>`;
+    let s = `<rect x="16" y="${HY - 4}" width="358" height="${H.h + 54}" rx="20" fill="#061A24" fill-opacity=".55" stroke="#FFFFFF" stroke-opacity=".06"/>`;
     for (const t of haftaCizgileri(H.t0, H.t1)) {
       const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
       s += `<line x1="${x.toFixed(1)}" y1="${HY + 4}" x2="${x.toFixed(1)}" y2="${HY + 8 + H.h}" stroke="#FFFFFF" stroke-opacity=".05"/>`;
@@ -200,7 +200,7 @@ export function GorevlerSol({ ben }: { ben: Ben }) {
   const akisAdi = (a: any) => a.akis_kisa_ad || a.akis_baslik;
   const svg = useMemo(() => {
     if (!L.length) return '';
-    let s = `<rect x="40" y="${y0 - 24}" width="${SW - 80}" height="${H.h + 92}" rx="26" fill="#120B2C" fill-opacity=".5" stroke="#FFFFFF" stroke-opacity=".06"/>`;
+    let s = `<rect x="40" y="${y0 - 24}" width="${SW - 80}" height="${H.h + 92}" rx="26" fill="#061A24" fill-opacity=".5" stroke="#FFFFFF" stroke-opacity=".06"/>`;
     for (const t of haftaCizgileri(H.t0, H.t1)) {
       const x = H.x0 + (t - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
       s += `<line x1="${x.toFixed(1)}" y1="${y0 - 6}" x2="${x.toFixed(1)}" y2="${y0 + H.h + 10}" stroke="#FFFFFF" stroke-opacity=".06"/>`;

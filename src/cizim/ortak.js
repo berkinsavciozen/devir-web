@@ -6,8 +6,8 @@ const C = {
   ink: '#FFF3E8',      // ana metin
   ink2: '#E2D6F5',     // ikincil metin
   ink3: '#BFB0E0',     // sönük metin (koyu zeminde ≥4.5)
-  night0: '#150F33',
-  night1: '#1E1745',
+  night0: '#071D29',
+  night1: '#0A2838',
   night2: '#2C2063',
   plum: '#4A2A63',
   peach: '#FFC9A3',
@@ -31,13 +31,13 @@ function defs() {
   return `
 <defs>
   <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
-    <stop offset="0" stop-color="#090619"/>
-    <stop offset=".4" stop-color="#120C2E"/>
-    <stop offset=".8" stop-color="#1D1240"/>
-    <stop offset="1" stop-color="#2B1546"/>
+    <stop offset="0" stop-color="#030E14"/>
+    <stop offset=".4" stop-color="#06192A"/>
+    <stop offset=".8" stop-color="#082533"/>
+    <stop offset="1" stop-color="#0A2F2C"/>
   </linearGradient>
-  <radialGradient id="neb1"><stop offset="0" stop-color="#7B4FB0" stop-opacity=".42"/><stop offset="1" stop-color="#7B4FB0" stop-opacity="0"/></radialGradient>
-  <radialGradient id="neb2"><stop offset="0" stop-color="#F58E7A" stop-opacity=".28"/><stop offset="1" stop-color="#F59E7A" stop-opacity="0"/></radialGradient>
+  <radialGradient id="neb1"><stop offset="0" stop-color="#2E8F7A" stop-opacity=".40"/><stop offset="1" stop-color="#2E8F7A" stop-opacity="0"/></radialGradient>
+  <radialGradient id="neb2"><stop offset="0" stop-color="#3C9A63" stop-opacity=".26"/><stop offset="1" stop-color="#3C9A63" stop-opacity="0"/></radialGradient>
   <radialGradient id="neb3"><stop offset="0" stop-color="#3E6BD0" stop-opacity=".30"/><stop offset="1" stop-color="#4E7BD0" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowPeach"><stop offset="0" stop-color="#FFD9B8" stop-opacity=".9"/><stop offset=".35" stop-color="#FFB48F" stop-opacity=".35"/><stop offset="1" stop-color="#FF9F7A" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowGold"><stop offset="0" stop-color="#FFE7A8" stop-opacity="1"/><stop offset=".4" stop-color="#FFD27A" stop-opacity=".35"/><stop offset="1" stop-color="#FFD27A" stop-opacity="0"/></radialGradient>
@@ -54,12 +54,12 @@ function defs() {
   <linearGradient id="flame" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFE6A0"/><stop offset=".5" stop-color="#FF9F7A" stop-opacity=".8"/><stop offset="1" stop-color="#FF7A8A" stop-opacity="0"/></linearGradient>
   <linearGradient id="todayG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD9B8" stop-opacity=".95"/><stop offset=".85" stop-color="#FFB48F" stop-opacity=".45"/><stop offset="1" stop-color="#FFB48F" stop-opacity="0"/></linearGradient>
   <linearGradient id="btn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE0C2"/><stop offset="1" stop-color="#FFB08C"/></linearGradient>
-  <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2F2468"/><stop offset=".5" stop-color="#231A52"/><stop offset="1" stop-color="#1A1440"/></linearGradient>
-  <linearGradient id="fadeR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#1E1745" stop-opacity="0"/><stop offset="1" stop-color="#1E1745" stop-opacity=".92"/></linearGradient>
-  <linearGradient id="dawn" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFB48F" stop-opacity=".30"/><stop offset=".35" stop-color="#E07A93" stop-opacity=".12"/><stop offset=".7" stop-color="#E07A93" stop-opacity="0"/></linearGradient>
+  <linearGradient id="sheet" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#12405A"/><stop offset=".5" stop-color="#0E3346"/><stop offset="1" stop-color="#0A2736"/></linearGradient>
+  <linearGradient id="fadeR" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0A2838" stop-opacity="0"/><stop offset="1" stop-color="#0A2838" stop-opacity=".92"/></linearGradient>
+  <linearGradient id="dawn" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFB48F" stop-opacity=".30"/><stop offset=".35" stop-color="#3FB59A" stop-opacity=".12"/><stop offset=".7" stop-color="#3FB59A" stop-opacity="0"/></linearGradient>
   <linearGradient id="tower" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFE3CC"/><stop offset=".5" stop-color="#F6B9A4"/><stop offset=".5" stop-color="#D88C9C"/><stop offset="1" stop-color="#B9708F"/></linearGradient>
   <linearGradient id="towerDark" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#5A4C99"/><stop offset=".5" stop-color="#4A3F86"/><stop offset=".5" stop-color="#3A3170"/><stop offset="1" stop-color="#2D2660"/></linearGradient>
-  <radialGradient id="vign" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#05030F" stop-opacity="0"/><stop offset="1" stop-color="#05030F" stop-opacity=".75"/></radialGradient>
+  <radialGradient id="vign" cx=".5" cy=".5" r=".75"><stop offset=".55" stop-color="#010709" stop-opacity="0"/><stop offset="1" stop-color="#010709" stop-opacity=".75"/></radialGradient>
   <radialGradient id="bloom"><stop offset="0" stop-color="#FFE2B8" stop-opacity=".95"/><stop offset=".18" stop-color="#FFB47F" stop-opacity=".55"/><stop offset=".5" stop-color="#E86F8E" stop-opacity=".16"/><stop offset="1" stop-color="#E86F8E" stop-opacity="0"/></radialGradient>
   <linearGradient id="litArm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFE7B0"/><stop offset="1" stop-color="#FF9E7A"/></linearGradient>
   <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE3B8"/><stop offset=".5" stop-color="#E9A879"/><stop offset="1" stop-color="#B9708F"/></linearGradient>
@@ -73,7 +73,7 @@ function defs() {
   </filter>
   <filter id="paper" x="0" y="0" width="100%" height="100%">
     <feTurbulence type="fractalNoise" baseFrequency=".012 .02" numOctaves="3" seed="3" result="n"/>
-    <feColorMatrix in="n" type="matrix" values="0 0 0 0 .55  0 0 0 0 .35  0 0 0 0 .75  0 0 0 .22 -.02"/>
+    <feColorMatrix in="n" type="matrix" values="0 0 0 0 .18  0 0 0 0 .50  0 0 0 0 .55  0 0 0 .22 -.02"/>
   </filter>
 </defs>`;
 }
@@ -92,7 +92,7 @@ function sky(w, h, seed = 1, opts = {}) {
     const x = r() * w, y = r() * h, z = r();
     const rr = z < .85 ? .4 + r() * .7 : 1 + r() * .8;
     const op = .25 + r() * .6;
-    const col = r() < .2 ? '#FFD9B8' : r() < .3 ? '#C9B8FF' : '#FFF6EC';
+    const col = r() < .2 ? '#FFD9B8' : r() < .3 ? '#B8DCFF' : '#FFF6EC';
     // harita alanında yıldızlar seyrek ve soluk: tıklanır nesnelerle karışmasın
     const H = opts.sakin, ic = H && Math.hypot(x - H[0], y - H[1]) < H[2];
     if (ic && i % 2) continue;
@@ -100,7 +100,7 @@ function sky(w, h, seed = 1, opts = {}) {
     s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr)}" fill="${col}" opacity="${f(op)}"/>`;
   }
   // birkaç 4 köşeli parıltı
-  for (let i = 0; i < (opts.sparkles ?? 7); i++) s += sparkle(r() * w, r() * h, 3 + r() * 4, r() < .5 ? '#FFE7C7' : '#D9CCFF', .5 + r() * .4);
+  for (let i = 0; i < (opts.sparkles ?? 7); i++) s += sparkle(r() * w, r() * h, 3 + r() * 4, r() < .5 ? '#FFE7C7' : '#CFEAFF', .5 + r() * .4);
   s += `<rect width="${w}" height="${h}" fill="url(#vign)"/>`;
   return s;
 }
@@ -154,7 +154,7 @@ function planet(x, y, r, state, o = {}) {
   if (state === 'ertele') {
     s += `<g opacity=".45"><circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width="1"/></g>`;
     const k = Math.max(3.2, r * .62);
-    s += `<g transform="translate(${f(r * .78)},${f(-r * .78)})"><circle r="${f(k)}" fill="#1A1238" stroke="#BFB0E0" stroke-width="1"/><path d="M0,${f(-k * .55)} V0 L${f(k * .45)},${f(k * .2)}" fill="none" stroke="#BFB0E0" stroke-width="1" stroke-linecap="round"/></g>`;
+    s += `<g transform="translate(${f(r * .78)},${f(-r * .78)})"><circle r="${f(k)}" fill="#08222E" stroke="#BFB0E0" stroke-width="1"/><path d="M0,${f(-k * .55)} V0 L${f(k * .45)},${f(k * .2)}" fill="none" stroke="#BFB0E0" stroke-width="1" stroke-linecap="round"/></g>`;
     return s + '</g>';
   }
   if (state === 'run') {
@@ -223,7 +223,7 @@ function planet(x, y, r, state, o = {}) {
     s += `<circle r="${f(r * 2.5)}" fill="url(#glowCoral)"/>`;
     s += `<circle r="${f(r)}" fill="url(#pBlock)"/>`;
     // tutulma: önüne geçen karanlık ay
-    s += `<circle cx="${f(r * .42)}" cy="${f(r * .18)}" r="${f(r * .82)}" fill="#1A1238" opacity=".92"/>`;
+    s += `<circle cx="${f(r * .42)}" cy="${f(r * .18)}" r="${f(r * .82)}" fill="#08222E" opacity=".92"/>`;
     s += `<circle r="${f(r + 1.5)}" fill="none" stroke="#FF8A78" stroke-width="${o.mini ? 1 : 1.6}" opacity=".9"/>`;
     if (o.mini) return s + '</g>';
     s += house(r, -40, false, .9);
@@ -282,7 +282,7 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
 function pill(x, y, text, o = {}) {
   const fs = o.fs || 11, w = o.w || Math.round(text.length * fs * .56 + 14), h = fs + 9;
   const ax = o.anchor === 'start' ? x : o.anchor === 'end' ? x - w : x - w / 2;
-  return `<g><rect x="${f(ax)}" y="${f(y - h / 2)}" width="${w}" height="${h}" rx="${h / 2}" fill="${o.bg || '#1A1440'}" fill-opacity="${o.bgo ?? .88}" stroke="${o.stroke || 'none'}" stroke-width="1"/>
+  return `<g><rect x="${f(ax)}" y="${f(y - h / 2)}" width="${w}" height="${h}" rx="${h / 2}" fill="${o.bg || '#0A2736'}" fill-opacity="${o.bgo ?? .88}" stroke="${o.stroke || 'none'}" stroke-width="1"/>
   <text x="${f(ax + w / 2)}" y="${f(y + fs * .36)}" text-anchor="middle" font-family="Inter" font-weight="${o.fw || 600}" font-size="${fs}" fill="${o.col || C.ink}">${text}</text></g>`;
 }
 
@@ -310,7 +310,7 @@ function kapi(x, y, sc = 1, lit = true) {
   const c = lit ? '#FFE29A' : '#FFD27A';
   return `<g transform="translate(${f(x)},${f(y)}) scale(${sc})">
     <circle cx="0" cy="-42" r="40" fill="url(#glowGold)" opacity="${lit ? .8 : .45}"/>
-    <circle cx="0" cy="-42" r="22" fill="#1A1238" fill-opacity=".55"/>
+    <circle cx="0" cy="-42" r="22" fill="#08222E" fill-opacity=".55"/>
     <circle cx="0" cy="-42" r="22" fill="none" stroke="${c}" stroke-width="7"/>
     <circle cx="0" cy="-42" r="22" fill="none" stroke="#FFF1E0" stroke-width="1.6" stroke-dasharray="4 7" opacity=".8"/>
     <circle cx="0" cy="-42" r="9" fill="url(#${lit ? 'glowPeach' : 'glowLilac'})" opacity=".9"/>
@@ -405,7 +405,7 @@ function galaxy(cx, cy, steps, o = {}) {
     if (st.state === 'lit') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3)}" fill="url(#glowGold)" opacity=".75"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pLit2)"/>`;
     else if (st.state === 'ghost') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * .7)}" fill="none" stroke="#A99BDB" stroke-width=".8" stroke-dasharray="1.5 1.5"/>`;
     else if (st.state === 'wait') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr + 3)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pWait)"/>`;
-    else if (st.state === 'block') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3.2)}" fill="url(#glowCoral)"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 1.2)}" fill="url(#pBlock)"/><circle cx="${f(x + pr * .5)}" cy="${f(y + pr * .2)}" r="${f(pr)}" fill="#1A1238" opacity=".9"/>`;
+    else if (st.state === 'block') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3.2)}" fill="url(#glowCoral)"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 1.2)}" fill="url(#pBlock)"/><circle cx="${f(x + pr * .5)}" cy="${f(y + pr * .2)}" r="${f(pr)}" fill="#08222E" opacity=".9"/>`;
     else s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width=".7" stroke-opacity=".8"/>`;
   });
   return s;
@@ -425,7 +425,7 @@ function galaxyPos(cx, cy, n, o = {}) {
 
 function page(w, h, body, extraCss = '') {
   return `<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=${w}">
-<style>html,body{margin:0;padding:0;background:#090619;width:${w}px;height:${h}px;overflow:hidden}svg{display:block}${extraCss}</style></head>
+<style>html,body{margin:0;padding:0;background:#030E14;width:${w}px;height:${h}px;overflow:hidden}svg{display:block}${extraCss}</style></head>
 <body>${body}</body></html>`;
 }
 
@@ -453,7 +453,7 @@ function shareRing(x, y, r, shares, o = {}) {
     }
     if (o.beads !== false) {
       const am = (a0 + da / 2) * Math.PI / 180, bx = Math.cos(am) * r, by = Math.sin(am) * r, br = o.br || 7;
-      s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${br}" fill="#1A1238" stroke="${col(sh)}" stroke-width="1.3"/><text x="${f(bx)}" y="${f(by + br * .42)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(br * 1.15)}" fill="#FFF3E8">${sh.ad[0]}</text>`;
+      s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${br}" fill="#08222E" stroke="${col(sh)}" stroke-width="1.3"/><text x="${f(bx)}" y="${f(by + br * .42)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(br * 1.15)}" fill="#FFF3E8">${sh.ad[0]}</text>`;
     }
     a0 = a1;
   }
@@ -468,7 +468,7 @@ function brackets(x, y, w, h, col, glyph = '', gl = false) {
   s += `<rect x="${f(x)}" y="${f(y)}" width="${f(w)}" height="${f(h)}" rx="16" fill="${col}" opacity=".05"/>`;
   s += c(x, y, 1, 1) + c(x + w, y, -1, 1) + c(x, y + h, 1, -1) + c(x + w, y + h, -1, -1);
   s += sparkle(gl ? x + w : x, y, 4.5, col, 1);
-  if (glyph) s += `<g transform="translate(${f(gl ? x : x + w)},${f(y)})"><circle r="12" fill="#150E33" stroke="${col}" stroke-width="1.4"/>${glyph}</g>`;
+  if (glyph) s += `<g transform="translate(${f(gl ? x : x + w)},${f(y)})"><circle r="12" fill="#071D29" stroke="${col}" stroke-width="1.4"/>${glyph}</g>`;
   return s + '</g>';
 }
 

@@ -15,7 +15,7 @@ export const saat = (ms) => { const d = tl(ms); return `${String(d.getUTCHours()
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 export const sans = (x, y, t, o = {}) => `<text x="${x}" y="${y}" font-family="Inter" font-size="${o.fs || 12}" font-weight="${o.fw || 500}" fill="${o.col || C.ink2}" ${o.anchor ? `text-anchor="${o.anchor}"` : ''} ${o.ls ? `letter-spacing="${o.ls}"` : ''}>${esc(t)}</text>`;
 export function kart(x, y, w, h, o = {}) {
-  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.rx || 22}" fill="${o.fill || '#120B2C'}" fill-opacity="${o.op ?? .72}" stroke="${o.stroke || '#FFFFFF'}" stroke-opacity="${o.sop ?? .08}"/>`;
+  return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.rx || 22}" fill="${o.fill || '#061A24'}" fill-opacity="${o.op ?? .72}" stroke="${o.stroke || '#FFFFFF'}" stroke-opacity="${o.sop ?? .08}"/>`;
 }
 const BIT = (d) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 
@@ -85,7 +85,7 @@ export const belge = (x, y, s = 1) => `<g transform="translate(${f(x)},${f(y)}) 
 export function clusterBadge(x, y, members, radOf, stOf, ps = 1) {
   const ms = members.slice().sort((a, b) => PRI[stOf(a)[0]] - PRI[stOf(b)[0]] || radOf(b) - radOf(a));
   const fr = ms[0], r = Math.max(radOf(fr), 11 * ps);
-  let s = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r + 9 * ps)}" fill="#120B2C" fill-opacity=".55" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3"/>`;
+  let s = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(r + 9 * ps)}" fill="#061A24" fill-opacity=".55" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3"/>`;
   ms.slice(1).forEach((no, i) => { const a = (-40 + i * 50) * Math.PI / 180; s += `<g opacity=".8">${planet(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8, r * .62, stOf(no)[0] === 'ghost' ? 'dark' : stOf(no)[0], {})}</g>`; });
   s += planet(x, y, r, stOf(fr)[0], stOf(fr)[1]);
   const bx = x - r * .8 - 3 * ps, by = y - r * .8 - 3 * ps;
@@ -106,8 +106,8 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
     if (o.ip) s += `<path d="M${f(x + Math.cos(a) * (r + 1))},${f(y + Math.sin(a) * (r + 1))} L${f(mx - Math.cos(a) * mr)},${f(my - Math.sin(a) * mr)}" stroke="#D9CCFF" stroke-width="1" opacity=".55"/>`;
     if (k.durum === 'tamam') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * 2.4)}" fill="url(#glowGold)" opacity=".8"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pLit2)"/>`;
     else if (k.durum === 'suruyor' || k.durum === 'hazir') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.6)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 1.6"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#2A2452"/><path d="M${f(mx)},${f(my - mr)} A${f(mr)},${f(mr)} 0 0 1 ${f(mx)},${f(my + mr)}Z" fill="#FFE29A"/>`;
-    else if (k.durum === 'engelli') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pBlock)"/><path d="M${f(mx - mr * .6)},${f(my - mr * .6)} L${f(mx + mr * .6)},${f(my + mr * .6)}" stroke="#1A1238" stroke-width="1.6"/>`;
-    else s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#1A1238" stroke="#B9A6F2" stroke-width="1.2"/>`;
+    else if (k.durum === 'engelli') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pBlock)"/><path d="M${f(mx - mr * .6)},${f(my - mr * .6)} L${f(mx + mr * .6)},${f(my + mr * .6)}" stroke="#08222E" stroke-width="1.6"/>`;
+    else s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#08222E" stroke="#B9A6F2" stroke-width="1.2"/>`;
     if (o.ini) s += sans(f(mx + Math.cos(a) * 13 * ps), f(my + Math.sin(a) * 13 * ps + 3.5), k.ad[0], { fs: 9.5 * ps, fw: 750, col: C.ink2, anchor: 'middle' });
   });
   return s;
@@ -211,7 +211,7 @@ export function yolCiz(M, o = {}) {
       if (k === 'lit' || k === 'tahmin') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 2.6)}" fill="url(#glowGold)" opacity=".7"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pLit2)"/>`;
       else if (k === 'ghost') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(pr * .6)}" fill="none" stroke="#A99BDB" stroke-width=".7" stroke-dasharray="1.5 1.5"/>`;
       else if (k === 'wait') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 2)}" fill="none" stroke="#FFD27A" stroke-width=".9" stroke-dasharray="2 2"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pWait)"/>`;
-      else if (k === 'block') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 3)}" fill="url(#glowCoral)"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 1.1)}" fill="url(#pBlock)"/><circle cx="${f(g.x + r * .45)}" cy="${f(g.y + r * .2)}" r="${f(r * .9)}" fill="#1A1238" opacity=".9"/>`;
+      else if (k === 'block') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 3)}" fill="url(#glowCoral)"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 1.1)}" fill="url(#pBlock)"/><circle cx="${f(g.x + r * .45)}" cy="${f(g.y + r * .2)}" r="${f(r * .9)}" fill="#08222E" opacity=".9"/>`;
       else s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width=".6"/>`;
     }
     if (G.kule && o.kule !== false) s += `<circle cx="${f(G.kule.x)}" cy="${f(G.kule.y)}" r="${f(Math.max(1.6, pr * .8))}" fill="${F.kapandi ? '#FFE29A' : '#FFD27A'}" stroke="#2A1D4F" stroke-width=".5"/>`;
@@ -310,7 +310,7 @@ export function yolCiz(M, o = {}) {
     if (o.ikonAyri && byNo[no].karar && !SONUK.includes(k)) {
       const D = Math.max(44, radOf(no) + 30), a = 35 * Math.PI / 180, bx = g.x + Math.sin(a) * D, by = g.y - Math.cos(a) * D;
       t += `<path d="M${f(g.x + Math.sin(a) * (r + 3))},${f(g.y - Math.cos(a) * (r + 3))} L${f(g.x + Math.sin(a) * (D - 12))},${f(g.y - Math.cos(a) * (D - 12))}" stroke="#FFD27A" stroke-width="1" stroke-dasharray="1.5 3" opacity=".8"/>`;
-      t += `<circle cx="${f(bx)}" cy="${f(by)}" r="12" fill="#1A1238" stroke="#FFD27A" stroke-width="1.2"/><g transform="translate(${f(bx - 2)},${f(by + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7.5,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
+      t += `<circle cx="${f(bx)}" cy="${f(by)}" r="12" fill="#08222E" stroke="#FFD27A" stroke-width="1.2"/><g transform="translate(${f(bx - 2)},${f(by + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7.5,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
       ikonlar.push({ tur: 'bayrak', no: +no, x: bx, y: by });
     }
     // ortak gezegen (3.11): halka kişilerin renginde dilimlere bölünür
@@ -384,10 +384,10 @@ export function zamanCubugu(x, y, w, G, X, o = {}) {
   const x0 = x + 56 * ps, x1 = x + w - 12 * ps, xOf = (t) => x0 + (x1 - x0) * (t - t0) / (t1 - t0);
   const tOf = (px) => t0 + (t1 - t0) * (px - x0) / (x1 - x0);
   let s = '';
-  s += `<g transform="translate(${x + 22 * ps},${y})"><circle r="${22 * ps}" fill="#1E1645" stroke="#FFD27A" stroke-opacity=".7"/>`;
+  s += `<g transform="translate(${x + 22 * ps},${y})"><circle r="${22 * ps}" fill="#0A2838" stroke="#FFD27A" stroke-opacity=".7"/>`;
   s += o.oynuyor ? `<rect x="${-6 * ps}" y="${-8 * ps}" width="${4.2 * ps}" height="${16 * ps}" rx="1.5" fill="#FFD27A"/><rect x="${1.8 * ps}" y="${-8 * ps}" width="${4.2 * ps}" height="${16 * ps}" rx="1.5" fill="#FFD27A"/>` : `<path d="M${-5 * ps},${-8.5 * ps} L${9 * ps},0 L${-5 * ps},${8.5 * ps}Z" fill="#FFD27A"/>`;
   s += `</g>`;
-  s += `<rect x="${x0}" y="${y - 4 * ps}" width="${x1 - x0}" height="${8 * ps}" rx="${4 * ps}" fill="#120B2C" stroke="#8E80D6" stroke-opacity=".45"/>`;
+  s += `<rect x="${x0}" y="${y - 4 * ps}" width="${x1 - x0}" height="${8 * ps}" rx="${4 * ps}" fill="#061A24" stroke="#8E80D6" stroke-opacity=".45"/>`;
   s += `<rect x="${x0}" y="${y - 4 * ps}" width="${f(Math.max(0, xOf(Math.min(G.kapandi ? t1 : NOWx, t1)) - x0))}" height="${8 * ps}" rx="${4 * ps}" fill="url(#brass)"/>`;
   if (X > NOWx) s += `<rect x="${f(xOf(NOWx))}" y="${y - 2.5 * ps}" width="${f(xOf(X) - xOf(NOWx))}" height="${5 * ps}" rx="${2.5 * ps}" fill="none" stroke="#FFD27A" stroke-width="1.3" stroke-dasharray="4 3"/>`;
   const d0 = Math.ceil((t0 + 3 * 36e5) / GUN) * GUN - 3 * 36e5, gun = (t1 - t0) / GUN, adim = Math.max(1, Math.ceil(gun / 7 / 5));
@@ -407,6 +407,6 @@ export function zamanCubugu(x, y, w, G, X, o = {}) {
   s += `<circle cx="${f(xh)}" cy="${y}" r="${14 * ps}" fill="url(#glowGold)"/><circle cx="${f(xh)}" cy="${y}" r="${9 * ps}" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.5"/><circle cx="${f(xh)}" cy="${y}" r="${3.2 * ps}" fill="#2A1D4F"/>`;
   const et = o.etiket || (Math.abs(X - NOWx) < 36e5 ? 'Bugün · ' + gunAy(X) : gunAyHafta(X) + (X > NOWx ? ' · tahmin' : ''));
   const pw = Math.round(et.length * 11 * .56 + 16) * ps, px = Math.min(Math.max(xh, x0 + pw / 2 - 20), x1 - pw / 2 + 6);
-  s += pill(px, y - 22 * ps, esc(et), { fs: 11 * ps, fw: 750, bg: X > NOWx ? '#1A1440' : '#FFD27A', bgo: 1, col: X > NOWx ? '#FFE6B0' : '#2A1D4F', stroke: X > NOWx ? '#FFD27A' : 'none' });
+  s += pill(px, y - 22 * ps, esc(et), { fs: 11 * ps, fw: 750, bg: X > NOWx ? '#0A2736' : '#FFD27A', bgo: 1, col: X > NOWx ? '#FFE6B0' : '#2A1D4F', stroke: X > NOWx ? '#FFD27A' : 'none' });
   return { svg: s, xOf, tOf, x0, x1, t0, t1 };
 }

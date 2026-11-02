@@ -83,7 +83,7 @@ function tarihKarti(d: any, Y: any, Z: any, no: number, ty: number): string {
   const a = d.adimlar.find((x: any) => x.no === no); if (!a) return '';
   const g = Y.G.gezegen[no], px = g.x, py = g.y;
   const ef = BITTI(a.durum) ? Date.parse(a.durum_at) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : g.t;
-  let s = `<rect width="390" height="844" fill="#07051A" opacity=".42"/>`;
+  let s = `<rect width="390" height="844" fill="#020B10" opacity=".42"/>`;
   const tx = Z.xOf(ef);
   s += `<path d="M${f(px)},${f(py + g.r + 4)} L${f(tx)},${ty - 8}" stroke="#FFD27A" stroke-width="1.3" stroke-dasharray="3 4" opacity=".9"/>`;
   s += `<circle cx="${f(tx)}" cy="${ty}" r="10" fill="url(#glowGold)"/><circle cx="${f(tx)}" cy="${ty}" r="5" fill="#FFD27A" stroke="#2A1D4F" stroke-width="1.2"/>`;
@@ -96,8 +96,8 @@ function tarihKarti(d: any, Y: any, Z: any, no: number, ty: number): string {
   if (a.son_tarih) { const st = Date.parse(a.son_tarih + 'T23:59:00+03:00'), p = Math.floor((st - ef) / GUN); satirlar.push([`Son tarih ${gunAy(st)} · ${p >= 0 ? p + ' gün pay' : -p + ' gün geç'}`, 12, 500, C.ink3]); }
   if (a.gec_risk) satirlar.push(['Geç kalabilir', 12, 600, '#FFC2B8']);
   const h = 30 + satirlar.length * 19;
-  s += `<rect x="${f(cxk - 112)}" y="${f(cyk - 34)}" width="224" height="${h}" rx="20" fill="#1A1238" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
-  s += ust ? `<path d="M${f(px - 8)},${f(cyk - 34 + h)} L${f(px)},${f(cyk - 24 + h)} L${f(px + 8)},${f(cyk - 34 + h)}Z" fill="#1A1238" stroke="#FFD27A" stroke-opacity=".6"/>` : `<path d="M${f(px - 8)},${f(cyk - 34)} L${f(px)},${f(cyk - 44)} L${f(px + 8)},${f(cyk - 34)}Z" fill="#1A1238" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  s += `<rect x="${f(cxk - 112)}" y="${f(cyk - 34)}" width="224" height="${h}" rx="20" fill="#08222E" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  s += ust ? `<path d="M${f(px - 8)},${f(cyk - 34 + h)} L${f(px)},${f(cyk - 24 + h)} L${f(px + 8)},${f(cyk - 34 + h)}Z" fill="#08222E" stroke="#FFD27A" stroke-opacity=".6"/>` : `<path d="M${f(px - 8)},${f(cyk - 34)} L${f(px)},${f(cyk - 44)} L${f(px + 8)},${f(cyk - 34)}Z" fill="#08222E" stroke="#FFD27A" stroke-opacity=".6"/>`;
   satirlar.forEach(([t, fs, fw, col], i) => { s += sans(cxk - 96, cyk - 10 + i * 19.5, t, { fs, fw, col }); });
   return s;
 }
@@ -464,7 +464,7 @@ export function HaritaYukleniyor() {
   let p = '';
   for (let i = 0; i <= 80; i++) { const th = i / 80 * Math.PI * 2.4, r = R * .1 + R * .85 * i / 80; p += (i ? 'L' : 'M') + (cx + Math.cos(th) * r).toFixed(1) + ',' + (cy + Math.sin(th) * r).toFixed(1); }
   const s = `<circle cx="${cx}" cy="${cy}" r="${R * .3}" fill="url(#bloom)" opacity=".8"/><g class="donen-sarmal" style="transform-origin:${cx}px ${cy}px"><path d="${p}" fill="none" stroke="#B9A6F2" stroke-width="1.4" opacity=".3"/></g>` +
-    `<rect x="${SURGU.x + 56}" y="${SURGU.y - 4}" width="${SURGU.w - 68}" height="8" rx="4" fill="#120B2C" stroke="#8E80D6" stroke-opacity=".45"/>`;
+    `<rect x="${SURGU.x + 56}" y="${SURGU.y - 4}" width="${SURGU.w - 68}" height="8" rx="4" fill="#061A24" stroke="#8E80D6" stroke-opacity=".45"/>`;
   return (
     <Sahne gok={{ tohum: 33, yildiz: 280 }} cizim={s} etiket="Harita yükleniyor">
       <div className="iskelet-serit" style={{ top: 92, width: 300 }} /><div className="iskelet-serit" style={{ top: 114, width: 240 }} />

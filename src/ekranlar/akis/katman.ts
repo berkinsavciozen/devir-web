@@ -78,7 +78,7 @@ export function kuleKarti(d: any, kule: { x: number; y: number }, b: Bolge): str
   if (!satir.length) satir.push(['Hedef tarih yok', 13, 600, C.ink2]);
   const w = 236, h = 22 + satir.length * 19, x = Math.min(Math.max(kule.x - w / 2, b.x + 8), b.x + b.w - w - 8);
   const ust = kule.y - 40 - h > b.y + 4, y = ust ? kule.y - 40 - h : Math.min(kule.y + 26, b.y + b.h - h - 4);
-  let s = `<rect x="${f(x)}" y="${f(y)}" width="${w}" height="${h}" rx="18" fill="#1A1238" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  let s = `<rect x="${f(x)}" y="${f(y)}" width="${w}" height="${h}" rx="18" fill="#08222E" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
   satir.forEach(([t, fs, fw, col], i) => { s += sans(f(x + 16), f(y + 24 + i * 19), t, { fs, fw, col }); });
   return s;
 }
@@ -103,9 +103,9 @@ export function yelpaze(d: any, Y: any, uyeler: number[], b: Bolge, W: number, H
       yer.push({ no, x, y });
     });
   });
-  let s = `<rect width="${W}" height="${H}" fill="#07051A" opacity=".4"/>`;
+  let s = `<rect width="${W}" height="${H}" fill="#020B10" opacity=".4"/>`;
   s += `<g class="yelpaze-acilis" style="transform-origin:${f(cx)}px ${f(cy)}px">`;
-  s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="20" fill="#120B2C" fill-opacity=".8" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3"/>`;
+  s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="20" fill="#061A24" fill-opacity=".8" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3"/>`;
   s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="8.5" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${f(cx)}" y="${f(cy + 3.8)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10.5" fill="#2A1D4F">${ms.length}</text>`;
   for (const p of yer) {
     const a = byNo.get(p.no), st = Y.stOf(p.no) === 'tahmin' ? 'lit' : Y.stOf(p.no);

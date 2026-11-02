@@ -139,7 +139,7 @@ export function Ayarlar() {
   const baslik = (b: Bolum, ek?: ReactNode) => <>
     <h2 id={`ayar-${b}`} className="bolum-baslik ayar-grup" style={{ top: bY[b] - 12 }}>{BASLIK[b]}</h2>{ek}
   </>;
-  const ozelIkon = (svg: string) => `<g transform="translate(26,33)"><circle r="15" fill="#1E1645" stroke="#8E80D6" stroke-opacity=".6"/>${svg}</g>`;
+  const ozelIkon = (svg: string) => `<g transform="translate(26,33)"><circle r="15" fill="#0A2838" stroke="#8E80D6" stroke-opacity=".6"/>${svg}</g>`;
   const uyum = uyumDurumu(durum.data);
   const disSayi = KT.length ? `${KT.length} dış katılımcı · ${KT.filter((x) => x.durum === 'acik').length} bağlantı açık` : 'Bağlantı paylaşılan dış katılımcı yok';
   return (

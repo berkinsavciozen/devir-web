@@ -24,7 +24,7 @@ describe('usturlap (plan 27 Eki)', () => {
     expect(U.svg).not.toContain('stroke="#D9CCFF" stroke-width');
   });
   it('3.29: halka bandı ince (12 px)', () => {
-    expect(U.svg).toContain('stroke="#120B2C" stroke-width="12"');
+    expect(U.svg).toContain('stroke="#061A24" stroke-width="12"');
     expect(U.svg).not.toContain('stroke-width="22"');
   });
 });

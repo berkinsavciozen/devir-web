@@ -20,7 +20,7 @@ type Varsayim = { metin: string; boyut: string | null; soru?: Soru; cevap?: stri
 
 /** Varsayım rozeti: boyutuna göre biçim (karar bayrak, kısıt kilit, sonuç kule, dış gemi, öteki yıldız). */
 function rozet(b: string | null, x: number, y: number): string {
-  let s = `<circle cx="${f(x)}" cy="${f(y)}" r="13" fill="#150E33" stroke="#FFD27A" stroke-opacity=".6"/>`;
+  let s = `<circle cx="${f(x)}" cy="${f(y)}" r="13" fill="#071D29" stroke="#FFD27A" stroke-opacity=".6"/>`;
   if (b === 'karar') s += `<g transform="translate(${f(x - 2)},${f(y + 6)})"><rect x="-.6" y="-12" width="1.2" height="12" fill="#FFF1E0"/><path d="M.6,-12 L7,-9.6 L.6,-7.2Z" fill="#FFD27A"/></g>`;
   else if (b === 'kisit' || b === 'kapi') s += `<g transform="translate(${f(x)},${f(y)})"><rect x="-5" y="-2" width="10" height="8" rx="2" fill="#FFD27A"/><path d="M-3,-2 L-3,-4 A3,3 0 0 1 3,-4 L3,-2" fill="none" stroke="#FFD27A" stroke-width="1.5"/></g>`;
   else if (b === 'sonuc') s += kapi(x, y + 7, .14, true);

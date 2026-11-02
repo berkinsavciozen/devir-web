@@ -91,7 +91,7 @@ export function Akislar({ ben }: { ben: Ben }) {
     });
     // taslak + arşiv
     const yd = Y0 + satirlar.length * RH + 8;
-    s += `<rect x="16" y="${yd}" width="358" height="64" rx="22" fill="#120B2C" fill-opacity=".6" stroke="#FFFFFF" stroke-opacity=".07"/>`;
+    s += `<rect x="16" y="${yd}" width="358" height="64" rx="22" fill="#061A24" fill-opacity=".6" stroke="#FFFFFF" stroke-opacity=".07"/>`;
     for (const [ox, oy, r] of [[44, 32, 12], [62, 42, 8]]) s += `<circle cx="${ox}" cy="${yd + oy}" r="${r * 2.2}" fill="url(#glowLilac)"/><circle cx="${ox}" cy="${yd + oy}" r="${r}" fill="#B9A6F2" fill-opacity=".12" stroke="#D9CCFF" stroke-dasharray="1.5 3"/>` + sparkle(ox, yd + oy, r * .4, '#FFF1D6', .95);
     s += `<g opacity=".55">${kucukGalaksi(arsiv[0] ? detay[arsiv[0].kod] : null, kisi, 232, yd + 32, 18, 1.8, NOW)}</g>`;
     return { svg: s, yd };

@@ -95,7 +95,7 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
     svg += planet(62, kart + 52, 20, BITTI(a.durum) ? 'lit' : a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 2 });
   }
   if (sonraki) {
-    svg += `<rect x="16" y="774" width="358" height="46" rx="23" fill="#120B2C" fill-opacity=".7" stroke="#FFFFFF" stroke-opacity=".08"/>`;
+    svg += `<rect x="16" y="774" width="358" height="46" rx="23" fill="#061A24" fill-opacity=".7" stroke="#FFFFFF" stroke-opacity=".08"/>`;
     svg += planet(42, 797, 7, 'dark', { life: false }) + `<circle cx="58" cy="797" r="4" fill="#2A2452" stroke="#8E80D6"/><circle cx="70" cy="797" r="4" fill="#2A2452" stroke="#8E80D6"/>`;
     svg += `<path d="M352,791 L358,797 L352,803" stroke="#B9A6F2" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
   }
@@ -252,7 +252,7 @@ function Tesekkur({ v, no, kapat, bak }: { v: any; no: number; kapat: () => void
     for (let i = 0; i < 28; i++) { const t = rr() * Math.PI * 2, d = 70 + rr() * 90, L = 8 + rr() * 22; s += `<line x1="${f(195 + Math.cos(t) * d)}" y1="${f(270 + Math.sin(t) * d)}" x2="${f(195 + Math.cos(t) * (d + L))}" y2="${f(270 + Math.sin(t) * (d + L))}" stroke="#FFE7B8" stroke-width="${f(1 + rr())}" stroke-linecap="round" opacity="${f(.4 + rr() * .5)}"/>`; }
     for (let i = 0; i < 8; i++) s += sparkle(195 + Math.cos(i * .8) * (110 + i * 6), 270 + Math.sin(i * .8) * (90 + i * 5), 4 + (i % 3) * 2, '#FFF1D6', 1);
     s += `<g class="yanma">${planet(195, 270, 52, 'lit', { ring: true })}</g>` + ship(110, 330, -18, 'dis', '', C.peach, 1.2);
-    if (sonraki) s += `<rect x="16" y="528" width="358" height="118" rx="22" fill="#120B2C" fill-opacity=".72" stroke="#FFC9A3" stroke-opacity=".3"/>` + planet(54, 600, 15, 'dark', { life: false });
+    if (sonraki) s += `<rect x="16" y="528" width="358" height="118" rx="22" fill="#061A24" fill-opacity=".72" stroke="#FFC9A3" stroke-opacity=".3"/>` + planet(54, 600, 15, 'dark', { life: false });
     return s;
   }, [sonraki]);
   const ilk = kisiAdi(v.kisi).split(' ')[0];
@@ -278,7 +278,7 @@ function Tesekkur({ v, no, kapat, bak }: { v: any; no: number; kapat: () => void
 /** F4 · Geçersiz ya da yenilenmiş bağlantı (ağ hatasında aynı ekran, başka cümle). */
 export function GecersizBaglanti({ ag, suresi, yeniden }: { ag?: boolean; suresi?: string; yeniden: () => void }) {
   const cizim = useMemo(() => {
-    let s = `<rect width="390" height="844" fill="#07051A" opacity=".35"/><circle cx="195" cy="300" r="110" fill="url(#glowLilac)" opacity=".5"/>`;
+    let s = `<rect width="390" height="844" fill="#020B10" opacity=".35"/><circle cx="195" cy="300" r="110" fill="url(#glowLilac)" opacity=".5"/>`;
     for (let i = 0; i < 9; i++) { const a0 = i * 40 + 6, a1 = a0 + 16, r = 92, p = (t: number) => [195 + Math.cos(t * Math.PI / 180) * r, 300 + Math.sin(t * Math.PI / 180) * r]; const [x0, y0] = p(a0), [x1, y1] = p(a1); s += `<path d="M${f(x0)},${f(y0)} A${r},${r} 0 0 1 ${f(x1)},${f(y1)}" fill="none" stroke="#8E80D6" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`; }
     s += planet(195, 300, 26, 'dark', { life: false }) + `<g opacity=".7">${ship(292, 236, 14, 'dis', '', '#B9A6F2', 1)}</g>`;
     return s;
