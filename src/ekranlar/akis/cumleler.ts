@@ -3,6 +3,7 @@ import type { Galaksi } from '../../geometri/galaksi-geometri';
 import type { Model } from '../../cizim/yol.js';
 import { adimAdi, adimEtiketi, ek, gunAyUzun, ozelEk, sayiIyelik } from '../../metin/turkce';
 import { hedefPayi } from '../../bilesen/KararSeridi';
+import { ilerleme } from '../../api/ilerleme';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const SAYI = ['', 'bir', 'iki', 'üç', 'dört', 'beş', 'altı', 'yedi', 'sekiz', 'dokuz', 'on'];
@@ -71,7 +72,9 @@ export function tekrarAsamasi(d: any): { no: number; ad: string; n: number; k: n
     const basladi = [...g.adimlar].reverse().find((no: number) => ks.some((k) => durum(k, no) !== 'sirada'));
     if (basladi == null) continue;
     const ust = d.adimlar.find((a: any) => a.no === basladi);
-    return { no: basladi, ad: ust ? adimAdi(ust) : `Adım ${basladi}`, n: ks.length, k: ks.filter((k) => BITTI(durum(k, basladi))).length, tur: g.kalem_turu || 'kalem', kalemler: ks.map((k) => ({ ...k, durumAn: durum(k, basladi) })) };
+    const il = ilerleme(ks.map((k) => ({ durum: durum(k, basladi) })));
+    // k/n haritadaki uydu halkasıyla ve sunucunun ilerleme kuralıyla aynı (m6): atlanan kalem toplamdan düşer
+    return { no: basladi, ad: ust ? adimAdi(ust) : `Adım ${basladi}`, n: il.toplam, k: il.tamam, tur: g.kalem_turu || 'kalem', kalemler: ks.map((k) => ({ ...k, durumAn: durum(k, basladi) })) };
   }
   return null;
 }

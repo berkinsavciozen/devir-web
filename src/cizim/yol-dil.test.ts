@@ -83,3 +83,31 @@ describe('P4b işaretleri', async () => {
     expect(L.ortak).toEqual([2]);
   });
 });
+
+// 2 Kas: uydu halkası ve kalem sayıları sunucunun ilerleme kuralıyla (m6); canlı LBKQ'da bir gönderi atlandığı için
+// bitmiş 2. adımın halkası 11/12'de kalıyordu
+import { uyduSistemi, uydular } from './yol.js';
+import { tekrarAsamasi } from '../ekranlar/akis/cumleler';
+import { kalemDurumu } from '../ekranlar/evren/Akislar';
+describe('uydu sayıları', () => {
+  const ks = (...d: string[]) => d.map((durum, i) => ({ ad: 'K' + i, durum, kalem: true }));
+  it('atlanan uydu toplamdan düşer; kalanı bitmişse k/n tam', () => {
+    expect(uyduSistemi(0, 0, 10, ks('tamam', 'tamam', 'atlandi'))).toContain('>2/2<');
+    expect(uyduSistemi(0, 0, 10, ks('tamam', 'suruyor', 'ertelendi'))).toContain('>1/2<');
+  });
+  it('hepsi atlandıysa sayı yazılmaz', () => {
+    expect(uyduSistemi(0, 0, 10, ks('atlandi', 'atlandi'))).not.toMatch(/\d\/\d/);
+  });
+  it('tekrar aşaması etiketi halkayla aynı sayar', () => {
+    const k = (ad: string, d4: string) => ({ ad, adimlar: [{ ust_no: 4, durum: d4 }] });
+    const A = tekrarAsamasi({ adimlar: [{ no: 4, ad: 'Yayınla' }], tekrar: [{ adimlar: [4], kalemler: [k('a', 'tamam'), k('b', 'atlandi'), k('c', 'hazir')] }] })!;
+    expect([A.k, A.n]).toEqual([1, 2]);
+  });
+  it('Akışlar kartındaki mini uydular adım durumundan (akış durumundan değil)', () => {
+    expect(kalemDurumu({ durum: 'aktif', bitti: true, adimlar: [{ durum: 'tamam' }] })).toBe('tamam');
+    expect(kalemDurumu({ durum: 'aktif', bitti: true, adimlar: [{ durum: 'atlandi' }] })).toBe('atlandi');
+    expect(kalemDurumu({ durum: 'aktif', bitti: false, asama: { durum: 'engelli' } })).toBe('engelli');
+    const s = uydular(0, 0, 3, [{ ad: 'a', durum: 'tamam' }, { ad: 'b', durum: 'atlandi' }]);
+    expect(s).toContain('#FFD27A');
+  });
+});

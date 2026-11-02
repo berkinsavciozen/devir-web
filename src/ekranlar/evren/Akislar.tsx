@@ -20,6 +20,11 @@ import { kucukGalaksi, useDetaylar } from './Evren';
 import { akisIlerlemesi } from '../../api/ilerleme';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
+/** Kalemin tek durumu (mini uydu): x.durum alt akışın durumudur (aktif/kapandi), adım durumu değil. Biten kalem tamam
+ *  (bütün adımları atlandıysa atlandı); açık kalem bulunduğu aşamanın durumunda. */
+export const kalemDurumu = (x: any): string => x.bitti
+  ? ((x.adimlar || []).some((a: any) => a.durum === 'tamam') || !(x.adimlar || []).length ? 'tamam' : 'atlandi')
+  : x.asama?.durum || 'sirada';
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const GUN = 864e5;
 const gCloud = iconCloud(1, -3, .42), gRings = iconRings(0, 0, .55);
@@ -87,7 +92,7 @@ export function Akislar({ ben }: { ben: Ben }) {
       s += `<rect x="${f(tx(NOW) - 1)}" y="${cy + 4}" width="2" height="16" rx="1" fill="#FFC9A3"/>`;
       // alt akışlı kart: mini uydular + "N kalem"
       const t = d?.tekrar?.[0];
-      if (t?.kalemler?.length) s += `<g transform="translate(246,${cy - 11})">` + uydular(0, 0, 3, t.kalemler.map((x: any) => ({ ad: x.ad, durum: x.durum || 'sirada' })), .55, { gap: 6, mr: 3.2 }) + `</g>`;
+      if (t?.kalemler?.length) s += `<g transform="translate(246,${cy - 11})">` + uydular(0, 0, 3, t.kalemler.map((x: any) => ({ ad: x.ad, durum: kalemDurumu(x) })), .55, { gap: 6, mr: 3.2 }) + `</g>`;
     });
     // taslak + arşiv
     const yd = Y0 + satirlar.length * RH + 8;
