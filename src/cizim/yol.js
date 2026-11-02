@@ -2,6 +2,7 @@
 // Geometrinin tamamı src/geometri/galaksi-geometri.ts (kur) modülünden gelir; bu dosya yalnız çizer.
 // Fark: girdi API detayından kurulur (akisModeli); üye renkleri ada göre değil role göre seçilir.
 import { apidenAkis } from '../geometri/galaksi-geometri';
+import { ilerleme } from '../api/ilerleme';
 import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
 import { C, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 
@@ -98,8 +99,9 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
   const n = kalemler.length, orR = r + (o.gap ?? 15) * ps;
   let s = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(orR)}" fill="none" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3" opacity=".75"/>`;
   if (!n) return s;
-  const done = kalemler.filter((k) => k.durum === 'tamam').length;
-  if (done) { const a1 = -90 + done / n * 360, p = (a) => [x + Math.cos(a * Math.PI / 180) * orR, y + Math.sin(a * Math.PI / 180) * orR]; const [x0, y0] = p(-90), [x1, y1] = p(Math.min(a1, 269.9)); s += `<path d="M${f(x0)},${f(y0)} A${f(orR)},${f(orR)} 0 ${a1 + 90 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>`; }
+  // sayım sunucuyla aynı (ilerleme, m6): atlanan ve ertelenen kalem toplamdan düşer; kalanların hepsi bitince yay tam
+  const { tamam: done, toplam } = ilerleme(kalemler);
+  if (done && toplam) { const a1 = -90 + done / toplam * 360, p = (a) => [x + Math.cos(a * Math.PI / 180) * orR, y + Math.sin(a * Math.PI / 180) * orR]; const [x0, y0] = p(-90), [x1, y1] = p(Math.min(a1, 269.9)); s += `<path d="M${f(x0)},${f(y0)} A${f(orR)},${f(orR)} 0 ${a1 + 90 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>`; }
   kalemler.forEach((k, i) => {
     const a = (-90 + (i + .5) / n * 360) * Math.PI / 180, mx = x + Math.cos(a) * orR, my = y + Math.sin(a) * orR, mr = (o.mr ?? 4.6) * ps;
     // ip: ana gezegene bağlı olduğu görülsün (alt adım, ayrı gezegen değil)
@@ -107,6 +109,7 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
     if (k.durum === 'tamam') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * 2.4)}" fill="url(#glowGold)" opacity=".8"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pLit2)"/>`;
     else if (k.durum === 'suruyor' || k.durum === 'hazir') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.6)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 1.6"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#2A2452"/><path d="M${f(mx)},${f(my - mr)} A${f(mr)},${f(mr)} 0 0 1 ${f(mx)},${f(my + mr)}Z" fill="#FFE29A"/>`;
     else if (k.durum === 'engelli') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pBlock)"/><path d="M${f(mx - mr * .6)},${f(my - mr * .6)} L${f(mx + mr * .6)},${f(my + mr * .6)}" stroke="#08222E" stroke-width="1.6"/>`;
+    else if (k.durum === 'atlandi' || k.durum === 'ertelendi') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * .8)}" fill="none" stroke="#A99BDB" stroke-width=".9" stroke-dasharray="1.5 1.5" opacity=".8"/>`;
     else s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#08222E" stroke="#B9A6F2" stroke-width="1.2"/>`;
     if (o.ini) s += sans(f(mx + Math.cos(a) * 13 * ps), f(my + Math.sin(a) * 13 * ps + 3.5), k.ad[0], { fs: 9.5 * ps, fw: 750, col: C.ink2, anchor: 'middle' });
   });
@@ -124,16 +127,19 @@ const UYDU_DURUM = { tamam: 'lit', suruyor: 'run', hazir: 'wait', engelli: 'bloc
  */
 export function uyduSistemi(x, y, r, ks, ps = 1, o = {}) {
   const n = ks.length; if (!n) return '';
-  const done = ks.filter((k) => k.durum === 'tamam').length, kalem = ks.some((k) => k.kalem);
+  // k/n sunucunun ilerleme kuralıyla (m6): atlanan ve ertelenen uydu toplamdan düşer. Böylece bitmiş üst görevin halkası tam
+  // dolar (ör. 12 kalemden biri atlandıysa 11/11, 11/12 değil); hepsi atlandıysa sayı yazılmaz
+  const { tamam: done, toplam } = ilerleme(ks), kalem = ks.some((k) => k.kalem);
   if (!o.yakin) {
     const rx = r * 1.95 + 2 * ps, ry = rx * .32, aci = -18 * Math.PI / 180, ca = Math.cos(aci), sa = Math.sin(aci);
     const nok = (th) => [x + rx * Math.cos(th) * ca - ry * Math.sin(th) * sa, y + rx * Math.cos(th) * sa + ry * Math.sin(th) * ca];
     const yay = (a0, a1) => { const P = []; for (let i = 0; i <= 28; i++) P.push(nok(a0 + (a1 - a0) * i / 28)); return yolD(P); };
     const cizgi = kalem ? `stroke-dasharray="0 ${f(3.2 * ps)}" stroke-linecap="round" stroke-width="${f(2.2 * ps)}"` : `stroke-width="${f(1.3 * ps)}"`;
     let s = `<path class="uydu-halka" d="${yay(0, Math.PI * 2)}" fill="none" stroke="#D9CCFF" opacity=".7" ${cizgi}/>`;
-    if (done) s += `<path d="${yay(Math.PI, Math.PI + done / n * Math.PI * 2)}" fill="none" stroke="#FFD27A" ${kalem ? cizgi : `stroke-width="${f(2 * ps)}" stroke-linecap="round"`}/>`;
+    if (done && toplam) s += `<path d="${yay(Math.PI, Math.PI + done / toplam * Math.PI * 2)}" fill="none" stroke="#FFD27A" ${kalem ? cizgi : `stroke-width="${f(2 * ps)}" stroke-linecap="round"`}/>`;
+    if (!toplam) return s;
     const [tx, ty] = nok(0);
-    return s + sans(f(tx + 4 * ps), f(ty + 3.5 * ps), `${done}/${n}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
+    return s + sans(f(tx + 4 * ps), f(ty + 3.5 * ps), `${done}/${toplam}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
   }
   // adlar yazılınca (Z3) aralık yazı satırı kadar açılır
   // dokunulur uydular (o.hedef, plan 28 Eki B4): 44 px hedefler birbirine ve gezegenin hedefine binmesin diye aralık açılır

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
+import { ilerleme } from '../../api/ilerleme';
 import { sorguIstemcisi } from '../../api/sorgular';
 import { hedefPayi } from '../../bilesen/KararSeridi';
 import { Dugme } from '../../bilesen/Dugme';
@@ -158,10 +159,12 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   // W5 (N23, N24): gerçek alt görevler; alt görevin üstü
   const altGorevler: any[] = (A.alt_gorevler || []).map((n: number) => by.get(n)).filter(Boolean);
   const acikAlt = altGorevler.filter((z) => !BITTI(z.durum));
+  // gösterilen k/n sunucunun ilerleme kuralıyla (m6) ve haritadaki uydu halkasıyla aynı: atlanan alt görev toplamdan düşer
+  const altIl = ilerleme(altGorevler), altKN = `${altIl.tamam}/${altIl.toplam}`;
   const ust = A.ust_adim != null ? by.get(A.ust_adim) : null;
   // K2: alt görevli üst görevde sayılar alt görevlerden: biten/toplam, en erken bitiş, son tarih
   if (altGorevler.length) sayilar = [
-    [`${altGorevler.length - acikAlt.length}/${altGorevler.length}`, 'alt görev'],
+    [`${altKN}`, 'alt görev'],
     [BITTI(A.durum) ? gunAy(Date.parse(A.durum_at)) : A.en_erken_bitis ? gunAy(Date.parse(A.en_erken_bitis)) : '–', BITTI(A.durum) ? 'bitti' : 'en erken bitiş'],
     [A.son_tarih ? gunAy(tarihMs(A.son_tarih)) : 'yok', 'son tarih'],
   ];
@@ -188,11 +191,11 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
       </nav>
       <header className={`gd-bas${ust ? ' gd-bas-alt' : ''}`}>
         {/* alt görev uydu boyunda (N24): üst görevinden küçük gezegen, "alt görev" etiketi */}
-        <svg aria-hidden className="gd-gezegen" width="64" height="64" viewBox="-32 -32 64 64" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 13 : 22) + (altGorevler.length ? `<ellipse rx="31" ry="8" fill="none" stroke="#B9A6F2" stroke-width="1.6" stroke-opacity=".8" transform="rotate(-16)"/><text x="0" y="31" text-anchor="middle" font-size="10" font-weight="700" fill="#D9CCFF">${altGorevler.length - acikAlt.length}/${altGorevler.length}</text>` : '') }} />
+        <svg aria-hidden className="gd-gezegen" width="64" height="64" viewBox="-32 -32 64 64" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 13 : 22) + (altGorevler.length ? `<ellipse rx="31" ry="8" fill="none" stroke="#B9A6F2" stroke-width="1.6" stroke-opacity=".8" transform="rotate(-16)"/><text x="0" y="31" text-anchor="middle" font-size="10" font-weight="700" fill="#D9CCFF">${altKN}</text>` : '') }} />
         <div className="gd-bas-metin">
           {ust && <span className="gd-tur">ALT GÖREV</span>}
           <h2>{adimAdi(A)}</h2>
-          <small>{kisaAd(A.sahip)} · {A.durum_etiket || A.durum}{krt ? ' · kritik yol' : ''}{A.karar_adimi ? ' · karar' : ''}{altGorevler.length ? ` · ${altGorevler.length - acikAlt.length}/${altGorevler.length} alt görev` : ''}</small>
+          <small>{kisaAd(A.sahip)} · {A.durum_etiket || A.durum}{krt ? ' · kritik yol' : ''}{A.karar_adimi ? ' · karar' : ''}{altGorevler.length ? ` · ${altKN} alt görev` : ''}</small>
         </div>
         <nav className="gd-gez" aria-label="Görevler arasında">
           <button type="button" aria-label={onceki != null ? `Önceki görev: ${onceki}` : 'Önceki görev yok'} disabled={onceki == null} onClick={() => adimaGit(onceki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M3,-6 L-3,0 L3,6" /></svg></button>
@@ -216,7 +219,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         {bitir.isError && <p className="canli-hata-satir" role="alert">{(bitir.error as Error).message}</p>}
       </div>
 
-      {(altGorevler.length > 0 || altEklenir) && <Bolum baslik={altGorevler.length ? `ALT GÖREVLER · ${altGorevler.length - acikAlt.length}/${altGorevler.length}` : 'ALT GÖREVLER'} id="gd-alt-gorevler">
+      {(altGorevler.length > 0 || altEklenir) && <Bolum baslik={altGorevler.length ? `ALT GÖREVLER · ${altKN}` : 'ALT GÖREVLER'} id="gd-alt-gorevler">
         {altGorevler.length > 0 && <ul className="gd-baglar gd-alt-liste">{altGorevler.map(altAkordiyon)}</ul>}
         {altEklenir && <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const t = altAd.trim(); if (t && !altEkle.isPending) altEkle.mutate(t); }}>
           <input className="alan" value={altAd} onChange={(e) => setAltAd(e.target.value)} placeholder="Alt görev ekle" aria-label="Yeni alt görevin adı" maxLength={120} />
