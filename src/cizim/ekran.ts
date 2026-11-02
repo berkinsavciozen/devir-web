@@ -24,11 +24,11 @@ export const dikkatIkon = (renk = '#FFD27A') =>
   `<circle r="7" fill="none" stroke="${renk}" stroke-width="1.4"/><rect x="-.8" y="-4" width="1.6" height="4.6" fill="${renk}"/><circle cy="2.6" r=".9" fill="${renk}"/>`;
 
 /** Logo işareti (A4, A5): şeftali ay. Merkez 0,0. */
-export const logoIsaret = () => `<circle r="13" fill="url(#btn)"/><circle cx="4" cy="-3" r="9" fill="#120B2C"/>`;
+export const logoIsaret = () => `<circle r="13" fill="url(#btn)"/><circle cx="4" cy="-3" r="9" fill="#061A24"/>`;
 
 /** Kopyala ikonu (44 px düğmenin içi, sol üst 0,0). */
 export const kopyaIkon = () =>
-  `<rect x="14" y="11" width="13" height="16" rx="3" fill="none" stroke="#FFD27A" stroke-width="1.6"/><rect x="18" y="16" width="13" height="16" rx="3" fill="#2A1D5C" stroke="#FFD27A" stroke-width="1.6"/>`;
+  `<rect x="14" y="11" width="13" height="16" rx="3" fill="none" stroke="#FFD27A" stroke-width="1.6"/><rect x="18" y="16" width="13" height="16" rx="3" fill="#0E3550" stroke="#FFD27A" stroke-width="1.6"/>`;
 export const tikIkon = () => `<path d="M15,22 L20,27 L29,17" stroke="#FFD27A" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
 
 /** Anahtar ikonu (Anahtarla gir), merkez 0,0. */
@@ -58,7 +58,7 @@ export function evrenHalkasi(flows: EvrenAkis[], o: EvrenSecenek) {
   const ang = (ms: number) => -90 + (ms - CA) / (CB - CA) * 360;
   const pol = (a: number, r: number) => [cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r];
   let s = `<circle cx="${cx}" cy="${cy}" r="${R + 40}" fill="url(#glowLilac)" opacity=".35"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="20"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#061A24" stroke-width="20"/>`;
   s += `<circle cx="${cx}" cy="${cy}" r="${R + 10}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/><circle cx="${cx}" cy="${cy}" r="${R - 10}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/>`;
   const aNow = ang(NOW);
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
@@ -113,7 +113,7 @@ const AY_KISA = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl'
 /** Galaksi çerçevesinin galaksi yarıçapından payı; ad hapı bu çizginin üstünde durur (N1, N3). */
 export const CERCEVE = 4;
 /** Galaksinin sınırı: koyu iç zemin, lila çizgi (haritada akışın kapladığı yer okunur). */
-export const cerceve = (x: number, y: number, rr: number, gec = false) => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr + CERCEVE)}" fill="#120B2C" fill-opacity=".38" stroke="${gec ? '#FF8A78' : '#8E80D6'}" stroke-opacity="${gec ? .95 : .6}" stroke-width="${gec ? 2 : 1.3}"/>`;
+export const cerceve = (x: number, y: number, rr: number, gec = false) => `<circle cx="${f(x)}" cy="${f(y)}" r="${f(rr + CERCEVE)}" fill="#061A24" fill-opacity=".38" stroke="${gec ? '#FF8A78' : '#8E80D6'}" stroke-opacity="${gec ? .95 : .6}" stroke-width="${gec ? 2 : 1.3}"/>`;
 /** Çerçeveye takılı ad hapının çizgisi (Evren hapları). */
 export const CERCEVE_HAP = '#6B5FB0';
 /** pill genişliği (ortak.js pill ile aynı kural) */
@@ -147,7 +147,7 @@ export function usturlap(o: {
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
   let s = `<circle cx="${cx}" cy="${cy}" r="${R + 40}" fill="url(#glowLilac)" opacity=".35"/>`;
   // ince halka (plan 27 Eki, 3.29): 12 px bant, ±6 kenar
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="12"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#061A24" stroke-width="12"/>`;
   s += `<circle cx="${cx}" cy="${cy}" r="${R + 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/><circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45" stroke-width="1"/>`;
   const aNow = Math.min(270, Math.max(-90, ang(NOW)));
   s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="#FFB47F" stroke-width="12" opacity=".35" filter="url(#blur6)"/>`;
@@ -254,7 +254,7 @@ export function usturlap(o: {
 }
 
 /** Karar bekleyen bayrak rozeti (son-ortak.js bayrak). */
-export const bayrak = (x: number, y: number, sc = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${sc})"><circle r="11" fill="#150E33" stroke="#FFD27A" stroke-width="1.4"/><rect x="-3.6" y="-6.5" width="1.4" height="13" fill="#FFF1E0"/><path d="M-2.2,-6.5 L6,-3.6 L-2.2,-.8Z" fill="#FFD27A"/></g>`;
+export const bayrak = (x: number, y: number, sc = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${sc})"><circle r="11" fill="#071D29" stroke="#FFD27A" stroke-width="1.4"/><rect x="-3.6" y="-6.5" width="1.4" height="13" fill="#FFF1E0"/><path d="M-2.2,-6.5 L6,-3.6 L-2.2,-.8Z" fill="#FFD27A"/></g>`;
 /** Fatura işareti (son-ortak.js makbuz): dolu = var, boş ve çizik = yok/teyitsiz. */
 export const makbuz = (x: number, y: number, var_ = true) => `<g transform="translate(${x},${y})"><path d="M-6,-8 L6,-8 L6,8 L3,6 L0,8 L-3,6 L-6,8Z" fill="${var_ ? '#FFD27A' : 'none'}" stroke="${var_ ? '#FFD27A' : '#9C8BE0'}" stroke-width="1.3"/>${var_ ? '<path d="M-3,-3 L3,-3 M-3,1 L2,1" stroke="#2A1D4F" stroke-width="1.3"/>' : '<path d="M-6,-8 L6,8" stroke="#9C8BE0" stroke-width="1.3"/>'}</g>`;
 
@@ -275,7 +275,7 @@ export function evrenOlcek(o: {
   const pol = (a: number, r: number) => [cx + Math.cos(a * Math.PI / 180) * r, cy + Math.sin(a * Math.PI / 180) * r];
   const arc = (a0: number, a1: number, r: number) => { const [x0, y0] = pol(a0, r), [x1, y1] = pol(a1, r); return `M${f(x0)},${f(y0)} A${r},${r} 0 ${a1 - a0 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}`; };
   let s = `<circle cx="${cx}" cy="${cy}" r="${R + 40}" fill="url(#glowLilac)" opacity=".35"/>`;
-  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#120B2C" stroke-width="12"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="#061A24" stroke-width="12"/>`;
   s += `<circle cx="${cx}" cy="${cy}" r="${R + 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/><circle cx="${cx}" cy="${cy}" r="${R - 6}" fill="none" stroke="#8E80D6" stroke-opacity=".45"/>`;
   const aNow = Math.min(270, Math.max(-90, ang(NOW)));
   s += `<path d="${arc(-90, aNow, R)}" fill="none" stroke="url(#brass)" stroke-width="6" stroke-linecap="round"/>`;

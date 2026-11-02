@@ -78,7 +78,7 @@ export function HesapIcerik({ y, ben, cikis = true }: { y: number; ben: Ben | un
     {davetL != null && <>
       <h3 className="bolum-baslik" style={{ top: davetL + 8 }}>DAVET</h3>
       {D.map((d, i) => (
-        <SatirKart key={d.id} y={davetL + 34 + i * 66} ikon={`<g transform="translate(26,29)"><circle r="15" fill="#1E1645" stroke="#F2B8D8" stroke-dasharray="2 3"/>${zarfIkon(0, 0, .22)}</g>`}
+        <SatirKart key={d.id} y={davetL + 34 + i * 66} ikon={`<g transform="translate(26,29)"><circle r="15" fill="#0A2838" stroke="#F2B8D8" stroke-dasharray="2 3"/>${zarfIkon(0, 0, .22)}</g>`}
           ust={alanAdi(d.alan || '', d.davet_eden)} alt={`${rolAdi(d.rol)}${d.davet_eden ? ` · ${d.davet_eden} davet etti` : ''}`}
           sag={<button type="button" className="satir-eylem altin" onClick={() => katil.mutate(d)} disabled={katil.isPending}>Katıl</button>} />
       ))}

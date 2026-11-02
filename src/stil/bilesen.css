@@ -114,7 +114,7 @@
 .kutu-kip .alt-sayfa {
   top: 50%; left: 50%; right: auto; bottom: auto; width: min(460px, calc(100vw - 24px));
   transform: translate(-50%, -50%); border-radius: 24px; animation-name: kutu-gir; padding-bottom: 0;
-  box-shadow: 0 24px 64px rgba(8, 4, 24, .55), inset 0 0 0 1px var(--renk-vurgu-cizgi-lila);
+  box-shadow: 0 24px 64px rgba(2, 10, 14, .55), inset 0 0 0 1px var(--renk-vurgu-cizgi-lila);
 }
 .kutu-kip .alt-sayfa::before { display: none; }
 @keyframes kutu-gir { from { opacity: 0; transform: translate(-50%, -48%); } }
@@ -712,7 +712,7 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .serit-daralt.tasar { padding-right: 34px; }
 .serit-daralt:not(.acik) > .karar-seridi { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .serit-daralt:not(.acik) > .karar-seridi .ks-parca::after { white-space: pre; }
-.serit-daralt.acik { z-index: 6; margin: -10px -12px 0; padding: 10px 46px 12px 12px; border-radius: 16px; background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 94%, transparent); box-shadow: 0 10px 28px rgba(8, 4, 24, .55), inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 35%, transparent); }
+.serit-daralt.acik { z-index: 6; margin: -10px -12px 0; padding: 10px 46px 12px 12px; border-radius: 16px; background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 94%, transparent); box-shadow: 0 10px 28px rgba(2, 10, 14, .55), inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 35%, transparent); }
 .serit-ac { position: absolute; right: -10px; top: -13px; width: 44px; height: 44px; border: 0; padding: 0; background: none; color: var(--renk-metin-ink2); cursor: pointer; pointer-events: auto; }
 .serit-daralt.acik .serit-ac { right: 2px; top: -3px; }
 .serit-ac::before { content: ""; position: absolute; left: 18px; top: 16px; width: 7px; height: 7px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(45deg); transition: transform var(--sure-kisa); }
@@ -851,7 +851,7 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .ust-dugmeler .zil-dugme { position: relative; }
 /* evrende en yakında: akışa geçmeden önce sorulur (plan 27 Eki, 3.28) */
 /* evren: akış bilgi kartı (plan 28 Eki, B1); haritanın en boş köşesinde */
-.akis-bilgi-karti { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 12px 16px; border-radius: 20px; background: color-mix(in srgb, var(--renk-zemin-kart) 94%, transparent); border: 1px solid var(--renk-vurgu-cizgi-koyu); box-shadow: 0 12px 32px rgba(8, 4, 24, .45); }
+.akis-bilgi-karti { position: absolute; z-index: 4; display: flex; flex-direction: column; gap: 6px; padding: 12px 12px 12px 16px; border-radius: 20px; background: color-mix(in srgb, var(--renk-zemin-kart) 94%, transparent); border: 1px solid var(--renk-vurgu-cizgi-koyu); box-shadow: 0 12px 32px rgba(2, 10, 14, .45); }
 .abk-ust { display: flex; align-items: center; gap: 8px; margin-right: -4px; }
 .abk-ust h2 { flex: 1; margin: 0; font: 400 18px/22px Caladea, serif; color: var(--renk-metin-ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .abk-kapat { flex: none; width: 44px; height: 44px; margin: -8px -4px -8px 0; border-radius: 22px; font-size: 22px; line-height: 1; color: var(--renk-metin-ink2); background: none; cursor: pointer; }
@@ -893,7 +893,7 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 /* üst görev kırıntısı (plan 27 Eki, 1.5) */
 .ust-kirinti { font-weight: 500; color: var(--renk-metin-ink3); }
 /* üst görevi daralt / aç (plan 27 Eki, 1.2) */
-.grup-ac { position: absolute; right: 20px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(185, 166, 242, .35); border-radius: 12px; background: rgba(30, 22, 69, .7); cursor: pointer; padding: 0; }
+.grup-ac { position: absolute; right: 20px; width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid rgba(185, 166, 242, .35); border-radius: 12px; background: rgba(10, 40, 56, .7); cursor: pointer; padding: 0; }
 .grup-ac:focus-visible { outline: 2px solid var(--renk-metin-altin); outline-offset: 2px; }
 /* 1.3 · alt görev akordiyonu */
 .gd-akordiyon { border-radius: 14px; background: color-mix(in srgb, #FFFFFF 4%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }

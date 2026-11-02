@@ -38,7 +38,7 @@ export function AdimIsaretleri({ a }: { a: any }) {
     <>
       <span className="satir-isaretler" aria-hidden>
         {karar && <svg width="14" height="18" viewBox="-7 -9 14 18"><title>Karar</title><path d="M-4,-8 V8" stroke="#FFF1E0" strokeWidth="1.4" /><path d="M-3,-8 L6,-4.5 L-3,-1Z" fill="#FFD27A" /></svg>}
-        {cikti && <svg width="14" height="18" viewBox="-7 -9 14 18"><title>Çıktı</title><path d="M-5,-8 H2 L6,-4 V8 H-5Z" fill="#1A1238" stroke="#D9CCFF" strokeWidth="1.2" strokeLinejoin="round" /><path d="M-2,0 H3 M-2,3.5 H2" stroke="#B9A6F2" strokeWidth="1.1" strokeLinecap="round" /></svg>}
+        {cikti && <svg width="14" height="18" viewBox="-7 -9 14 18"><title>Çıktı</title><path d="M-5,-8 H2 L6,-4 V8 H-5Z" fill="#08222E" stroke="#D9CCFF" strokeWidth="1.2" strokeLinejoin="round" /><path d="M-2,0 H3 M-2,3.5 H2" stroke="#B9A6F2" strokeWidth="1.1" strokeLinecap="round" /></svg>}
         {a.cikti_sayisi > 1 && <i>{a.cikti_sayisi}</i>}
       </span>
       <Ok />
@@ -54,7 +54,7 @@ export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';
   return [kisaAd(a.sahip), a.durum_etiket || a.durum, t].filter(Boolean).join(' · ');
 }
-const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#1A1238" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
+const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#08222E" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
 
 /** Bir sütun satır kartı ve bölüm başlıkları; dönen y sonraki boş yer. */
 /** girinti: alt görev satırı; grup: daraltılabilir üst görev (1.2) */

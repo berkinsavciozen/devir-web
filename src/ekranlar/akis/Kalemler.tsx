@@ -42,7 +42,7 @@ export function Kalemler({ kod, no, ben }: { kod: string; no: number; ben: strin
   const arka = useMemo(() => {
     if (!d) return '';
     const Y = yolCiz(akisModeli(d, { sahip: ben }), { cx: 195, cy: 160, R: 105, ps: .62, now: NOW, kuleEtiket: false, labels: [] });
-    let s = `<g opacity=".5">${Y.svg}</g><rect width="390" height="844" fill="#07051A" opacity=".35"/>`;
+    let s = `<g opacity=".5">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".35"/>`;
     const p = Y.G.gezegen[no];
     if (p && g) s += planet(p.x, p.y, 13, 'wait', { waitRings: 2 }) + uydular(p.x, p.y, 13, g.kalemler.map((k: any) => ({ ad: k.ad, durum: k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada' })), .9);
     return s;
@@ -88,9 +88,9 @@ export function Kalemler({ kod, no, ben }: { kod: string; no: number; ben: strin
                         const cur = j === idx && !k.bitti;
                         const cizgi = j ? <line x1={bx - 16} y1={0} x2={bx - 6} y2={0} stroke={BITTI(dur) || cur ? '#FFD27A' : '#4B4380'} strokeWidth={1.4} /> : null;
                         const top = BITTI(dur) ? <circle cx={bx} r={5} fill="url(#pLit2)" />
-                          : dur === 'engelli' ? <><circle cx={bx} r={5} fill="url(#pBlock)" /><path d={`M${bx - 3},-3 L${bx + 3},3`} stroke="#1A1238" strokeWidth={1.5} /></>
+                          : dur === 'engelli' ? <><circle cx={bx} r={5} fill="url(#pBlock)" /><path d={`M${bx - 3},-3 L${bx + 3},3`} stroke="#08222E" strokeWidth={1.5} /></>
                           : dur === 'suruyor' || dur === 'hazir' ? <><circle cx={bx} r={7.5} fill="none" stroke="#FFD27A" strokeWidth={1} strokeDasharray="2 1.6" /><circle cx={bx} r={4.5} fill="#2A2452" /><path d={`M${bx},-4.5 A4.5,4.5 0 0 1 ${bx},4.5Z`} fill="#FFE29A" /></>
-                          : <circle cx={bx} r={4.5} fill="#1A1238" stroke="#B9A6F2" strokeWidth={1.1} />;
+                          : <circle cx={bx} r={4.5} fill="#08222E" stroke="#B9A6F2" strokeWidth={1.1} />;
                         return <g key={n}>{cizgi}{top}</g>;
                       })}
                     </svg>

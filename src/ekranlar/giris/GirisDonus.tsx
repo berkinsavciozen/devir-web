@@ -18,7 +18,7 @@ const A1C_CIZIM =
 
 // A1d süsleri: sönük zarf, kesik yörünge
 function a1dCizim() {
-  let s = `<rect width="390" height="844" fill="#07051A" opacity=".25"/>`;
+  let s = `<rect width="390" height="844" fill="#020B10" opacity=".25"/>`;
   s += `<circle cx="195" cy="280" r="96" fill="url(#glowLilac)" opacity=".7"/>`;
   for (let i = 0; i < 6; i++) {
     const a0 = i * 60 + 8, a1 = a0 + 34, r = 78, p = (a: number) => [195 + Math.cos(a * Math.PI / 180) * r, 280 + Math.sin(a * Math.PI / 180) * r * .5];

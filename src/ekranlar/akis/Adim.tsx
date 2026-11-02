@@ -229,7 +229,7 @@ function AdimArka({ d, no, sheetY, sahip }: { d: any; no: number; sheetY: number
     const M = akisModeli(d, { sahip });
     const cy = sheetY > 200 ? 196 : 150, R = sheetY > 200 ? 120 : 100;
     const Y = yolCiz(M, { cx: 195, cy, R, ps: .7, now: simdi(), sel: no, selTop: true, labels: [] });
-    return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#07051A" opacity=".38"/>` + (Y.secim || '');
+    return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".38"/>` + (Y.secim || '');
   }, [d, no, sheetY, sahip]);
   return (
     <Sahne gok={{ tohum: 33, yildiz: 260 }} cizim={cizim} etiket={d ? akisAdi(d.akis) : 'Akış'}>
@@ -256,12 +256,12 @@ function Satir({ ikon, ust, baslik, metin, cikti, cizgi, git: gidis }: { ikon: s
 }
 
 const IKON = {
-  gelecek: `<circle r="7" fill="#1A1238" stroke="#B9A6F2" stroke-width="1.4" stroke-dasharray="2 2"/>`,
-  engel: `<circle r="10" fill="#150E33" stroke="#FF8A78" stroke-width="1.3"/>` + iconCloud(1, -2, .36),
-  ilerleme: `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/><path d="M-4,3 L-1,-1 L2,1 L5,-4" stroke="#D9CCFF" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
-  hazir: `<circle r="10" fill="#150E33" stroke="#FFD27A" stroke-width="1.3"/>` + sparkle(0, 0, 5, '#FFE7A8', 1),
+  gelecek: `<circle r="7" fill="#08222E" stroke="#B9A6F2" stroke-width="1.4" stroke-dasharray="2 2"/>`,
+  engel: `<circle r="10" fill="#071D29" stroke="#FF8A78" stroke-width="1.3"/>` + iconCloud(1, -2, .36),
+  ilerleme: `<circle r="10" fill="#071D29" stroke="#B9A6F2" stroke-width="1.3"/><path d="M-4,3 L-1,-1 L2,1 L5,-4" stroke="#D9CCFF" stroke-width="1.5" fill="none" stroke-linecap="round"/>`,
+  hazir: `<circle r="10" fill="#071D29" stroke="#FFD27A" stroke-width="1.3"/>` + sparkle(0, 0, 5, '#FFE7A8', 1),
   bitti: `<circle r="10" fill="url(#pLit2)"/>`,
-  not: `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/><path d="M-4,-3 H4 M-4,0 H4 M-4,3 H1" stroke="#D9CCFF" stroke-width="1.4" stroke-linecap="round"/>`,
+  not: `<circle r="10" fill="#071D29" stroke="#B9A6F2" stroke-width="1.3"/><path d="M-4,-3 H4 M-4,0 H4 M-4,3 H1" stroke="#D9CCFF" stroke-width="1.4" stroke-linecap="round"/>`,
 };
 
 export function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; kod: string }) {
@@ -278,7 +278,7 @@ export function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; ko
   const olaylar = ham
     .filter((e: any) => !(e.tip === 'guncelleme' && !olayMetni(e).cikti && ham.some((x: any) => x.tip === 'durum' && Math.abs(x._t - e._t) < 2000)))
     .sort((x: any, y: any) => (Math.abs(x._t - y._t) < 2000 ? Number(y.tip === 'durum') - Number(x.tip === 'durum') : y._t - x._t));
-  const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#150E33" stroke="#B9A6F2" stroke-width="1.3"/>` + ship(0, 0, 0, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim_tip === 'agent' ? e.arac || e.kim : e.kim || '?')[0], e.kim_tip === 'agent' ? C.lilac : C.peach, .42, { flame: false }) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
+  const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#071D29" stroke="#B9A6F2" stroke-width="1.3"/>` + ship(0, 0, 0, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim_tip === 'agent' ? e.arac || e.kim : e.kim || '?')[0], e.kim_tip === 'agent' ? C.lilac : C.peach, .42, { flame: false }) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
   // agent kaydı kimin adına yazıldığını gösterir; kanalı olmayan (0.13.0 öncesi) kayıt doğrulanmamış eski kayıttır
   const kim = (e: any) => e.kim_tip === 'agent' ? `${e.arac || 'AI'} (${kisaAd(e.kim)} adına)` : e.kim;
   const eski = (e: any) => (e.kim_tip !== 'sistem' && !e.kanal ? ' · doğrulanmamış eski kayıt' : '');

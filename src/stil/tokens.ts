@@ -1,17 +1,17 @@
 /* Üretildi: npm run tokens (kaynak tasarim/tokens.json). Elle düzenleme. */
 export const tokens = {
   "zemin": {
-    "gok-0": "#090619",
-    "gok-1": "#120C2E",
-    "gok-2": "#1D1240",
-    "gok-3": "#2B1546",
-    "sayfa-ust": "#2F2468",
-    "sayfa-orta": "#231A52",
-    "sayfa-alt": "#1A1440",
-    "kart": "#120B2C",
-    "alan": "#0E0A26",
-    "hap": "#1A1440",
-    "sayfa-govde": "#090619"
+    "gok-0": "#030E14",
+    "gok-1": "#06192A",
+    "gok-2": "#082533",
+    "gok-3": "#0A2F2C",
+    "sayfa-ust": "#12405A",
+    "sayfa-orta": "#0E3346",
+    "sayfa-alt": "#0A2736",
+    "kart": "#061A24",
+    "alan": "#05151E",
+    "hap": "#0A2736",
+    "sayfa-govde": "#030E14"
   },
   "metin": {
     "ink": "#FFF3E8",
@@ -53,22 +53,22 @@ export const tokens = {
   "degrade": {
     "gok": [
       {
-        "renk": "#090619",
+        "renk": "#030E14",
         "opaklik": 1,
         "konum": 0
       },
       {
-        "renk": "#120C2E",
+        "renk": "#06192A",
         "opaklik": 1,
         "konum": 0.4
       },
       {
-        "renk": "#1D1240",
+        "renk": "#082533",
         "opaklik": 1,
         "konum": 0.8
       },
       {
-        "renk": "#2B1546",
+        "renk": "#0A2F2C",
         "opaklik": 1,
         "konum": 1
       }
@@ -87,17 +87,17 @@ export const tokens = {
     ],
     "sayfa": [
       {
-        "renk": "#2F2468",
+        "renk": "#12405A",
         "opaklik": 1,
         "konum": 0
       },
       {
-        "renk": "#231A52",
+        "renk": "#0E3346",
         "opaklik": 1,
         "konum": 0.5
       },
       {
-        "renk": "#1A1440",
+        "renk": "#0A2736",
         "opaklik": 1,
         "konum": 1
       }
@@ -389,12 +389,12 @@ export const tokens = {
     ],
     "kenar-karartma": [
       {
-        "renk": "#05030F",
+        "renk": "#010709",
         "opaklik": 0,
         "konum": 0.55
       },
       {
-        "renk": "#05030F",
+        "renk": "#010709",
         "opaklik": 0.75,
         "konum": 1
       }
