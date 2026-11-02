@@ -15,15 +15,15 @@ const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 's
 // Harita dili (denetim planı, CELISKILER 64): haritadaki işaretlerin ne demek olduğu. "?" düğmesiyle açılır.
 type Satir = [string, string, string, LejantAnahtar?];
 const SATIRLAR: Satir[] = [
-  [planet(22, 22, 9, 'lit', { life: false }), 'Bitti', 'Işıklı', 'bitti'],
-  [planet(22, 22, 9, 'run', { life: false }), 'Sürüyor', 'Yeşil, dönen kesik halka', 'suruyor'],
-  [planet(22, 22, 9, 'wait', { life: false, waitRings: 1 }), 'Sırası geldi', 'Amber halka; sahibini bekliyor', 'sira'],
+  [planet(22, 22, 9, 'lit', { life: false }), 'Bitti', 'Yeşil, tikli', 'bitti'],
+  [planet(22, 22, 9, 'run', { life: false }), 'Sürüyor', 'Mavi, dönen yay', 'suruyor'],
+  [planet(22, 22, 9, 'wait', { life: false, waitRings: 1 }), 'Sırası geldi', 'Kehribar, halkalı; sahibini bekliyor', 'sira'],
   [planet(22, 22, 9, 'block', { life: false, cloudGap: 2 }), 'Engelli', 'Fırtına bulutu ve şimşek', 'engel'],
   [planet(22, 22, 9, 'dark', { life: false }), 'Sırada', 'Karanlık; önündeki adım bitince yanar', 'sirada'],
   [planet(22, 22, 9, 'ertele', { life: false }), 'Ertelendi', 'Soluk, saatli; açık iş olarak kalır', 'ertele'],
   [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili, üstü çizik', 'atlandi'],
   [planet(22, 22, 9, 'wait', { life: false, waitRings: 1, karar: true }), 'Karar', 'Bayraklı: son söz insanda', 'karar'],
-  [tac(22, 22, 8, 1) + planet(22, 22, 8, 'dark', { life: false }), 'Darboğaz', 'Taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
+  [planet(22, 24, 8, 'dark', { life: false }) + tac(22, 24, 8, 1, true), 'Darboğaz', 'Lila taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
   [planet(22, 22, 8, 'dark', { life: false }) + elmas(13, 13, 1.3), 'Kritik yol', 'Altın elmas: gecikirse hedef tarih kayar', 'kritik'],
   [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],
   [`<circle cx="22" cy="22" r="8" fill="url(#pDark)" stroke="#8E80D6"/><path d="M22,11 A11,11 0 0 1 22,33" fill="none" stroke="#FFC9A3" stroke-width="2.2" stroke-linecap="round"/><path d="M22,33 A11,11 0 0 1 22,11" fill="none" stroke="#8EC5FF" stroke-width="2.2" stroke-linecap="round" stroke-dasharray="0 2.5 30"/>`, 'Ortak görev', 'Çok renkli halka: birden fazla kişinin ortak görevi', 'ortak'],
@@ -37,10 +37,10 @@ const SATIRLAR: Satir[] = [
 /** Evren dili (el notu 2): usturlap, yörünge ve işaretler (ip, plan 27 Eki 3.27 ile kalktı). */
 const EVREN_SATIRLAR: Satir[] = [
   [`<circle cx="22" cy="22" r="19" fill="none" stroke="#061A24" stroke-width="6"/><path d="M22,3 A19,19 0 0 1 39,14" fill="none" stroke="#FFC9A3" stroke-width="4" stroke-linecap="round"/><path d="M22,22 L37,12" stroke="#FFD9B8" stroke-width="1.8" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="#FFD27A"/>`, 'Takvim halkası ve ibre', 'Halka aylar; ibre bugün, dolan yay geçen zaman'],
-  [`<circle cx="22" cy="22" r="12" fill="url(#glowGold)" opacity=".5"/><circle cx="22" cy="22" r="8" fill="url(#pLit)"/><circle cx="22" cy="22" r="12" fill="none" stroke="#3A3170" stroke-width="1.6"/><path d="M22,10 A12,12 0 0 1 34,22" fill="none" stroke="#FFD27A" stroke-width="1.8"/>`, 'Galaksi', 'Bir akış; çerçeveli, adı çerçevede; boyu adım sayısı, ışığı ve yayı biten adımlar', 'galaksi'],
-  [`<path d="M6,34 A24,24 0 0 1 22,10" fill="none" stroke="#FFD27A" stroke-width="1.6" opacity=".7"/><path d="M22,10 A24,24 0 0 1 38,20" fill="none" stroke="#B9A6F2" stroke-width="1.2" opacity=".6"/><circle cx="38" cy="20" r="5" fill="url(#pLit)"/>`, 'Yörünge', 'Başlangıçtan hedefe; altın kısım geçen süre'],
+  [`<circle cx="22" cy="22" r="12" fill="url(#glowGold)" opacity=".5"/><circle cx="22" cy="22" r="8" fill="url(#pGreen)"/><circle cx="22" cy="22" r="12" fill="none" stroke="#3A3170" stroke-width="1.6"/><path d="M22,10 A12,12 0 0 1 34,22" fill="none" stroke="#FFD27A" stroke-width="1.8"/>`, 'Galaksi', 'Bir akış; çerçeveli, adı çerçevede; boyu adım sayısı, ışığı ve yayı biten adımlar', 'galaksi'],
+  [`<path d="M6,34 A24,24 0 0 1 22,10" fill="none" stroke="#FFD27A" stroke-width="1.6" opacity=".7"/><path d="M22,10 A24,24 0 0 1 38,20" fill="none" stroke="#B9A6F2" stroke-width="1.2" opacity=".6"/><circle cx="38" cy="20" r="5" fill="url(#pGreen)"/>`, 'Yörünge', 'Başlangıçtan hedefe; altın kısım geçen süre'],
   [`<circle cx="22" cy="22" r="18" fill="none" stroke="#8E80D6" stroke-dasharray="2 3"/><circle cx="22" cy="22" r="5" fill="url(#brass)"/><circle cx="22" cy="10" r="3.5" fill="#FFD27A"/><circle cx="22" cy="38" r="3.5" fill="#B9A6F2"/>`, 'Merkeze uzaklık', 'Kalan iş: bitmeye yaklaşan akış merkeze iner; merkez biten akışlar'],
-  [`<circle cx="22" cy="22" r="13" fill="#061A24" fill-opacity=".4" stroke="#FF8A78" stroke-width="2"/><circle cx="22" cy="22" r="6" fill="url(#pLit)"/>`, 'Kırmızı çerçeve', 'Hedef tarihi geçiyor'],
+  [`<circle cx="22" cy="22" r="13" fill="#061A24" fill-opacity=".4" stroke="#FF8A78" stroke-width="2"/><circle cx="22" cy="22" r="6" fill="url(#pGreen)"/>`, 'Kırmızı çerçeve', 'Hedef tarihi geçiyor'],
   [`<g transform="translate(22,24)">${iconCloud(0, 0, .6)}</g>`, 'Takılan iş', 'Engelli adımı olan akış', 'engel'],
   [`<g transform="translate(22,22)">${iconRings(0, 0, .8)}</g>`, 'Bekleyen iş', 'Sırası gelmiş, sahibini bekliyor', 'sira'],
   [bayrak(22, 22, .9), 'Karar', 'Karar bekleyen adımı var', 'karar'],

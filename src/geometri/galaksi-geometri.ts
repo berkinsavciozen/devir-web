@@ -391,7 +391,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
     if (x > simdi && !BITTI(a.durum) && a.t <= x) return 'tahmin';
     const xx = Math.min(x, simdi);
     if (a.durum === 'engelli' && a.engel_at != null && a.engel_at <= xx) return 'block';
-    // sürüyor ile sırası geldi ayrı (R13): sürüyor yeşil halka, bekleyen kehribar
+    // sürüyor ile sırası geldi ayrı (R13): sürüyor mavi, bekleyen kehribar
     if (a.hazir_at != null && a.hazir_at <= xx) return a.durum === 'suruyor' && x >= simdi - 36e5 ? 'run' : 'wait';
     if (x > simdi && ['hazir', 'suruyor'].includes(a.durum)) return a.durum === 'suruyor' ? 'run' : 'wait';
     return 'dark';

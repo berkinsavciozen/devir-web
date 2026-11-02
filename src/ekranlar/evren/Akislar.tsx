@@ -35,7 +35,8 @@ export function bitenOrani(k: any, d?: any) {
   const i = akisIlerlemesi(k, d);
   return i.toplam ? i.tamam / i.toplam : 0;
 }
-const boncukRenk = (d: string) => (BITTI(d) && d !== 'atlandi' ? ['#FFE29A', 2.4] : d === 'atlandi' ? ['#FFE29A', 2.4] : d === 'engelli' ? ['#FF8A78', 1.8] : d === 'hazir' || d === 'suruyor' ? ['#E9C8FF', 1.8] : ['#4B4380', 1.8]) as [string, number];
+// 2 Kas durum dili: tamam yeşil, sürüyor mavi, sırası geldi kehribar, engel mercan; atlanan/ertelenen silik (önceden tamamla aynı altındı)
+const boncukRenk = (d: string) => (d === 'tamam' ? ['#7BF0A0', 2.4] : d === 'atlandi' || d === 'ertelendi' ? ['#5A5090', 1.6] : d === 'engelli' ? ['#FF8A78', 1.8] : d === 'suruyor' ? ['#A8C4FF', 1.9] : d === 'hazir' ? ['#FFB547', 1.9] : ['#4B4380', 1.8]) as [string, number];
 
 /** "5 akış sürüyor; Test Bank’te hedef riskte." */
 export function listeCumlesi(kartlar: any[]): string {
