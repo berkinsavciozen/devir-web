@@ -169,7 +169,7 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
 }
 /** Zincir sırası: biten adım bitiş anına, açık adım en erken bitişine göre. */
 const adimAn = (a: any) => (BITTI(a.durum) && a.durum_at ? Date.parse(a.durum_at) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : Number.MAX_SAFE_INTEGER);
-const zincirRenk = (o: any) => (/^a\d/.test(o.key) && o.ikon.includes('pLit') ? '#FFD27A' : '#6B5FB0');
+const zincirRenk = (o: any) => (/^a\d/.test(o.key) && /pGreen|pLit/.test(o.ikon) ? '#7BF0A0' : '#6B5FB0');
 /** Akış bilgisi sayfası (/akis/:kod/bilgi): haritanın altındaki bölümün tek başına hâli (bağlantılar ve geniş ekran için). */
 export function AkisBilgi({ kod, ben }: { kod: string; ben: string }) {
   const q = useAkis(kod);

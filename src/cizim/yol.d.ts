@@ -14,7 +14,7 @@ export function akisModeli(detay: any, o?: { sahip?: string; haric?: number[] })
 export function uyeRenkleri(G: Galaksi, sahip?: string, ajanSahibi?: Record<string, string>): Record<string, string>;
 export function ajanSahipleri(steps: { sahip: string; tip?: string; agentSahibi?: string | null }[]): Record<string, string>;
 export function kisaAd(ad: string): string;
-export function tac(x: number, y: number, r: number, k: number): string;
+export function tac(x: number, y: number, r: number, k: number, sekilVar?: boolean): string;
 export function elmas(x: number, y: number, s?: number): string;
 export function belge(x: number, y: number, s?: number): string;
 export function uyduSistemi(x: number, y: number, r: number, ks: { ad: string; durum: string; t?: number; kalem?: boolean; no?: number }[], ps?: number, o?: { yakin?: boolean; adlar?: boolean; ini?: boolean; bosluk?: number; yerler?: { no: number; ust: number; x: number; y: number; r: number }[]; ust?: number; hedef?: boolean }): string;

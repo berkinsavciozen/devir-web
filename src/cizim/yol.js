@@ -42,7 +42,7 @@ export function akisModeli(detay0, o = {}) {
 const byNoOf = (F) => F.steps.reduce((m, s) => (m[s.no] = s, m), {});
 
 /**
- * Üye rengi (plan 27 Eki, 3.C): yeşil artık yalnız "tamam" demek, kişilere verilmez.
+ * Üye rengi (plan 27 Eki, 3.C): yeşil yalnız "tamam" demek, kişilere verilmez.
  * Akış sahibi şeftali, Claude lila, dış katılımcı pembe; öteki herkes sırayla kendi rengini alır.
  * 6 kişiyi aşan akışta ötekiler tek takım rengine düşer, gemideki baş harf ayırır.
  */
@@ -75,9 +75,13 @@ const SONUK = ['lit', 'ghost', 'ertele'];
  * Küçük işaretler (plan 27 Eki, 3.A): altın elmas = kritik yol, belge = çıktı; bayrak (karar) planet() içinde.
  * Darboğaz tacı: 1 ışıklı, 2 nabız atan (dongu-tac); 0'da taç yok.
  */
-export function tac(x, y, r, k) {
+export function tac(x, y, r, k, sekilVar = k === 2) {
   if (!k) return '';
-  return `<g transform="translate(${f(x)},${f(y)})"${k === 2 ? ' class="dongu-tac"' : ''}><circle r="${f(r * 2.6)}" fill="url(#glowCoral)" opacity="${k === 2 ? .8 : .45}"/>${k === 2 ? `<circle r="${f(r + 8)}" fill="none" stroke="#FF8A78" stroke-width="1" opacity=".55"/>` : ''}</g>`;
+  // 2 Kas: mercan yalnız engel demek; taç lila ışık. Taç şekli yalnız asıl darboğazda (sunucunun darboğazı ya da 2. kademe),
+  // her ışıklı adımda değil; yoksa harita taçla dolar
+  const w = Math.max(5, r * .9), h = w * .62, ty = -r - h * .35 - 2;
+  const sekil = `<path d="M${f(-w / 2)},${f(ty + h / 2)} L${f(-w / 2)},${f(ty - h / 2)} L${f(-w / 4)},${f(ty)} L0,${f(ty - h * .7)} L${f(w / 4)},${f(ty)} L${f(w / 2)},${f(ty - h / 2)} L${f(w / 2)},${f(ty + h / 2)}Z" fill="#F4EEFF" stroke="#2A1D4F" stroke-width=".8" stroke-linejoin="round"/>`;
+  return `<g transform="translate(${f(x)},${f(y)})"${k === 2 ? ' class="dongu-tac"' : ''}><circle r="${f(r * 2.4)}" fill="url(#glowLilac)" opacity="${k === 2 ? 1 : .7}"/>${k === 2 ? `<circle r="${f(r + 7)}" fill="none" stroke="#E9DEFF" stroke-width="1" opacity=".6"/>` : ''}${sekilVar ? sekil : ''}</g>`;
 }
 export const elmas = (x, y, s = 1) => `<path d="M${f(x)},${f(y - 4.2 * s)} L${f(x + 3.2 * s)},${f(y)} L${f(x)},${f(y + 4.2 * s)} L${f(x - 3.2 * s)},${f(y)}Z" fill="#FFD27A" stroke="#2A1D4F" stroke-width=".8"/>`;
 export const belge = (x, y, s = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${f(s)})"><path d="M-3,-4 H1.6 L3.4,-2.2 V4 H-3Z" fill="#E2D6F5" stroke="#2A1D4F" stroke-width=".7"/><path d="M-1.6,-.6 H1.8 M-1.6,1.4 H1.8" stroke="#2A1D4F" stroke-width=".6"/></g>`;
@@ -90,7 +94,8 @@ export function clusterBadge(x, y, members, radOf, stOf, ps = 1) {
   ms.slice(1).forEach((no, i) => { const a = (-40 + i * 50) * Math.PI / 180; s += `<g opacity=".8">${planet(x + Math.cos(a) * r * .8, y + Math.sin(a) * r * .8, r * .62, stOf(no)[0] === 'ghost' ? 'dark' : stOf(no)[0], {})}</g>`; });
   s += planet(x, y, r, stOf(fr)[0], stOf(fr)[1]);
   const bx = x - r * .8 - 3 * ps, by = y - r * .8 - 3 * ps;
-  s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${f(8.5 * ps)}" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${f(bx)}" y="${f(by + 3.8 * ps)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(10.5 * ps)}" fill="#2A1D4F">${members.length}</text>`;
+  // 2 Kas: krem daire yalnız merkezdeki bitti sayısında; küme rozeti koyu, "+n" = öndekinin arkasındaki adım sayısı
+  s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${f(8.5 * ps)}" fill="#08222E" stroke="#D9CCFF" stroke-width="1.2"/><text x="${f(bx)}" y="${f(by + 3.6 * ps)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(9.5 * ps)}" fill="#FFF3E8">+${members.length - 1}</text>`;
   return s;
 }
 
@@ -106,8 +111,9 @@ export function uydular(x, y, r, kalemler, ps = 1, o = {}) {
     const a = (-90 + (i + .5) / n * 360) * Math.PI / 180, mx = x + Math.cos(a) * orR, my = y + Math.sin(a) * orR, mr = (o.mr ?? 4.6) * ps;
     // ip: ana gezegene bağlı olduğu görülsün (alt adım, ayrı gezegen değil)
     if (o.ip) s += `<path d="M${f(x + Math.cos(a) * (r + 1))},${f(y + Math.sin(a) * (r + 1))} L${f(mx - Math.cos(a) * mr)},${f(my - Math.sin(a) * mr)}" stroke="#D9CCFF" stroke-width="1" opacity=".55"/>`;
-    if (k.durum === 'tamam') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * 2.4)}" fill="url(#glowGold)" opacity=".8"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pLit2)"/>`;
-    else if (k.durum === 'suruyor' || k.durum === 'hazir') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.6)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 1.6"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#2A2452"/><path d="M${f(mx)},${f(my - mr)} A${f(mr)},${f(mr)} 0 0 1 ${f(mx)},${f(my + mr)}Z" fill="#FFE29A"/>`;
+    if (k.durum === 'tamam') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * 2.4)}" fill="url(#glowMint)" opacity=".8"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pGreen)"/>`;
+    else if (k.durum === 'suruyor') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.2)}" fill="none" stroke="#DCE8FF" stroke-width="1"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pRun)"/>`;
+    else if (k.durum === 'hazir') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr + 2.2)}" fill="none" stroke="#FFB547" stroke-width="1"/><circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pAmber)"/>`;
     else if (k.durum === 'engelli') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="url(#pBlock)"/><path d="M${f(mx - mr * .6)},${f(my - mr * .6)} L${f(mx + mr * .6)},${f(my + mr * .6)}" stroke="#08222E" stroke-width="1.6"/>`;
     else if (k.durum === 'atlandi' || k.durum === 'ertelendi') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr * .8)}" fill="none" stroke="#A99BDB" stroke-width=".9" stroke-dasharray="1.5 1.5" opacity=".8"/>`;
     else s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(mr)}" fill="#08222E" stroke="#B9A6F2" stroke-width="1.2"/>`;
@@ -214,9 +220,10 @@ export function yolCiz(M, o = {}) {
     const pr = (o.pr || Math.max(1.6, G.R * .05)) * .62;
     for (const no in G.gezegen) {
       const g = G.gezegen[no], k = stOf(no), r = Math.max(pr * .8, Math.min(pr * 1.8, pr * g.r / (8 * ps)));
-      if (k === 'lit' || k === 'tahmin') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 2.6)}" fill="url(#glowGold)" opacity=".7"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pLit2)"/>`;
+      if (k === 'lit' || k === 'tahmin') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 2.6)}" fill="url(#glowMint)" opacity=".7"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pGreen)"/>`;
+      else if (k === 'run') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 2)}" fill="none" stroke="#DCE8FF" stroke-width=".9"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pRun)"/>`;
       else if (k === 'ghost') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(pr * .6)}" fill="none" stroke="#A99BDB" stroke-width=".7" stroke-dasharray="1.5 1.5"/>`;
-      else if (k === 'wait') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 2)}" fill="none" stroke="#FFD27A" stroke-width=".9" stroke-dasharray="2 2"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pWait)"/>`;
+      else if (k === 'wait') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 2)}" fill="none" stroke="#FFB547" stroke-width=".9"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pAmber)"/>`;
       else if (k === 'block') s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 3)}" fill="url(#glowCoral)"/><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r * 1.1)}" fill="url(#pBlock)"/><circle cx="${f(g.x + r * .45)}" cy="${f(g.y + r * .2)}" r="${f(r * .9)}" fill="#08222E" opacity=".9"/>`;
       else s += `<circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width=".6"/>`;
     }
@@ -304,9 +311,11 @@ export function yolCiz(M, o = {}) {
     const g = G.gezegen[no], k = stOf(no), r = k === 'dark' && o.minR ? Math.max(radOf(no), o.minR * ps) : radOf(no);
     let t = '';
     // darboğaz tacı: açık adımda; sunucunun darboğazı en az ışıklı (R11)
-    if (!SONUK.includes(k) && k !== 'tahmin') t += tac(g.x, g.y, r, Math.max(g.korona || 0, F.darbogaz === +no ? 1 : 0));
+    // taç gezegenden sonra çizilir (tepesinde durur); engelli gezegende bulut zaten söylüyor
+    const tacK = !SONUK.includes(k) && k !== 'tahmin' && k !== 'block' ? Math.max(g.korona || 0, F.darbogaz === +no ? 1 : 0) : 0;
     if (k === 'tahmin') t += `<g opacity=".55">${planet(g.x, g.y, r, 'lit', { life: false })}</g><circle cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 4)}" fill="none" stroke="#FFD27A" stroke-width="1.2" stroke-dasharray="2 3"/>`;
     else t += planet(g.x, g.y, r, k, ex(no));
+    t += tac(g.x, g.y, r, tacK, tacK > 0 && (F.darbogaz === +no || g.korona === 2));
     if (o.ikonAyri && k === 'block') ikonlar.push({ tur: 'bulut', no: +no, x: g.x + radOf(no) * .15, y: g.y - radOf(no) - ex(no).cloudGap - 3 });
     // lejant satırından vurgu (3.G): kısa süre yanıp söner
     if (o.parla && o.parla.has(+no)) t += `<circle class="dongu-parla" cx="${f(g.x)}" cy="${f(g.y)}" r="${f(r + 9)}" fill="none" stroke="#FFF3E8" stroke-width="2.2"/>`;

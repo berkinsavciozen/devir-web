@@ -49,6 +49,11 @@ function defs() {
   <radialGradient id="pLit3" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#F2FFF6"/><stop offset=".4" stop-color="#B8EBD4"/><stop offset=".8" stop-color="#7FB7C8"/><stop offset="1" stop-color="#5E6FA8"/></radialGradient>
   <radialGradient id="pDark" cx=".38" cy=".3" r=".85"><stop offset="0" stop-color="#4A4190"/><stop offset=".6" stop-color="#2E2765"/><stop offset="1" stop-color="#1B1640"/></radialGradient>
   <radialGradient id="pWait" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#F7D3C0"/><stop offset=".35" stop-color="#C9A0D6"/><stop offset=".8" stop-color="#5E4C9E"/><stop offset="1" stop-color="#2E2765"/></radialGradient>
+  <radialGradient id="pGreen" cx=".36" cy=".3" r=".8"><stop offset="0" stop-color="#F0FFF4"/><stop offset=".38" stop-color="#9DF5BC"/><stop offset=".78" stop-color="#3CC978"/><stop offset="1" stop-color="#1C7A4C"/></radialGradient>
+  <radialGradient id="pRun" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#F4F8FF"/><stop offset=".38" stop-color="#B8D4FF"/><stop offset=".8" stop-color="#5A86E0"/><stop offset="1" stop-color="#2A3C8C"/></radialGradient>
+  <radialGradient id="pAmber" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFF0CF"/><stop offset=".38" stop-color="#FFC56B"/><stop offset=".8" stop-color="#C9792F"/><stop offset="1" stop-color="#6E3F27"/></radialGradient>
+  <radialGradient id="glowBlue"><stop offset="0" stop-color="#D6E6FF" stop-opacity=".85"/><stop offset=".4" stop-color="#8FB4FF" stop-opacity=".3"/><stop offset="1" stop-color="#8FB4FF" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowMint"><stop offset="0" stop-color="#D4FFE2" stop-opacity=".95"/><stop offset=".4" stop-color="#7BF0A0" stop-opacity=".4"/><stop offset="1" stop-color="#7BF0A0" stop-opacity="0"/></radialGradient>
   <radialGradient id="pBlock" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFB7A3"/><stop offset=".45" stop-color="#E26F72"/><stop offset="1" stop-color="#6A2754"/></radialGradient>
   <radialGradient id="shade" cx=".78" cy=".8" r=".75"><stop offset="0" stop-color="#1A0F3A" stop-opacity=".55"/><stop offset=".6" stop-color="#1A0F3A" stop-opacity=".12"/><stop offset="1" stop-color="#1A0F3A" stop-opacity="0"/></radialGradient>
   <linearGradient id="flame" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFE6A0"/><stop offset=".5" stop-color="#FF9F7A" stop-opacity=".8"/><stop offset="1" stop-color="#FF7A8A" stop-opacity="0"/></linearGradient>
@@ -147,8 +152,13 @@ function flag(r, ang, col = '#FFD27A') {
 
 // state: lit (bitti) | run (sürüyor) | wait (sırası geldi, sahibini bekliyor) | dark (sırada) | block (engelli) | ghost (atlandı)
 // | ertele (ertelendi) ; opts: {karar, waitRings, life, grad, ring, moon}
-// Durum kanalları (plan 27 Eki, 3.A): bitti yeşil ışık, sürüyor yeşil halka, bekliyor kehribar halka, sırada karanlık,
+// Durum kanalları (2 Kas, plan 27 Eki 3.A'yı günceller): bitti parlak yeşil gövde + tik, sürüyor mavi gövde + dönen yay, sırası geldi kehribar gövde + halka, sırada karanlık,
 // engelli fırtına, atlandı kesik çizgi ve üstü çizili, ertelendi soluk ve saatli.
+/** Bitti rozeti: sağ altta koyu daire içinde yeşil tik (gri tonlamada da okunur). */
+function tik(r, mini) {
+  const k = mini ? Math.max(2.2, r * .55) : Math.max(3.4, r * .42), cx = r * .72, cy = r * .72;
+  return `<g transform="translate(${f(cx)},${f(cy)})"><circle r="${f(k)}" fill="#08222E" stroke="#7BF0A0" stroke-width="${mini ? .7 : 1}"/><path d="M${f(-k * .5)},${f(0)} L${f(-k * .1)},${f(k * .4)} L${f(k * .52)},${f(-k * .38)}" fill="none" stroke="#7BF0A0" stroke-width="${f(Math.max(.9, k * .32))}" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+}
 function planet(x, y, r, state, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})">`;
   if (state === 'ertele') {
@@ -158,11 +168,14 @@ function planet(x, y, r, state, o = {}) {
     return s + '</g>';
   }
   if (state === 'run') {
-    // sürüyor: dönen yeşil halka
-    s += `<g class="dongu-halka"><circle r="${f(r + (o.mini ? 2.4 : 5))}" fill="none" stroke="#6FE0A0" stroke-width="${o.mini ? 1.1 : 1.8}" stroke-dasharray="${o.mini ? '3 1.6' : '7 3'}" opacity=".95"/></g>`;
-    s += `<circle r="${f(r * 2)}" fill="url(#glowGreen)" opacity=".3"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#B8F5CF" stroke-opacity=".6" stroke-width="1"/>`;
-    s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
+    // sürüyor (2 Kas): mavi gövde ve dönen çeyrek yay (yeşil yalnız tamam)
+    const rr = r + (o.mini ? 2.4 : 4.5), c = 2 * Math.PI * rr;
+    s += `<circle r="${f(r * 2)}" fill="url(#glowBlue)" opacity=".45"/>`;
+    s += `<circle r="${f(rr)}" fill="none" stroke="#8FB4FF" stroke-width="${o.mini ? .8 : 1}" opacity=".4"/>`;
+    s += `<g class="dongu-halka"><circle r="${f(rr)}" fill="none" stroke="#DCE8FF" stroke-width="${o.mini ? 1.4 : 2.2}" stroke-linecap="round" stroke-dasharray="${f(c * .28)} ${f(c * .72)}"/></g>`;
+    s += `<circle r="${f(r)}" fill="url(#pRun)" stroke="#E6EEFF" stroke-opacity=".7" stroke-width="1"/>`;
+    if (o.mini) return s + '</g>';
+    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".7"/>`;
     if (o.life !== false) s += house(r, -15, true) + tree(r, 24, false);
     if (o.karar) s += flag(r, 40);
     return s + '</g>';
@@ -174,23 +187,24 @@ function planet(x, y, r, state, o = {}) {
     return s + '</g>';
   }
   if (state === 'lit') {
-    // bitti: yeşil ışık (plan 27 Eki, 3.A)
-    s += `<circle r="${f(r * 2.6)}" fill="url(#glowGreen)" opacity=".85"/>`;
+    // bitti (2 Kas, Berkin: parlak yeşil + yeşil tik): koyu zeminden ayrılan parlak yeşil gövde, nane ışığı ve sağ altta tik rozeti
+    s += `<circle r="${f(r * 2.6)}" fill="url(#glowMint)" opacity=".85"/>`;
     if (o.ring) s += `<ellipse rx="${f(r * 1.6)}" ry="${f(r * .38)}" fill="none" stroke="#FFD9B8" stroke-width="1.4" opacity=".55" transform="rotate(-14)"/>`;
-    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pLit'})"/>`;
-    s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
-    s += `<path d="M${f(-r * .62)},${f(-r * .38)} A${f(r * .78)},${f(r * .78)} 0 0 1 ${f(-r * .05)},${f(-r * .78)}" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="${f(Math.max(1, r * .09))}" fill="none" stroke-linecap="round"/>`;
-    // yüzeyde ışık noktaları
-    const rr = rng(Math.round(x * 7 + y * 3));
-    for (let i = 0; i < Math.max(3, Math.round(r / 4)); i++) {
-      const a = rr() * Math.PI * 2, d = r * (.25 + rr() * .6);
-      const cx = Math.cos(a) * d, cy = Math.sin(a) * d;
-      s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="${f(r * .18)}" fill="url(#glowGold)" opacity=".9"/><circle cx="${f(cx)}" cy="${f(cy)}" r="${f(Math.max(.7, r * .045))}" fill="#FFF4C2"/>`;
+    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pGreen'})"/>`;
+    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".6"/>`;
+    s += `<path d="M${f(-r * .62)},${f(-r * .38)} A${f(r * .78)},${f(r * .78)} 0 0 1 ${f(-r * .05)},${f(-r * .78)}" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="${f(Math.max(1, r * .09))}" fill="none" stroke-linecap="round"/>`;
+    if (!o.mini) {
+      const rr = rng(Math.round(x * 7 + y * 3));
+      for (let i = 0; i < Math.max(3, Math.round(r / 5)); i++) {
+        const a = rr() * Math.PI * 2, d = r * (.25 + rr() * .55);
+        s += `<circle cx="${f(Math.cos(a) * d)}" cy="${f(Math.sin(a) * d)}" r="${f(Math.max(.7, r * .05))}" fill="#F2FFF6"/>`;
+      }
+      if (o.life !== false) {
+        s += house(r, -18, true) + tree(r, 16, true) + lamp(r, 38, true);
+        if (r > 18) s += house(r, -48, true, .8);
+      }
     }
-    if (o.life !== false) {
-      s += house(r, -18, true) + tree(r, 16, true) + lamp(r, 38, true);
-      if (r > 18) s += house(r, -48, true, .8);
-    }
+    s += tik(r, o.mini);
     if (o.karar) s += flag(r, 5);
     if (o.moon) s += `<circle cx="${f(r * 1.45)}" cy="${f(-r * .9)}" r="${f(r * .18)}" fill="#FFF1E0"/><circle cx="${f(r * 1.45)}" cy="${f(-r * .9)}" r="${f(r * .6)}" fill="url(#glowPeach)" opacity=".6"/>`;
     return s + '</g>';
@@ -205,17 +219,16 @@ function planet(x, y, r, state, o = {}) {
     return s + '</g>';
   }
   if (state === 'wait') {
-    // sırası geldi, sahibini bekliyor: kehribar halka (durağan)
+    // sırası geldi, sahibini bekliyor (2 Kas): kehribar gövde ve durgun kehribar halka; sürüyorla gövdesi de ayrı
     const n = o.waitRings ?? 1;
     for (let i = n; i >= 1; i--) {
-      s += `<circle r="${f(r + (o.mini ? 2.4 : 5) * i)}" fill="none" stroke="#FFB547" stroke-width="${f((o.mini ? 1.1 : 1.9) - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
+      s += `<circle r="${f(r + (o.mini ? 2.4 : 4.5) * i)}" fill="none" stroke="#FFB547" stroke-width="${f((o.mini ? 1.2 : 2) - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
     }
-    if (o.mini) return s + `<circle r="${f(r)}" fill="url(#pWait)"/></g>`;
+    if (o.mini) return s + `<circle r="${f(r)}" fill="url(#pAmber)"/></g>`;
     s += `<circle r="${f(r * 2)}" fill="url(#glowGold)" opacity=".28"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pWait)" stroke="#FFD9B8" stroke-opacity=".6" stroke-width="1"/>`;
-    s += `<circle r="${f(r)}" fill="url(#shade)"/>`;
+    s += `<circle r="${f(r)}" fill="url(#pAmber)" stroke="#FFE3B0" stroke-opacity=".7" stroke-width="1"/>`;
+    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".7"/>`;
     s += house(r, -15, true) + tree(r, 24, false);
-    s += sparkle(r * .55, -r * 1.25, 3.4, '#FFE7A8', 1);
     if (o.karar) s += flag(r, 40);
     return s + '</g>';
   }
@@ -402,9 +415,10 @@ function galaxy(cx, cy, steps, o = {}) {
   steps.forEach((st, i) => {
     const [x, y] = pos[i];
     const pr = (o.pr || 4.2) * (st.state === 'lit' ? 1.15 : 1);
-    if (st.state === 'lit') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3)}" fill="url(#glowGold)" opacity=".75"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pLit2)"/>`;
+    if (st.state === 'lit') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3)}" fill="url(#glowMint)" opacity=".75"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pGreen)"/>`;
+    else if (st.state === 'run') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr + 2.5)}" fill="none" stroke="#DCE8FF" stroke-width="1" opacity=".9"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pRun)"/>`;
     else if (st.state === 'ghost') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * .7)}" fill="none" stroke="#A99BDB" stroke-width=".8" stroke-dasharray="1.5 1.5"/>`;
-    else if (st.state === 'wait') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr + 3)}" fill="none" stroke="#FFD27A" stroke-width="1" stroke-dasharray="2 2" opacity=".9"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pWait)"/>`;
+    else if (st.state === 'wait') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr + 3)}" fill="none" stroke="#FFB547" stroke-width="1" opacity=".9"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pAmber)"/>`;
     else if (st.state === 'block') s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 3.2)}" fill="url(#glowCoral)"/><circle cx="${f(x)}" cy="${f(y)}" r="${f(pr * 1.2)}" fill="url(#pBlock)"/><circle cx="${f(x + pr * .5)}" cy="${f(y + pr * .2)}" r="${f(pr)}" fill="#08222E" opacity=".9"/>`;
     else s += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(pr)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width=".7" stroke-opacity=".8"/>`;
   });
