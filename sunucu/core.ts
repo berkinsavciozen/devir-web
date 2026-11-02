@@ -2465,8 +2465,9 @@ async function altSenkron(ctx: Ctx, ust: any): Promise<any[]> {
     if (!s) continue;
     const karsi = cs.filter((c: any) => { const f: any = canli.get(c.akis_id); return f && f.baglam?.grup === g.id && Number(f.baglam?.ust_harita?.[String(c.no)]) === n; });
     if (!karsi.length) continue;
-    const tamam = karsi.filter((x: any) => x.durum === "tamam").length, bitti = karsi.filter(DONE).length, engelli = karsi.filter((x: any) => x.durum === "engelli").length;
-    const ilerleme = `${tamam}/${karsi.length} ${g.kalem_turu || "kalem"} tamam${engelli ? ` · ${engelli} engelli` : ""}`;
+    // m6 (S5, 2 Kas): atlanan ve ertelenen kalem paydadan düşer, ayrıca söylenir; haritadaki sayımla aynı
+    const il = ilerlemeSay(karsi), tamam = il.tamam, bitti = karsi.filter(DONE).length, engelli = karsi.filter((x: any) => x.durum === "engelli").length;
+    const ilerleme = `${tamam}/${il.toplam} ${g.kalem_turu || "kalem"} tamam${engelli ? ` · ${engelli} engelli` : ""}${il.atlandi ? ` · ${il.atlandi} atlandı` : ""}${il.ertelendi ? ` · ${il.ertelendi} ertelendi` : ""}`;
     let to: string | null = null;
     if (bitti === karsi.length) to = tamam ? "tamam" : "atlandi";
     else if (karsi.some((x: any) => x.durum === "suruyor" || x.durum === "engelli" || DONE(x))) to = "suruyor";
