@@ -1,6 +1,6 @@
-// Harita üst katmanları: yakınlaşınca etiketler, kişi adları, kule kartı, küme yelpazesi (§3.7, B3 "Pinch").
+// Harita üst katmanları: yakınlaşınca etiketler, kişi adları, kule kartı (B3 "Pinch"; küme yelpazesi plan 2 Kas'ta kalktı, küme yakınlaşarak ayrışır).
 // Hepsi ekran koordinatında (yakınlaşmış yolCiz çıktısı) çizilir; çizgi kalınlığı ölçekle büyümez.
-import { C, f, pill, planet } from '../../cizim/ortak.js';
+import { C, f, pill } from '../../cizim/ortak.js';
 import { gunAy, kisaAd, sans } from '../../cizim/yol.js';
 import { adimAdi, adimEtiketi, gunAyUzun, paySure } from '../../metin/turkce';
 import type { Bolge } from './gezinme';
@@ -81,39 +81,4 @@ export function kuleKarti(d: any, kule: { x: number; y: number }, b: Bolge): str
   let s = `<rect x="${f(x)}" y="${f(y)}" width="${w}" height="${h}" rx="18" fill="#08222E" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;
   satir.forEach(([t, fs, fw, col], i) => { s += sans(f(x + 16), f(y + 24 + i * 19), t, { fs, fw, col }); });
   return s;
-}
-
-/**
- * Küme yelpazesi (§3.7): üyeler rozetin çevresinde tarih sırasıyla bir yayda, hedefler arası 28 px; 5+ üyede 2 sıra.
- * Harita %40 kararır. Dönen `uyeler` dokunma hedefleri (44 px).
- */
-export function yelpaze(d: any, Y: any, uyeler: number[], b: Bolge, W: number, H: number): { svg: string; uyeler: { no: number; x: number; y: number }[]; merkez: [number, number] } {
-  const byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
-  const ms = uyeler.slice().sort((p, q) => Y.G.gezegen[p].t - Y.G.gezegen[q].t);
-  const g0 = Y.G.gezegen[ms[0]], cx = g0.x, cy = g0.y;
-  // yay haritanın ortasına doğru açılır
-  const yon = Math.atan2(b.y + b.h / 2 - cy, b.x + b.w / 2 - cx), adim = 44 + 28;
-  const siralar = ms.length > 4 ? [ms.slice(0, Math.ceil(ms.length / 2)), ms.slice(Math.ceil(ms.length / 2))] : [ms];
-  const yer: { no: number; x: number; y: number }[] = [];
-  siralar.forEach((sira, si) => {
-    const R = Math.max(72, (sira.length - 1) * adim / 2.4) + si * 70, da = adim / R;
-    sira.forEach((no, i) => {
-      const a = yon + (i - (sira.length - 1) / 2) * da;
-      const x = Math.min(Math.max(cx + Math.cos(a) * R, b.x + 30), b.x + b.w - 30), y = Math.min(Math.max(cy + Math.sin(a) * R, b.y + 26), b.y + b.h - 44);
-      yer.push({ no, x, y });
-    });
-  });
-  let s = `<rect width="${W}" height="${H}" fill="#020B10" opacity=".4"/>`;
-  s += `<g class="yelpaze-acilis" style="transform-origin:${f(cx)}px ${f(cy)}px">`;
-  s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="20" fill="#061A24" fill-opacity=".8" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3"/>`;
-  s += `<circle cx="${f(cx)}" cy="${f(cy)}" r="8.5" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${f(cx)}" y="${f(cy + 3.8)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10.5" fill="#2A1D4F">${ms.length}</text>`;
-  for (const p of yer) {
-    const a = byNo.get(p.no), st = Y.stOf(p.no) === 'tahmin' ? 'lit' : Y.stOf(p.no);
-    s += `<path d="M${f(cx)},${f(cy)} L${f(p.x)},${f(p.y)}" stroke="#D9CCFF" stroke-width="1" stroke-dasharray="1.5 3" opacity=".6"/>`;
-    s += planet(p.x, p.y, 11, st, { life: false, waitRings: 1, cloudGap: 3 });
-    const tarih = BITTI(a.durum) && a.durum_at ? gunAy(Date.parse(a.durum_at)) : a.en_erken_bitis ? gunAy(Date.parse(a.en_erken_bitis)) : '';
-    s += sans(f(p.x), f(p.y + 28), adimEtiketi(a), { fs: 11, fw: 650, col: C.ink, anchor: 'middle' });
-    if (tarih) s += sans(f(p.x), f(p.y + 42), tarih, { fs: 10.5, fw: 500, col: C.ink3, anchor: 'middle' });
-  }
-  return { svg: s + '</g>', uyeler: yer, merkez: [cx, cy] };
 }

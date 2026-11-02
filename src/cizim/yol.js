@@ -200,7 +200,7 @@ export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
-  const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU });
+  const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU, R0: o.R0 });
   const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps));
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
   const byNo = byNoOf(F), P = {}; for (const no in G.gezegen) P[no] = [G.gezegen[no].x, G.gezegen[no].y];

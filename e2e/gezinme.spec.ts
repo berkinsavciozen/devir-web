@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// Harita gezinme (PR A): yakınlaşma, küme yelpazesi, kule kartı, kişi kartı, simge hedefleri.
+// Harita gezinme (PR A): yakınlaşma, küme yakınlaşması, kule kartı, kişi kartı, simge hedefleri.
 // Görseller karsilastirma/uygulama/<ad>.png; tasarımda karşılığı yok, kıyas önceki haliyle yapılır.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
   await p.setViewportSize({ width: w, height: h });
@@ -25,7 +25,7 @@ test.describe('dokunmatik', () => {
     await page.mouse.move(195, 330);
     for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, -60); await page.waitForTimeout(16); }
     await page.waitForTimeout(150);
-    // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: aynı noktada, yakınlaşınca da küme kalır (§4.12)
+    // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: 2.5×'te hâlâ küme, ancak en yakın görünümde ayrışırlar (plan 2 Kas)
     await hedefKontrol(page);
     await cek(page, 'B3-yakin');
     await page.getByRole('button', { name: 'Haritayı sığdır' }).click();
@@ -49,25 +49,25 @@ test.describe('dokunmatik', () => {
     expect(Math.round(b.x - a.x)).toBeGreaterThan(20);
   });
 
-  // 3.24a: rozet önce kümeye yakınlaşır; en yakında hâlâ üst üsteyse (aynı dakikada bitenler) yelpaze açılır
-  const kumeyiAc = async (page: Page) => {
-    const rozet = page.getByRole('listitem', { name: /4 adım bir arada/ }), kume = page.getByRole('list', { name: 'Küme' });
-    for (let i = 0; i < 4 && !(await kume.count()); i++) { await rozet.click(); await page.waitForTimeout(350); }
-  };
-  test('B3-yelpaze: küme rozeti → yakınlaşır, en yakında yelpaze; üye → adım', async ({ page }) => {
+  // plan 2 Kas: yelpaze yok; rozet kümeye yakınlaşmayı sürdürür, en çok 3 dokunuşta üyeler ayrı gezegen olur.
+  // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: geometri onları en yakın görünümde ayrışacak kadar aralar
+  test('B3-kume: küme rozeti → en çok 3 dokunuşta ayrı gezegenler; üye → adım', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
-    await page.getByRole('listitem', { name: /4 adım bir arada/ }).click();
-    await page.waitForTimeout(350);
-    await expect(page.getByRole('button', { name: 'Haritayı sığdır' })).toBeEnabled();
+    const rozet = page.getByRole('listitem', { name: /adım bir arada/ });
+    let n = 0;
+    while ((await rozet.count()) && n < 5) { await rozet.first().click(); n++; await page.waitForTimeout(350); }
+    expect(n).toBeGreaterThan(0);
+    expect(n).toBeLessThanOrEqual(3);
+    await expect(rozet).toHaveCount(0);
     await expect(page.getByRole('list', { name: 'Küme' })).toHaveCount(0);
-    await kumeyiAc(page);
-    await expect(page.getByRole('list', { name: 'Küme' }).getByRole('listitem')).toHaveCount(5);
-    await page.waitForTimeout(100);
-    await cek(page, 'B3-yelpaze');
-    await page.keyboard.press('Escape');
-    await expect(page.getByRole('list', { name: 'Küme' })).toHaveCount(0);
-    await kumeyiAc(page);
-    await page.getByRole('list', { name: 'Küme' }).getByRole('listitem', { name: /^1\. adım/ }).click();
+    const hedef = (no: number) => page.getByRole('listitem', { name: new RegExp(`^${no}\\. adım`) });
+    const kutu = await Promise.all([1, 2, 5, 8].map(async (no) => (await hedef(no).boundingBox())!));
+    for (let i = 0; i < kutu.length; i++) for (let j = i + 1; j < kutu.length; j++) {
+      const a = kutu[i], b = kutu[j];
+      expect(Math.hypot(a.x + a.width / 2 - b.x - b.width / 2, a.y + a.height / 2 - b.y - b.height / 2)).toBeGreaterThanOrEqual(44);
+    }
+    await cek(page, 'B3-kume');
+    await hedef(1).click();
     await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/1/);
   });
 

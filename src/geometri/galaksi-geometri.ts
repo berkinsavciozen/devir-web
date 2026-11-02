@@ -17,6 +17,7 @@
  *
  * Zamanlar ms (UTC). Geometri içinde uzunluk birimi "gün"dür (hız c = 1); çıktı pikseldir (k piksel/gün).
  */
+import { OLCEK } from './olcek';
 
 export type Durum = 'tamam' | 'atlandi' | 'ertelendi' | 'hazir' | 'suruyor' | 'engelli' | 'sirada' | string;
 export type SahipTip = 'insan' | 'agent' | 'dis' | string;
@@ -68,6 +69,8 @@ export interface KurSecenek {
   haric?: number[];
   /** kuyruğun (pay) en çok kaç aktif-süre katı çizileceği; zaman ölçeği uzak geleceği zaten sıkıştırdığında Infinity (R17) */
   kuyrukMax?: number;
+  /** yakınlaşmasız çizimin R'si: harita yakınlaşınca R büyür, aynı andakilerin aralığı da onunla büyür (plan 2 Kas) */
+  R0?: number;
 }
 
 type Polar = { r: number; th: number };
@@ -147,6 +150,9 @@ export const SABIT = Object.freeze({
   K_MAX: 3,          // aktarma yolunda en çok fazladan tam tur
   DEVIR_PAY: 3600e3, // girdi, alıcı başladıktan en az 1 saat sonra bittiyse yollar kesişir
   YAKIN: 0.8,        // küme: merkezler arası < (r1+r2)·0.8
+  AYRIK: 10,         // en yakın görünüm: bu yakınlaşmada (en büyük öğe katı 1.4 ile) hiçbir gezegen kümede kalmaz
+  OGE_KAT: 1.4,      // küme ölçümünde gezegen yarıçapının en çok büyüme katı (Galaksi kumeRad üst sınırı)
+  HEDEF_ARA: 44,     // en yakın görünümde iki gezegen merkezi arası en az (px): dokunma hedefleri (44 px) binmez
   KUYRUK_MAX: 0.5,   // iş payı kuyruğu en çok (etkin süre × 0.5) uzunlukta çizilir; fazlası kırık işaretle kısaltılır
 });
 const polar = (x: number, y: number): Polar => ({ r: Math.hypot(x, y), th: Math.atan2(y, x) });
@@ -409,6 +415,13 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   }
   /** şerit: x = zaman (x0 = T0'ın x'i, pxGun piksel/gün) */
   const seritX = (t: number, x0: number, pxGun: number) => x0 + (t - T0) / GUN * pxGun;
+  // aynı ana düşen gezegenler (aynı dakikada biten adımlar) aynı noktadadır; yakınlaşma onları hiç ayıramaz. Yol yönünde
+  // en küçük aralığa itilir: SABIT.AYRIK yakınlaşmada ayrışırlar, 1×'te yine tek küme görünürler (plan 2 Kas, küme 3 dokunuş)
+  ayrikla(gezegen, R / (o.R0 ?? R), (no) => {
+    const g = gezegen[no], u = g.uyeler[0], a = u ? konumAn(u, g.t - 6 * 36e5) : null, z = u ? konumAn(u, g.t + 6 * 36e5) : null;
+    const dx = a && z ? z.x - a.x : -(g.y - cy), dy = a && z ? z.y - a.y : g.x - cx, n = Math.hypot(dx, dy);
+    return n > 1e-6 ? [dx / n, dy / n] : [1, 0];
+  });
   if (gec) { const p = konumAn(kuleUye.ad, akis.hedef)!; kuleP = { x: p.x, y: p.y, t: akis.hedef, uye: kuleUye.ad, gec: true }; }
   return { cx, cy, R, ps, k, b, T0, tSon, payGun, hedef: akis.hedef, kapandi: akis.kapandi, simdi, uyeler, uyeOf, gezegen, ipler: ipP, kule: kuleP, kuyruk, gec, kuleUye: kuleUye.ad, byNo, konumAn, kesit, durumAn, kumeler, seritX, haric };
 }
@@ -494,4 +507,38 @@ export function uzunlukDenetle(G: Galaksi, etiket = ''): number {
   }
   if (en >= 0.01) console.warn(`[galaksi] ${etiket} yol uzunluğu hatası %${(en * 100).toFixed(3)} (sınır %1)`);
   return en;
+}
+
+/** ekranda iki gezegen merkezi arası en az: dokunma aralığı ya da yakında büyümüş (en çok OLCEK.EN_COK kat) iki gövde
+ *  arada boşlukla yan yana (küme eşiği bundan küçük; küme yalnız tasarım boyuyla ölçülür, çizim büyür) */
+const ayrikAra = (ra: number, rb: number) => Math.max((ra + rb) * OLCEK.EN_COK * 1.1, SABIT.HEDEF_ARA);
+/** iki gezegenin ayrışması (ve ayrı dokunulması) için gereken yakınlaşma */
+export const ayrismaKati = (A: { x: number; y: number }, B: { x: number; y: number }, ra: number, rb: number) =>
+  ayrikAra(ra, rb) / Math.max(Math.hypot(A.x - B.x, A.y - B.y), 1e-9);
+
+/** küme üyelerinin hepsinin ayrıştığı yakınlaşma (yarıçap: yakınlaşmasız çizimdeki) */
+export function kumeAyrismaKati(gezegen: Record<number, { x: number; y: number }>, nos: number[], radOf: (no: number) => number) {
+  let k = 1;
+  for (let i = 0; i < nos.length; i++) for (let j = i + 1; j < nos.length; j++) k = Math.max(k, ayrismaKati(gezegen[nos[i]], gezegen[nos[j]], radOf(nos[i]), radOf(nos[j])));
+  return k;
+}
+
+/** SABIT.AYRIK yakınlaşmada bile üst üste kalacak gezegen çiftlerini yol yönünde (yon) iter; sıra zaman, sonra no.
+ *  olcek: R / R0 (yakınlaşmış çizimde aralık da büyür; yarıçaplar büyümez) */
+function ayrikla(gezegen: Record<number, Gezegen>, olcek: number, yon: (no: number) => [number, number]) {
+  const nos = Object.keys(gezegen).map(Number).sort((x, y) => gezegen[x].t - gezegen[y].t || x - y);
+  for (let tur = 0; tur < 40; tur++) {
+    let itti = false;
+    for (let i = 0; i < nos.length; i++) for (let j = i + 1; j < nos.length; j++) {
+      const A = gezegen[nos[i]], B = gezegen[nos[j]];
+      const gerek = ayrikAra(A.r, B.r) / SABIT.AYRIK * 1.02 * olcek, d = Math.hypot(B.x - A.x, B.y - A.y);
+      if (d >= gerek) continue;
+      const [ux, uy] = yon(nos[j]), s = (B.x - A.x) * ux + (B.y - A.y) * uy, isaret = s < -1e-9 ? -1 : 1;
+      // yol yönündeki bileşen gereke tamamlanır; sonraki adım ileri, önceki geri, yarı yarıya
+      const pay = (Math.sqrt(Math.max(0, gerek * gerek - (d * d - s * s))) - Math.abs(s)) / 2 + 1e-6;
+      A.x -= ux * pay * isaret; A.y -= uy * pay * isaret; B.x += ux * pay * isaret; B.y += uy * pay * isaret;
+      itti = true;
+    }
+    if (!itti) break;
+  }
 }

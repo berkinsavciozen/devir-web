@@ -11,6 +11,17 @@ const veri = JSON.parse(readFileSync(new URL('../../tasarim/kaynak/veri.json', i
 const ham = JSON.parse(readFileSync(new URL('../../tasarim/veri/ornek-veri.json', import.meta.url), 'utf8'));
 const akislar = ornekAkislar(veri, ham);
 const MOBIL = { cx: 195, cy: 322, R: 156, ps: 0.78, simdi: SIMDI };
+/** konumlar SABIT.AYRIK kat büyütülmüş, yarıçaplar aynı: haritanın en yakın görünümü */
+const SABIT_Z = (G: ReturnType<typeof GG.kur>) => {
+  const k = GG.SABIT.AYRIK, gz: Record<number, any> = {};
+  for (const no in G.gezegen) gz[no] = { ...G.gezegen[no], x: G.gezegen[no].x * k, y: G.gezegen[no].y * k };
+  const nos = Object.keys(gz).map(Number);
+  return { kumeler: (rad: (no: number) => number) => {
+    const out: number[][] = [];
+    for (let i = 0; i < nos.length; i++) for (let j = i + 1; j < nos.length; j++) if (Math.hypot(gz[nos[i]].x - gz[nos[j]].x, gz[nos[i]].y - gz[nos[j]].y) < (rad(nos[i]) + rad(nos[j])) * GG.SABIT.YAKIN) out.push([nos[i], nos[j]]);
+    return out;
+  } };
+};
 
 describe('galaksi geometrisi', () => {
   it('S ve phiOfS birbirinin tersi', () => {
@@ -21,6 +32,11 @@ describe('galaksi geometrisi', () => {
     it(`${kod}: her yol parçasında uzunluk ∝ zaman (%1 altında)`, () => {
       expect(GG.test(akis, { simdi: SIMDI }).hata).toBeLessThan(0.01);
     });
+    it(`${kod}: en yakın görünümde (SABIT.AYRIK) hiçbir gezegen kümede kalmaz; 1×'teki kümeler aynı`, () => {
+      const a = GG.kur(akis, MOBIL), Z = SABIT_Z(a);
+      expect(Z.kumeler((no) => a.gezegen[no].r * GG.SABIT.OGE_KAT)).toEqual([]);
+      for (const c of a.kumeler((no) => a.gezegen[no].r)) expect(GG.kumeAyrismaKati(a.gezegen, c, (no) => a.gezegen[no].r)).toBeLessThanOrEqual(GG.SABIT.AYRIK);
+    });
     // plan 27 Eki (3.A): gezegen boyu sabit (darboğaz taçla), sürüyor ve ertelendi ayrı durum; geri kalanı kaynakla birebir
     it(`${kod}: kaynak modülle birebir aynı (boy ve yeni durumlar dışında)`, () => {
       const a = GG.kur(akis, MOBIL), b = Ref.kur(akis, MOBIL);
@@ -28,7 +44,8 @@ describe('galaksi geometrisi', () => {
       expect(Object.keys(a.gezegen)).toEqual(Object.keys(b.gezegen));
       for (const no of Object.keys(b.gezegen)) {
         const p = a.gezegen[+no], q = b.gezegen[no];
-        expect([p.x, p.y]).toEqual([q.x, q.y]);
+        // plan 2 Kas: aynı ana düşenler yol yönünde (kalabalık kümede) birkaç piksele kadar aralanır (SABIT.AYRIK yakınlaşmada ayrışsınlar)
+        expect(Math.hypot(p.x - q.x, p.y - q.y)).toBeLessThan(12);
         expect(p.r).toBeGreaterThanOrEqual(6 * MOBIL.ps - 1e-9);
         expect(p.r).toBeLessThanOrEqual(11 * MOBIL.ps + 1e-9);
         expect(p.uyeler).toEqual(q.uyeler);
