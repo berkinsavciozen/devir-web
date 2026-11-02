@@ -871,6 +871,9 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 /* galaksi: geçmişe ya da tahmine bakarken (plan 27 Eki, 3.25) */
 .zaman-seridi { position: absolute; display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 2px 0 14px; border-radius: 24px; background: var(--renk-zemin-kart); border: 1px solid var(--renk-vurgu-altin); z-index: 3; font-size: 13px; font-weight: 650; color: var(--renk-metin-altin); }
 .zaman-seridi button { position: relative; height: 44px; padding: 0 14px; border-radius: 22px; font-size: 13px; font-weight: 700; color: var(--renk-metin-koyu-uzerine); background: var(--renk-vurgu-altin); }
+/* son bakıştan beri değişenler (plan 2 Kas, durum dili 2) */
+.degisim-seridi span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.degisim-seridi .degisim-kapat { width: 44px; padding: 0; font-size: 20px; color: var(--renk-metin-altin); background: transparent; }
 /* haritada odak (plan 27 Eki, 2.C): "?" sayfasının başında kişi ve durum */
 .odak-secici { margin-bottom: 14px; }
 .odak-cipler { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }

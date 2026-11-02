@@ -111,3 +111,21 @@ describe('uydu sayıları', () => {
     expect(s).toContain('#FFD27A');
   });
 });
+
+// 2 Kas durum dili 2: uzak halkada en kötü açık durumun boncuğu; son bakıştan beri değişenler
+import { anlik, degisenler, degisimCumlesi } from '../ekranlar/akis/degisim';
+describe('durum dili 2', () => {
+  it('uydu halkasında en kötü durum boncuğu', () => {
+    const ks = (...d: string[]) => d.map((durum, i) => ({ ad: 'K' + i, durum }));
+    expect(uyduSistemi(0, 0, 10, ks('tamam', 'suruyor', 'engelli'))).toContain('data-durum="engelli"');
+    expect(uyduSistemi(0, 0, 10, ks('tamam', 'suruyor', 'hazir'))).toContain('data-durum="hazir"');
+    expect(uyduSistemi(0, 0, 10, ks('tamam', 'sirada'))).not.toContain('uydu-boncuk');
+  });
+  it('değişen adımlar; alt görev üst gezegende', () => {
+    const once = anlik([{ no: 1, durum: 'suruyor' }, { no: 2, durum: 'hazir' }, { no: 5, durum: 'suruyor' }]);
+    const ds = degisenler(once, [{ no: 1, durum: 'tamam' }, { no: 2, durum: 'engelli' }, { no: 5, durum: 'tamam', ust_adim: 3 }, { no: 9, durum: 'tamam' }]);
+    expect(ds.map((d) => d.gezegen)).toEqual([1, 2, 3]);
+    expect(degisimCumlesi(ds)).toBe('Son bakıştan beri: 2 bitti, 1 takıldı');
+    expect(degisenler(null, [{ no: 1, durum: 'tamam' }])).toEqual([]);
+  });
+});

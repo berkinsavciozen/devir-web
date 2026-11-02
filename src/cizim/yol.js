@@ -145,7 +145,11 @@ export function uyduSistemi(x, y, r, ks, ps = 1, o = {}) {
     if (done && toplam) s += `<path d="${yay(Math.PI, Math.PI + done / toplam * Math.PI * 2)}" fill="none" stroke="#FFD27A" ${kalem ? cizgi : `stroke-width="${f(2 * ps)}" stroke-linecap="round"`}/>`;
     if (!toplam) return s;
     const [tx, ty] = nok(0);
-    return s + sans(f(tx + 4 * ps), f(ty + 3.5 * ps), `${done}/${toplam}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
+    // en kötü açık durumun boncuğu (plan 2 Kas, durum dili 2): engel uzaktan da görünsün; engelli > sırası geldi > sürüyor
+    const kotu = ['engelli', 'hazir', 'suruyor'].find((d) => ks.some((k) => k.durum === d));
+    const BONCUK = { engelli: '#FF8A78', hazir: '#FFB547', suruyor: '#A8C4FF' };
+    if (kotu) s += `<circle class="uydu-boncuk" data-durum="${kotu}" cx="${f(tx)}" cy="${f(ty)}" r="${f(2.8 * ps)}" fill="${BONCUK[kotu]}" stroke="#08222E" stroke-width="${f(.8 * ps)}"/>`;
+    return s + sans(f(tx + (kotu ? 6 : 4) * ps), f(ty + 3.5 * ps), `${done}/${toplam}`, { fs: 9 * Math.max(1, ps), fw: 750, col: '#FFE6B0' });
   }
   // adlar yazılınca (Z3) aralık yazı satırı kadar açılır
   // dokunulur uydular (o.hedef, plan 28 Eki B4): 44 px hedefler birbirine ve gezegenin hedefine binmesin diye aralık açılır

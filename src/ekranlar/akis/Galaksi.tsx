@@ -28,6 +28,7 @@ import { haritaCercevesi, useGezinme, type Bolge } from './gezinme';
 import { bos, kisiAdlari, kuleKarti, yakinEtiketler, yelpaze, type Daire } from './katman';
 import { hedefPayi, KararSeridi, seritYuksekligi } from '../../bilesen/KararSeridi';
 import { TarihNeden } from './TarihNeden';
+import { anlik, degisenler, degisimCumlesi, gorulenOku, gorulenYaz, type Gorulen } from './degisim';
 import { buyut, hedefYaricap, kademe, KADEME, ogeKat, OLCEK, uygunKat, yaziKat } from '../../geometri/olcek';
 
 /** kuyruk yazısı (R17): "hedefe 24 gün pay" → "24 gün pay"; yalnız pay varken */
@@ -150,6 +151,21 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (bas.current.acildi) bas.current.gizle = window.setTimeout(() => setTarihNo(null), 2000);
   };
   const d = q.data;
+  // son bakıştan beri değişenler (plan 2 Kas, durum dili 2): açılışta cihazdaki son görüşle, açıkken bir önceki veriyle kıyaslanır;
+  // değişen adımların gezegeni bir kez parlar, haritanın üstünde cümle çıkar
+  const [degisim, setDegisim] = useState<{ cumle: string; gezegen: number[] } | null>(null);
+  const gorulen = useRef<{ kod: string; g: Gorulen | null } | null>(null);
+  useEffect(() => {
+    if (!d?.adimlar || d.akis?.kapandi_at) return;
+    const onceki = gorulen.current?.kod === kod ? gorulen.current.g : gorulenOku(kod);
+    const ds = degisenler(onceki, d.adimlar);
+    gorulen.current = { kod, g: anlik(d.adimlar) };
+    gorulenYaz(kod, d.adimlar);
+    if (!ds.length) return;
+    const g = [...new Set(ds.map((x) => x.gezegen))];
+    setDegisim({ cumle: degisimCumlesi(ds)!, gezegen: g });
+    setParla(new Set(g));
+  }, [d, kod]);
   // haritanın altındaki bölüm (madde 12): Adımlar · Kararlar · Çıktılar · Kişiler; telefonda aynı sayfada
   // karar şeridi (P1-A2) başlığın altında tek satır; dokununca tamamı haritanın üstünde açılır (plan 28 Eki, B8)
   const seritTam = !GD && d && !d.akis.kapandi_at ? seritYuksekligi(d.akis.karar_ozeti, 350, { neden: !!d.bitis }) : 0;
@@ -400,6 +416,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       {Math.abs(X - NOW) >= 36e5 && <div className="zaman-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60 }}>
         <span>{X < NOW ? 'Geçmişe bakıyorsun' : 'Tahmine bakıyorsun'} · {gunAy(X)}</span>
         <button type="button" onClick={() => { setOynuyor(false); setX(NOW); }}>Bugüne dön</button>
+      </div>}
+      {degisim && Math.abs(X - NOW) < 36e5 && <div className="zaman-seridi degisim-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60, maxWidth: bolge.w - 32 }}>
+        <span>{degisim.cumle}</span>
+        <button type="button" onClick={() => setParla(new Set(degisim.gezegen))}>Göster</button>
+        <button type="button" className="degisim-kapat" aria-label="Kapat" onClick={() => setDegisim(null)}>×</button>
       </div>}
       {gonder && <><BaglantiGonder kod={kod} kisi={gonder} kisiId={(d.sahipler || []).find((x: any) => x.ad === gonder)?.kisi_id} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
     </>
