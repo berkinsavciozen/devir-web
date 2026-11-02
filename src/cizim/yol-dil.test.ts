@@ -129,3 +129,14 @@ describe('durum dili 2', () => {
     expect(degisenler(null, [{ no: 1, durum: 'tamam' }])).toEqual([]);
   });
 });
+
+import { akisIlerlemesi } from '../api/ilerleme';
+describe('evren sayımı (karar 2 Kas)', () => {
+  it('yalnız ana görevler sayılır; alt görevler üst görevin içinde kalır', () => {
+    const d = { adimlar: [
+      { no: 1, durum: 'tamam' }, { no: 2, durum: 'suruyor' }, { no: 3, durum: 'atlandi' },
+      { no: 4, durum: 'tamam', ust_adim: 2 }, { no: 5, durum: 'hazir', ust_adim: 2 }, { no: 6, durum: 'tamam', ust_adim: 2 },
+    ] };
+    expect(akisIlerlemesi({}, d)).toEqual({ tamam: 1, toplam: 2, atlandi: 1, ertelendi: 0 });
+  });
+});

@@ -57,6 +57,8 @@ ok(kararAdimi({ ad: "Sözleşmeyi incele", karar_kriteri: "risk düşükse imzal
   // Ali vazgeçti → atlandı; Mehmet biter
   const al = kod["Ali Demir"];
   for (const n of [1, 2, 3]) await call("devir_adim_guncelle", { akis: al, no: n, durum: "atlandi", not: "çiftçi vazgeçti", atlama_nedeni: "gerek_kalmadi" });
+  p = adimlar(ak);
+  ok(p[2].ilerleme === "1/2 çiftçi tamam · 1 engelli · 1 atlandı", `atlanan kalem paydadan düşer (m6, S5): ${p[2].ilerleme}`);
   for (const n of [2, 3]) await call("devir_adim_guncelle", { akis: me, no: n, durum: "tamam", not: "ok", kim_tip: "insan" });
   p = adimlar(ak);
   ok(p.slice(1, 4).every((s) => s.durum === "tamam"), "tüm kalemler bitince özet adımlar tamam");

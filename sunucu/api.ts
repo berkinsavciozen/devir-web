@@ -88,11 +88,13 @@ function akisKart(akis: any, steps: any[], events: any[], now: number, ctx: Ctx,
   const sira = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum, bekleme_saat: saat(m.tl.get(s.no)!.simdi), kritik: m.pl.chain.includes(s.no), tuttugu: tuttugu(steps, s.no), engel: s.engel || null, engel_kisa: (s.engel && akis.baglam?.engel_kisa?.[String(s.no)]) || null })).sort((a: any, b: any) => (b.bekleme_saat || 0) - (a.bekleme_saat || 0));
   const parca = akisOzeti(akis, isDis(ctx) ? vis : steps, m, now);
   const son = events.length ? events[events.length - 1].created_at : akis.created_at;
+  const ana = steps.filter((s: any) => s.ust_adim == null);
   return {
     kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akisKisaAdi(akis), durum: akis.durum, varlik: akis.baglam?.musteri || null, hedef_tarih: akis.hedef_tarih || null,
     en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay), risk: m.pay != null && m.pay < 0,
     bitis: { en_erken: b.en_erken, aralik: b.aralik, guven: b.guven, eksik_sure: b.eksik_sure }, karar_ozeti,
-    ilerleme: { ...ilerlemeSay(steps), suruyor: steps.filter((s: any) => s.durum === "suruyor").length, engelli: steps.filter((s: any) => s.durum === "engelli").length },
+    // karar 2 Kas: kartın (evren boyu, ışığı) ilerlemesi yalnız ana görevleri sayar; alt görev üst görevinin içinde kalır
+    ilerleme: { ...ilerlemeSay(ana), suruyor: ana.filter((s: any) => s.durum === "suruyor").length, engelli: ana.filter((s: any) => s.durum === "engelli").length },
     sira, suruyor: vis.filter((s: any) => s.durum === "suruyor").map((s: any) => ({ no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip })),
     kritik_bekleme_saat: saat(m.kritikBekleme), toplam_bekleme_saat: saat(m.bekleme),
     ust: akis.baglam?.ust_akis ? { akis: akis.baglam.ust_kod, kalem: akis.baglam.kalem } : null,

@@ -6,9 +6,10 @@ export function ilerleme(A: { durum: string }[]): Ilerleme {
   return { tamam: A.filter((a) => a.durum === 'tamam').length, toplam: A.length - atlandi - ertelendi, atlandi, ertelendi };
 }
 
-/** Akışın ilerlemesi: detay geldiyse adımlardan, yoksa kartın (sunucu) ilerlemesi. */
+/** Akışın ilerlemesi: detay geldiyse adımlardan, yoksa kartın (sunucu) ilerlemesi. Karar 2 Kas: yalnız ana görevler
+ *  sayılır (evren boyu ve ışığı haritadaki gezegen sayısıyla aynı); alt görev üst görevinin içinde kalır. */
 export function akisIlerlemesi(k: any, d?: any): Ilerleme {
-  if (d?.adimlar) return ilerleme(d.adimlar);
+  if (d?.adimlar) return ilerleme(d.adimlar.filter((a: any) => a.ust_adim == null));
   const i = k?.ilerleme || {};
   return { tamam: i.tamam ?? 0, toplam: i.toplam ?? 0, atlandi: i.atlandi ?? 0, ertelendi: i.ertelendi ?? 0 };
 }
