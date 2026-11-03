@@ -7,6 +7,7 @@
 import { handle } from '../../../sunucu/server.ts';
 import type { SohbetFn } from '../../../sunucu/llm.ts';
 import ornek from '../../../tasarim/veri/ornek-veri.json';
+import nm8r from '../../../tasarim/veri/nm8r.json';
 
 export const SAHTE_SIMDI = Date.parse('2026-10-14T10:00:00+03:00');
 export const BERKIN_ALAN = 'c370682c-5111-4d7c-876f-b43dc9a8fe46';
@@ -197,6 +198,8 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'olcek') halOlcek(T);
   // J2 · ölçek (sentetik): 30 adım, 8 kişi
   if (o.hal === 'olcek30') halOtuz(T);
+  // 3 Kas · NM8R (canlı yapı): 36 ana adım + 123 alt görev, hedef ve son tarih yok
+  if (o.hal === 'nm8r' || o.hal === 'nm8r-hedef') halNm8r(T, o.hal === 'nm8r-hedef' ? '2027-05-26' : null);
 
   // hal örnekleri (§10): gerçek sunucu koduyla yazılır, sonra saat halin bugününe gelir
   // Yazan kişi kimlik bilgisinden belirlenir (S-C1): insanın yazması kendi e-postalı oturumuyla (anahtarla gelen istek
@@ -275,7 +278,7 @@ export const sahteSohbet: SohbetFn = async ({ system, gecmis, calistir }) => {
 
 /** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
-const HAL_SAAT: Record<string, string> = { karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00' };
+const HAL_SAAT: Record<string, string> = { nm8r: '2026-11-03T12:51:00+03:00', 'nm8r-hedef': '2026-11-03T12:51:00+03:00', karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim_tip: 'agent', arac: 'Claude' };
 
@@ -385,4 +388,15 @@ async function halUydu(yaz: Yaz) {
   await ilerlet('Hopa Çay', 7, '2026-11-01T12:00:00+03:00', { durum: 'tamam', kim: 'Çiftçi', not: 'Kimlik, vergi levhası, IBAN' });
   await ilerlet('Hemşin Koop', 7, '2026-11-02T16:00:00+03:00', { durum: 'engelli', engel: 'IBAN eksik', engel_kisa: 'IBAN', kim: 'Çiftçi' });
   await ilerlet('Çayeli Kadın Girişimi', 7, '2026-11-03T10:00:00+03:00', { durum: 'suruyor', kim: 'Çiftçi' });
+}
+
+/** 3 Kas · canlı NM8R akışının yapısı (tasarim/veri/nm8r.json): 159 adım, 123'ü alt görev, hedef tarih yok. */
+function halNm8r(T: Record<string, any[]>, hedef: string | null = null) {
+  const id = crypto.randomUUID(), at = '2026-11-03T09:05:47Z';
+  T.akis.push({ id, kisa_kod: 'NM8R', sahip_id: BERKIN_ALAN, baslik: 'E-ticaret karar destek sistemi ve agent\'ları', amac: 'Sistem hazır', sablon_kod: null, sablon_surum: null, hedef_tarih: hedef, durum: 'aktif', kurallar: { veri_ozet: true, karar_insanda: true }, baglam: { kisa_ad: 'E-ticaret sistemi kurulumu', varlik: 'E-ticaret sistemi', iliski: 'kendi' }, created_at: at, kapandi_at: null, taslak_id: null, ilk_taslak: null });
+  for (const r of (nm8r as any).adimlar as any[]) {
+    const [no, ust_adim, durum, sahip, sahip_tip, son_tarih, sure_tahmin_gun, bagimli, kosul, karar_gerekli, cikti_bekleniyor, tarih_sabit, capa_soru, cevap_soru, tur_kod, agent_sahibi] = r;
+    T.adim.push({ id: crypto.randomUUID(), akis_id: id, no, ust_adim, durum, sahip, sahip_tip, son_tarih, sure_tahmin_gun, bagimli, kosul, karar_gerekli, cikti_bekleniyor, tarih_sabit, capa_soru, cevap_soru, tur_kod, agent_sahibi, ad: tur_kod.replace(/-/g, ' '), kriter: 'tamam', ciktilar: [], kaynak: 'plan', created_at: at, durum_at: no >= 47 && no <= 51 ? '2026-11-03T09:07:00Z' : at });
+  }
+  T.olay.push({ id: 990100, akis_id: id, adim_no: null, kim: 'Claude', kim_tip: 'agent', arac: 'Claude', tip: 'akis_olustu', ozet: 'Akış kuruldu', veri: {}, created_at: at });
 }

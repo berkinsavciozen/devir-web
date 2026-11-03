@@ -1,3 +1,4 @@
+import { HataSiniri } from './bilesen/HataSiniri';
 import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { alanSecimi } from './api/istemci';
@@ -138,7 +139,7 @@ export function App() {
     <QueryClientProvider client={sorguIstemcisi}>
       <div className="uygulama">
         <SvgTanimlar />
-        {ekran}
+        <HataSiniri key={yol}>{ekran}</HataSiniri>
         {ekran.type === Uygulama && <DevirAiKok />}
         <Gren />
         {import.meta.env.VITE_HASH === '1' && <OrnekMenusu />}

@@ -1,3 +1,4 @@
+import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -176,7 +177,7 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22, alt 
   }
   for (const g of yer) {
     const k = tum.find((x) => x.kod === g.kod), e = ekran({ x: g.x, y: g.y, r: g.rr, pr: 0 });
-    const etiket = k ? `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı.' : `${k.ilerleme?.tamam ?? 0}/${k.ilerleme?.toplam ?? 0} adım tamam. Hedef ${gunAy(tarihMs(k.hedef_tarih))}.`}` : g.kod;
+    const etiket = k ? `${akisAdi(k)}. ${k.durum === 'kapandi' ? 'Kapandı.' : `${k.ilerleme?.tamam ?? 0}/${k.ilerleme?.toplam ?? 0} adım tamam. ${k.hedef_tarih ? `Hedef ${gunAy(tarihMs(k.hedef_tarih))}.` : 'Hedef tarih yok.'}`}` : g.kod;
     if (!gor(e.x, e.y)) continue;
     const ipucu = k ? `${akisAdi(k)} · ${k.durum === 'kapandi' ? 'kapandı' : `${ilerlemeMetni(akisIlerlemesi(k, detay[g.kod]))}${k.hedef_tarih ? ` · hedef ${gunAy(tarihMs(k.hedef_tarih))}` : ''}${hedefEtiketi(k.karar_ozeti) ? ` · ${hedefEtiketi(k.karar_ozeti)}` : ''}`}` : g.kod;
     const h = { key: g.kod, kod: g.kod, x: e.x, y: e.y, r: ayrintili.has(g.kod) ? 22 : Math.max(minR, e.r), etiket: kart === g.kod ? `${etiket} Akışa geç.` : `${etiket} Bilgi kartı.`, ipucu, tikla: () => dokun(g.kod) };
@@ -247,7 +248,7 @@ function AkisBilgiKarti({ k, d, yer, gec, kapat }: { k: any; d: any; yer: KartYe
       </div>
       <div className="abk-ilerleme" role="img" aria-label={`Yüzde ${yuzde} tamam`}><i style={{ width: `${yuzde}%` }} /></div>
       <p className="abk-satir"><b>%{yuzde}</b> · {ilerlemeMetni(i)}</p>
-      {(k.hedef_tarih || pay) && <p className="abk-satir">{k.hedef_tarih ? `Hedef ${gunAy(tarihMs(k.hedef_tarih))}` : ''}{k.hedef_tarih && pay ? ' · ' : ''}{pay && <span className={/geç|riskte/.test(pay) ? 'abk-gec' : ''}>{pay}</span>}</p>}
+      {(k.hedef_tarih || pay || hedefsiz(k)) && <p className="abk-satir">{k.hedef_tarih ? `Hedef ${gunAy(tarihMs(k.hedef_tarih))}` : hedefsiz(k) && akisUfku(k) ? `Hedef yok · en erken ${gunAy(tarihMs(akisUfku(k)!))}` : ''}{k.hedef_tarih && pay ? ' · ' : ''}{pay && <span className={/geç|riskte/.test(pay) ? 'abk-gec' : ''}>{pay}</span>}</p>}
       {takili && <p className="abk-satir abk-takili">Takılan: {takili.ad}</p>}
       <div className="abk-alt">
         <span className="abk-kisiler" aria-label={`Kişiler: ${kisiler.map((a) => a.sahip).join(', ')}`}>
@@ -345,12 +346,12 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     // J1: çok akışta ölçek düzeni (§4.14)
     if (kartlar.length > OLCEK) {
       // takvim veriden (J1 sarma hatası: sabit Eki–Ara penceresinde 2027 hedefi başa dolanırdı)
-      const takvim = evrenTakvimi(kartlar.filter((k) => k.hedef_tarih).map((k) => ({ t0: tarihMs(k.olusturuldu || k.son_hareket || k.hedef_tarih), hedef: tarihMs(k.hedef_tarih) })), NOW);
+      const takvim = evrenTakvimi(kartlar.filter((k) => akisUfku(k)).map((k) => ({ t0: tarihMs(k.olusturuldu || k.son_hareket || akisUfku(k)!), hedef: tarihMs(akisUfku(k)!) })), NOW);
       const O = evrenOlcek({
         simdi: NOW, takvim, c: genis ? undefined : T.olcek,
         akislar: [
-          ...kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k) })),
-          ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
+          ...kartlar.filter((k) => akisUfku(k)).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(akisUfku(k)!), isaret: isaret[k.kod], karar: kararli(k) })),
+          ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at || k.son_hareket), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
         ],
         kucuk: (kod, x, y, r, pr) => { konum[kod] = { x, y, r, pr }; return yerTutucu(kod); },
       });
@@ -360,8 +361,8 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     }
     // evren matematiği (madde 5): başlangıç, pay, adım sayısı, biten ve kişiler; takvim veriden
     const kisileri = (k: any) => [...new Set<string>((detay[k.kod]?.adimlar || []).map((a: any) => a.sahip))];
-    const aktifler = kartlar.filter((k) => k.hedef_tarih).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih), isaret: isaret[k.kod], karar: kararli(k), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam,
-      t0: tarihMs(k.olusturuldu || k.son_hareket || k.hedef_tarih), payGun: k.pay_saat == null ? null : k.pay_saat / 24, adim: say(k)[1], biten: say(k)[0], kisiler: kisileri(k) }));
+    const aktifler = kartlar.filter((k) => akisUfku(k)).map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(akisUfku(k)!), isaret: isaret[k.kod], karar: kararli(k), bitti: k.ilerleme && k.ilerleme.tamam === k.ilerleme.toplam,
+      t0: tarihMs(k.olusturuldu || k.son_hareket || akisUfku(k)!), payGun: k.pay_saat == null ? null : k.pay_saat / 24, adim: say(k)[1], biten: say(k)[0], kisiler: kisileri(k) }));
     const takvim = evrenTakvimi([...aktifler, ...kapanan.filter((k) => k.kapandi_at && tarihMs(k.kapandi_at) > NOW - 45 * 864e5).map((k) => ({ t0: tarihMs(k.kapandi_at), hedef: tarihMs(k.kapandi_at) }))], NOW);
     const U = usturlap({
       simdi: NOW, oran: toplam ? tamam / toplam : 0, taslak: ozet.data.taslaklar?.length || 0, takvim, c: genis ? undefined : T.merkez,
@@ -369,7 +370,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       ustSinir: genis ? (() => { const t = genisTaban(boy.w, boy.h); return (168 - t.y) / t.k; })() : 156,
       akislar: [
         ...aktifler,
-        ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
+        ...kapanan.map((k) => ({ kod: k.kod, ad: akisAdi(k), hedef: tarihMs(k.hedef_tarih || k.kapandi_at || k.son_hareket), kapandi: tarihMs(k.kapandi_at || k.son_hareket), bitti: true })),
       ],
       kucuk: (kod, x, y, r, pr) => { konum[kod] = { x, y, r, pr }; return yerTutucu(kod); },
     });

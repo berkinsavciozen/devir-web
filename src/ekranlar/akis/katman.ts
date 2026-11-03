@@ -66,7 +66,7 @@ export function kisiAdlari(d: any, Y: any, b: Bolge, hepsi: boolean, kart: strin
 export function kuleKarti(d: any, kule: { x: number; y: number }, b: Bolge): string {
   const k = d.akis, byNo = new Map<number, any>(d.adimlar.map((a: any) => [a.no, a]));
   const satir: [string, number, number, string][] = [];
-  if (k.hedef_tarih) satir.push([`Hedef ${gunAyUzun(k.hedef_tarih)}`, 14, 700, C.ink]);
+  satir.push(k.hedef_tarih ? [`Hedef ${gunAyUzun(k.hedef_tarih)}`, 14, 700, C.ink] : ['Hedef tarih yok', 14, 700, C.ink2]);
   if (k.en_erken_bitis) satir.push([`En erken ${gunAyUzun(k.en_erken_bitis)}${k.pay_saat == null ? '' : k.pay_saat >= 0 ? ` · ${paySure(k.pay_saat)} pay` : ` · ${paySure(k.pay_saat)} geç`}`, 12.5, 600, k.pay_saat != null && k.pay_saat < 0 ? '#FFC2B8' : '#FFE6B0']);
   const kr = (d.kritik_yol || []).map((no: number) => byNo.get(no)).filter((a: any) => a && !BITTI(a.durum)).map((a: any) => adimAdi(a));
   if (kr.length) {
@@ -75,7 +75,6 @@ export function kuleKarti(d: any, kule: { x: number; y: number }, b: Bolge): str
     if (i < kr.length) t += i ? ` +${kr.length - i}` : kr[0].slice(0, 20) + '…';
     satir.push([t, 12, 500, C.ink2]);
   }
-  if (!satir.length) satir.push(['Hedef tarih yok', 13, 600, C.ink2]);
   const w = 236, h = 22 + satir.length * 19, x = Math.min(Math.max(kule.x - w / 2, b.x + 8), b.x + b.w - w - 8);
   const ust = kule.y - 40 - h > b.y + 4, y = ust ? kule.y - 40 - h : Math.min(kule.y + 26, b.y + b.h - h - 4);
   let s = `<rect x="${f(x)}" y="${f(y)}" width="${w}" height="${h}" rx="18" fill="#08222E" fill-opacity=".96" stroke="#FFD27A" stroke-opacity=".6"/>`;

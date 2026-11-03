@@ -1,3 +1,4 @@
+import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -67,7 +68,7 @@ export function Akislar({ ben }: { ben: Ben }) {
 
   const cizim = useMemo(() => {
     const tA = Math.min(...satirlar.map((k) => tarihMs(k.olusturuldu)), NOW) , tA0 = Math.floor((tA + 3 * 36e5) / GUN) * GUN - 3 * 36e5;
-    const tB = Math.max(TAKVIM1, ...satirlar.map((k) => tarihMs((k.hedef_tarih || '2000-01-01') + 'T23:59:00+03:00')));
+    const tB = Math.max(TAKVIM1, ...satirlar.map((k) => tarihMs((akisUfku(k) || '2000-01-01') + 'T23:59:00+03:00')));
     const tx = (ms: number) => 108 + (ms - tA0) / (tB - tA0) * 246;
     let s = '';
     satirlar.forEach((k, i) => {
@@ -79,8 +80,8 @@ export function Akislar({ ben }: { ben: Ben }) {
       const pay = d ? isPayi(d.olaylar) : [];
       if (pay.length) s += shareRing(50, cy, 31, pay, { w: 2.2, bead: 1.3, beads: false });
       // zaman ipliği: kuruluş → hedef; biten oranda ışık
-      const a = tx(tarihMs(k.olusturuldu)), b = tx(tarihMs((k.hedef_tarih || k.kapandi_at?.slice(0, 10)) + 'T23:59:00+03:00'));
-      s += `<line x1="${f(a)}" y1="${cy + 12}" x2="${f(b)}" y2="${cy + 12}" stroke="#4B4380" stroke-width="4" stroke-linecap="round"/>`;
+      const a = tx(tarihMs(k.olusturuldu)), b = tx(tarihMs((akisUfku(k, d?.adimlar) || String(k.olusturuldu).slice(0, 10)) + 'T23:59:00+03:00'));
+      s += `<line x1="${f(a)}" y1="${cy + 12}" x2="${f(b)}" y2="${cy + 12}" stroke="#4B4380" stroke-width="4" stroke-linecap="round"${hedefsiz(k) ? ' stroke-dasharray="2 6"' : ''}/>`;
       if (fr > 0) s += `<line x1="${f(a)}" y1="${cy + 12}" x2="${f(a + (b - a) * fr)}" y2="${cy + 12}" stroke="#FFD27A" stroke-width="4" stroke-linecap="round"/><line x1="${f(a)}" y1="${cy + 12}" x2="${f(a + (b - a) * fr)}" y2="${cy + 12}" stroke="#FFB47F" stroke-width="10" opacity=".3" filter="url(#blur2)"/>`;
       // adım boncukları
       const adimlar: any[] = d?.adimlar ? [...d.adimlar].sort((p, q) => p.no - q.no) : [];
