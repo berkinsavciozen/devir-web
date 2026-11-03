@@ -494,7 +494,42 @@ export function planGirdisi<T extends { no: number; bagimli: number[]; ust_adim?
   const alt = new Map<number, T[]>();
   for (const s of steps) if (s.ust_adim != null) alt.set(s.ust_adim, [...(alt.get(s.ust_adim) || []), s]);
   if (!alt.size) return steps;
-  return steps.map((s) => { const k = alt.get(s.no); return k ? { ...s, bagimli: [...new Set([...(s.bagimli || []), ...k.map((x) => x.no)])], _altAcik: k.some((x) => !DONE(x)) } : s; });
+  const by = new Map(steps.map((s) => [s.no, s]));
+  const miras = sureMirasi(alt, by);
+  return steps.map((s) => {
+    const k = alt.get(s.no);
+    if (k) return { ...s, bagimli: [...new Set([...(s.bagimli || []), ...k.map((x) => x.no)])], _altAcik: k.some((x) => !DONE(x)) };
+    const m = miras.get(s.no);
+    return m != null ? { ...s, sure_tahmin_gun: m, _sure_miras: true } : s;
+  });
+}
+/**
+ * P6 (NM8R): süresi yazılmamış alt görev üst görevin süresini payla devralır. Kardeşler paralelse her biri üst görevin süresi
+ * kadar, birbirini bekleyen zincirdeyse süre zincir boyuna bölünür; hepsi aynı kişideyse süre o kişinin toplam emeğidir, eşit
+ * bölünür (en az çeyrek gün). Yalnız plan girdisinde; kayda yazılmaz.
+ */
+function sureMirasi<T extends { no: number; bagimli: number[] }>(alt: Map<number, T[]>, by: Map<number, T>): Map<number, number> {
+  const out = new Map<number, number>();
+  const sure = (x: any) => { const g = Number(x?.sure_tahmin_gun); return x?.sure_tahmin_gun != null && isFinite(g) && g > 0 ? g : null; };
+  for (const [ust, kids] of alt) {
+    const g = sure(by.get(ust));
+    if (g == null || !kids.some((x) => sure(x) == null)) continue;
+    const nolar = new Set(kids.map((x) => x.no)), derin = new Map<number, number>();
+    const d = (x: T, yol: Set<number>): number => {
+      if (derin.has(x.no)) return derin.get(x.no)!;
+      if (yol.has(x.no)) return 1; // döngü: topo zaten hata verir
+      yol.add(x.no);
+      const v = 1 + Math.max(0, ...(x.bagimli || []).filter((n) => nolar.has(n) && n !== x.no).map((n) => d(by.get(n)!, yol)));
+      yol.delete(x.no); derin.set(x.no, v); return v;
+    };
+    // tek kişinin işleri: üst görevin süresi o kişinin toplam emeği, eşit bölünür; ayrı kişiler ya da agent'lar: zincir boyuna
+    const eksik = kids.filter((x) => sure(x) == null) as any[];
+    const kisiler = new Set(eksik.map((x) => (x.sahip_tip === "agent" ? "agent:" + x.no : x.sahip_kisi_id || norm(x.sahip || ""))));
+    const boy = kisiler.size === 1 && eksik.length > 1 ? eksik.length : Math.max(...kids.map((x) => d(x, new Set())));
+    const pay = Math.max(0.25, Math.round((g / boy) * 4) / 4);
+    for (const x of kids) if (sure(x) == null) out.set(x.no, pay);
+  }
+  return out;
 }
 /** Ağaç sırası: ana görevler numara sırasıyla, alt görevler üstlerinin hemen ardından. */
 export function agacSirasi<T extends { no: number; ust_adim?: number | null }>(steps: T[]): T[] {

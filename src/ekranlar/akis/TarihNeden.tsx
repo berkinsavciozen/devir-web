@@ -6,11 +6,11 @@ import { gunAy, kisaAd } from '../../cizim/yol.js';
 export interface BitisV {
   en_erken: string | null; aralik: [string, string] | null; guven: 'kesin' | 'tahmin' | 'eksik'; eksik_sure: number;
   varsayimlar: string[]; yuk_uyarilari: { kisi: string; adimlar: number[]; gecikme_gun: number }[];
-  adimlar: { no: number; kaynak: 'kullanici' | 'tahmin' | 'gecmis' | 'eksik'; sure_gun: [number, number]; bitis: [string, string] }[];
+  adimlar: { no: number; kaynak: 'kullanici' | 'tahmin' | 'gecmis' | 'eksik' | 'ust'; sure_gun: [number, number]; bitis: [string, string] }[];
   zincir: number[];
 }
 
-const KAYNAK: Record<BitisV['adimlar'][number]['kaynak'], string> = { kullanici: 'girilen süre', tahmin: 'tahmin', gecmis: 'benzer işlerin gerçek süresi', eksik: 'süre yok' };
+const KAYNAK: Record<BitisV['adimlar'][number]['kaynak'], string> = { kullanici: 'girilen süre', tahmin: 'tahmin', gecmis: 'benzer işlerin gerçek süresi', eksik: 'süre yok', ust: 'üst görevden pay' };
 const GUVEN: Record<BitisV['guven'], string> = {
   kesin: 'Süreler girildiği gibi; işler planda giderse bu tarih değişmez.',
   tahmin: 'Alt uç her iş tahmini kadar sürerse; üst uç aşağıdaki varsayımlarla.',
