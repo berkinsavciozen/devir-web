@@ -6,7 +6,7 @@ import { sorguIstemcisi } from '../../api/sorgular';
 import { hedefPayi } from '../../bilesen/KararSeridi';
 import { Dugme } from '../../bilesen/Dugme';
 import { C, planet, ship } from '../../cizim/ortak.js';
-import { gunAy, gunAyHafta, kisaAd } from '../../cizim/yol.js';
+import { gunAy, gunAyHafta, kisaAd, otoRozet } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
 import { adimCumlesi, AdimGecmis, Ciktilar, IHLAL_IPUCU, isPayi, sureKisa, takvimIhlali, tarihSayisi, tuttuklari } from './Adim';
@@ -20,7 +20,7 @@ const ajanMi = (ad: string, tip?: string) => tip === 'agent' || /agent|Claude/i.
 const GUN = 864e5;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
-const gezegen = (a: any, r: number) => planet(0, 0, r, durumGor(a), { life: false, karar: a.karar_adimi, cloudGap: r > 16 ? 6 : 2 });
+const gezegen = (a: any, r: number) => planet(0, 0, r, durumGor(a), { life: false, karar: a.karar_adimi, cloudGap: r > 16 ? 6 : 2, oto: BITTI(a.durum) ? null : otoRozet(a) });
 
 /** Görevin başlangıcı: başladıysa ilk "başladı" kaydı; sırası geldiyse şimdi; değilse öncüllerin en geç en erken bitişi. */
 export function baslangic(a: any, by: Map<number, any>): { ms: number | null; etiket: string } {
@@ -53,6 +53,15 @@ function Bolum({ baslik, children, id }: { baslik: string; children: ReactNode; 
  * Başlık ve durum → ne yapılacak → kim → ne zaman → etkileyen / etkilediği → karar (yalnız karar adımı) →
  * çıktı (bekleniyorsa ya da varsa) → alt görevler (varsa) → geçmiş (katlı).
  */
+/** AI yapsın durumu, tek cümle. */
+export function otoCumle(a: any): string {
+  if (a.oto_durum === 'tetiklendi') return 'Claude rutinin şu an bu görev üzerinde çalışıyor.';
+  if (a.oto_durum === 'bakilacak') return 'Claude çıktısını yazdı; bakıp bitirmen gerekiyor.';
+  if (a.oto_durum === 'hata') return 'AI yapsın başlatılamadı; engel notuna bak, gerekirse Claude’da aç.';
+  if (a.oto_bekledigi) return `Bekliyor: ${a.oto_bekledigi}. Hazır olunca kendiliğinden başlar.`;
+  return 'Hazır; bir sonraki kayıtta kendiliğinden başlar.';
+}
+
 export function GorevDetay(o: { kod: string; no: number; ben: string; kapat?: () => void }) {
   // alt görevin adresi (plan 28 Eki, karar 4): üst görev sayfası, o alt görevin akordiyonu açık
   const akis = useAkis(o.kod);
@@ -111,6 +120,9 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
     mutationFn: (ad: string) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}/alt`, { alt_gorevler: [{ ad }] }),
     onSuccess: () => { setAltAd(''); yenile(); },
   });
+  // AI yapsın (0.29.0): agent görevinin sahibi işaretler; rutin bağlı değilse Ayarlar'a yönlendirir
+  const otoYaz = useMutation({ mutationFn: (g: Record<string, unknown>) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`, g), onSuccess: yenile });
+  const tetikler = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), retry: false, staleTime: 60_000 });
 
   if (!a || !d) return <div className="gd" ref={kok}><div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div></div>;
 
@@ -122,6 +134,10 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const tut = tuttuklari(d.adimlar, A.no);
   const sahipAjan = ajanMi(A.sahip, A.sahip_tip), sahipDis = !sahipAjan && A.sahip_tip === 'dis' && A.sahip !== ben;
   const benim = A.sahip === ben && !BITTI(A.durum);
+  const agentBenim = sahipAjan && (!A.agent_sahibi || A.agent_sahibi === ben);
+  const otoGoster = agentBenim && !BITTI(A.durum) && !A.karar_adimi;
+  const bakilacak = agentBenim && A.oto && A.oto_durum === 'bakilacak' && !BITTI(A.durum);
+  const tetikYok = !!tetikler.data && !(tetikler.data.tetikler || []).length;
   const claude = A.linkler?.claude;
   const ihlal = takvimIhlali(A);
   let sayilar: [string, string][] = [
@@ -211,6 +227,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
       </div>
       <div className="gd-eylem">
         {benim && !A.karar_adimi && !acikAlt.length && <Dugme className="statik" mesgul={bitir.isPending} onClick={() => bitir.mutate()}>Bitti olarak işaretle</Dugme>}
+        {bakilacak && <Dugme className="statik" mesgul={bitir.isPending} onClick={() => bitir.mutate()}>Çıktıya baktım, bitir</Dugme>}
         {benim && acikAlt.length > 0 && <p className="gd-satir">Alt görevlerin hepsi bitince {A.karar_adimi || A.cikti_bekleniyor ? 'bu görevi sen tamamlarsın' : 'bu görev kendiliğinden tamamlanır'}.</p>}
         {benim && A.karar_adimi && <Dugme className="statik" onClick={() => kok.current?.querySelector('#gd-karar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Seçenekleri gör</Dugme>}
         {sahipDis && !BITTI(A.durum) && <Dugme className="statik" ikonX={56} kayma={14} onClick={() => setPaylas(true)}
@@ -239,6 +256,16 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         </div>
         {pay.length > 0 && <p className="gd-satir">Katkı: {pay.map((p) => `${kisaAd(p.ad)} ${p.n} kayıt`).join(' · ')}</p>}
       </Bolum>
+
+      {otoGoster && <Bolum baslik="AI YAPSIN" id="gd-oto">
+        <label className="gd-oto-sec"><input type="checkbox" checked={!!A.oto} disabled={otoYaz.isPending} onChange={(e) => otoYaz.mutate({ oto: e.target.checked })} /><span>Hazır olunca Claude rutinim bu görevi kendiliğinden yapsın</span></label>
+        {A.oto && <label className="gd-oto-sec"><input type="checkbox" checked={!!A.oto_tarih_bekle} disabled={otoYaz.isPending} onChange={(e) => otoYaz.mutate({ oto_tarih_bekle: e.target.checked })} /><span>Planlanan başlangıç gününü beklesin</span></label>}
+        {A.oto && <p className="gd-satir" role="status">{otoCumle(A)}</p>}
+        {A.oto && A.oto_oturum && <button type="button" className="metin-baglanti gd-neden" onClick={() => window.open(A.oto_oturum, '_blank', 'noopener')}>Claude oturumunu aç</button>}
+        {A.oto && tetikYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
+        {!A.oto && <p className="gd-satir">Karar, ödeme ve dışarıya gönderme işleri otomatik yapılmaz. Çıktı sana bakılacak olarak gelir, bitti dersen biter.</p>}
+        {otoYaz.isError && <p className="canli-hata-satir" role="alert">{(otoYaz.error as Error).message}</p>}
+      </Bolum>}
 
       <Bolum baslik="NE ZAMAN">
         <dl className="gd-liste gd-tarih">

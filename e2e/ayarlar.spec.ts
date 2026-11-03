@@ -208,5 +208,5 @@ test('P7-harita-dili: "Tüm harita dili" evren ve akış işaretlerinin hepsini 
   await page.getByRole('button', { name: /Tüm harita dili/ }).click();
   const d = page.getByRole('dialog', { name: 'Tüm harita dili' });
   await expect(d.getByRole('list', { name: 'Evren işaretleri' }).getByRole('listitem')).toHaveCount(8);
-  await expect(d.getByRole('list', { name: 'Akış haritası işaretleri' }).getByRole('listitem')).toHaveCount(17);
+  await expect(d.getByRole('list', { name: 'Akış haritası işaretleri' }).getByRole('listitem')).toHaveCount(18);
 });

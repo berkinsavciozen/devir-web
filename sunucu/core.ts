@@ -611,7 +611,70 @@ export const otoMetni = (akis: any, s: any, taban?: string) => [
 export async function tetikBul(ctx: Ctx, kisi: string | null, agentAd?: string | null) {
   if (!kisi) return null;
   const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(kisi), aktif: true }, "created_at").catch(() => []);
-  return (agentAd && L.find((t: any) => norm(t.ad) === norm(agentAd))) || L[0] || null;
+  const A = L.filter((t: any) => t.url !== ZAMANLI);
+  return (agentAd && A.find((t: any) => norm(t.ad) === norm(agentAd))) || A[0] || null;
+}
+/** Kişinin AI yapsın işlerini alacak bir yolu var mı: API tetiği ya da son 3 günde Devir'e uğramış zamanlanmış rutin. */
+export async function rutinVar(ctx: Ctx, kisi: string | null, agentAd?: string | null) {
+  if (!kisi) return false;
+  if (await tetikBul(ctx, kisi, agentAd)) return true;
+  const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(kisi), aktif: true }, "created_at").catch(() => []);
+  return L.some((t: any) => t.url === ZAMANLI && t.son_tetik_at && ctx.now - Date.parse(t.son_tetik_at) < 3 * 864e5);
+}
+/** Zamanlanmış rutin satırının url işareti: jetonsuz, Devir tetiklemez; rutin kendisi saatte bir devir_ai_isler'i çağırır. */
+export const ZAMANLI = "zamanli";
+/** Bir AI yapsın işinin rutin tarafından alınıp yarıda bırakıldığı sayılma süresi. */
+const ALINDI_ZAMAN_ASIMI = 6 * 3600e3;
+/** devir_ai_isler: zamanlanmış rutin kendi işlerini çeker. Hazır AI yapsın adımlarını bulur, alır (tetiklendi) ve talimatları döner. */
+async function aiIsler(a: any, ctx: Ctx) {
+  if (isDis(ctx)) throw yetkiYok("AI yapsın işleri yalnız ekip üyelerinin rutinlerine açık.");
+  const kisi = ctx.key.kisi, nk = norm(kisi), enCok = Math.max(1, Math.min(10, Math.round(num(a.en_cok) || 3)));
+  const almadan = a.al === false;
+  const nowIso = new Date(ctx.now).toISOString();
+  if (!almadan) {
+    const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: nk }, "created_at").catch(() => []);
+    const z = L.find((t: any) => t.url === ZAMANLI);
+    const alan = { ad: "Zamanlanmış rutin", aktif: true, son_tetik_at: nowIso, son_hata: null };
+    if (z) await ctx.db.update("agent_tetik", { id: z.id }, alan).catch(() => {});
+    else await ctx.db.insert("agent_tetik", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id || null, kisi, kisi_norm: nk, url: ZAMANLI, jeton: "", ...alan }]).catch(() => {});
+  }
+  const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")) as any[];
+  const ids = flows.map((f: any) => f.id);
+  const all = ids.length ? (await ctx.db.many("adim", { akis_id: ids }, "no")).map(fixStep) : [];
+  const isler: { akis: any; s: any; steps: any[]; yeniden: boolean }[] = [];
+  const bekleyen: string[] = [];
+  for (const f of flows) {
+    const steps = all.filter((s: any) => s.akis_id === f.id);
+    if (!flowInScope(ctx, f, steps)) continue;
+    for (const s of steps) {
+      if (!s.oto || norm(s.agent_sahibi || "") !== nk || !stepInScope(ctx, s)) continue;
+      if (otoUygunDegil(s, f.kurallar || {})) continue;
+      const takili = s.oto_durum === "tetiklendi" && s.durum === "hazir" && s.oto_at && ctx.now - Date.parse(s.oto_at) > ALINDI_ZAMAN_ASIMI;
+      if (s.oto_durum && !takili) continue;
+      const neden = otoBekledigi(s, steps, ctx.now);
+      if (neden) { if (s.durum === "hazir" || s.durum === "sirada") bekleyen.push(`${f.kisa_kod} #${s.no} ${s.ad}: ${neden}`); continue; }
+      isler.push({ akis: f, s, steps, yeniden: !!takili });
+    }
+  }
+  const sec = isler.slice(0, enCok);
+  const kim = { kim: "Devir", kim_tip: "sistem", arac: null };
+  const out: string[] = [];
+  for (const { akis, s, yeniden } of sec) {
+    if (almadan) { out.push(otoMetni(akis, s, ctx.taban)); continue; }
+    const deneme = (s.oto_deneme || 0) + 1;
+    if (yeniden && deneme > OTO_DENEME) {
+      await ctx.db.update("adim", { id: s.id }, { oto_durum: "hata" });
+      await setDurum(ctx, akis, s, "engelli", kim, `AI yapsın ${deneme - 1} kez alındı ama çıktı gelmedi`, { engel: "Rutin işi aldı ama bitiremedi. Claude'da aç ya da rutinin oturumuna bak." });
+      continue;
+    }
+    await ctx.db.update("adim", { id: s.id }, { oto_durum: "tetiklendi", oto_at: nowIso, oto_deneme: deneme });
+    await log(ctx, akis.id, s.no, kim, "guncelleme", `AI yapsın: zamanlanmış rutin işi aldı${yeniden ? " (yeniden)" : ""}`, { tur: "oto_tetik", tetik: ZAMANLI, deneme });
+    out.push(otoMetni(akis, s, ctx.taban));
+  }
+  const bas = out.length
+    ? [`${almadan ? "Hazır" : "Aldığın"} AI yapsın işleri (${out.length}${isler.length > out.length ? ` / ${isler.length}; kalanı sonraki çalışmada` : ""}). Her biri için talimatları sırayla uygula:`]
+    : ["Şu an senin için hazır AI yapsın işi yok. Hiçbir şey yapma; bu çalışma burada biter."];
+  return [...bas, ...out.map((m, i) => `\n--- İş ${i + 1} ---\n${m}`), ...(bekleyen.length ? ["", `Bekleyenler (henüz yapma): ${bekleyen.slice(0, 8).join("; ")}`] : [])].join("\n");
 }
 async function otoTara(ctx: Ctx, akis: any, steps: any[]) {
   if (!ctx.tetik || akis.durum !== "aktif") return;
@@ -1107,6 +1170,14 @@ export const TOOLS = [
     } },
   },
   {
+    name: "devir_ai_isler",
+    description: "AI yapsın: sana (bağlantının sahibine) ait, şimdi yapılabilir AI yapsın adımlarını verir ve onları senin aldığını işaretler. Zamanlanmış Claude rutini her çalışmada önce bunu çağırır, dönen her işin talimatlarını sırayla uygular. Hazır iş yoksa hiçbir şey yapma. al=false yalnız listeler, işaretlemez.",
+    inputSchema: { type: "object", properties: {
+      en_cok: { type: "number", description: "Bir çalışmada alınacak en çok iş (varsayılan 3, en çok 10)." },
+      al: { type: "boolean", description: "false: yalnız listeler, işleri almaz." },
+    } },
+  },
+  {
     name: "devir_baglanti",
     description: "Dış katılımcının (müşteri, usta, tedarikçi…) paylaşım bağlantısını verir: kişi akışta yoksa ekler, varsa var olan bağlantıyı döner. Bağlantı giriş istemez ve yalnız sahibi bu kişi olan adımları gösterir. Dönen bağlantıyı ve hazır mesajı kullanıcıya olduğu gibi ver; bağlantı uydurma. yenile=true eski bağlantıyı kapatıp yenisini üretir (bağlantı yanlış kişiye gittiyse).",
     inputSchema: { type: "object", required: ["akis", "ad"], properties: {
@@ -1166,6 +1237,7 @@ export async function callTool(name: string, a: any, ctx: Ctx): Promise<string> 
     case "devir_alt_akis": return altAkis(a, ctx);
     case "devir_takvim_yenile": return takvimYenile(a, ctx);
     case "devir_alt_gorev": return Array.isArray(a.gruplar) ? altGorevGruplar(a, ctx) : altGorevEkle(a, ctx);
+    case "devir_ai_isler": return aiIsler(a, ctx);
     case "devir_baglanti": return baglantiAraci(a, ctx);
   }
   throw new Error(`Bilinmeyen araç: ${name}`);
@@ -2065,7 +2137,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
       if (neden) throw new Error(`Adım ${s.no} (${s.ad}) AI yapsın olamaz: ${neden}.`);
       if (!s.oto || s.oto_durum === "hata") { patch.oto = true; patch.oto_durum = null; patch.oto_deneme = 0; }
       if (!patch.agent_sahibi && !s.agent_sahibi && ctx.key?.kisi) patch.agent_sahibi = ctx.key.kisi; // AI yapsın'ı açan kişi agent'ın sahibidir
-      if (!(await tetikBul(ctx, String(patch.agent_sahibi || s.agent_sahibi || ""), String(patch.sahip || s.sahip)))) warn.push(`${patch.agent_sahibi || s.agent_sahibi || "Agent'ın sahibi"} için tanımlı bir Claude rutini tetiği yok; adım hazır olunca kendiliğinden başlamaz. Ayarlar > AI yapsın'dan rutinin API tetiğini ekle; o zamana kadar "Claude'da aç" ile yürür.`);
+      if (!(await rutinVar(ctx, String(patch.agent_sahibi || s.agent_sahibi || ""), String(patch.sahip || s.sahip)))) warn.push(`${patch.agent_sahibi || s.agent_sahibi || "Agent'ın sahibi"} için bağlı bir Claude rutini yok; adım hazır olunca kendiliğinden başlamaz. Ayarlar > AI yapsın > "Rutini kur" adımlarını izle; o zamana kadar "Claude'da aç" ile yürür.`);
     } else if (a.oto === false && s.oto) { patch.oto = false; patch.oto_durum = null; }
     if (a.oto_tarih_bekle != null) patch.oto_tarih_bekle = a.oto_tarih_bekle === true;
   }

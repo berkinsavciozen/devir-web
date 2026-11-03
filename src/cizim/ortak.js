@@ -159,7 +159,7 @@ function tik(r, mini) {
   const k = mini ? Math.max(2.2, r * .55) : Math.max(3.4, r * .42), cx = r * .72, cy = r * .72;
   return `<g transform="translate(${f(cx)},${f(cy)})"><circle r="${f(k)}" fill="#08222E" stroke="#7BF0A0" stroke-width="${mini ? .7 : 1}"/><path d="M${f(-k * .5)},${f(0)} L${f(-k * .1)},${f(k * .4)} L${f(k * .52)},${f(-k * .38)}" fill="none" stroke="#7BF0A0" stroke-width="${f(Math.max(.9, k * .32))}" stroke-linecap="round" stroke-linejoin="round"/></g>`;
 }
-function planet(x, y, r, state, o = {}) {
+function planetGovde(x, y, r, state, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})">`;
   if (state === 'ertele') {
     s += `<g opacity=".45"><circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width="1"/></g>`;
@@ -486,4 +486,17 @@ function brackets(x, y, w, h, col, glyph = '', gl = false) {
   return s + '</g>';
 }
 
+// AI yapsın rozeti (0.29.0): gezegenin sol üstünde dört köşeli kıvılcım. bekliyor: lila çizgi · calisiyor: dolu lila, döner
+// · bakilacak: altın dolu (sahibi bakacak) · hata: mercan. Karar bayrağı sağ üstte kaldığı için çakışmaz.
+const OTO_RENK = { bekliyor: ['#08222E', '#B9A6F2'], calisiyor: ['#B9A6F2', '#2A1D4F'], bakilacak: ['#FFD27A', '#2A1D4F'], hata: ['#FF8A78', '#2A1D4F'] };
+function aiRozet(r, durum, mini) {
+  const [dolgu, cizgi] = OTO_RENK[durum] || OTO_RENK.bekliyor, k = Math.max(mini ? 3 : 4.2, r * .36);
+  const d = `M0,${f(-k * .62)} Q${f(k * .1)},${f(-k * .1)} ${f(k * .62)},0 Q${f(k * .1)},${f(k * .1)} 0,${f(k * .62)} Q${f(-k * .1)},${f(k * .1)} ${f(-k * .62)},0 Q${f(-k * .1)},${f(-k * .1)} 0,${f(-k * .62)}Z`;
+  return `<g transform="translate(${f(-r * .8)},${f(-r * .8)})"${durum === 'calisiyor' ? ' class="dongu-halka"' : ''}><circle r="${f(k)}" fill="${dolgu}" stroke="${durum === 'bekliyor' ? cizgi : '#FFF3E8'}" stroke-width="1"/><path d="${d}" fill="${durum === 'bekliyor' ? cizgi : cizgi}"/></g>`;
+}
+function planet(x, y, r, state, o = {}) {
+  const s = planetGovde(x, y, r, state, o);
+  if (!o.oto) return s;
+  return s.replace(/<\/g>$/, aiRozet(r, o.oto, o.mini) + '</g>');
+}
 export { kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };

@@ -31,7 +31,7 @@ export function akisModeli(detay0, o = {}) {
   const k = detay.akis;
   const F = {
     kod: k.kod, baslik: k.baslik, kapandi: k.kapandi_at ? Date.parse(k.kapandi_at) : null,
-    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0, agentSahibi: a.agent_sahibi || null })),
+    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0, agentSahibi: a.agent_sahibi || null, oto: otoRozet(a) })),
     // sunucunun darboğazı (R11): haritadaki taç en az ışıklı
     darbogaz: k.karar_ozeti?.darbogaz?.no ?? null,
   };
@@ -67,6 +67,8 @@ export function ajanSahipleri(steps) {
   return m;
 }
 export const kisaAd = (ad) => ad.replace(/\s*\(.*\)$/, '').replace(/ agent’ı| agent'ı/, '').split(' ')[0];
+/** AI yapsın rozeti durumu (0.29.0): sunucunun oto_durum alanından. */
+export const otoRozet = (a) => (!a.oto ? null : a.oto_durum === 'tetiklendi' ? 'calisiyor' : a.oto_durum === 'bakilacak' ? 'bakilacak' : a.oto_durum === 'hata' ? 'hata' : 'bekliyor');
 export const yolD = (pts) => pts.length < 2 ? '' : pts.map((p, i) => (i ? 'L' : 'M') + f(p[0]) + ',' + f(p[1])).join('');
 const PRI = { block: 0, wait: 1, run: 1, dark: 2, lit: 3, ertele: 4, ghost: 4, tahmin: 3 };
 const SONUK = ['lit', 'ghost', 'ertele'];
@@ -309,7 +311,7 @@ export function yolCiz(M, o = {}) {
   const vis = Object.keys(G.gezegen).map(Number);
   const cl = G.kumeler(o.kumeRad || ((no) => radOf(no)), vis), inCl = new Set(cl.flat());
   // ikonAyri (yakınlaşınca): bulut ve bayrak gezegenden ayrılır, kendi dokunma alanları olur
-  const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !SONUK.includes(stOf(no)), waitRings: 1, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
+  const ex = (no) => ({ karar: !o.ikonAyri && byNo[no].karar && !SONUK.includes(stOf(no)), oto: !SONUK.includes(stOf(no)) ? byNo[no].oto || null : null, waitRings: 1, life: radOf(no) > 10, cloudGap: o.ikonAyri ? Math.max(30, 44 - radOf(no)) : 4, kenar: !!o.minR });
   const ikonlar = [], uyduYer = [];
   const pl = (no) => {
     const g = G.gezegen[no], k = stOf(no), r = k === 'dark' && o.minR ? Math.max(radOf(no), o.minR * ps) : radOf(no);

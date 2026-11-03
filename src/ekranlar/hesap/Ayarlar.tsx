@@ -23,6 +23,7 @@ import { useOlaylar } from '../../bilesen/Zil';
 import { TumHaritaDili } from '../akis/Lejant';
 import { whatsappAdresi } from '../akis/BaglantiGonder';
 import { uyumDurumu } from '../../api/surum';
+import { RutinKur } from './RutinKur';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const MCP_TABAN = () => (SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN);
@@ -78,6 +79,10 @@ export function Ayarlar() {
   const ku = useQuery({ queryKey: ['kullanim'], queryFn: () => api.get<any>('/kullanim'), enabled: !!ben && !dis, retry: false, staleTime: 60_000 });
   const rf = useQuery({ queryKey: ['referans'], queryFn: () => api.get<any>('/referans'), enabled: oturum && !dis, retry: false });
   const bk = useQuery({ queryKey: ['bekleme'], queryFn: () => api.get<any>('/bekleme'), enabled: oturum && sahip, retry: false });
+  // 0.29.0 AI yapsın: kişinin Claude rutin tetikleri; eski sunucuda bölüm görünmez
+  const tk = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), enabled: !!ben && !dis, retry: false });
+  const [rutin, setRutin] = useState(() => arama().get('kur') === 'ai');
+  const [rutinKaldir, setRutinKaldir] = useState<any>(null);
   const [iptal, setIptal] = useState<any>(null);
   const [yeni, setYeni] = useState(false);
   const [roller, setRoller] = useState(false);
@@ -109,6 +114,8 @@ export function Ayarlar() {
   bY.ben = y;
   y = hesapYuksekligi(ben, y + 14, false);
   const agY = y + 34; y = agY + 14 + AG.length * 68 + 66;
+  const TK: any[] = tk.data?.tetikler || [];
+  const tkY = tk.data ? y + 34 : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
   const kuY = k ? y + 34 : null; if (kuY != null) y = kuY + 14 + 70;
   bY.kisiler = y + 46; y = bY.kisiler + 14 + (sahip ? 2 * 74 : 66);
   const onerVar = !dis && !!rf.data;
@@ -157,6 +164,16 @@ export function Ayarlar() {
         ))}
         <SatirKart y={agY + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
           ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
+        {tkY != null && <>
+          <h3 className="bolum-baslik" style={{ top: tkY - 12 }}>AI YAPSIN · CLAUDE RUTİNLERİ</h3>
+          {TK.map((t, i) => (
+            <SatirKart key={t.id} y={tkY + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (t.ad[0] || 'C').toLocaleUpperCase('tr'), '#B9A6F2', .62, { flame: false })} ust={t.ad}
+              alt={t.son_hata ? `Son deneme başarısız · ${t.son_hata}` : t.son_tetik_at ? `${t.tur === 'zamanli' ? 'Zamanlanmış · son uğradı' : 'API tetiği · son çalışma'} ${gunAy(Date.parse(t.son_tetik_at))} ${saat(Date.parse(t.son_tetik_at))}` : 'Henüz çalışmadı'}
+              sag={<button type="button" className="satir-eylem mercan" onClick={() => setRutinKaldir(t)} aria-label={`${t.ad} rutinini kaldır`}>Kaldır</button>} />
+          ))}
+          <SatirKart y={tkY + 14 + TK.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
+            ust={TK.length ? 'Kurulum adımları' : 'AI yapsın’ı kur'} alt={TK.length ? 'Bağlantıyı kontrol et ya da API tetiği ekle' : 'İki adım, bir kez: Claude’u bağla, rutini kur'} onClick={() => setRutin(true)} />
+        </>}
         {k && kuY != null && <>
           <h3 className="bolum-baslik" style={{ top: kuY - 12 }}>DEVİR AI KULLANIMI</h3>
           <div className="kart kullanim-kart" style={{ top: kuY + 14 }} role="group" aria-label="Devir AI kullanımı">
@@ -227,14 +244,16 @@ export function Ayarlar() {
       {politikaAcik && <KararPolitikasi ak={pol.data?.politika?.agent_karari} kapat={() => setPolitikaAcik(false)} />}
       {iptal && <AnahtarIptal k={iptal} kapat={() => setIptal(null)} />}
       {kaldir && <AgentKaldir a={kaldir} kapat={() => setKaldir(null)} />}
+      {rutin && <RutinKur mcpAdres={MCP_TABAN()} mcpBagli={!!(AG.length || ben?.mcp_son_kullanim)} kapat={() => setRutin(false)} />}
+      {rutinKaldir && <RutinKaldir t={rutinKaldir} kapat={() => setRutinKaldir(null)} />}
       {yeni && <YeniAnahtar kapat={() => setYeni(false)} />}
     </>
   );
 }
 
-function MesajKopyala({ metin, style }: { metin: string; style: React.CSSProperties }) {
+function MesajKopyala({ metin, style, etiket = 'Mesajı kopyala' }: { metin: string; style: React.CSSProperties; etiket?: string }) {
   const [tamam, setTamam] = useState(false);
-  return <Dugme tur="ikincil" ton="lila" yukseklik={50} fs={15} style={style} onClick={async () => { try { await navigator.clipboard.writeText(metin); setTamam(true); setTimeout(() => setTamam(false), 1400); } catch { /* izin yok */ } }}>{tamam ? 'Kopyalandı' : 'Mesajı kopyala'}</Dugme>;
+  return <Dugme tur="ikincil" ton="lila" yukseklik={50} fs={15} style={style} onClick={async () => { try { await navigator.clipboard.writeText(metin); setTamam(true); setTimeout(() => setTamam(false), 1400); } catch { /* izin yok */ } }}>{tamam ? 'Kopyalandı' : etiket}</Dugme>;
 }
 
 /** Onay listesi (karar 4.B): referansla gelenler; onaylanınca giriş e-postası gider, kişi kendi alanını açar. */
@@ -334,6 +353,22 @@ function AgentKaldir({ a, kapat }: { a: { id: string; ad: string; istemci?: stri
       <div className="karar-panel" style={{ height: 260 }}>
         <Metin y={P(y0 + 58)} fs={23} lh={28} serif agirlik={700} as="h2" className="tek-satir">Bağlantı kaldırılsın mı?</Metin>
         <Metin y={P(y0 + 96)} fs={17} lh={22} serif renk="ink2">{a.ad} senin adına artık yazamaz; istersen yeniden bağlarsın.</Metin>
+        <Dugme tur="tehlike" style={{ top: P(y0 + 122) }} mesgul={m.isPending} onClick={() => m.mutate()}>Kaldır</Dugme>
+        <Dugme tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 188) }} onClick={kapat}>Vazgeç</Dugme>
+        {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 242) }}>{(m.error as Error).message}</p>}
+      </div>
+    </AltSayfa>
+  );
+}
+
+function RutinKaldir({ t, kapat }: { t: { id: string; ad: string }; kapat: () => void }) {
+  const m = useMutation({ mutationFn: () => api.post<any>(`/tetikler/${t.id}/kaldir`, {}), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['tetikler'] }); kapat(); } });
+  const y0 = 560, P = (y: number) => y - (y0 + 28);
+  return (
+    <AltSayfa acik kapat={kapat} baslik={`${t.ad} rutini kaldırılsın mı?`} yukseklik={y0} duraklar={['orta']} guclu>
+      <div className="karar-panel" style={{ height: 260 }}>
+        <Metin y={P(y0 + 58)} fs={23} lh={28} serif agirlik={700} as="h2" className="tek-satir">Rutin kaldırılsın mı?</Metin>
+        <Metin y={P(y0 + 96)} fs={17} lh={22} serif renk="ink2">AI yapsın görevleri artık kendiliğinden başlamaz; jeton silinir.</Metin>
         <Dugme tur="tehlike" style={{ top: P(y0 + 122) }} mesgul={m.isPending} onClick={() => m.mutate()}>Kaldır</Dugme>
         <Dugme tur="ikincil" ton="lila" fs={15} yukseklik={48} style={{ top: P(y0 + 188) }} onClick={kapat}>Vazgeç</Dugme>
         {m.isError && <p className="canli-hata" role="alert" style={{ top: P(y0 + 242) }}>{(m.error as Error).message}</p>}
