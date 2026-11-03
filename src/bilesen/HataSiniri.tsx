@@ -3,12 +3,13 @@ import { git } from '../yonlendirme';
 
 /**
  * Hata sınırı (3 Kas, NM8R): bir akışın beklenmeyen verisi bir ekranı çökertirse uygulamanın tamamı beyaz kalmasın;
- * kullanıcı dilinde tek cümle, yeniden deneme ve evrene dönüş. Adres değişince (key) sıfırlanır.
+ * kullanıcı dilinde tek cümle, yeniden deneme ve evrene dönüş. Adres değişince sıfırlanır (key ile değil: key bütün uygulamayı yeniden kurar, harita yeniden çizilir).
  */
-export class HataSiniri extends Component<{ children: ReactNode }, { hata: Error | null }> {
+export class HataSiniri extends Component<{ children: ReactNode; yol: string }, { hata: Error | null }> {
   state = { hata: null as Error | null };
   static getDerivedStateFromError(hata: Error) { return { hata }; }
   componentDidCatch(hata: Error) { console.error('Devir ekran hatası:', hata); }
+  componentDidUpdate(onceki: { yol: string }) { if (this.state.hata && onceki.yol !== this.props.yol) this.setState({ hata: null }); }
   render() {
     if (!this.state.hata) return this.props.children;
     return (
