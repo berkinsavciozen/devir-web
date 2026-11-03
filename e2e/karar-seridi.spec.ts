@@ -54,7 +54,8 @@ test('galaksi · 1440: kritik yol parçası adımı seçer', async ({ page }) =>
   await expect(page.getByRole('list', { name: 'Adımlar' }).getByRole('button').first()).toBeVisible();
   await page.locator('.karar-seridi .ks-kritik').click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/\d+/);
-  await expect(page.locator('.gd-kaydir h2')).toHaveText(/TestFlight/);
+  // 0.28.6: zincir bağımlılıktan (kişi sırası değil); uzun bekleyen App Store incelemesi kritik yolun ilk açık adımı
+  await expect(page.locator('.gd-kaydir h2')).toHaveText(/App Store onayı/);
 });
 
 test('dış bağlantı: şerit başka adımın adını taşımaz, "neden" paneli yok', async ({ page }) => {
