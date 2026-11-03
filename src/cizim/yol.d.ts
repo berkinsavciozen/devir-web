@@ -25,3 +25,4 @@ export function clusterBadge(x: number, y: number, members: number[], radOf: (no
 export function uydular(x: number, y: number, r: number, kalemler: { ad: string; durum: string }[], ps?: number, o?: O): string;
 export function yolCiz(M: Model, o?: O): YolSonuc;
 export function zamanCubugu(x: number, y: number, w: number, G: Galaksi, X: number, o?: O): { svg: string; xOf: (t: number) => number; tOf: (px: number) => number; x0: number; x1: number; t0: number; t1: number };
+export function otoRozet(a: any): 'bekliyor' | 'calisiyor' | 'bakilacak' | 'hata' | null;

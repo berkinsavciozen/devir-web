@@ -23,6 +23,7 @@ const SATIRLAR: Satir[] = [
   [planet(22, 22, 9, 'ertele', { life: false }), 'Ertelendi', 'Soluk, saatli; açık iş olarak kalır', 'ertele'],
   [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili, üstü çizik', 'atlandi'],
   [planet(22, 22, 9, 'wait', { life: false, waitRings: 1, karar: true }), 'Karar', 'Bayraklı: son söz insanda', 'karar'],
+  [planet(22, 22, 9, 'dark', { life: false, oto: 'bakilacak' }), 'AI yapsın', 'Kıvılcım: zamanı gelince Claude rutini yapar; lila bekliyor ya da çalışıyor, altın bakılacak'],
   [planet(22, 24, 8, 'dark', { life: false }) + tac(22, 24, 8, 1, true), 'Darboğaz', 'Lila taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
   [planet(22, 22, 8, 'dark', { life: false }) + elmas(13, 13, 1.3), 'Kritik yol', 'Altın elmas: gecikirse hedef tarih kayar', 'kritik'],
   [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],

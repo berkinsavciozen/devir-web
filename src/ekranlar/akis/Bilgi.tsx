@@ -6,7 +6,7 @@ import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { planet } from '../../cizim/ortak.js';
-import { gunAy, kisaAd } from '../../cizim/yol.js';
+import { gunAy, kisaAd, otoRozet } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, altGorevSayaci, gunAyUzun } from '../../metin/turkce';
 import { arama, git, tamAdres } from '../../yonlendirme';
 import { Ok, SatirKart } from '../hesap/Hesap';
@@ -47,8 +47,8 @@ export function AdimIsaretleri({ a }: { a: any }) {
 }
 export const adimIkon = (a: any, h = 58) => a.ust_adim != null
   // alt görev: üstüne bağlı küçük uydu (W5, N24)
-  ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${planet(37, 29, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`
-  : `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum) })}</g>`;
+  ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${planet(37, 29, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`
+  : `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`;
 /** "Berkin · hazır · en erken 21 Eki" */
 export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';

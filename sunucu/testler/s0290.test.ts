@@ -59,7 +59,7 @@ const hata = async (f: () => Promise<unknown>) => { try { await f(); return ""; 
 
   ok("insan adımında AI yapsın reddedilir", /AI yapsın olamaz/.test(await hata(() => callTool("devir_adim_guncelle", { akis: ak, no: N1, oto: true }, ctx()))));
   r = await callTool("devir_adim_guncelle", { akis: ak, no: N2, sahip: "Analiz agent", sahip_tip: "agent", oto: true }, ctx());
-  ok("tetik yokken açılır ama uyarır", adimOf(ak, N2).oto === true && /tetiği yok/.test(r), r);
+  ok("tetik yokken açılır ama uyarır", adimOf(ak, N2).oto === true && /rutini yok/.test(r), r);
   ok("agent kendini otomatiğe alamaz", /agent kendini/.test(await hata(() => callTool("devir_adim_guncelle", { akis: ak, no: N2, oto: false }, agentCtx()))));
 
   // tetikler: Berkin'in iki agent'ı

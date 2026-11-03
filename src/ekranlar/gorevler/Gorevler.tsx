@@ -11,7 +11,7 @@ import { useBoyut } from '../../bilesen/Gok';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
-import { gunAy, kisaAd } from '../../cizim/yol.js';
+import { gunAy, kisaAd, otoRozet } from '../../cizim/yol.js';
 import { adimAdi, akisAdi as akisAdiK, altGorevSayaci, doluSatir, paySure, sarSatir, yaziTipleriHazir } from '../../metin/turkce';
 import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 import { arama, git } from '../../yonlendirme';
@@ -33,7 +33,7 @@ const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean) => tip === 'dis'
   ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
   : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), ben ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#8EC5FF', k, { flame: false });
-const gezegen = (a: any, x: number, y: number, r: number) => planet(x, y, r, durumGor(a), { life: false, waitRings: 1, cloudGap: 1.5, karar: a.karar_adimi && !BITTI(a.durum) });
+const gezegen = (a: any, x: number, y: number, r: number) => planet(x, y, r, durumGor(a), { life: false, waitRings: 1, cloudGap: 1.5, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) });
 
 type Sec = 'kisi' | 'akis' | 'durum' | null;
 const HARITA_Y = 214;
