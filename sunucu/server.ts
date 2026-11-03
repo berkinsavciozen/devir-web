@@ -1,12 +1,12 @@
-import { callTool, INSTRUCTIONS, TOOLS, kimlikBagla, aracOf, type DB, type Ctx } from "./core.ts";
+import { callTool, INSTRUCTIONS, TOOLS, kimlikBagla, aracOf, otoGunluk, type DB, type Ctx, type TetikFn } from "./core.ts";
 import type { LlmFn, SohbetFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, referansBilgisi, beklemeYonlendir, agentBaglantisi, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.28.6";
+export const SURUM = "0.29.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
-export const SEMA = "20261027120000_s028_hiyerarsi_ayarlar_ai";
+export const SEMA = "20261103180000_s029_ai_yapsin";
 async function semaDurumu(db: DB) {
   // bellek DB'si (testler, sahte kip) şema tutmaz: uyum bilinmez (null). Canlıda işlev yoksa migration uygulanmamıştır.
   if (!db.rpc) return { beklenen: SEMA, canli: null, uyumlu: null };
@@ -88,7 +88,7 @@ async function anahtarCoz(db: DB, token: string | null, now: number) {
   return { key, ws };
 }
 
-type Ek = { llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string; sifre?: Sifre | null };
+type Ek = { llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string; sifre?: Sifre | null; tetik?: TetikFn };
 
 /** Korunan kaynak belgesi (RFC 9728): MCP istemcisi yetkilendirme sunucusunu buradan bulur (MK-1). */
 const kaynakBelgesi = (fn: string, ek: Ek) => ({ resource: fn, authorization_servers: ek.yetki ? [ek.yetki] : [], bearer_methods_supported: ["header"], resource_name: "Devir" });
@@ -114,13 +114,20 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     if (yol[1] !== "v1") throw new ApiHata(404, "Uçlar /api/v1/ altında.");
     // kimliksiz: giriş ekranı kaydın açık olup olmadığını bilir (§9-19)
     if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, sema: await semaDurumu(db), acik_kayit: await acikKayit(db) });
+    // AI yapsın günlük taraması (0.29.0): pg_cron çağırır; ayar.oto_cron_anahtari ile korunur
+    if (yol[2] === "oto" && yol[3] === "tara" && req.method === "POST") {
+      const bek = (await db.one("ayar", { anahtar: "oto_cron_anahtari" }).catch(() => null))?.deger;
+      const gel = req.headers.get("x-devir-cron") || "";
+      if (!bek || gel.length !== String(bek).length || gel !== String(bek)) throw new ApiHata(401, "Yetkisiz.");
+      return json({ ok: true, ...(await otoGunluk({ db, ua: "Devir cron", now, sifre: ek.sifre, tetik: ek.tetik, taban: ek.taban } as any)) });
+    }
     // kimliksiz: referans sayfası (P7) kimin davet ettiğini gösterir
     if (yol[2] === "referans" && yol[3] && !yol[4] && req.method === "GET") return json({ ok: true, ...(await referansBilgisi(db, yol[3])) });
     const webAdres = (await db.one("ayar", { anahtar: "web_adresi" }).catch(() => null))?.deger;
     const web = webAdres ? String(webAdres).replace(/\/$/, "") : null;
     taban.link = web || taban.fn;
     const rota = yol.slice(2);
-    const arka = { llm: ek.llm, sohbet: ek.sohbet, gom: ek.gom, modeller: ek.modeller, depo: ek.depo, sifre: ek.sifre };
+    const arka = { llm: ek.llm, sohbet: ek.sohbet, gom: ek.gom, modeller: ek.modeller, depo: ek.depo, sifre: ek.sifre, tetik: ek.tetik };
     const token = tokenOf(req, url, await yolAnahtariAcik(db));
     const jwt = !token ? jwtOf(req) : null;
     let ctx: any;
@@ -197,12 +204,12 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
   if (token) {
     const a = await anahtarCoz(db, token, now);
     if (!a) return yetkisiz("Geçersiz, süresi dolmuş, iptal edilmiş ya da üyeliği sona ermiş Devir anahtarı.", true);
-    ctx0 = { db, ws: a.ws, key: a.key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre } as Ctx;
+    ctx0 = { db, ws: a.ws, key: a.key, ua, now, kanal: "mcp", llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre, tetik: ek.tetik } as Ctx;
   } else if (jwt && ek.kimlik) {
     // OAuth: jeton Supabase Auth'tan; kişi üyelikten, yazan agent (kanal mcp)
     const u = await ek.kimlik(jwt).catch(() => null);
     if (!u) return yetkisiz("Oturum geçersiz ya da süresi dolmuş; bağlayıcıyı yeniden bağla.", true);
-    const o = await oturumCtx(db, { auth_id: u.id, eposta: String(u.email || "").toLowerCase() }, req.headers.get("x-devir-alan"), now, ua, { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre }, "mcp");
+    const o = await oturumCtx(db, { auth_id: u.id, eposta: String(u.email || "").toLowerCase() }, req.headers.get("x-devir-alan"), now, ua, { llm: ek.llm, gom: ek.gom, modeller: ek.modeller, sifre: ek.sifre, tetik: ek.tetik }, "mcp");
     if (!o.ctx) return json({ jsonrpc: "2.0", id: rpcId, error: { code: -32003, message: "Bu e-postayla bir Devir çalışma alanına üye değilsin." } }, 403);
     // P7: kişinin agent bağlantıları (Ayarlar > Agent'larım); kaldırılan bağlantı yeniden bağlanana kadar açılmaz
     if (!(await agentBaglantisi(db, o.ctx, jetonIstemcisi(jwt), jetonZamani(jwt), aracOf({}, ua), now))) return yetkisiz("Bu bağlantı Devir Ayarlar'dan kaldırıldı; bağlayıcıyı yeniden bağla.", true);

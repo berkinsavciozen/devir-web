@@ -68,6 +68,20 @@ const posta: Posta = {
 };
 // Dış bağlantı belirteçlerinin şifresi (N-3): 32 baytlık anahtarın base64'ü; yoksa belirteç düz kalır
 const sifre = sifreKur(Deno.env.get("DEVIR_BAGLANTI_ANAHTARI"));
+// AI yapsın (0.29.0): Claude rutininin API tetiği. Belgelerde sürüm başlığı iki türlü yazıyor; 400 sürüm hatasında ötekiyle bir kez daha denenir.
+const ROUTINE_SURUM = ["2023-06-01", "2026-10-21"];
+const tetik = async (url: string, jeton: string, metin: string) => {
+  if (!/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]+\/fire$/.test(url)) return { ok: false, durum: 0, hata: "tetik adresi Claude rutin adresi değil" };
+  let son = { ok: false, durum: 0, hata: "denenmedi" as string | null, oturum: null as string | null };
+  for (const v of ROUTINE_SURUM) {
+    const r = await fetch(url, { method: "POST", headers: { authorization: `Bearer ${jeton}`, "content-type": "application/json", "anthropic-version": v, "anthropic-beta": "experimental-cc-routine-2026-04-01" }, body: JSON.stringify({ text: metin.slice(0, 60000) }) });
+    const t = await r.text();
+    let j: any = null; try { j = JSON.parse(t); } catch { /* düz metin */ }
+    son = { ok: r.ok, durum: r.status, hata: r.ok ? null : String(j?.error?.message || t).slice(0, 300), oturum: j?.claude_code_session_url || null };
+    if (r.ok || !(r.status === 400 && /version/i.test(son.hata || ""))) break;
+  }
+  return son;
+};
 // Gizli kova: yalnızca imzalı adreslerle
 const kova = () => sb.storage.from(KOVA);
 const depo: Depo = {
@@ -130,5 +144,5 @@ Deno.serve(async (req) => {
   const om = testBasliklari ? req.headers.get("x-devir-openai-model") : null;
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
   const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : m.ikisi;
-  return handle(req, db, Date.now(), { llm, sohbet: m.sohbet, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre });
+  return handle(req, db, Date.now(), { tetik, llm, sohbet: m.sohbet, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre });
 });
