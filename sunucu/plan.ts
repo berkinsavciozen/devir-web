@@ -130,7 +130,7 @@ export function bitis(akis: any, steps: any[], events: any[], now: number, gecmi
   return {
     en_erken: todayIst(a.end), aralik: [todayIst(a.end), todayIst(Math.max(u.end, a.end))], guven, eksik_sure: eksik, varsayimlar: v, yuk_uyarilari: yuk,
     adimlar: acik.map((s) => ({ no: s.no, kaynak: S.get(s.no)!.kaynak, sure_gun: [gun1(alt(s)), gun1(ust(s))] as [number, number], bitis: [todayIst(a.EF.get(s.no)!), todayIst(u.EF.get(s.no)!)] as [string, string] })),
-    zincir: u.chain,
+    zincir: a.chain, // NM8R bulgu 5: kişi sırası değil, bağımlılık zinciri
   };
 }
 

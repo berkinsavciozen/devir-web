@@ -12,7 +12,7 @@ import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Metin, Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, akisAdi as akisAdiK, doluSatir, paySure, sarSatir, yaziTipleriHazir } from '../../metin/turkce';
+import { adimAdi, akisAdi as akisAdiK, altGorevSayaci, doluSatir, paySure, sarSatir, yaziTipleriHazir } from '../../metin/turkce';
 import { KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 import { arama, git } from '../../yonlendirme';
 import { durumGor, Liste, type Oge } from '../akis/Bilgi';
@@ -102,7 +102,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     const kim = a.sahip === kisi ? null : kisaAd(a.sahip);
     // 1.4, 1.5: alt görevde üst görevin adı; üst görevde alt görev ilerlemesi
     const DA: any[] | undefined = detay[a.akis]?.adimlar, ust = ustAdi(a, DA), altlar = (DA || []).filter((x) => x.ust_adim === a.no);
-    const altMetin = altlar.length ? `${altlar.filter((x) => BITTI(x.durum)).length}/${altlar.length} alt görev` : null;
+    const altMetin = altlar.length ? altGorevSayaci(altlar) : null;
     return {
       tur: 'satir', key: a.akis + ':' + a.no,
       ikon: `<circle cx="28" cy="29" r="24" fill="url(#bloom)" opacity=".18"/>${kucukGalaksi(detay[a.akis], kisi, 28, 29, 19, 2, NOW)}${gezegen(a, 43, 44, 6)}`,
