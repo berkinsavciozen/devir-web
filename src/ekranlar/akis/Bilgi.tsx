@@ -7,7 +7,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { planet } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
-import { adimAdi, akisAdi, gunAyUzun } from '../../metin/turkce';
+import { adimAdi, akisAdi, altGorevSayaci, gunAyUzun } from '../../metin/turkce';
 import { arama, git, tamAdres } from '../../yonlendirme';
 import { Ok, SatirKart } from '../hesap/Hesap';
 import { odakCumlesi } from './cumleler';
@@ -94,7 +94,7 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
 
   const A: any[] = [...d.adimlar].sort((a, b) => a.no - b.no);
   const ustOf = (a: any) => (a.ust_adim != null ? A.find((x) => x.no === a.ust_adim) : null);
-  const altSay = (a: any) => { const k = A.filter((x) => x.ust_adim === a.no); return k.length ? ` · ${k.filter((x) => BITTI(x.durum)).length}/${k.length} alt görev` : ''; };
+  const altSay = (a: any) => { const k = A.filter((x) => x.ust_adim === a.no); return k.length ? ` · ${altGorevSayaci(k)}` : ''; };
   const adimSatir = (a: any): Oge => ({ tur: 'satir', key: 'a' + a.no, ikon: adimIkon(a), ust: `${a.no}. ${adimAdi(a)}`, baslik: a.ad, alt: adimAlt(a) + altSay(a), sag: <AdimIsaretleri a={a} />,
     etiket: `${a.no}. ${ustOf(a) ? `alt görev (${ustOf(a).no}. ${adimAdi(ustOf(a))} görevinin)` : 'adım'}, ${a.ad}. ${adimAlt(a)}${altSay(a)}.${a.karar_adimi ? ' Karar adımı.' : ''}${a.cikti_sayisi ? ` ${a.cikti_sayisi} çıktı.` : ''}`, git: () => git(`/akis/${enc(kod)}/adim/${a.no}`) });
   const kod_ = FILTRE_KOD[filtre];

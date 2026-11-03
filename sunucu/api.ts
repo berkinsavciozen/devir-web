@@ -752,7 +752,10 @@ export function oneriOzeti(arac: string, g: any): string {
       return `${ak}${g.no}. adım: ${p.join(", ") || "güncellenecek"}`;
     }
     case "devir_adim_ekle": return `${ak}yeni adım eklenecek: "${g.ad || "?"}"${g.sahip ? ` (${g.sahip})` : ""}`;
-    case "devir_alt_gorev": { const n = Array.isArray(g.alt_gorevler) ? g.alt_gorevler.length : 1; return `${ak}${g.adim}. adıma ${n} alt görev eklenecek`; }
+    case "devir_alt_gorev": {
+      if (Array.isArray(g.gruplar)) { const n = g.gruplar.reduce((t: number, x: any) => t + (Array.isArray(x?.alt_gorevler) ? x.alt_gorevler.length : 0), 0); return `${ak}${g.gruplar.length} adıma toplam ${n} alt görev eklenecek`; }
+      const n = Array.isArray(g.alt_gorevler) ? g.alt_gorevler.length : 1; return `${ak}${g.adim}. adıma ${n} alt görev eklenecek`;
+    }
     case "devir_cevapla": return `${ak}açık soru cevaplanacak: ${g.soru || g.kod || ""} = ${g.cevap ?? ""}`;
     case "devir_karar": return `Karar kaydedilecek: ${g.karar || g.metin || ""}`;
     case "devir_akis_olustur": return `${g.taslak ? `${g.taslak} taslağından ` : ""}akış kurulacak${g.baslik ? `: ${g.baslik}` : ""}`;

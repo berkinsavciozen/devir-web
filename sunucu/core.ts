@@ -68,8 +68,14 @@ function kararSezgisi(s: any) {
   if (/^netleştir/i.test(ad) || /\?\s*$/.test(ad) || /(^|\s)m[ıiuü](\s|$)/i.test(ad)) return false;
   if (!KARAR.test(ad)) return false;
   if (!/karar|onay|ödeme/i.test(ad) && /hazırla|hazır|taslak|gönder|ilet|topla/i.test(ad)) return false;
+  // 0.28.6 (NM8R bulgu 2): "Onay merkezini geliştir", "ödeme modülünü kur" bir şey yapma işidir; karar fiili yoksa karar değil
+  if (!KARAR_FIIL.test(ad) && IS_FIIL.test(ad)) return false;
   return true;
 }
+const KARAR_FIIL = /karar\s*(ver|al)|onayla|onay\s*ver|imzala|öde(?:\s|$|meyi|mesini)|ödemeyi\s*yap|seç(?:\s|$)|kabul\s*et|reddet/i;
+const IS_FIIL = /geliştir|kur(?:\s|$|ul)|tasarla|uygula|entegre|bağla|kodla|test\s*et|düzelt|modül|ekran|panel|merkez|kuyruğ|akış/i;
+/** Karar sayıldığı için agent'a verilemeyen adımın hata metni: çıkış yolu da yazılır (NM8R bulgu 2). */
+export const kararRet = (ad: string) => `"${ad}" bir karar/onay/ödeme işi sayıldı; sahibi insan olmalı. Karar değilse (ör. onay ekranını geliştirmek) karar_gerekli: false ver; kararsa agent için ayrı bir hazırlık adımı aç.`;
 
 const CIKTI_FIIL = /(hazırla|yaz|oluştur|tasarla|çiz|düzenle|derle|raporla|çıkar|belgele|kaydet|yükle|teklif|sözleşme|rapor|form|liste|plan|brif|taslak|dosya|fatura|beyanname|sertifika|belge)/i;
 /**
@@ -489,6 +495,11 @@ export function fixStep(s: any) { s.bagimli = (s.bagimli || []).map(Number); s.c
 // Bir adım aynı akıştaki bir adımın alt görevi olabilir (adim.ust_adim, tek düzey). Alt görev üst görevin öncüllerini bekler;
 // üst görev alt görevleri bitmeden tamamlanmaz, hepsi bitince (karar ya da çıktı beklemiyorsa) kendiliğinden tamamlanır.
 export const altlariOf = (steps: any[], no: number) => steps.filter((x: any) => x.ust_adim === no).sort((p: any, r: any) => p.no - r.no);
+/** Alt görev sayımı (0.28.6, NM8R bulgu 6): ertelenen iş açık iştir, "bitti" sayılmaz; tamam ve atlanan biter. */
+export function altSayim(al: any[]): { bitti: number; ertelendi: number; toplam: number; metin: string } {
+  const bitti = al.filter((x: any) => x.durum === "tamam" || x.durum === "atlandi").length, ertelendi = al.filter((x: any) => x.durum === "ertelendi").length;
+  return { bitti, ertelendi, toplam: al.length, metin: `${bitti}/${al.length}${ertelendi ? ` · ${ertelendi} ertelendi` : ""}` };
+}
 /** Plan girdisi: üst görev alt görevlerinin bitişini de bekler; açık alt görevi olan üst görev kendi süresini eklemez (geçit). */
 export function planGirdisi<T extends { no: number; bagimli: number[]; ust_adim?: number | null; durum?: string }>(steps: T[]): T[] {
   const alt = new Map<number, T[]>();
@@ -745,7 +756,7 @@ function validateSteps(raw: any[], kurallar: any) {
     if (s.son_tarih && !isDate(s.son_tarih)) errs.push(`Adım ${no}: son_tarih YYYY-AA-GG olmalı.`);
     for (const d of s.bagimli) if (!Number.isInteger(d) || d < 1 || d > n || d === no) errs.push(`Adım ${no}: geçersiz bağımlılık ${d}.`);
     if (kurallar.karar_insanda !== false && s.sahip_tip === "agent" && kararAdimi(s))
-      errs.push(`Adım ${no} (${s.ad}) bir karar/onay/ödeme adımı; sahibi insan olmalı. Agent hazırlık adımı ayrı olsun.`);
+      errs.push(`Adım ${no}: ${kararRet(s.ad)}`);
     return s;
   });
   // P3 (0.28.0): görev → alt görev (tek düzey). Elle verilen geçersiz ust_adim hatadır; taslaktan geleni sessizce düzleştirilir.
@@ -832,7 +843,10 @@ export const TOOLS = [
             ad: { type: "string" }, kisa_ad: { type: "string", description: "Ekranda görünen kısa ad: en çok 40 karakter, akışta tekil; nesne + fiil (ör. 'Teminat mektubunu al'). Verilmezse Devir üretir." }, aciklama: { type: "string" }, sahip: { type: "string", description: "Kişi, ekip, dış katılımcı ya da agent adı." },
             sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string", description: "Agent ya da kişinin kullandığı araç (Claude, ChatGPT, Figma...)." },
             kriter: { type: "string", description: "Adımın bitti sayılması için test." }, beklenen_cikti: { type: "string" }, karar_kriteri: { type: "string" },
-            son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } } } },
+            son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } },
+            ust_adim: { type: "integer", description: "Bu adım listedeki hangi adımın alt görevi (1'den başlayan sıra no, tek düzey). Alt görev üstünün öncüllerini bekler; üst adım alt görevleri bitince kapanır." },
+            karar_gerekli: { type: "boolean", description: "true: karar/onay adımı, son söz insanda. Adında 'onay', 'ödeme' geçse de bir şey yapma işiyse (ör. onay ekranını geliştir) false ver." },
+            cikti_bekleniyor: { type: "boolean", description: "true: adım bir çıktı (belge, metin, bağlantı) yazılmadan bitmiş sayılmaz." } } },
         },
         katilimcilar: { type: "array", description: "Dış katılımcılar (müşteri, usta, tedarikçi…). Her birine giriş istemeyen bir bağlantı üretilir ve yanıtta döner; bağlantı yalnız sahibi bu kişi olan adımları gösterir. ad, adımlarda sahip olarak yazdığın adla aynı olmalı.", items: { type: "object", properties: { ad: { type: "string", description: "Adımlarda sahip olarak yazılan ad (ör. 'Mert Usta')." }, rol: { type: "string" }, iletisim: { type: "string" } } } },
       },
@@ -978,15 +992,24 @@ export const TOOLS = [
   {
     name: "devir_alt_gorev",
     description: "Bir adımı alt görevlere böler (tek düzey). Bir iş birkaç parçadan oluşuyorsa ve parçalar ayrı izlenecekse (farklı kişiler, ayrı tarih ya da çıktı) çağır. Alt görevler üst adımın öncüllerini bekler; sirali=true ise birbirini de sırayla bekler. Üst adım alt görevleri bitmeden tamamlanmaz; hepsi bitince karar ya da çıktı beklemiyorsa kendiliğinden tamamlanır. Aynı adımlar her çiftçi, müşteri gibi kalemler için ayrı yürüyecekse bunu değil devir_alt_akis'ı kullan.",
-    inputSchema: { type: "object", required: ["akis", "adim", "alt_gorevler"], properties: {
+    inputSchema: { type: "object", required: ["akis"], properties: {
       akis: { type: "string" },
-      adim: { type: "integer", description: "Üst adımın numarası." },
+      adim: { type: "integer", description: "Üst adımın numarası. Birden çok üst adıma eklerken gruplar ver." },
+      gruplar: { type: "array", description: "Birden çok üst adıma tek çağrıda alt görev (toplam en çok 150). Her grup { adim, alt_gorevler, sirali }; alt_gorevler alanları aşağıdakiyle aynı. Verilirse adim/alt_gorevler kullanılmaz.", items: { type: "object", required: ["adim", "alt_gorevler"], properties: { adim: { type: "integer" }, alt_gorevler: { type: "array", items: { type: "object" } }, sirali: { type: "boolean" } } } },
       alt_gorevler: { type: "array", description: "Eklenecek alt görevler (en çok 20).", items: { type: "object", required: ["ad"], properties: {
         ad: { type: "string" }, kisa_ad: { type: "string" }, sahip: { type: "string", description: "Verilmezse üst adımın sahibi." }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, arac: { type: "string" },
         kriter: { type: "string", description: "Verilmezse \"<ad> tamam\"." }, aciklama: { type: "string" }, sure_tahmin_gun: { type: "number" }, son_tarih: { type: "string", description: "YYYY-AA-GG. Verilmezse üst adımın son tarihi." },
         beklenen_cikti: { type: "string" }, karar_gerekli: { type: "boolean" }, cikti_bekleniyor: { type: "boolean" },
       } } },
       sirali: { type: "boolean", description: "Alt görevler verilen sırayla birbirini beklesin." },
+    } },
+  },
+  {
+    name: "devir_takvim_yenile",
+    description: "Açık adımların son tarihlerini akışın hedefinden geriye, güncel süre ve bağımlılıklarla yeniden kurar. Süre, bağımlılık ya da alt görev değiştikten sonra eski tarihler kendiliğinden kaymaz; o zaman çağır. Sabit tarihli adımlara dokunmaz. Önce uygula vermeden çağır, değişiklikleri kullanıcıya göster; onaylarsa uygula: true ile yaz.",
+    inputSchema: { type: "object", required: ["akis"], properties: {
+      akis: { type: "string" },
+      uygula: { type: "boolean", description: "true: yeni tarihleri yazar. Verilmezse yalnız önizler." },
     } },
   },
   {
@@ -1047,7 +1070,8 @@ export async function callTool(name: string, a: any, ctx: Ctx): Promise<string> 
     case "devir_sabitle": return sabitle(a, ctx);
     case "devir_dersler": return dersler(a, ctx);
     case "devir_alt_akis": return altAkis(a, ctx);
-    case "devir_alt_gorev": return altGorevEkle(a, ctx);
+    case "devir_takvim_yenile": return takvimYenile(a, ctx);
+    case "devir_alt_gorev": return Array.isArray(a.gruplar) ? altGorevGruplar(a, ctx) : altGorevEkle(a, ctx);
     case "devir_baglanti": return baglantiAraci(a, ctx);
   }
   throw new Error(`Bilinmeyen araç: ${name}`);
@@ -1400,6 +1424,23 @@ export async function kararlar(ctx: Ctx, varlik: string | null) {
   if (!varlik) return [];
   return (await ctx.db.many("karar", { ws_id: ctx.ws.id, varlik_norm: norm(varlik), durum: "gecerli" }, "created_at"));
 }
+/** 0.28.6 (NM8R bulgu 9, hafif): adımla ortak kelime kökü taşıyan geçerli kararlar. Kontrol değil, hatırlatma: çelişki kararını kullanıcı verir. */
+const KOK_DIS0 = new Set(["adımı", "adımın", "işini", "bütün", "tümünü", "sonra", "önce", "kadar", "yapıl", "hazır", "kontr", "takip"]);
+const kararKok = (t: string) => new Set(norm(t).split(" ").filter((w) => w.length >= 5).map((w) => w.slice(0, 5)).filter((w) => !KOK_DIS0.has(w)));
+export function ilgiliKararlar(kk: any[], metin: string): any[] {
+  const a = kararKok(metin);
+  if (!a.size) return [];
+  return kk.filter((k) => { const b = kararKok(`${k.karar} ${k.kapsam || ""} ${k.istisna || ""}`); for (const w of a) if (b.has(w)) return true; return false; });
+}
+async function kararHatirlat(ctx: Ctx, akis: any, adimlar: any[], neden: string): Promise<string[]> {
+  if (isDis(ctx) || !akis.baglam?.musteri || !adimlar.length) return [];
+  const kk = await kararlar(ctx, akis.baglam.musteri);
+  if (!kk.length) return [];
+  const bul = new Map<string, any>();
+  for (const s of adimlar) for (const k of ilgiliKararlar(kk, `${s.ad} ${s.aciklama || ""} ${s.kriter || ""}`)) bul.set(k.id || k.karar, k);
+  if (!bul.size) return [];
+  return [`${neden}; ${akis.baglam.musteri} için bu işle ilgili olabilecek geçerli kararlar var. Çelişiyorsa kullanıcıya sor:`, ...[...bul.values()].slice(0, 5).map((k) => `- ${kararSatiri(k)}`)];
+}
 const kararSatiri = (k: any) => `${k.karar}${k.kapsam ? ` (kapsam: ${k.kapsam})` : ""}${k.istisna ? ` · istisna: ${k.istisna}` : ""} — ${k.kim}, ${fmtMs(ts(k.created_at))}`;
 // çıktılar: her ad için son sürüm
 export async function ciktilar(ctx: Ctx, akisId: string, nolar: number[]) {
@@ -1720,7 +1761,7 @@ async function akisDetay(a: any, ctx: Ctx) {
     ...(bt.aralik && !akis.kapandi_at ? [`Bitiş aralığı: ${aralikMetni(bt.aralik)} (${bt.guven === "kesin" ? "kesin" : bt.guven === "eksik" ? "süresi eksik adım var" : "tahmini"})${bt.varsayimlar.length ? " · " + bt.varsayimlar.join("; ") : ""}`] : []),
     "",
   );
-  for (const s of agacSirasi(steps)) { const al = altlariOf(steps, s.no); out.push((s.ust_adim != null ? "  ↳ " : "") + stepLine(s, m.tl, m.pl, { kisa: kisa.get(s.no) }) + (altAdimi(akis, s.no) ? ` · tekrarlı: ${s.ilerleme || "alt akışlarda"}` : "") + (al.length ? ` · alt görev ${al.filter(DONE).length}/${al.length}` : "") + (kararAdimi(s) && !DONE(s) ? " · karar" : "") + (s.cikti_bekleniyor && !DONE(s) && !s.ciktilar.length ? " · çıktı bekleniyor" : "")); }
+  for (const s of agacSirasi(steps)) { const al = altlariOf(steps, s.no); out.push((s.ust_adim != null ? "  ↳ " : "") + stepLine(s, m.tl, m.pl, { kisa: kisa.get(s.no) }) + (altAdimi(akis, s.no) ? ` · tekrarlı: ${s.ilerleme || "alt akışlarda"}` : "") + (al.length ? ` · alt görev ${altSayim(al).metin}` : "") + (kararAdimi(s) && !DONE(s) ? " · karar" : "") + (s.cikti_bekleniyor && !DONE(s) && !s.ciktilar.length ? " · çıktı bekleniyor" : "")); }
   out.push(...await altOzet(ctx, akis, steps));
   const bek = Object.entries<any>(akis.baglam?.bekleyen || {});
   if (bek.length) { out.push("", "Açık sorular (cevap gelince devir_cevapla):"); for (const [k, b] of bek) out.push(`- [${k}] ${b.soru}${b.adim_no ? ` · ${b.adim_no}. adımda belli olur` : ""}`); }
@@ -1792,7 +1833,7 @@ async function adimOku(a: any, ctx: Ctx) {
   if (s.ciktilar.length) out.push(`Çıktılar: ${s.ciktilar.map((c: any) => c.ad).join(", ")}`);
   if (s.ust_adim != null) { const u: any = by.get(s.ust_adim); if (u) out.push(`Üst görev: ${u.no}. ${u.ad} (${LBL[u.durum]}). Bu alt görevin durumu üst görevi günceller.`); }
   const al = altlariOf(steps, s.no);
-  if (al.length) out.push(`Alt görevler (${al.filter(DONE).length}/${al.length} bitti): ${al.map((x: any) => `${ICON[x.durum]} ${x.no}. ${x.ad} (${x.sahip})`).join(" · ")}. Bu adım alt görevleri bitmeden tamamlanmaz.`);
+  if (al.length) out.push(`Alt görevler (${altSayim(al).metin.replace(/^(\d+\/\d+)/, "$1 bitti")}): ${al.map((x: any) => `${ICON[x.durum]} ${x.no}. ${x.ad} (${x.sahip})`).join(" · ")}. Bu adım alt görevleri bitmeden tamamlanmaz.`);
   const ag = altAdimi(akis, s.no);
   if (ag) out.push(`Bu adım her ${ag.kalem_turu || "kalem"} için ayrı alt akışta yürüyor (${s.ilerleme || "henüz başlamadı"}): ${ag.kalemler.map((k) => `${k.ad} ${k.kod}`).join(", ")}. Bir kalemde ilerlemek için o alt akışın adımını oku ve güncelle.`);
   if (akis.baglam?.ust_akis) out.push(`Bu, ${akis.baglam.ust_kod} akışının "${akis.baglam.kalem}" için alt akışı; bitince üst akış kendiliğinden güncellenir.`);
@@ -1866,7 +1907,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (!isDis(ctx)) {
     let yeniTip: string | null = ["insan", "agent", "dis"].includes(a.sahip_tip) ? a.sahip_tip : null;
     if (!yeniTip && patch.sahip && s.sahip_tip === "dis" && norm(String(patch.sahip)) === norm(ctx.key.kisi)) yeniTip = "insan"; // kullanıcı adımı kendine aldı
-    if (yeniTip === "agent" && (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s)) throw new Error(`Adım ${s.no} (${s.ad}) bir karar adımı; sahibi agent olamaz.`);
+    if (yeniTip === "agent" && (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s)) throw new Error(`Adım ${s.no}: ${kararRet(s.ad)}`);
     if (yeniTip && yeniTip !== s.sahip_tip) patch.sahip_tip = yeniTip;
     // agent sahibi (0.28.0): agent'ın adımını kimin agent'ı yürütüyor. Açıkça verilir ya da agent ilk yazdığında bağlantının kişisi olur
     const tip = (patch.sahip_tip as string) || s.sahip_tip;
@@ -1879,7 +1920,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (typeof a.tarih_sabit === "boolean" && !isDis(ctx) && (a.son_tarih || s.son_tarih)) patch.tarih_sabit = a.tarih_sabit;
   if (a.karar_kriteri != null && String(a.karar_kriteri).trim()) {
     if (isDis(ctx)) throw yetkiYok("Karar kriterini yalnızca ekip değiştirebilir.");
-    if (s.sahip_tip === "agent" && patch.sahip_tip !== "insan" && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir.`);
+    if (s.sahip_tip === "agent" && patch.sahip_tip !== "insan" && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir; ya da bu adımda karar değil iş yapılıyorsa karar_gerekli: false ver.`);
     patch.karar_kriteri = String(a.karar_kriteri).trim();
     if (s.karar_gerekli !== true && a.karar_gerekli !== false) patch.karar_gerekli = true; // kriter yazılan adım karar adımıdır
   }
@@ -1920,7 +1961,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
       patch.bagimli = yeni; bagEski = eski;
     }
   }
-  if (patch.karar_gerekli === true && (s.sahip_tip === "agent" && patch.sahip_tip !== "insan") && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir.`);
+  if (patch.karar_gerekli === true && (s.sahip_tip === "agent" && patch.sahip_tip !== "insan") && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir; ya da bu adımda karar değil iş yapılıyorsa karar_gerekli: false ver.`);
   // P1-F: kısa ad düzeltmesi akışın baglam.kisa_adlar'ına yazılır; akış içinde tekil
   let kisaAd: string | null = null;
   if (a.kisa_ad != null && String(a.kisa_ad).trim()) {
@@ -2077,11 +2118,34 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   out.push(...await altZincir(ctx, akis));
   if (steps.every(DONE)) out.push("", akis.baglam?.ust_akis ? `Bu kalemin tüm adımları bitti; üst akış ${akis.baglam.ust_kod} güncellendi.` : `Tüm adımlar bitti. devir_akis_kapat({ akis: "${akis.kisa_kod}" }) ile kapat; Devir bu işten ders çıkarır.`);
   if (warn.length) out.push("", ...warn.map((w) => `Not: ${w}`));
+  if (patch.sahip || patch.sahip_tip) { const h = await kararHatirlat(ctx, akis, [{ ...s, ...patch }], "Sahip değişti"); if (h.length) out.push("", ...h); }
   if (!isDis(ctx)) await ihlalBildir(ctx, akis, ihlal0, out);
   return out.join("\n");
 }
 
 /** Alt görev ekleme (W5): üst adımın altında, onun öncüllerini bekleyen yeni adımlar. */
+/** 0.28.6 (NM8R bulgu 3): birden çok üst adıma tek çağrıda alt görev. Gruplar sırayla eklenir; biri hata verirse eklenenler kalır, hata ve kalanlar söylenir. */
+async function altGorevGruplar(a: any, ctx: Ctx) {
+  const gruplar: any[] = a.gruplar.filter((g: any) => g && g.adim != null);
+  if (!gruplar.length) throw new Error("gruplar gerekli: her biri { adim, alt_gorevler }.");
+  const toplam = gruplar.reduce((t: number, g: any) => t + (Array.isArray(g.alt_gorevler) ? g.alt_gorevler.length : 0), 0);
+  if (toplam > 150) throw new Error(`Tek seferde en fazla 150 alt görev eklenebilir (verilen ${toplam}).`);
+  const nolar = gruplar.map((g: any) => Number(g.adim));
+  if (new Set(nolar).size !== nolar.length) throw new Error("Aynı üst adım gruplarda bir kez geçmeli.");
+  const out: string[] = [];
+  for (let i = 0; i < gruplar.length; i++) {
+    const g = gruplar[i];
+    try { out.push(await altGorevEkle({ akis: a.akis, adim: g.adim, alt_gorevler: g.alt_gorevler, sirali: g.sirali ?? a.sirali, arac: a.arac }, ctx)); }
+    catch (e: any) {
+      const kalan = nolar.slice(i + 1);
+      out.push(`✗ Adım ${g.adim}: ${e?.message || e}${kalan.length ? `\nEklenmeyen gruplar: ${kalan.join(", ")}. Hatayı düzeltip yalnız bunları yeniden gönder.` : ""}`);
+      if (i === 0) throw new Error(out.join("\n"));
+      break;
+    }
+  }
+  return out.join("\n\n");
+}
+
 async function altGorevEkle(a: any, ctx: Ctx) {
   needTeam(ctx, "Alt görev eklemeyi");
   const akis = await getAkis(ctx, a.akis);
@@ -2120,7 +2184,7 @@ async function altGorevEkle(a: any, ctx: Ctx) {
     };
     Object.assign(v, alanDoldur(v));
     if (v.son_tarih && !isDate(v.son_tarih)) throw new Error(`"${v.ad}": son_tarih YYYY-AA-GG olmalı.`);
-    if (kur.karar_insanda !== false && v.sahip_tip === "agent" && kararAdimi(v)) throw new Error(`"${v.ad}" bir karar/onay/ödeme işi; sahibi insan olmalı.`);
+    if (kur.karar_insanda !== false && v.sahip_tip === "agent" && kararAdimi(v)) throw new Error(kararRet(v.ad));
     rows.push({ akis_id: akis.id, no, ust_adim: ust.no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: [...ust.bagimli, ...(onceki != null ? [onceki] : [])], kaynak: "sonradan", tur_kod: slug(v.ad), tarih_sabit: !!x.son_tarih && x.tarih_sabit === true, karar_kriteri: v.karar_kriteri, beklenen_cikti: v.beklenen_cikti, karar_gerekli: v.karar_gerekli, cikti_bekleniyor: v.cikti_bekleniyor });
     if (kisaAdGecerli(x.kisa_ad)) kisaIstek.set(no, String(x.kisa_ad).trim());
     if (a.sirali === true) onceki = no;
@@ -2136,12 +2200,13 @@ async function altGorevEkle(a: any, ctx: Ctx) {
   await recalc(ctx, akis, steps);
   const ozet = await ustGuncelle(ctx, akis, steps, ust.no);
   const al = altlariOf(steps, ust.no);
-  const out = [`+ ${yeni.length} alt görev eklendi: ${ust.no}. ${ust.ad} (${al.filter(DONE).length}/${al.length} bitti)`];
+  const out = [`+ ${yeni.length} alt görev eklendi: ${ust.no}. ${ust.ad} (${altSayim(al).metin.replace(/^(\d+\/\d+)/, "$1 bitti")})`];
   for (const r of yeni) out.push(`  ↳ ${r.no}. ${r.ad} — ${r.sahip}${r.sahip_tip === "dis" ? " (dış)" : r.sahip_tip === "agent" ? " (agent)" : ""} · ${LBL[r.durum]}${r.son_tarih ? ` · son ${fmtD(r.son_tarih)}` : ""}`);
   out.push(...ozet);
   // 0.28.5: süresiz alt görev bitiş tahminini zayıflatır; üst görevin süresinden pay alır ama bu yalnız tahmindir
   const suresiz = yeni.filter((r: any) => r.sure_tahmin_gun == null);
   if (suresiz.length) out.push(`Not: ${suresiz.length === yeni.length ? "Alt görevlerin hiçbirinde" : `${suresiz.length} alt görevde (${suresiz.map((r: any) => r.no).join(", ")})`} süre yok. ${num(ust.sure_tahmin_gun) > 0 ? `Bitiş tahmini şimdilik ${ust.no}. adımın ${ust.sure_tahmin_gun} gününden pay alıyor;` : `${ust.no}. adımın da süresi olmadığı için bitiş tahmini bu işleri saymıyor;`} kullanıcıya her birinin kaç gün süreceğini sor ve devir_adim_guncelle ile sure_tahmin_gun yaz.`);
+  { const h = await kararHatirlat(ctx, akis, yeni, "Yeni alt görevler"); if (h.length) out.push(...h); }
   out.push(`Adım ${ust.no}, alt görevlerin hepsi bitmeden tamamlanmaz; hepsi bitince ${kararAdimi(ust) || ust.cikti_bekleniyor === true ? "kararı ya da çıktısı sende olduğu için sen tamamlarsın" : "kendiliğinden tamamlanır"}. Alt görevleri numaralarıyla devir_adim_guncelle ile güncelle.`);
   return out.join("\n");
 }
@@ -2153,7 +2218,7 @@ async function ustGuncelle(ctx: Ctx, akis: any, steps: any[], no: number): Promi
   const al = altlariOf(steps, no);
   if (!al.length) return [];
   const bitti = al.filter(DONE).length, tamam = al.filter((x: any) => x.durum === "tamam").length;
-  const ilerleme = `${bitti}/${al.length} alt görev bitti`;
+  const ilerleme = `${altSayim(al).metin.replace(/^(\d+\/\d+)/, "$1 alt görev bitti")}`;
   if (bitti === al.length && tamam > 0) {
     const elle = ((akis.kurallar || {}).karar_insanda !== false && kararAdimi(p)) || (p.cikti_bekleniyor === true && !p.ciktilar.length);
     if (!elle) { await setDurum(ctx, akis, p, "tamam", SYS, `Adım ${p.no} tamamlandı: alt görevlerin hepsi bitti`, { ilerleme, engel: null }); return [`✓ Adım ${p.no} · ${p.ad} → tamam (alt görevlerin hepsi bitti)`]; }
@@ -2186,7 +2251,7 @@ async function adimEkle(a: any, ctx: Ctx) {
   if (!v.ad || !v.sahip || !v.kriter) throw new Error("ad, sahip ve kriter gerekli.");
   if (v.son_tarih && !isDate(v.son_tarih)) throw new Error("son_tarih YYYY-AA-GG olmalı.");
   for (const d of v.bagimli) if (!steps.some((s: any) => s.no === d)) throw new Error(`bagimli: ${d} numaralı adım yok.`);
-  if ((akis.kurallar || {}).karar_insanda !== false && v.sahip_tip === "agent" && kararAdimi(v)) throw new Error(`"${v.ad}" bir karar/onay/ödeme adımı; sahibi insan olmalı.`);
+  if ((akis.kurallar || {}).karar_insanda !== false && v.sahip_tip === "agent" && kararAdimi(v)) throw new Error(kararRet(v.ad));
   const bekleyen: number[] = (a.bekleyenler || []).map(Number);
   for (const b of bekleyen) { const t = steps.find((s: any) => s.no === b); if (!t) throw new Error(`bekleyenler: ${b} numaralı adım yok.`); if (DONE(t)) throw new Error(`bekleyenler: ${b} zaten bitmiş.`); }
   const test = [...steps.map((s: any) => ({ no: s.no, bagimli: bekleyen.includes(s.no) ? [...s.bagimli, no] : s.bagimli })), { no, bagimli: v.bagimli }];
@@ -2238,6 +2303,7 @@ async function adimEkle(a: any, ctx: Ctx) {
   out.push(`Durum: ${LBL[row.durum]}${ready.some((r: any) => r.no === no) ? " (hemen başlayabilir)" : ""}`);
   if (boyut && boyut !== "genel") out.push(`Sorulmamış boyut: ${boyut}. Bir sonraki benzer işte bu boyuttaki soru öne çıkar.`);
   out.push("Akış kapanınca bu ekleme ekibin deneyim belleğine yazılır; benzer işlerde baştan önerilir.");
+  { const h = await kararHatirlat(ctx, akis, [v], "Yeni adım"); if (h.length) out.push(...h); }
   await ihlalBildir(ctx, akis, ihlal0, out);
   return out.join("\n");
 }
@@ -2292,23 +2358,11 @@ async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapH
   // tarih: bağlı adımlara çapa, açık adımların takvimi yeniden
   if (b.tip === "tarih") {
     for (const x of steps) if (x.capa_soru === kod && !DONE(x)) x._capa = cevap;
-    const acik = steps.filter((x) => !DONE(x));
-    const acikNo = new Set(acik.map((x) => x.no));
-    const plan = acik.map((x) => ({ no: x.no, ad: x.ad, ust_adim: x.ust_adim != null && acikNo.has(x.ust_adim) ? x.ust_adim : null, bagimli: x.bagimli.filter((d: number) => acikNo.has(d)), sure_tahmin_gun: x.sure_tahmin_gun, son_tarih: x.tarih_sabit && !x._capa ? x.son_tarih : null, _sabit: !!x.tarih_sabit && !x._capa, _capa: x._capa || null, _capaSoru: x._capa ? null : x.capa_soru || null, _netlestir: /^netlestir-/.test(x.tur_kod || "") }));
-    const bugun = dayNum(todayIst(ctx.now));
     const eskiHedef = akis.hedef_tarih || null;
-    const r = takvim(plan, kod === "hedef_tarih" ? cevap : eskiHedef, bugun, notes); // hedef tarihin kendisi sonradan cevaplanabilir
-    let degisen = 0;
-    for (const p of plan) {
-      const x = steps.find((y) => y.no === p.no)!;
-      const patch: Record<string, unknown> = {};
-      if ((p.son_tarih || null) !== (x.son_tarih || null)) patch.son_tarih = p.son_tarih || null;
-      if (x._capa) { patch.capa_soru = null; patch.tarih_sabit = true; patch.capa_tarih = x._capa; }
-      if (Object.keys(patch).length) { await ctx.db.update("adim", { id: x.id }, patch); Object.assign(x, patch); if ("son_tarih" in patch) degisen++; }
-    }
+    const { r, degisen } = await takvimKur(ctx, steps, kod === "hedef_tarih" ? cevap : eskiHedef, notes, true); // hedef tarihin kendisi sonradan cevaplanabilir
     const capali = steps.filter((x) => x._capa);
     if (capali.length) out.push(`Sabit tarih: ${capali.map((x) => `${x.no}. ${x.ad} → ${fmtD(cevap)}`).join("; ")}`);
-    if (degisen) out.push(`${degisen} adımın son tarihi yeniden planlandı.`);
+    if (degisen.length) out.push(`${degisen.length} adımın son tarihi yeniden planlandı.`);
     if (r.hedef && r.hedef !== eskiHedef) { await ctx.db.update("akis", { id: akis.id }, { hedef_tarih: r.hedef }); out.push(eskiHedef ? `Hedef ${fmtD(eskiHedef)} → ${fmtD(r.hedef)}.` : `Hedef tarih ${fmtD(r.hedef)} oldu.`); akis.hedef_tarih = r.hedef; }
   }
   // kayıt
@@ -2326,6 +2380,49 @@ async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapH
   const kalan = Object.keys(yeni);
   if (kalan.length) out.push(`Açık kalan sorular: ${kalan.join(", ")}`);
   return out;
+}
+
+/** Açık adımların son tarihlerini hedeften geriye yeniden kurar (sabit tarihler korunur). yaz=false önizlemedir. devir_cevapla tarih yolu ve devir_takvim_yenile ortak. */
+async function takvimKur(ctx: Ctx, steps: any[], hedef: string | null, notes: string[], yaz: boolean) {
+  const acik = steps.filter((x) => !DONE(x));
+  const acikNo = new Set(acik.map((x) => x.no));
+  const plan = acik.map((x) => ({ no: x.no, ad: x.ad, ust_adim: x.ust_adim != null && acikNo.has(x.ust_adim) ? x.ust_adim : null, bagimli: x.bagimli.filter((d: number) => acikNo.has(d)), sure_tahmin_gun: x.sure_tahmin_gun, son_tarih: x.tarih_sabit && !x._capa ? x.son_tarih : null, _sabit: !!x.tarih_sabit && !x._capa, _capa: x._capa || null, _capaSoru: x._capa ? null : x.capa_soru || null, _netlestir: /^netlestir-/.test(x.tur_kod || "") }));
+  const r = takvim(plan, hedef, dayNum(todayIst(ctx.now)), notes);
+  const degisen: { no: number; ad: string; eski: string | null; yeni: string | null }[] = [];
+  for (const p of plan) {
+    const x = steps.find((y) => y.no === p.no)!;
+    const patch: Record<string, unknown> = {};
+    if ((p.son_tarih || null) !== (x.son_tarih || null)) { patch.son_tarih = p.son_tarih || null; degisen.push({ no: x.no, ad: x.ad, eski: x.son_tarih || null, yeni: p.son_tarih || null }); }
+    if (x._capa) { patch.capa_soru = null; patch.tarih_sabit = true; patch.capa_tarih = x._capa; }
+    if (yaz && Object.keys(patch).length) { await ctx.db.update("adim", { id: x.id }, patch); Object.assign(x, patch); }
+  }
+  return { r, degisen };
+}
+
+/** 0.28.6: takvimi elle yeniden kur. Süre ya da bağımlılık değişince eski son tarihler kendiliğinden kaymaz; bu araç önizler, uygula=true ile yazar. */
+async function takvimYenile(a: any, ctx: Ctx) {
+  needTeam(ctx, "Takvimi yeniden kurmayı");
+  const akis = await getAkis(ctx, a.akis);
+  if (akis.durum !== "aktif") throw new Error(`Akış ${akis.durum}; takvim yeniden kurulamaz.`);
+  if (!akis.hedef_tarih) throw new Error("Akışın hedef tarihi yok; takvim hedeften geriye kurulur. Önce hedef tarihi devir_cevapla ile (soru: hedef_tarih) yaz.");
+  const { steps } = await loadFlow(ctx, akis);
+  const notes: string[] = [];
+  const yaz = a.uygula === true;
+  const { r, degisen } = await takvimKur(ctx, steps, akis.hedef_tarih, notes, yaz);
+  const out: string[] = [];
+  if (!degisen.length) out.push(`${akis.kisa_kod}: takvim zaten güncel; değişen son tarih yok.`);
+  else {
+    out.push(`${akis.kisa_kod}: ${degisen.length} adımın son tarihi ${yaz ? "yeniden planlandı" : "değişecek (önizleme)"}. Sabit tarihli adımlara dokunulmadı.`);
+    for (const d of degisen.slice(0, 40)) out.push(`- ${d.no}. ${d.ad}: ${d.eski ? fmtD(d.eski) : "tarihsiz"} → ${d.yeni ? fmtD(d.yeni) : "tarihsiz"}`);
+    if (degisen.length > 40) out.push(`… ve ${degisen.length - 40} adım daha.`);
+  }
+  if (r.hedef && r.hedef !== akis.hedef_tarih) out.push(`Not: plan hedefe sığmıyor; en erken ${fmtD(r.hedef)}. Hedef değişmedi.`);
+  for (const n of notes) if (!/^Hedef /.test(n)) out.push(`Not: ${n}`);
+  if (yaz && degisen.length) {
+    await log(ctx, akis.id, null, actor(ctx, a), "guncelleme", `Takvim yeniden kuruldu: ${degisen.length} son tarih değişti`, { tur: "takvim_yenile", degisen: degisen.map((d) => ({ no: d.no, eski: d.eski, yeni: d.yeni })) });
+    await recalc(ctx, akis, steps);
+  } else if (degisen.length) out.push("Yazmak için uygula: true ile yeniden çağır; önce kullanıcıya göster.");
+  return out.join("\n");
 }
 
 async function cevapla(a: any, ctx: Ctx) {

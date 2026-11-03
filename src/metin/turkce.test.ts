@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { adimAdi, adimEtiketi, akisAdi, ek, ozelEk, tarihDi, tarihEk } from './turkce';
+import { adimAdi, adimEtiketi, akisAdi, altGorevSayaci, ek, ozelEk, tarihDi, tarihEk } from './turkce';
 
 test('ekler: ünlü uyumu, sertleşme, iyelik, sayılar', () => {
   expect(ek('App Store onayı', 'den')).toBe('App Store onayından');
@@ -26,4 +26,9 @@ test('P1-F: ad kesilmez; kisa_ad yoksa tam ad', () => {
   expect(adimEtiketi({ ad: '', kisa_ad: 'App Store onayını bekle' })).toBe('App Store');
   expect(adimEtiketi({ ad: '', kisa_ad: 'Post görseli' })).toBe('Görsel');
   expect(adimEtiketi({ ad: '', kisa_ad: 'Mevzuat kontrolü yap' })).toBe('Mevzuat kontrolü');
+});
+
+test('alt görev sayacı: ertelenen bitmiş sayılmaz', () => {
+  expect(altGorevSayaci([{ durum: 'tamam' }, { durum: 'atlandi' }, { durum: 'hazir' }])).toBe('2/3 alt görev');
+  expect(altGorevSayaci([{ durum: 'tamam' }, { durum: 'ertelendi' }, { durum: 'ertelendi' }, { durum: 'hazir' }])).toBe('1/4 alt görev · 2 ertelendi');
 });

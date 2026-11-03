@@ -148,3 +148,9 @@ export function sayiIyelik(n: number): string {
   const e = n % 10 ? BIR[n % 10] : n % 100 ? ON[(n % 100) / 10] : n % 1000 ? 'ü' : 'i';
   return `${n}’${e}`;
 }
+
+/** Alt görev sayacı: ertelenen iş bitmiş sayılmaz, ayrıca söylenir (NM8R bulgu 6; sunucudaki altSayim ile aynı). */
+export function altGorevSayaci(k: { durum: string }[]): string {
+  const bitti = k.filter((x) => x.durum === 'tamam' || x.durum === 'atlandi').length, ertelendi = k.filter((x) => x.durum === 'ertelendi').length;
+  return `${bitti}/${k.length} alt görev${ertelendi ? ` · ${ertelendi} ertelendi` : ''}`;
+}
