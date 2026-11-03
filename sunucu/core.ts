@@ -94,6 +94,17 @@ export const fmtD = (d: string) => { const [y, m, g] = d.split("-").map(Number);
 export const fmtMs = (ms: number) => fmtD(todayIst(ms));
 const ts = (s: string) => Date.parse(s);
 export const norm = (s: string) => String(s || "").toLocaleLowerCase("tr").replace(/[^a-zçğıöşü0-9]+/g, " ").trim();
+/**
+ * Aynı varlık mı (3 Kas, NM8R/9VJS): parantez içi açıklama atılır ("E-ticaret sistemi (Çin ithalat → TR pazaryeri)" =
+ * "E-ticaret sistemi"). basi=true ise biri ötekinin kelime sınırında başıysa da aynı sayılır (yalnız uyarı için).
+ */
+export function varlikAyni(a: unknown, b: unknown, basi = false) {
+  const k = (x: unknown) => norm(String(x || "").replace(/\([^)]*\)/g, " "));
+  const x = k(a), y = k(b);
+  if (!x || !y) return false;
+  if (x === y) return true;
+  return basi && Math.min(x.length, y.length) >= 6 && (x.startsWith(y + " ") || y.startsWith(x + " "));
+}
 const truthy = (v: unknown) => v === true || /^(evet|var|e|yes|true|1|olur)$/i.test(String(v ?? "").trim());
 const num = (v: unknown, d = 1) => { const n = Number(v); return isFinite(n) && n > 0 ? n : d; };
 
@@ -760,11 +771,11 @@ export const TOOLS = [
   },
   {
     name: "devir_akis_olustur",
-    description: "Akışı kurar. Asıl yol: devir_tasla'nın verdiği taslak kodu ve kullanıcının cevaplarıyla çağır ({ taslak, cevaplar }). Diğer yollar: sablon_kod + cevaplar + degiskenler ya da adimlar listesini kendin ver. hedef_tarih varsa son tarihler geriye doğru planlanır.",
+    description: "Akışı kurar. Asıl yol: devir_tasla'nın verdiği taslak kodu ve kullanıcının cevaplarıyla çağır ({ taslak, cevaplar }). Diğer yollar: sablon_kod + cevaplar + degiskenler ya da adimlar listesini kendin ver; taslak çıkardıysan adimlar ile birlikte taslak'ı da ver. hedef_tarih varsa son tarihler geriye doğru planlanır; yoksa kullanıcıya sor, akış hedef tarihi açık soru olarak tutar.",
     inputSchema: {
       type: "object",
       properties: {
-        taslak: { type: "string", description: "devir_tasla'nın verdiği taslak kodu (ör. T7K2F)." },
+        taslak: { type: "string", description: "devir_tasla'nın verdiği taslak kodu (ör. T7K2F). Adımları kendin yazsan da (adimlar) taslağı ver: hedef tarih, cevaplar ve varlık taslaktan gelir, taslak bu akışa bağlanır." },
         baslik: { type: "string" }, amac: { type: "string" },
         kisa_ad: { type: "string", description: "Akışın listelerde görünen kısa adı: en çok 40 karakter (ör. 'Park aydınlatma ihalesi'). Verilmezse Devir üretir." },
         hedef_tarih: { type: "string", description: "YYYY-AA-GG; işin bitmesi gereken son gün." },
@@ -1053,7 +1064,23 @@ async function olustur(a: any, ctx: Ctx) {
   let raw: any[];
   let fark: any = null;
   let L: ReturnType<typeof learnings>;
-  if (a.taslak) {
+  // taslak + kendi adımların (3 Kas, NM8R): adımlar ajandan; hedef, cevaplar, varlık ve ilişki taslaktan; taslak "kuruldu" olur.
+  // Önceden taslak verilmeden kurulunca taslağın soruları (hedef tarih dahil) düşüyor, taslak açık kalıp ikinci akışa dönüşüyordu.
+  let tkElle: any = null;
+  if (a.taslak && Array.isArray(a.adimlar) && a.adimlar.length) {
+    tkElle = await ctx.db.one("taslak", { kisa_kod: String(a.taslak).trim().toUpperCase(), ws_id: ctx.ws.id });
+    if (!tkElle) throw bulunamadi(`'${a.taslak}' taslağı bulunamadı. Önce devir_tasla ile taslak çıkar.`);
+    if (tkElle.durum && tkElle.durum !== "acik") throw new Error(`${tkElle.kisa_kod} taslağından zaten akış kuruldu ya da vazgeçildi. devir_akislar ile bak.`);
+    const tt = tkElle.taslak || {}, cv = a.cevaplar || {};
+    if (!hedef && isDate(String(cv.hedef_tarih || ""))) hedef = String(cv.hedef_tarih);
+    if (!hedef && isDate(String(tt.hedef_tarih || ""))) hedef = String(tt.hedef_tarih);
+    if (!baglam.musteri && (tkElle.baglam?.musteri || tt.anahtar_varlik?.ad)) baglam.musteri = tkElle.baglam?.musteri || tt.anahtar_varlik.ad;
+    if (!baglam.iliski && tkElle.baglam?.iliski) baglam.iliski = tkElle.baglam.iliski;
+    if (Object.keys(cv).length) baglam.cevaplar = cv;
+    baglam.taslak = tkElle.kisa_kod;
+    if (!baslik) baslik = tt.baslik || "";
+  }
+  if (a.taslak && !tkElle) {
     tk = await ctx.db.one("taslak", { kisa_kod: String(a.taslak).trim().toUpperCase(), ws_id: ctx.ws.id });
     if (!tk) throw bulunamadi(`'${a.taslak}' taslağı bulunamadı. Önce devir_tasla ile taslak çıkar.`);
     if (tk.durum === "iptal") throw new DevirHata(409, `${tk.kisa_kod} taslağından vazgeçildi${tk.akis_id ? " (aynı varlık için elle akış kuruldu)" : ""}. Gerekirse devir_tasla ile yeni taslak çıkar.`);
@@ -1116,7 +1143,7 @@ async function olustur(a: any, ctx: Ctx) {
   if (!baslik) throw new Error("baslik gerekli.");
   // aynı varlıkta son 24 saatte kurulmuş aktif akış varsa önce onay (P1-B, J2LU: aynı iş iki kez kuruldu)
   if (baglam.musteri && !baglam.ust_akis && a.ayni_varlik_onay !== true) {
-    const yakin = (await varlikAkislari(ctx, baglam.musteri)).filter((f: any) => f.durum === "aktif" && !f.baglam?.ust_akis && ctx.now - ts(f.created_at) < DAY);
+    const yakin = (await varlikAkislari(ctx, baglam.musteri, true)).filter((f: any) => f.durum === "aktif" && !f.baglam?.ust_akis && ctx.now - ts(f.created_at) < DAY);
     if (yakin.length) throw new DevirHata(409, `${baglam.musteri} için son 24 saatte kurulmuş aktif akış var: ${yakin.map((f: any) => `${f.kisa_kod} · ${f.baslik}`).join("; ")}. Aynı iş olabilir; kullanıcıya sor. Ayrı bir işse ayni_varlik_onay=true ile yeniden çağır.`);
   }
   // öğrenimden adım ekle (şablon ve taslak yolu)
@@ -1144,6 +1171,11 @@ async function olustur(a: any, ctx: Ctx) {
     baglam.bekleyen = {};
     for (const b of u.bekleyen) { const st = steps.find((x: any) => x._cevapSoru === b.kod); baglam.bekleyen[b.kod] = { soru: b.soru, tip: b.tip, secenekler: b.secenekler || null, boyut: b.boyut || null, adim_no: st ? st.no : null, kaynak: b.kaynak }; }
   }
+  // hedefsiz akış (3 Kas, NM8R): hedef tarih açık soru olarak kalır; cevap gelince (devir_cevapla, web) takvim geriye doğru kurulur
+  if (!hedef && !baglam.ust_akis) {
+    baglam.bekleyen = { ...(baglam.bekleyen || {}), hedef_tarih: { soru: "İşin bitmesi gereken son gün ne?", kisa: "hedef tarih", tip: "tarih", secenekler: null, boyut: "kisit", adim_no: null, kaynak: "sonra" } };
+    notes.push("Hedef tarih yok: kullanıcıya işin bitmesi gereken son günü sor ve devir_cevapla({ soru: \"hedef_tarih\" }) ile yaz. O zamana kadar ekranlar en erken bitişi gösterir.");
+  }
   // grup sahipleri ve büyük iş uyarıları
   const GRUP = /(kurulu|ekibi|aileler|gönüllüler|firmalar[ıi]?|yatırımcılar|müşteriler|tedarikçiler|çiftçiler|adaylar|katılımcılar|konuşmacılar|üyeler)\b/i;
   const gruplu = steps.filter((s) => GRUP.test(s.sahip));
@@ -1159,7 +1191,7 @@ async function olustur(a: any, ctx: Ctx) {
   let akis: any = null;
   for (let i = 0; i < 6 && !akis; i++) {
     try {
-      [akis] = await ctx.db.insert("akis", [{ kisa_kod: shortCode(), sahip_id: ctx.ws.id, baslik, amac: a.amac || (tk ? tk.taslak.amac || null : null), sablon_kod: turKod, sablon_surum: sab ? sab.surum : null, hedef_tarih: hedef, kurallar: kur, baglam: { ...baglam, ...(fark ? { sablon_farki: fark } : {}) }, taslak_id: tk ? tk.id : null, ilk_taslak: steps.map((s) => s._tur) }]);
+      [akis] = await ctx.db.insert("akis", [{ kisa_kod: shortCode(), sahip_id: ctx.ws.id, baslik, amac: a.amac || (tk ? tk.taslak.amac || null : null), sablon_kod: turKod, sablon_surum: sab ? sab.surum : null, hedef_tarih: hedef, kurallar: kur, baglam: { ...baglam, ...(fark ? { sablon_farki: fark } : {}) }, taslak_id: tk ? tk.id : tkElle ? tkElle.id : null, ilk_taslak: steps.map((s) => s._tur) }]);
     } catch (e) { if (!/duplicate|unique|23505/i.test(String((e as Error).message))) throw e; }
   }
   if (!akis) throw new Error("Akış kodu üretilemedi, tekrar dene.");
@@ -1181,7 +1213,7 @@ async function olustur(a: any, ctx: Ctx) {
     }
   }
   const act = actor(ctx, a);
-  await log(ctx, akis.id, null, act, "akis_olustu", `Akış kuruldu: ${steps.length} adım${tk ? `, taslak ${tk.kisa_kod}` : sab ? `, şablon ${sab.kod}` : ""}`, { sablon: turKod, fark, ogrenim: [...L.musteri] });
+  await log(ctx, akis.id, null, act, "akis_olustu", `Akış kuruldu: ${steps.length} adım${tk || tkElle ? `, taslak ${(tk || tkElle).kisa_kod}` : sab ? `, şablon ${sab.kod}` : ""}`, { sablon: turKod, fark, ogrenim: [...L.musteri] });
   if (tk) {
     await ctx.db.update("taslak", { id: tk.id }, { durum: "kuruldu", akis_id: akis.id });
     const kayit = [
@@ -1189,11 +1221,15 @@ async function olustur(a: any, ctx: Ctx) {
       ...((tk.sorular?.varsayim || []) as any[]).map((q: any) => ({ ws_id: ctx.ws.id, taslak_id: tk.id, akis_id: akis.id, is_turu: turKod, tip: "varsayim", soru_kod: q.kod, boyut: q.boyut, soru: q.soru, cevap: String(q.cevap ?? q.varsayilan ?? ""), kaynak: q.kaynak, etki: {}, etki_puan: 0 })),
     ];
     if (kayit.length) await ctx.db.insert("soru_kaydi", kayit);
-  } else if (baglam.musteri && !baglam.ust_akis) {
+  } else {
+    // taslakla elle kurulum: taslak bu akışa bağlanır
+    if (tkElle) await ctx.db.update("taslak", { id: tkElle.id }, { durum: "kuruldu", akis_id: akis.id });
     // elle kurulan akış aynı varlığın açık taslağını kapatır; yoksa sonradan o taslaktan ikinci akış kurulabiliyor (P1-B)
-    const acik = (await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at")).filter((x: any) => norm(x.baglam?.musteri || x.taslak?.anahtar_varlik?.ad || "") === norm(baglam.musteri));
-    for (const x of acik) await ctx.db.update("taslak", { id: x.id }, { durum: "iptal", akis_id: akis.id });
-    if (acik.length) notes.push(`${baglam.musteri} için açık taslak${acik.length > 1 ? "lar" : ""} (${acik.map((x: any) => x.kisa_kod).join(", ")}) bu akış kurulduğu için iptal edildi.`);
+    if (baglam.musteri && !baglam.ust_akis) {
+      const acik = (await ctx.db.many("taslak", { ws_id: ctx.ws.id, durum: "acik" }, "created_at")).filter((x: any) => (!tkElle || x.id !== tkElle.id) && varlikAyni(x.baglam?.musteri || x.taslak?.anahtar_varlik?.ad, baglam.musteri));
+      for (const x of acik) await ctx.db.update("taslak", { id: x.id }, { durum: "iptal", akis_id: akis.id });
+      if (acik.length) notes.push(`${baglam.musteri} için açık taslak${acik.length > 1 ? "lar" : ""} (${acik.map((x: any) => x.kisa_kod).join(", ")}) bu akış kurulduğu için iptal edildi.`);
+    }
   }
   const ready = await recalc(ctx, akis, inserted);
   const events = await ctx.db.many("olay", { akis_id: akis.id }, "id");
@@ -1302,8 +1338,9 @@ async function gecmisCevaplar(ctx: Ctx, tur: string | null, varlik: string) {
   return out;
 }
 // varlığın akışları (aynı çalışma alanında)
-async function varlikAkislari(ctx: Ctx, varlik: string) {
+async function varlikAkislari(ctx: Ctx, varlik: string, gevsek = false) {
   const flows = await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at");
+  if (gevsek) return flows.filter((f: any) => varlikAyni(f.baglam?.musteri || f.baglam?.varlik, varlik, true));
   return flows.filter((f: any) => norm(f.baglam?.musteri || f.baglam?.varlik || "") === norm(varlik));
 }
 // ertelenmiş açık işler
@@ -1850,7 +1887,8 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (act.kim_tip === "agent" && (secimVar || (to === "tamam" && isKarar))) await kararIzni(ctx, akis, act, s, op);
   let cevapKod: string | null = null;
   if (a.cevap != null && String(a.cevap).trim()) {
-    const bek = Object.keys(akis.baglam?.bekleyen || {});
+    // akışın kendi hedef tarihi (hedefsiz kurulum, 0.28.2) bir adımın cevabı sayılmaz; yalnız devir_cevapla ile yazılır
+    const bek = Object.keys(akis.baglam?.bekleyen || {}).filter((k) => k !== "hedef_tarih" || akis.baglam.bekleyen[k]?.adim_no);
     cevapKod = s.cevap_soru || (bek.length === 1 ? bek[0] : null);
     if (!cevapKod) throw new Error(bek.length ? `Bu adım bir açık soruya bağlı değil. Açık sorular: ${bek.join(", ")}; devir_cevapla ile soruyu belirterek yaz.` : "Bu akışta açık soru yok.");
     cevapDogrula(akis, cevapKod, a.cevap);
