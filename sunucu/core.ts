@@ -18,7 +18,9 @@ export interface DB {
 }
 /** kanal: isteğin geldiği yol. Aktör türü buradan türetilir, araç argümanından değil (S-C1). */
 export type Kanal = "mcp" | "oturum" | "anahtar" | "baglanti";
-export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null; taban?: string };
+export type Ctx = { db: DB; ws: any; key: any; ua: string; now: number; kanal?: Kanal; llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; depo?: any; sifre?: Sifre | null; taban?: string; tetik?: TetikFn };
+/** AI yapsın (0.29.0): kişinin Claude rutinini API tetiğiyle başlatır. Sunucuda fetch; testte sahte. */
+export type TetikFn = (url: string, jeton: string, metin: string) => Promise<{ ok: boolean; durum: number; oturum?: string | null; hata?: string | null }>;
 
 /** Tipli hata (N-9): HTTP durumu mesajdan değil hatadan gelir. 403 yetki, 404 yok, 400 geçersiz. */
 export class DevirHata extends Error { constructor(public durum: number, m: string) { super(m); } }
@@ -465,6 +467,7 @@ function stepLine(s: any, tl: any, pl: any, opts: { sahipGizle?: boolean; kisa?:
   if (s.kosul?.soru && !DONE(s)) parts.push(`yalnızca ${s.kosul.soru}=${s.kosul.deger} ise`);
   if (s.cevap_soru && !DONE(s)) parts.push(`bitince cevaplanır: ${s.cevap_soru}`);
   if (s.kaynak === "sonradan" && s.ust_adim == null) parts.push("sonradan eklendi");
+  if (s.oto && !DONE(s)) parts.push(s.oto_durum === "tetiklendi" ? "AI yapıyor" : s.oto_durum === "bakilacak" ? "AI yaptı, bakılacak" : s.oto_durum === "hata" ? "AI yapsın başlatılamadı" : `AI yapsın${s.oto_tarih_bekle ? " (planlanan günde)" : ""}`);
   return parts.join(" · ");
 }
 
@@ -566,7 +569,93 @@ async function recalc(ctx: Ctx, akis: any, steps: any[]) {
     await setDurum(ctx, akis, s, target, SYS, target === "hazir" ? `Adım ${s.no} hazır; sıra şimdi: ${s.sahip}` : `Adım ${s.no} yeniden sıraya alındı`);
     if (target === "hazir") ready.push(s);
   }
+  await otoTara(ctx, akis, steps);
   return ready;
+}
+
+// ---------- AI yapsın (0.29.0) ----------
+// Kişi agent adımını "AI yapsın" diye işaretler. Adım hazır olunca (öncüller bitti, beklenen çıktılar yazıldı, açık soru yok,
+// istenirse planlanan gün geldi) sahibin Claude rutini API tetiğiyle başlatılır. Rutin işi yapar, çıktıyı yazar; adım "bakılacak"
+// olur ve sahibi onaylayınca tamam. Karar, onay, ödeme ve dışarıya gönderme işleri otomatiğe uygun değildir.
+export const DIS_FIIL = /gönder|ilet(?:\s|$|il)|yayınla|yayımla|paylaş|postala|başvur|sipariş\s*ver|satın\s*al|transfer|imzala|öde(?:\s|$|meyi|mesini)/i;
+export const OTO_DENEME = 2;
+/** Adım AI yapsın'a uygun değilse nedeni. */
+export function otoUygunDegil(s: any, kurallar: any = {}): string | null {
+  if (s.sahip_tip !== "agent") return "yalnız agent adımı AI yapsın olabilir; önce sahibini agent yap";
+  if (kurallar.karar_insanda !== false && kararAdimi(s)) return "karar, onay ve ödeme adımlarında son söz insanda";
+  if (DIS_FIIL.test(String(s.ad || ""))) return "dışarıya gönderme, yayınlama, başvuru ya da ödeme işi otomatik yapılmaz; agent hazırlasın, gönderen insan olsun (işi ikiye böl)";
+  return null;
+}
+/** AI yapsın adımı neyi bekliyor (boşsa tetiklenebilir). */
+export function otoBekledigi(s: any, steps: any[], now: number): string | null {
+  if (s.durum !== "hazir") return s.durum === "sirada" ? "öncüller" : s.durum === "suruyor" ? "sürüyor" : LBL[s.durum] || s.durum;
+  if (s.capa_soru || s.cevap_soru) return "açık soru";
+  const by = new Map(steps.map((x: any) => [x.no, x]));
+  const eksik = (s.bagimli || []).map((n: number) => by.get(n)).filter((d: any) => d && d.durum === "tamam" && d.cikti_bekleniyor === true && !(d.ciktilar || []).length);
+  if (eksik.length) return `çıktı (${eksik.map((d: any) => d.no).join(", ")})`;
+  if (s.oto_tarih_bekle && s.son_tarih) {
+    const bas = dayNum(s.son_tarih) - Math.max(1, Math.ceil(num(s.sure_tahmin_gun) || 1)) + 1;
+    if (dayNum(todayIst(now)) < bas) return `planlanan gün (${fmtD(numDay(bas))})`;
+  }
+  return null;
+}
+export const otoMetni = (akis: any, s: any, taban?: string) => [
+  `Devir AI yapsın: ${akis.kisa_kod} akışının ${s.no}. adımı (${s.ad}) senin işin ve şimdi yapılabilir.`,
+  `1) devir_adim_oku({ akis: "${akis.kisa_kod}", no: ${s.no} }) ile adımı, girdileri ve geçerli kararları oku.`,
+  `2) devir_adim_guncelle ile durum=suruyor yaz, işi yap.`,
+  `3) Ürettiğini devir_adim_guncelle cikti alanına yaz (metnin tamamı icerik'e). Durumu tamam yapma: adım sahibine bakılacak olarak gider.`,
+  `4) Yapamıyorsan durum=engelli ve engel ile nedenini yaz. Karar gerekiyorsa kararı verme, seçenekleri çıktı olarak yaz.`,
+  ...(taban ? [`Devir: ${taban}`] : []),
+].join("\n");
+/** Kişinin birden çok agent'ı olabilir: önce adımın sahibi olan agent'ın adıyla eşleşen tetik, yoksa kişinin ilk tetiği. */
+export async function tetikBul(ctx: Ctx, kisi: string | null, agentAd?: string | null) {
+  if (!kisi) return null;
+  const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(kisi), aktif: true }, "created_at").catch(() => []);
+  return (agentAd && L.find((t: any) => norm(t.ad) === norm(agentAd))) || L[0] || null;
+}
+async function otoTara(ctx: Ctx, akis: any, steps: any[]) {
+  if (!ctx.tetik || akis.durum !== "aktif") return;
+  for (const s of steps) {
+    if (!s.oto || s.durum !== "hazir" || s.oto_durum === "tetiklendi" || s.oto_durum === "bakilacak" || s.oto_durum === "hata") continue;
+    if (otoUygunDegil(s, akis.kurallar || {}) || otoBekledigi(s, steps, ctx.now)) continue;
+    const t = await tetikBul(ctx, s.agent_sahibi, s.sahip);
+    if (!t) continue;
+    const deneme = (s.oto_deneme || 0) + 1;
+    const kilit = { oto_durum: "tetiklendi", oto_at: new Date(ctx.now).toISOString(), oto_deneme: deneme };
+    await ctx.db.update("adim", { id: s.id }, kilit); Object.assign(s, kilit);
+    let r: Awaited<ReturnType<TetikFn>>;
+    try { r = await ctx.tetik(t.url, ctx.sifre ? await ctx.sifre.coz(t.jeton) : t.jeton, otoMetni(akis, s, ctx.taban)); }
+    catch (e) { r = { ok: false, durum: 0, hata: (e as Error).message }; }
+    const kim = { kim: "Devir", kim_tip: "sistem", arac: null };
+    await ctx.db.update("agent_tetik", { id: t.id }, { son_tetik_at: new Date(ctx.now).toISOString(), son_hata: r.ok ? null : `${r.durum} ${r.hata || ""}`.trim() }).catch(() => {});
+    if (r.ok) {
+      if (r.oturum) { await ctx.db.update("adim", { id: s.id }, { oto_oturum: r.oturum }); s.oto_oturum = r.oturum; }
+      await log(ctx, akis.id, s.no, kim, "guncelleme", `AI yapsın: ${t.ad} başlatıldı`, { tur: "oto_tetik", tetik: t.id, oturum: r.oturum || null, deneme });
+    } else if (deneme >= OTO_DENEME) {
+      await ctx.db.update("adim", { id: s.id }, { oto_durum: "hata" }); s.oto_durum = "hata";
+      await setDurum(ctx, akis, s, "engelli", kim, `AI yapsın ${deneme} kez başlatılamadı (${r.durum})`, { engel: `AI yapsın başlatılamadı: ${r.hata || r.durum}. Ayarlar'da tetiği kontrol et ya da Claude'da aç.` });
+    } else {
+      await ctx.db.update("adim", { id: s.id }, { oto_durum: null }); s.oto_durum = null;
+      await log(ctx, akis.id, s.no, kim, "guncelleme", `AI yapsın başlatılamadı (${r.durum}); sonraki taramada yeniden denenecek`, { tur: "oto_hata", durum: r.durum, hata: r.hata || null, deneme });
+    }
+  }
+}
+/** Günlük tarama: planlanan günü gelen ya da yeniden denenecek AI yapsın adımları (cron uç noktası). */
+export async function otoGunluk(ctx0: Omit<Ctx, "ws" | "key">) {
+  const adimlar = await ctx0.db.many("adim", { oto: true, durum: "hazir" }, "akis_id").catch(() => []);
+  const akisIds = [...new Set(adimlar.filter((s: any) => !s.oto_durum).map((s: any) => s.akis_id))];
+  let tetiklenen = 0;
+  for (const id of akisIds) {
+    const akis = await ctx0.db.one("akis", { id });
+    if (!akis || akis.durum !== "aktif") continue;
+    const ws = await ctx0.db.one("kullanici", { id: akis.sahip_id });
+    const ctx = { ...ctx0, ws, key: { kisi: "Devir", rol: "sahip" }, kanal: "sistem" } as any;
+    const { steps } = await loadFlow(ctx, akis);
+    const once = steps.filter((s: any) => s.oto_durum === "tetiklendi").length;
+    await otoTara(ctx, akis, steps);
+    tetiklenen += steps.filter((s: any) => s.oto_durum === "tetiklendi").length - once;
+  }
+  return { akis: akisIds.length, tetiklenen };
 }
 
 // ---------- öğrenim ----------
@@ -748,6 +837,7 @@ function validateSteps(raw: any[], kurallar: any) {
       bagimli: [...new Set((a.bagimli || []).map(Number))], _kod: a._kod || null, _ek: a._ek || null,
       karar_gerekli: typeof a.karar_gerekli === "boolean" ? a.karar_gerekli : null, cikti_bekleniyor: typeof a.cikti_bekleniyor === "boolean" ? a.cikti_bekleniyor : null,
       ust_adim: a.ust_adim != null && a.ust_adim !== "" ? Number(a.ust_adim) : a._ust != null ? Number(a._ust) : null, _ustAcik: a.ust_adim != null && a.ust_adim !== "",
+      oto: a.oto === true,
     };
     Object.assign(s, alanDoldur(s));
     if (!s.ad) errs.push(`Adım ${no}: ad boş.`);
@@ -757,6 +847,7 @@ function validateSteps(raw: any[], kurallar: any) {
     for (const d of s.bagimli) if (!Number.isInteger(d) || d < 1 || d > n || d === no) errs.push(`Adım ${no}: geçersiz bağımlılık ${d}.`);
     if (kurallar.karar_insanda !== false && s.sahip_tip === "agent" && kararAdimi(s))
       errs.push(`Adım ${no}: ${kararRet(s.ad)}`);
+    else if (s.oto) { const neden = otoUygunDegil(s, kurallar); if (neden) errs.push(`Adım ${no} (${s.ad}) AI yapsın olamaz: ${neden}.`); }
     return s;
   });
   // P3 (0.28.0): görev → alt görev (tek düzey). Elle verilen geçersiz ust_adim hatadır; taslaktan geleni sessizce düzleştirilir.
@@ -846,7 +937,8 @@ export const TOOLS = [
             son_tarih: { type: "string" }, sure_tahmin_gun: { type: "number" }, bagimli: { type: "array", items: { type: "integer" } },
             ust_adim: { type: "integer", description: "Bu adım listedeki hangi adımın alt görevi (1'den başlayan sıra no, tek düzey). Alt görev üstünün öncüllerini bekler; üst adım alt görevleri bitince kapanır." },
             karar_gerekli: { type: "boolean", description: "true: karar/onay adımı, son söz insanda. Adında 'onay', 'ödeme' geçse de bir şey yapma işiyse (ör. onay ekranını geliştir) false ver." },
-            cikti_bekleniyor: { type: "boolean", description: "true: adım bir çıktı (belge, metin, bağlantı) yazılmadan bitmiş sayılmaz." } } },
+            cikti_bekleniyor: { type: "boolean", description: "true: adım bir çıktı (belge, metin, bağlantı) yazılmadan bitmiş sayılmaz." },
+            oto: { type: "boolean", description: "AI yapsın: agent adımı hazır olunca kullanıcının Claude rutini kendiliğinden yapar. Yalnız kullanıcı isterse; karar, ödeme ve dışarıya gönderme adımlarında olmaz." } } },
         },
         katilimcilar: { type: "array", description: "Dış katılımcılar (müşteri, usta, tedarikçi…). Her birine giriş istemeyen bir bağlantı üretilir ve yanıtta döner; bağlantı yalnız sahibi bu kişi olan adımları gösterir. ad, adımlarda sahip olarak yazdığın adla aynı olmalı.", items: { type: "object", properties: { ad: { type: "string", description: "Adımlarda sahip olarak yazılan ad (ör. 'Mert Usta')." }, rol: { type: "string" }, iletisim: { type: "string" } } } },
       },
@@ -878,6 +970,8 @@ export const TOOLS = [
         ilerleme: { type: "string", description: "Kısa durum cümlesi, ör. '38/42 fatura yüklendi'." },
         not: { type: "string", description: "Olay kaydına düşülecek açıklama; atlama için neden." },
         agent_sahibi: { type: "string", description: "Agent adımını yürüten agent'ın kime ait olduğu (kişi adı). Verilmezse agent ilk yazdığında bağlantının sahibi yazılır." },
+        oto: { type: "boolean", description: "AI yapsın: true ise agent adımı hazır olunca (öncüller bitti, beklenen çıktılar yazıldı, açık soru yok) agent_sahibi'nin Claude rutini kendiliğinden başlatılır; çıktı sahibine bakılacak olarak gelir. Yalnız kullanıcı açık der ise ver; karar, ödeme ve dışarıya gönderme adımlarında olmaz." },
+        oto_tarih_bekle: { type: "boolean", description: "AI yapsın adımı hazır olsa da planlanan başlangıç gününü beklesin." },
         atlama_nedeni: { type: "string", enum: ["gerek_kalmadi", "mukerrer", "varsayim_yanlis"], description: "durum=atlandi ise: gerek_kalmadi (iş artık gerekmiyor), mukerrer (aynı iş başka adımda yapılıyor), varsayim_yanlis (adım yanlış bir varsayım yüzünden kurulmuştu; Devir bunu öğrenir)." },
         engel: { type: "string", description: "durum=engelli ise ne ya da kim bekleniyor." },
         karar: { type: "object", description: "Karar adımında seçenekler ve önerin: { secenekler: [{ ad, alt (ör. 'Rize/Hemşin · çay'), etiket (ör. 'faturalı'), uyari (teyit bekliyorsa true) }], oneri: { secim: [seçilen adlar], ozet (ör. '5'ini de kabul et'), gerekce } }. Kararı kullanıcı verir.", properties: { tur: { type: "string", description: "Seçeneklerin ne olduğu, tekil (ör. çiftçi, teklif)." }, secenekler: { type: "array", items: { anyOf: [{ type: "string" }, { type: "object", properties: { ad: { type: "string" }, alt: { type: "string" }, etiket: { type: "string" }, uyari: { type: "boolean" } }, required: ["ad"] }] } }, oneri: { type: "object", properties: { secim: { type: "array", items: { type: "string" } }, ozet: { type: "string" }, gerekce: { type: "string" } } } } },
@@ -1269,6 +1363,7 @@ async function olustur(a: any, ctx: Ctx) {
     kosul: s._kosul, capa_soru: s._capaSoru, cevap_soru: s._cevapSoru, tarih_sabit: !!s._capa || !!s._sabit, capa_tarih: s._capa && isDate(s._capa) ? s._capa : null,
     ...(s.ust_adim != null ? { ust_adim: s.ust_adim } : {}),
     ...(s.sahip_tip === "agent" && ctx.key?.kisi && !isDis(ctx) ? { agent_sahibi: ctx.key.kisi } : {}),
+    ...(s.oto ? { oto: true } : {}),
   }));
   const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
   const paylasim: string[] = [];
@@ -1845,6 +1940,7 @@ async function adimOku(a: any, ctx: Ctx) {
   const kur = akis.kurallar || {};
   const rules = [];
   if (kur.karar_insanda !== false && kararAdimi(s)) rules.push("bu bir karar adımı: son söz insanda, agent yalnızca hazırlar");
+  if (s.oto) rules.push("AI yapsın adımı: çıktını cikti alanına yaz, durumu tamam yapma; sahibi çıktıya bakıp tamamlar");
   if (kur.veri_ozet !== false) rules.push("kişisel ve finansal ayrıntı nota açık yazılmaz, özet yazılır");
   if (rules.length) out.push(`Kurallar: ${rules.join("; ")}`);
   if (akis.sablon_kod) {
@@ -1961,6 +2057,27 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
       patch.bagimli = yeni; bagEski = eski;
     }
   }
+  // AI yapsın (0.29.0): yalnız ekip ve insan işaretler; agent kendini otomatiğe alamaz
+  if (a.oto != null || a.oto_tarih_bekle != null) {
+    if (isDis(ctx) || act.kim_tip === "agent") throw yetkiYok("AI yapsın'ı yalnız ekipten bir kişi açıp kapatabilir; agent kendini otomatiğe alamaz.");
+    if (a.oto === true) {
+      const neden = otoUygunDegil({ ...s, ...patch }, akis.kurallar || {});
+      if (neden) throw new Error(`Adım ${s.no} (${s.ad}) AI yapsın olamaz: ${neden}.`);
+      if (!s.oto || s.oto_durum === "hata") { patch.oto = true; patch.oto_durum = null; patch.oto_deneme = 0; }
+      if (!patch.agent_sahibi && !s.agent_sahibi && ctx.key?.kisi) patch.agent_sahibi = ctx.key.kisi; // AI yapsın'ı açan kişi agent'ın sahibidir
+      if (!(await tetikBul(ctx, String(patch.agent_sahibi || s.agent_sahibi || ""), String(patch.sahip || s.sahip)))) warn.push(`${patch.agent_sahibi || s.agent_sahibi || "Agent'ın sahibi"} için tanımlı bir Claude rutini tetiği yok; adım hazır olunca kendiliğinden başlamaz. Ayarlar > AI yapsın'dan rutinin API tetiğini ekle; o zamana kadar "Claude'da aç" ile yürür.`);
+    } else if (a.oto === false && s.oto) { patch.oto = false; patch.oto_durum = null; }
+    if (a.oto_tarih_bekle != null) patch.oto_tarih_bekle = a.oto_tarih_bekle === true;
+  }
+  // AI yapsın adımında agent çıktı yazınca adım sahibine bakılacak olarak gider; tamamı sahibi verir
+  if (s.oto && act.kim_tip === "agent") {
+    if (a.cikti != null) patch.oto_durum = "bakilacak";
+    if (a.durum === "tamam") {
+      a = { ...a, durum: s.durum === "suruyor" ? undefined : "suruyor" };
+      patch.oto_durum = "bakilacak";
+      warn.push(`Adım ${s.no} AI yapsın ile yürüyor: tamamı ${s.agent_sahibi || "sahibi"} çıktıya bakınca verir. Adım bakılacak olarak işaretlendi.`);
+    }
+  } else if (s.oto && a.durum === "tamam") patch.oto_durum = null;
   if (patch.karar_gerekli === true && (s.sahip_tip === "agent" && patch.sahip_tip !== "insan") && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir; ya da bu adımda karar değil iş yapılıyorsa karar_gerekli: false ver.`);
   // P1-F: kısa ad düzeltmesi akışın baglam.kisa_adlar'ına yazılır; akış içinde tekil
   let kisaAd: string | null = null;
@@ -2094,6 +2211,9 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   for (const e of tanim.filter((e) => e !== "ad")) bits.push(`${e} güncellendi`);
   if ("karar_gerekli" in patch && !patch.karar_kriteri) bits.push(patch.karar_gerekli ? "karar adımı oldu" : "karar adımı değil");
   if ("cikti_bekleniyor" in patch) bits.push(patch.cikti_bekleniyor ? "çıktı bekleniyor" : "çıktı beklenmiyor");
+  if ("oto" in patch) bits.push(patch.oto ? "AI yapsın açık" : "AI yapsın kapalı");
+  if ("oto_tarih_bekle" in patch) bits.push(patch.oto_tarih_bekle ? "AI yapsın planlanan günü bekler" : "AI yapsın hazır olunca başlar");
+  if (patch.oto_durum === "bakilacak") bits.push("bakılacak");
   if ("sure_tahmin_gun" in patch) bits.push(`süre → ${patch.sure_tahmin_gun} gün`);
   if (bagEski) bits.push(`bağımlılık → ${(patch.bagimli as number[]).join(", ") || "yok"} (önce: ${bagEski.join(", ") || "yok"})`);
   if (kisaAd) {
