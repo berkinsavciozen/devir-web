@@ -139,7 +139,7 @@ export function App() {
     <QueryClientProvider client={sorguIstemcisi}>
       <div className="uygulama">
         <SvgTanimlar />
-        <HataSiniri key={yol}>{ekran}</HataSiniri>
+        <HataSiniri yol={yol}>{ekran}</HataSiniri>
         {ekran.type === Uygulama && <DevirAiKok />}
         <Gren />
         {import.meta.env.VITE_HASH === '1' && <OrnekMenusu />}
