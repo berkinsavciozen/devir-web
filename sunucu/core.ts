@@ -645,14 +645,20 @@ function instantiate(sab: any, cevaplar: Record<string, unknown>, degisken: Reco
 function backward(steps: any[], hedef: string, ilkCapa: number | null = null, sonra: Set<number> = new Set()) {
   const H = dayNum(hedef) + 1;
   const by = new Map(steps.map((s) => [s.no, s]));
+  // alt görev üst görevinden sonra bitemez (0.28.5): üst görev alt görevleriyle biter, kendi süresi sayılmaz (plan.ts W5 ile aynı)
+  const altOf = new Map<number, number[]>();
+  for (const s of steps) if (s.ust_adim != null && by.has(s.ust_adim) && !s.bagimli.includes(s.ust_adim)) altOf.set(s.ust_adim, [...(altOf.get(s.ust_adim) || []), s.no]);
+  const sira = steps.map((s) => ({ no: s.no, bagimli: [...s.bagimli, ...(altOf.get(s.no) || [])] }));
+  const sure = (n: number) => (altOf.has(n) ? 0 : num(by.get(n).sure_tahmin_gun));
   const kids = new Map<number, number[]>();
-  for (const s of steps) for (const d of s.bagimli) { const k = kids.get(d) || []; k.push(s.no); kids.set(d, k); }
+  for (const s of sira) for (const d of s.bagimli) { const k = kids.get(d) || []; k.push(s.no); kids.set(d, k); }
   const LF = new Map<number, number>();
-  for (const s of topo(steps).reverse()) {
+  for (const { no } of topo(sira).reverse()) {
+    const s = by.get(no);
     let lf = H;
     if (s.son_tarih && isDate(s.son_tarih)) lf = Math.min(lf, dayNum(s.son_tarih) + 1); // sabit ya da verilmiş son tarih çapadır
     else if (ilkCapa != null && !sonra.has(s.no) && !(kids.get(s.no) || []).length) lf = Math.min(lf, ilkCapa); // olayla bağı olmayan uç adım: olaydan önce bitsin
-    for (const c of kids.get(s.no) || []) { const v = LF.get(c)! - num(by.get(c).sure_tahmin_gun); if (v < lf) lf = v; }
+    for (const c of kids.get(s.no) || []) { const v = LF.get(c)! - sure(c); if (v < lf) lf = v; }
     LF.set(s.no, lf);
   }
   let n = 0;
@@ -880,6 +886,8 @@ export const TOOLS = [
         aciklama: { type: "string", description: "Açıklamayı düzelt (yalnız ekip); boş metin siler." }, beklenen_cikti: { type: "string", description: "Beklenen çıktıyı düzelt (yalnız ekip)." },
         karar_gerekli: { type: "boolean", description: "Yalnız ekip: adım karar adımı mı (seçim, onay, ödeme, imza; son söz insanda)." },
         cikti_bekleniyor: { type: "boolean", description: "Yalnız ekip: adım bir çıktı (belge, dosya, metin) üretiyor mu." },
+        sure_tahmin_gun: { type: "number", description: "Yalnız ekip: tahmini süreyi (gün) düzelt; kurulu akışta süresi eksik ya da yanlış adım için. Bitiş tahmini yeniden hesaplanır." },
+        bagimli: { type: "array", items: { type: "integer" }, description: "Yalnız ekip: bu adımın beklediği adımların tam listesi (eskisinin yerine geçer; boş liste bağımlılığı kaldırır). Döngü kuran liste reddedilir." },
         zorla: { type: "boolean", description: "Bağımlılıklar bitmeden başlatmak için; not ile neden yaz." },
         cevap: { type: "string", description: "Bu adım bitince belli olan açık sorunun cevabı (adımda 'bitince cevaplanır' yazıyorsa). Devir akışı ona göre yeniden kurar." },
       },
@@ -1890,6 +1898,28 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
     if (isDis(ctx)) throw yetkiYok("Karar ve çıktı alanlarını yalnızca ekip değiştirebilir.");
     if (a[k] !== s[k]) patch[k] = a[k];
   }
+  // 0.28.5: kurulu adımın süresi ve bağımlılıkları (yalnız ekip); bağımlılık döngü kuramaz, alt görev üst görevini bekleyemez
+  if (a.sure_tahmin_gun != null && a.sure_tahmin_gun !== "") {
+    if (isDis(ctx)) throw yetkiYok("Süreyi yalnızca ekip değiştirebilir.");
+    const g = Number(a.sure_tahmin_gun);
+    if (!Number.isFinite(g) || g <= 0 || g > 365) throw new Error("sure_tahmin_gun 0'dan büyük, en çok 365 gün olmalı.");
+    if (g !== num(s.sure_tahmin_gun) || s.sure_tahmin_gun == null) patch.sure_tahmin_gun = g;
+  }
+  let bagEski: number[] | null = null;
+  if (Array.isArray(a.bagimli)) {
+    if (isDis(ctx)) throw yetkiYok("Bağımlılıkları yalnızca ekip değiştirebilir.");
+    const yeni: number[] = [...new Set<number>(a.bagimli.map(Number))].sort((p: number, r: number) => p - r);
+    for (const d of yeni) {
+      if (!Number.isInteger(d) || !by.has(d)) throw new Error(`bagimli: ${d} numaralı adım yok.`);
+      if (d === s.no) throw new Error("bagimli: adım kendini bekleyemez.");
+      if (s.ust_adim != null && d === s.ust_adim) throw new Error(`bagimli: ${s.no}, ${d}. adımın alt görevi; üst görevini bekleyemez (üst görev alt görevleri bitince biter).`);
+    }
+    const eski = [...s.bagimli].sort((p: number, r: number) => p - r);
+    if (yeni.join(",") !== eski.join(",")) {
+      topo(planGirdisi(steps.map((x: any) => (x.no === s.no ? { ...x, bagimli: yeni } : x)))); // döngü varsa hata verir
+      patch.bagimli = yeni; bagEski = eski;
+    }
+  }
   if (patch.karar_gerekli === true && (s.sahip_tip === "agent" && patch.sahip_tip !== "insan") && (akis.kurallar || {}).karar_insanda !== false) throw new Error(`Adım ${s.no} (${s.ad}) agent'ta; karar adımının sahibi insan olmalı. Önce sahibi değiştir.`);
   // P1-F: kısa ad düzeltmesi akışın baglam.kisa_adlar'ına yazılır; akış içinde tekil
   let kisaAd: string | null = null;
@@ -2023,6 +2053,8 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   for (const e of tanim.filter((e) => e !== "ad")) bits.push(`${e} güncellendi`);
   if ("karar_gerekli" in patch && !patch.karar_kriteri) bits.push(patch.karar_gerekli ? "karar adımı oldu" : "karar adımı değil");
   if ("cikti_bekleniyor" in patch) bits.push(patch.cikti_bekleniyor ? "çıktı bekleniyor" : "çıktı beklenmiyor");
+  if ("sure_tahmin_gun" in patch) bits.push(`süre → ${patch.sure_tahmin_gun} gün`);
+  if (bagEski) bits.push(`bağımlılık → ${(patch.bagimli as number[]).join(", ") || "yok"} (önce: ${bagEski.join(", ") || "yok"})`);
   if (kisaAd) {
     akis.baglam = { ...(akis.baglam || {}), kisa_adlar: { ...(akis.baglam?.kisa_adlar || {}), [String(s.no)]: kisaAd } };
     await ctx.db.update("akis", { id: akis.id }, { baglam: akis.baglam });
@@ -2034,7 +2066,7 @@ async function adimGuncelle(a: any, ctx: Ctx, op: { kararAraci?: boolean } = {})
   if (Array.isArray(a.karar_secimi)) bits.push(`seçim: ${a.karar_secimi.join(", ") || "hiçbiri"}`);
   if (guncelSatir >= 0 && bits.length) out[guncelSatir] += `: ${bits.join(" · ")}`;
   if (bits.length || (a.not && !to)) await log(ctx, akis.id, s.no, act, a.not && !bits.length ? "not" : "guncelleme", bits.length ? `${bits.join(" · ")}${a.not && !to ? ` · ${a.not}` : ""}` : String(a.not), {});
-  if (!to && !bits.length && !a.not && !a.karar && !a.karar_secimi && !(a.cevap != null && String(a.cevap).trim())) throw new Error("Güncellenecek bir şey yok: durum, ilerleme, cikti, not, sahip, son_tarih, kisa_ad, ad, kriter, aciklama, beklenen_cikti, karar_gerekli ya da cikti_bekleniyor ver.");
+  if (!to && !bits.length && !a.not && !a.karar && !a.karar_secimi && !(a.cevap != null && String(a.cevap).trim())) throw new Error("Güncellenecek bir şey yok: durum, ilerleme, cikti, not, sahip, son_tarih, kisa_ad, ad, kriter, aciklama, beklenen_cikti, karar_gerekli, cikti_bekleniyor, sure_tahmin_gun ya da bagimli ver.");
   if (!out.length) out.push(`Adım ${s.no} · ${s.ad}: not eklendi`);
   if (yazilan.length) out.push(`Çıktı kaydedildi: ${yazilan.map((c: any) => `[${c.id}] ${c.ad}${c.surum > 1 ? ` (v${c.surum})` : ""}`).join(", ")}. Sonraki adımlar bunu girdi olarak görür.`);
   const ready = await recalc(ctx, akis, steps);
@@ -2107,6 +2139,9 @@ async function altGorevEkle(a: any, ctx: Ctx) {
   const out = [`+ ${yeni.length} alt görev eklendi: ${ust.no}. ${ust.ad} (${al.filter(DONE).length}/${al.length} bitti)`];
   for (const r of yeni) out.push(`  ↳ ${r.no}. ${r.ad} — ${r.sahip}${r.sahip_tip === "dis" ? " (dış)" : r.sahip_tip === "agent" ? " (agent)" : ""} · ${LBL[r.durum]}${r.son_tarih ? ` · son ${fmtD(r.son_tarih)}` : ""}`);
   out.push(...ozet);
+  // 0.28.5: süresiz alt görev bitiş tahminini zayıflatır; üst görevin süresinden pay alır ama bu yalnız tahmindir
+  const suresiz = yeni.filter((r: any) => r.sure_tahmin_gun == null);
+  if (suresiz.length) out.push(`Not: ${suresiz.length === yeni.length ? "Alt görevlerin hiçbirinde" : `${suresiz.length} alt görevde (${suresiz.map((r: any) => r.no).join(", ")})`} süre yok. ${num(ust.sure_tahmin_gun) > 0 ? `Bitiş tahmini şimdilik ${ust.no}. adımın ${ust.sure_tahmin_gun} gününden pay alıyor;` : `${ust.no}. adımın da süresi olmadığı için bitiş tahmini bu işleri saymıyor;`} kullanıcıya her birinin kaç gün süreceğini sor ve devir_adim_guncelle ile sure_tahmin_gun yaz.`);
   out.push(`Adım ${ust.no}, alt görevlerin hepsi bitmeden tamamlanmaz; hepsi bitince ${kararAdimi(ust) || ust.cikti_bekleniyor === true ? "kararı ya da çıktısı sende olduğu için sen tamamlarsın" : "kendiliğinden tamamlanır"}. Alt görevleri numaralarıyla devir_adim_guncelle ile güncelle.`);
   return out.join("\n");
 }
@@ -2259,7 +2294,7 @@ async function soruUygula(ctx: Ctx, akis: any, steps: any[], kod: string, cevapH
     for (const x of steps) if (x.capa_soru === kod && !DONE(x)) x._capa = cevap;
     const acik = steps.filter((x) => !DONE(x));
     const acikNo = new Set(acik.map((x) => x.no));
-    const plan = acik.map((x) => ({ no: x.no, ad: x.ad, bagimli: x.bagimli.filter((d: number) => acikNo.has(d)), sure_tahmin_gun: x.sure_tahmin_gun, son_tarih: x.tarih_sabit && !x._capa ? x.son_tarih : null, _sabit: !!x.tarih_sabit && !x._capa, _capa: x._capa || null, _capaSoru: x._capa ? null : x.capa_soru || null, _netlestir: /^netlestir-/.test(x.tur_kod || "") }));
+    const plan = acik.map((x) => ({ no: x.no, ad: x.ad, ust_adim: x.ust_adim != null && acikNo.has(x.ust_adim) ? x.ust_adim : null, bagimli: x.bagimli.filter((d: number) => acikNo.has(d)), sure_tahmin_gun: x.sure_tahmin_gun, son_tarih: x.tarih_sabit && !x._capa ? x.son_tarih : null, _sabit: !!x.tarih_sabit && !x._capa, _capa: x._capa || null, _capaSoru: x._capa ? null : x.capa_soru || null, _netlestir: /^netlestir-/.test(x.tur_kod || "") }));
     const bugun = dayNum(todayIst(ctx.now));
     const eskiHedef = akis.hedef_tarih || null;
     const r = takvim(plan, kod === "hedef_tarih" ? cevap : eskiHedef, bugun, notes); // hedef tarihin kendisi sonradan cevaplanabilir
