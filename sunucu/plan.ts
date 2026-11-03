@@ -5,7 +5,7 @@
 import { DAY, DONE, eod, fmtD, kararAdimi, norm, planGirdisi, timeline, todayIst } from "./core.ts";
 import { adimKisaAdi } from "./ad.ts";
 
-export type Kaynak = "kullanici" | "tahmin" | "gecmis" | "eksik";
+export type Kaynak = "kullanici" | "tahmin" | "gecmis" | "eksik" | "ust";
 export type Guven = "kesin" | "tahmin" | "eksik";
 export interface Yuk { kisi: string; adimlar: number[]; gecikme_gun: number }
 export interface Bitis {
@@ -24,6 +24,7 @@ const gun1 = (x: number) => Math.round(x * 10) / 10;
 export function sureOf(s: any, gecmis?: Map<string, number>): { alt: number; ust: number; kaynak: Kaynak } {
   const g = Number(s.sure_tahmin_gun);
   if (s.sure_tahmin_gun == null || !isFinite(g) || g <= 0) return { alt: 1, ust: EKSIK_UST_GUN, kaynak: "eksik" };
+  if (s._sure_miras) return { alt: g, ust: g * TAHMIN_CARPAN, kaynak: "ust" };
   if (s.sure_kaynak === "kullanici") return { alt: g, ust: g, kaynak: "kullanici" };
   const oran = gecmis?.get(s.tur_kod || norm(s.ad));
   if (oran != null) return { alt: g, ust: g * Math.max(oran, 1), kaynak: "gecmis" };
@@ -113,9 +114,10 @@ export function bitis(akis: any, steps: any[], events: any[], now: number, gecmi
   }
   yuk.sort((x, y) => y.gecikme_gun - x.gecikme_gun || y.adimlar.length - x.adimlar.length);
   const say = (k: Kaynak) => acik.filter((s) => S.get(s.no)!.kaynak === k).length;
-  const eksik = say("eksik"), tahmin = say("tahmin"), gecmisN = say("gecmis");
+  const eksik = say("eksik"), tahmin = say("tahmin"), gecmisN = say("gecmis"), ustN = say("ust");
   const v: string[] = [];
   if (eksik) v.push(`${eksik} adımın süresi yok; her biri 1–${EKSIK_UST_GUN} gün sayıldı`);
+  if (ustN) v.push(`${ustN} alt görevin süresi yok; üst görevin süresinden pay verildi`);
   if (tahmin) v.push(`${tahmin} süre tahmin; en çok %${Math.round((TAHMIN_CARPAN - 1) * 100)} uzayabilir`);
   if (gecmisN) v.push(`${gecmisN} sürede benzer geçmiş işlerin gerçek süresi kullanıldı`);
   for (const y of yuk) v.push(`${y.kisi} aynı dönemde ${y.adimlar.length} iş taşıyor; sırayla yaparsa +${y.gecikme_gun} gün`);
@@ -124,7 +126,7 @@ export function bitis(akis: any, steps: any[], events: any[], now: number, gecmi
     const hedef = eod(akis.hedef_tarih), ufuk = hedef - ts(akis.created_at), bosluk = hedef - Math.max(u.end, a.end);
     if (ufuk >= 14 * DAY && bosluk > ufuk / 2) v.push(`Plan hedeften ${Math.round(bosluk / DAY)} gün önce bitiyor; süreler eksik tahmin edilmiş olabilir`);
   }
-  const guven: Guven = eksik ? "eksik" : tahmin || gecmisN || yuk.length ? "tahmin" : "kesin";
+  const guven: Guven = eksik ? "eksik" : tahmin || gecmisN || ustN || yuk.length ? "tahmin" : "kesin";
   return {
     en_erken: todayIst(a.end), aralik: [todayIst(a.end), todayIst(Math.max(u.end, a.end))], guven, eksik_sure: eksik, varsayimlar: v, yuk_uyarilari: yuk,
     adimlar: acik.map((s) => ({ no: s.no, kaynak: S.get(s.no)!.kaynak, sure_gun: [gun1(alt(s)), gun1(ust(s))] as [number, number], bitis: [todayIst(a.EF.get(s.no)!), todayIst(u.EF.get(s.no)!)] as [string, string] })),
