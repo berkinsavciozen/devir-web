@@ -17,6 +17,7 @@
  *
  * Zamanlar ms (UTC). Geometri içinde uzunluk birimi "gün"dür (hız c = 1); çıktı pikseldir (k piksel/gün).
  */
+import { akisUfku } from '../api/ufuk';
 import { OLCEK } from './olcek';
 
 export type Durum = 'tamam' | 'atlandi' | 'ertelendi' | 'hazir' | 'suruyor' | 'engelli' | 'sirada' | string;
@@ -428,7 +429,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
 
 /** API (GET /akis/:kod) yanıtının ilgili kısmı */
 export interface ApiAkisDetay {
-  akis: { olusturuldu: string; hedef_tarih: string; kapandi_at?: string | null; [k: string]: unknown };
+  akis: { olusturuldu: string; hedef_tarih?: string | null; kapandi_at?: string | null; [k: string]: unknown };
   kritik_yol?: number[];
   adimlar: Array<{
     no: number; sahip: string; sahip_tip?: string; durum: string; bagimli?: number[];
@@ -453,7 +454,7 @@ export function apidenAkis(detay: ApiAkisDetay, o: { sahip?: string } = {}): Gir
     .concat((detay.ilk_okumalar || []).map((e) => ({ t: ms(e.zaman) as number, kim: e.kim, kim_tip: e.kim_tip, arac: e.arac, tip: 'okuma', adim_no: e.adim_no, durum: null })));
   const ilk = (no: number, d: string) => { const e = olaylar.filter((x) => x.adim_no === no && x.tip === 'durum' && x.durum === d).sort((p, q) => p.t - q.t)[0]; return e ? e.t : null; };
   return {
-    t0: ms(k.olusturuldu) as number, hedef: Date.parse(k.hedef_tarih + 'T23:59:00+03:00'), kapandi: ms(k.kapandi_at), sahip: o.sahip,
+    t0: ms(k.olusturuldu) as number, hedef: Date.parse((akisUfku(k, detay.adimlar) || String(k.olusturuldu).slice(0, 10)) + 'T23:59:00+03:00'), kapandi: ms(k.kapandi_at), sahip: o.sahip,
     kritik_yol: detay.kritik_yol || [],
     adimlar: detay.adimlar.map((a) => ({
       no: a.no, sahip: a.sahip, sahip_tip: a.sahip_tip, durum: a.durum, bagimli: a.bagimli || [],

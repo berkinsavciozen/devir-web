@@ -1,3 +1,4 @@
+import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { hareketAz } from '../../ayar/hareket';
 import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -65,6 +66,8 @@ export function telefonDuzeni(boy: number, seritH = 0) {
   return { H, surgu, bolge, harita: { ...HARITA, cy: Math.round((ust + alt) / 2 + R * .04), R }, ipucuY: H - 32, bolumY: H + 8 };
 }
 
+/** hedefsiz akışta kulenin yeri (ufuk): en erken bitiş günü */
+const Y0hedef = (d: any) => Date.parse((akisUfku(d.akis, d.adimlar) || String(d.akis.olusturuldu).slice(0, 10)) + 'T12:00:00+03:00');
 export const gecenGun = (d: any, now: number) => (d.akis.hedef_tarih && !d.akis.kapandi_at ? Math.floor((now - Date.parse(d.akis.hedef_tarih + 'T00:00:00+03:00')) / GUN) : 0);
 
 /** Haritada en çok 2 adım etiketi: engelli ve kritik yolun ilk açık adımı. */
@@ -235,7 +238,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     // yakınken (plan 2 Kas) büyümüş gövdeler de sayılır: çizimde hâlâ çoğu üst üsteyse rozet kalır, dokununca yakınlaşma sürer
     const kumeRad = (no: number) => zk > 1.05 ? Math.max(temel.radOf(no) * Math.min(kat, 1.4), rf(temel.radOf(no)) * .9) : temel.radOf(no) * Math.min(kat, 1.4);
     const kad = kademe(zk);
-    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || kad >= 1 ? [] : labels, sats, satYakin: kad >= 2, satAdlar: kad >= 3, satHedef: kad >= 3, merkezTarih: kad >= 3, sel: selNo ?? undefined, parla: parla || undefined, payEtiket: payKisa(d), shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
+    const Y = yolCiz(M, { ...geoZ, now: NOW, x: X, focus: odak || undefined, durumOdak: durumOdak && d ? (no: number) => GDURUM[durumOdak].uyar(d.adimlar.find((a: any) => a.no === no), sahip) : undefined, labels: (tarihNo != null && !GD) || kad >= 1 ? [] : labels, sats, satYakin: kad >= 2, satAdlar: kad >= 3, satHedef: kad >= 3, merkezTarih: kad >= 3, sel: selNo ?? undefined, parla: parla || undefined, payEtiket: payKisa(d), ...(d && hedefsiz(d.akis) ? { kuleEtiket: `en erken ${gunAy(Y0hedef(d))}` } : {}), shipSc: .9, minR: 6.5, ikonAyri: zk >= 2, ok: gemiK, rf, kumeRad, yk });
     const Z = zamanCubugu(SU.x, SU.y, SU.w, Y.G, X, { now: NOW, oynuyor, ps: SU.ps });
     // açık sorular: ikizler, tarih bekleyen adım (E1, E2); yalnız bugün ve odaksız
     const SK = !odak && Math.abs(X - NOW) < 36e5 ? soruKatmani(d, M, Y, { ...geoZ, now: NOW }) : { svg: '', hedefler: [] };
@@ -347,7 +350,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const koy = (h: Hedef) => { if (gor(h.x, h.y) && bos(h, hedefler)) hedefler.push(h); };
   const kule = Y.G.kule;
   if (kule && !d.akis.kapandi_at) for (const dy of [-8, -20, -32]) {
-    const h: Hedef = { key: 'kule', x: kule.x, y: kule.y + dy, r: 22, etiket: `Hedef${d.akis.hedef_tarih ? ' ' + gunAyUzun(d.akis.hedef_tarih) : ''}. En erken bitiş, pay ve kritik yol.`, basili: kuleAcik, olay: { onClick: () => setKuleAcik(!kuleAcik) } };
+    const h: Hedef = { key: 'kule', x: kule.x, y: kule.y + dy, r: 22, etiket: `${d.akis.hedef_tarih ? 'Hedef ' + gunAyUzun(d.akis.hedef_tarih) : 'Hedef tarih yok'}. En erken bitiş, pay ve kritik yol.`, basili: kuleAcik, olay: { onClick: () => setKuleAcik(!kuleAcik) } };
     if (bos(h, hedefler)) { koy(h); break; }
   }
   // R18: bayrak ve bulut hedefi çakışırsa simgenin çevresinde boş yer aranır (tam boy, 44 px)
