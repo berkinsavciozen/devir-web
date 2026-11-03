@@ -23,7 +23,7 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 2. Her adım tek bir işin devridir: tek sahip rolü, "bitti mi" testi (kriter), tahmini süre (gün, ondalık olabilir) ve bağımlılıklar. Birbirini beklemeyen işleri paralel kur; gereksiz sıralı zincir kurma.
 3. Karar, onay, ödeme ve imza adımlarının sahibi insandır; agent yalnızca hazırlar.
 4. Dışarıdan toplanması gereken her girdi (belge, veri, malzeme, birinden istenecek şey) ayrı bir toplama adımıdır. En sık unutulanlar bunlardır; atlama.
-5. 4–15 adım. Daha büyük iş, birden çok akıştır.
+5. 4–15 ana görev. Bağlamda iş listesi (modüller, kurulum hattı, kalan adımlar, "hazır" tanımı) verildiyse alt görevlerle birlikte toplam 40 adıma kadar çıkabilirsin; daha büyük iş birden çok akıştır.
 6. Akışın şeklini değiştiren boyutlar: ${Object.entries(BOYUTLAR).map(([k, v]) => `${k} (${v})`).join("; ")}.
 7. Soru adayı yalnızca cevabı akışı değiştiren durumlar için yazılır. Her aday için: seçenekler, varsayılan, varsayılanın sormadan doğru olma güveni (0–1), cümleden ya da bağlamdan çıkarılabilir mi, etki (0: hiçbir şey değişmez, 1: bir tarih ya da sahip değişir, 2: 1–2 adım eklenir ya da çıkar, 3: akışın yapısı değişir). 3–8 aday yeterli; etkisi 0 olanı yazma.
 8. Seçim sorusunun cevabı adım ekliyor ya da çıkarıyorsa o adımları taslağa koy ve kosul ile bağla (ör. kosul {soru: "regule", deger: "evet"}). Varsayılan dışındaki dallar da taslakta olmalı. Birden çok seçeneğin birlikte seçilebildiği sorularda (ör. iki sertifika da gerekebilir) "her ikisi" diye ayrı bir seçenek açma; her seçeneğin adımını kendi değeriyle bağla, Devir birden çok cevabı ("organik, gida-kalite") ya da "her ikisi"ni hepsine uygular. Her durumda gereken işi (ticari fatura, temel belge, ödeme) bir cevaba koşullama; cevap yalnız o işin biçimini değiştiriyorsa (ödeme yöntemi, taşıma şekli) adımı koşulsuz kur ve seçenekleri adın içinde say ("Ödemeyi al: peşin ya da akreditif"), Devir cevabı adıma işler.
@@ -51,7 +51,8 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 30. Karar ve çıktı. Her adım için karar_gerekli ve cikti_bekleniyor alanlarını doldur. karar_gerekli=true: adım bir seçim, onay, ödeme ya da imzayla biter ve son sözü insan verir; o zaman karar_kriteri de yaz. Hazırlık, toplama ve gönderme adımları karar değildir. cikti_bekleniyor=true: adım bir belge, dosya, metin, kayıt ya da teslim edilebilir bir şey üretir (beklenen_cikti'ya ne olduğunu yaz); yalnızca bir şeyin olmasını bekleyen ya da karar veren adımda false.
 31. Görev ve alt görev (tek düzey). 6 ve daha çok adımlı taslakta işi ana görevlere ve alt görevlere böl: ana görev tek bir somut sonuçtur (teslim, karar, kilometre taşı); alt görev o sonuca giden ve ayrı izlenmesi gereken parçadır (farklı kişi, ayrı tarih ya da ayrı çıktı). Alt görevin ust alanına ana görevin id'sini yaz; ana görevlerde ust boş kalır. Alt görevi olan ana görev bir kaptır: kendi işi yoktur, sahibi sonucun sorumlusudur, süresi 0'dır; kendi işi varsa onu ayrı bir alt görev yaz. Alt görevin alt görevi olmaz. Tek kişinin tek oturuşta yapacağı işi alt göreve bölme. Her kalem için tekrar eden iş (her aday, her müşteri) alt görev değildir; tek adım kur. Bir ana görevin bağımlılığı alt görevlerine değil, başka ana görevlere ya da başka alt görevlere yazılır; alt görev başka bir ana görevin alt görevine bağımlı olabilir. 6'dan az adımlı taslakta bölme yapma, ust alanlarını boş bırak.
 32. Dil. Yalnız Türkçe yaz; İngilizce ya da yarım kalmış kelime kullanma (rapor, şahit numune, vadeli ödeme gibi yerleşik terimleri kullan). Bir adın içinde aynı kelimeyi ya da aynı liste ögesini tekrarlama. Varsayım cümleleri tam ve tek anlamlı olsun.
-33. Türkçe yaz.`;
+33. Bağlam kapsamı. "Ek bağlam" kullanıcının bu iş için yazdığı plandır: içinde sayılan her somut iş (modül, kurulum işi, kalan tasarım adımı, "hazır" tanımındaki her ölçüt) taslakta en az bir ana ya da alt görev olarak bulunmalı; listeyi "modülleri geliştir" gibi tek genel adıma sıkıştırma. Bağlam bir işi "paralel" ya da "hazır tanımına dahil değil" diye işaretliyorsa onu ayrı bir ana görev kur, hazır tanımındaki adımlara bağlama. Bağlamdaki kısıtları (bütçe, yetki, veri kuralları) adım değil varsayım ya da kriter olarak yaz. Bağlamda hedef tarih yoksa hedef_tarih soru adayını yine yaz.
+34. Türkçe yaz.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -241,6 +242,32 @@ export function turDogrula(t: any, turler: any[], cumle: string) {
   const yeni = slug(t.baslik || cumle);
   t.is_turu = { kod: yeni, ad: t.baslik || yeni, mevcut: false, _onceki: kod };
   return [`İş türü "${tur.ad || kod}" bu işle ortak bir şey taşımıyor; yeni tür açıldı: ${yeni}.`];
+}
+// P1 (NM8R, TALP7): bağlamda sayılan işlerin taslakta karşılığı var mı. Liste gibi yazılmış alanlar (en az 3 öge) ögelere bölünür;
+// kökleri hiçbir adımın adında, açıklamasında ya da kriterinde geçmeyen öge not olur. Adım uydurulmaz; kullanıcı ya da ajan düzeltir.
+const KAPSAM_DISI = /^(sahip|iliski|varlik|musteri|katilimci|teknoloji|veri_kural|agent_yetki|nihai_hedef|hedef_tarih|butce|mobil)/;
+export function kapsamDenetimi(t: any, baglam: any): string[] {
+  if (!baglam || typeof baglam !== "object") return [];
+  const adimKok = (t.adimlar || []).map((x: any) => new Set(kokler(`${x.ad || ""} ${x.kisa_ad || ""} ${x.aciklama || ""} ${x.kriter || ""} ${x.beklenen_cikti || ""}`)));
+  const alanlar: string[] = [];
+  let say = 0;
+  for (const [alan, deger] of Object.entries(baglam)) {
+    if (typeof deger !== "string" || KAPSAM_DISI.test(alan)) continue;
+    const eksik: string[] = [];
+    // ";" sonrası çoğu zaman açıklamadır; yalnız en az 3 virgüllü ögesi olan parçalar liste sayılır
+    for (const parca of deger.replace(/\([^)]*\)/g, " ").split(";")) {
+      const ogeler = parca.split(",").map((x) => x.trim()).filter((x) => kokler(x).length);
+      if (ogeler.length < 3) continue;
+      for (const o of ogeler) {
+        const k = kokler(o);
+        if (adimKok.some((A: Set<string>) => k.filter((w) => A.has(w)).length >= Math.min(2, k.length))) continue;
+        eksik.push(o.length > 50 ? o.slice(0, 47).replace(/\s+\S*$/, "") + "…" : o);
+      }
+    }
+    if (eksik.length) { say += eksik.length; alanlar.push(`${alan}: ${eksik.slice(0, 12).join(", ")}${eksik.length > 12 ? " …" : ""}`); }
+  }
+  if (!say) return [];
+  return [`Bağlamda sayılan ${say} iş taslakta adım olarak yok (${alanlar.join("; ")}). Kurmadan önce devir_taslak_duzelt ile ekle ya da gereksizse kullanıcıya söyle.`];
 }
 // kurallı doğrulayıcı: bilinmeyen bağımlılık, kendine bağımlılık, döngü, bilinmeyen rol, koşulun bilinmeyen soruya bağlanması
 export function kuralDenetimi(t: any) {

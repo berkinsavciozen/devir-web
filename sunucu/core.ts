@@ -3,7 +3,7 @@
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn, SohbetFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
-import { sahipAdi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
+import { kapsamDenetimi, sahipAdi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
 import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, akisKisaAdi, KISA_AD_EN_COK } from "./ad.ts";
 
@@ -1476,7 +1476,7 @@ async function tasla(a: any, ctx: Ctx) {
   // kesin dersler motor ya da denetçi atlamış olsa da uygulanır; ardından kurallı doğrulayıcı
   t._ders_notlari = derslerUygula(t, h.ders);
   t._kart_notlari = zorunluIsler(t, h.kart); // M5: bu işe uyan kartın zorunlu işleri taslakta olur, koşula bağlanmaz
-  t._kural = [...kuralDenetimi(t), ...turDogrula(t, turler, cumle), ...dilDenetimi(t), ...sahiplikUyarilari(t)];
+  t._kural = [...kuralDenetimi(t), ...turDogrula(t, turler, cumle), ...dilDenetimi(t), ...sahiplikUyarilari(t), ...kapsamDenetimi(t, baglam)];
   const tur = slug(t.is_turu?.kod || t.baslik || "is");
   const varlik = baglam.musteri || t.anahtar_varlik?.ad || null;
   const gecmis = varlik ? await gecmisCevaplar(ctx, tur, varlik) : {};
