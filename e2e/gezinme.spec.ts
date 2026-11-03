@@ -33,6 +33,27 @@ test.describe('dokunmatik', () => {
     await expect(page.getByRole('listitem', { name: /4 adım bir arada/ })).toHaveCount(1);
   });
 
+  // 3 Kas: en yakında tekerlek ve dokunmatik yüzey kıstırması (ctrl + tekerlek) sayfaya geçmez; geçerse sayfa yakınlaşıp titrer
+  test('B3-sinir: en yakında tekerlek ve kıstırma sayfayı yakınlaştırmaz', async ({ page }) => {
+    await ac(page, '/akis/RTD5?senaryo=berkin');
+    await page.evaluate(() => { (window as any).__w = []; addEventListener('wheel', (e) => (window as any).__w.push(e.defaultPrevented), { passive: true }); });
+    await page.mouse.move(195, 330);
+    for (let i = 0; i < 40; i++) { await page.mouse.wheel(0, -120); await page.waitForTimeout(16); }
+    await page.keyboard.down('Control');
+    for (let i = 0; i < 5; i++) { await page.mouse.wheel(0, -40); await page.waitForTimeout(16); }
+    await page.keyboard.up('Control');
+    const w: boolean[] = await page.evaluate(() => (window as any).__w);
+    expect(w.slice(-15).every(Boolean)).toBe(true);
+    await page.getByRole('button', { name: 'Haritayı sığdır' }).click();
+    await page.waitForTimeout(300);
+    await page.evaluate(() => { (window as any).__w = []; });
+    await page.keyboard.down('Control');
+    await page.mouse.wheel(0, 40);
+    await page.keyboard.up('Control');
+    await page.mouse.wheel(0, 40);
+    expect(await page.evaluate(() => (window as any).__w)).toEqual([true, false]);
+  });
+
   test('B3-kaydir: yakınken sürükle → harita kayar, gezegene tıklama sayılmaz', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     await page.mouse.move(195, 330);

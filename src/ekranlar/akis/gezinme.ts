@@ -122,13 +122,32 @@ export function useGezinme(b: Bolge, o: { max?: number; asiri?: (p: [number, num
     const el = ref.current; if (!el) return;
     const tek = (e: WheelEvent) => {
       const d = gr.current, f = Math.exp(-e.deltaY * (e.ctrlKey ? .01 : .0025));
-      if ((f < 1 && d.k <= 1) || (f > 1 && d.k >= max)) { if (f > 1 && d.k >= max && oRef.current.asiri) { e.preventDefault(); oRef.current.asiri(yerel(e.clientX, e.clientY)); } return; }
+      // sınırda (3 Kas): dokunmatik yüzey kıstırması (ctrlKey) ve en yakında ileri tekerlek tarayıcıya geçmez; geçerse
+      // sayfanın kendisi yakınlaşır, harita ile sayfa birbirine karşı titrer. k = 1'de düz tekerlekle uzaklaşma sayfaya kalır
+      if ((f < 1 && d.k <= 1) || (f > 1 && d.k >= max)) {
+        if (e.ctrlKey || f > 1) e.preventDefault();
+        if (f > 1 && d.k >= max && oRef.current.asiri) oRef.current.asiri(yerel(e.clientX, e.clientY));
+        return;
+      }
       e.preventDefault(); cancelAnimationFrame(anim.current);
       // ardışık olaylar çizimden önce gelebilir: son değer hemen yazılır
       const n = etrafinda(d, d.k * f, yerel(e.clientX, e.clientY)); gr.current = n; setG(n);
     };
+    // Safari (macOS) kıstırmayı tekerlek değil gesture olayı olarak verir: sayfa yakınlaşmasın, harita yakınlaşsın.
+    // iOS'ta aynı kıstırma işaretçi olaylarıyla da gelir (ip.size = 2); orada yalnız sayfa yakınlaşması engellenir
+    let g0: { d: Donusum; p: [number, number] } | null = null;
+    const gBas = (e: Event) => { e.preventDefault(); const q = e as any; g0 = ip.current.size < 2 ? { d: gr.current, p: yerel(q.clientX ?? 0, q.clientY ?? 0) } : null; };
+    const gDegis = (e: Event) => {
+      e.preventDefault(); if (!g0 || ip.current.size >= 2) return;
+      cancelAnimationFrame(anim.current);
+      const n = etrafinda(g0.d, g0.d.k * Number((e as any).scale || 1), g0.p); gr.current = n; setG(n);
+    };
+    const gBit = (e: Event) => { e.preventDefault(); g0 = null; };
     el.addEventListener('wheel', tek, { passive: false });
-    return () => el.removeEventListener('wheel', tek);
+    el.addEventListener('gesturestart', gBas, { passive: false } as AddEventListenerOptions);
+    el.addEventListener('gesturechange', gDegis, { passive: false } as AddEventListenerOptions);
+    el.addEventListener('gestureend', gBit, { passive: false } as AddEventListenerOptions);
+    return () => { el.removeEventListener('wheel', tek); el.removeEventListener('gesturestart', gBas); el.removeEventListener('gesturechange', gDegis); el.removeEventListener('gestureend', gBit); };
   }); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => cancelAnimationFrame(anim.current), []);
 
