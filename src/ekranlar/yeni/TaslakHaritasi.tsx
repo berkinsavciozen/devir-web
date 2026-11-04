@@ -1,0 +1,125 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../api/istemci';
+import { simdi } from '../../api/ortam';
+import { Baslik } from '../../bilesen/Baslik';
+import { Dugme } from '../../bilesen/Dugme';
+import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
+import { planet, ship } from '../../cizim/ortak.js';
+import { gunAy } from '../../cizim/yol.js';
+import { sarSatir } from '../../metin/turkce';
+import { git } from '../../yonlendirme';
+import { Liste, type Oge } from '../akis/Bilgi';
+import { haftaCizgileri } from '../gorevler/model';
+import { rolAdi, taslakCumlesi, taslakHaritasi, type TNokta, type TRol } from './taslakModel';
+
+/**
+ * W4 (4 Kas, B5): taslak haritası (/yeni/:kod/harita). Taslak eksik olsa bile kurulmadan haritada görülür: soluk,
+ * kesik çizgili gezegenler, sahip rolü şeritleri, tahmini zaman, hedef çizgisi. Sahibi belli olmayan rol mercan kesik
+ * şeritte "?" gemisiyle, cevabı beklenen soruya bağlı adım "?" rozetiyle, hedefi aşan adım mercan halkayla vurgulanır.
+ */
+const GOK = { tohum: 89, yildiz: 240 };
+const MERCAN = '#FF9A8A', ALTIN = '#FFD27A';
+const enc = encodeURIComponent;
+
+const rolGemisi = (r: TRol, x: number, y: number, eksik: boolean) => eksik
+  ? `<g transform="translate(${x},${y})"><circle r="11" fill="#08222E" stroke="${MERCAN}" stroke-dasharray="2 3" stroke-width="1.3"/><text y="4.5" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="${MERCAN}">?</text></g>`
+  : r.tip === 'dis' ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', .5)
+    : ship(x, y, -12, r.tip === 'agent' ? 'agent' : 'insan', (rolAdi(r)[0] || '?').toLocaleUpperCase('tr'), r.tip === 'agent' ? '#B9A6F2' : '#FFC9A3', .5, { flame: false });
+
+function taslakGezegeni(n: TNokta, r: number, sec: boolean) {
+  let s = `<g opacity="${n.soru ? .55 : .85}">${planet(n.x, n.y, r, 'dark', { life: false })}</g>`;
+  s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 3}" fill="none" stroke="${n.gec ? MERCAN : '#D9CCFF'}" stroke-width="${n.gec ? 1.6 : 1.1}" stroke-dasharray="2 3"/>`;
+  if (n.soru) s += `<g transform="translate(${(n.x + r * .8).toFixed(1)},${(n.y - r * .8).toFixed(1)})"><circle r="6" fill="${ALTIN}" stroke="#2A1D4F" stroke-width=".8"/><text y="3.4" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#2A1D4F">?</text></g>`;
+  if (sec) s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 8}" fill="none" stroke="#FFF3E8" stroke-width="1.5" opacity=".7"/>`;
+  return s;
+}
+
+export function TaslakHaritasi({ kod }: { kod: string }) {
+  const NOW = simdi();
+  const q = useQuery({ queryKey: ['taslak', kod], queryFn: () => api.get<any>(`/taslak/${enc(kod)}`) });
+  const t = q.data;
+  const [sec, setSec] = useState<number | null>(null);
+  const geri = () => (history.length > 1 ? history.back() : git('/akislar'));
+  const baslikSatir = t ? sarSatir(String(t.baslik || t.cumle || '').replace(/'/g, '’'), 330, '700 21px Caladea').slice(0, 3) : [];
+  // cümle haritanın yerinden bağımsız (zaman ve sayılar); önce bir kez hesaplanır, harita onun altına iner
+  const H0 = useMemo(() => (t ? taslakHaritasi(t, { now: NOW }) : null), [t, NOW]);
+  const cumle = H0 && t ? sarSatir(taslakCumlesi(H0, (t.sorular || []).length, gunAy), 300, '15px Inter') : [];
+  const HY = 122 + baslikSatir.length * 26 + 6 + cumle.length * 20 + 40;
+  const H = useMemo(() => (t ? taslakHaritasi(t, { now: NOW, y0: HY + 8, x0: 132, x1: 356, satir: 62 }) : null), [t, NOW, HY]);
+
+  const svg = useMemo(() => {
+    if (!H) return '';
+    let s = `<rect x="16" y="${HY - 4}" width="358" height="${H.h + 54}" rx="20" fill="#061A24" fill-opacity=".55" stroke="#D9CCFF" stroke-opacity=".18" stroke-dasharray="3 5"/>`;
+    for (const t0 of haftaCizgileri(H.t0, H.t1)) {
+      const x = H.x0 + (t0 - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
+      s += `<line x1="${x.toFixed(1)}" y1="${HY + 4}" x2="${x.toFixed(1)}" y2="${HY + 8 + H.h}" stroke="#FFFFFF" stroke-opacity=".05"/>`;
+    }
+    for (const r of H.seritler) {
+      s += `<line x1="${H.x0}" y1="${r.y}" x2="${H.x1}" y2="${r.y}" stroke="${r.eksik ? MERCAN : '#4B4380'}" stroke-opacity="${r.eksik ? .55 : 1}" stroke-width="1.2" stroke-dasharray="2 4"/>`;
+      s += rolGemisi(r.rol, 34, r.y, r.eksik);
+    }
+    const yer = new Map(H.noktalar.map((n) => [n.a.id, n]));
+    for (const n of H.noktalar) for (const d of n.a.bagimli || []) {
+      const p = yer.get(d);
+      if (p) s += `<path d="M${p.x.toFixed(1)},${p.y.toFixed(1)} C${((p.x + n.x) / 2).toFixed(1)},${p.y.toFixed(1)} ${((p.x + n.x) / 2).toFixed(1)},${n.y.toFixed(1)} ${n.x.toFixed(1)},${n.y.toFixed(1)}" fill="none" stroke="#B9A6F2" stroke-opacity=".3" stroke-width="1" stroke-dasharray="2 3"/>`;
+    }
+    s += `<line x1="${H.bugunX.toFixed(1)}" y1="${HY + 2}" x2="${H.bugunX.toFixed(1)}" y2="${HY + 10 + H.h}" stroke="#FFC9A3" stroke-width="1.5" stroke-linecap="round"/>`;
+    if (H.hedefX != null) s += `<line x1="${H.hedefX.toFixed(1)}" y1="${HY + 2}" x2="${H.hedefX.toFixed(1)}" y2="${HY + 10 + H.h}" stroke="${ALTIN}" stroke-width="1.4" stroke-dasharray="4 3"/>`;
+    for (const n of H.noktalar) s += taslakGezegeni(n, 7.5, sec === n.no);
+    return s;
+  }, [H, HY, sec]);
+
+  if (!t || !H) return <Sahne gok={GOK} etiket="Taslak"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Taslak" geri={geri} /></Kutu>{q.isError && <Metin y={300} fs={17} lh={22} serif renk="ink2" hiza="orta">{(q.error as Error).message}</Metin>}</Sahne>;
+
+  // eksikler, sonra adımlar (taslak sırasıyla)
+  const ogeler: Oge[] = [];
+  const S: any[] = t.sorular || [];
+  const eksik = S.length + H.eksikRol.length + (H.gecikme.length ? 1 : 0);
+  const ikonX = (svg: string) => `<g transform="translate(28,29)">${svg}</g>`;
+  if (eksik) {
+    ogeler.push({ tur: 'baslik', metin: `KURMADAN ÖNCE · ${eksik}` });
+    for (const s of S) {
+      const bagli = H.noktalar.filter((n) => n.a.kosul?.soru === s.kod);
+      ogeler.push({ tur: 'satir', key: 'q' + s.kod, ikon: ikonX(`<circle r="11" fill="${ALTIN}" fill-opacity=".18" stroke="${ALTIN}"/><text y="4.5" text-anchor="middle" font-family="Inter" font-size="12" font-weight="800" fill="${ALTIN}">?</text>`),
+        ust: s.soru, alt: bagli.length ? `cevabına bağlı: ${bagli.map((n) => `${n.no}. adım`).join(', ')}` : 'soru', git: () => git(`/yeni/${enc(kod)}`) });
+    }
+    for (const r of H.eksikRol) ogeler.push({ tur: 'satir', key: 'r' + r.kod, ikon: rolGemisi(r, 28, 29, true), ust: `${r.ad}: kim yapacak belli değil`,
+      alt: `${H.noktalar.filter((n) => n.a.sahip_rol === r.kod).length} adım · kurunca ${r.tip === 'dis' ? 'bağlantı gönderirsin' : 'kişiyi seçersin'}` });
+    if (H.gecikme.length) ogeler.push({ tur: 'satir', key: 'gec', ikon: ikonX(`<circle r="11" fill="none" stroke="${MERCAN}" stroke-dasharray="2 3" stroke-width="1.6"/><path d="M0,-5 L0,1" stroke="${MERCAN}" stroke-width="2" stroke-linecap="round"/><circle cy="5" r="1.3" fill="${MERCAN}"/>`),
+      ust: `${H.gecikme.length} adım hedefi aşıyor`, alt: `tahmini bitiş ${gunAy(H.bitis)}, hedef ${H.hedef ? gunAy(H.hedef) : '—'}` });
+  }
+  ogeler.push({ tur: 'baslik', metin: `ADIMLAR · ${H.noktalar.length}` });
+  for (const n of H.noktalar) {
+    const rol = H.seritler.find((r) => r.rol.kod === n.a.sahip_rol)!;
+    ogeler.push({
+      tur: 'satir', key: n.a.id, ikon: `<g transform="translate(-${(n.x - 28).toFixed(1)},-${(n.y - 29).toFixed(1)})">${taslakGezegeni(n, 9, false)}</g>`,
+      ust: `${n.no}. ${n.a.ad}`, baslik: n.a.ad,
+      alt: [rolAdi(rol.rol) + (rol.eksik ? ' (belli değil)' : ''), n.a.sure_tahmin_gun != null ? `${n.a.sure_tahmin_gun} gün` : null, `tahmini ${gunAy(n.bit)}`, n.soru ? 'soruya bağlı' : null, n.gec ? 'hedefi aşıyor' : null].filter(Boolean).join(' · '),
+      sag: sec === n.no ? <span className="satir-not">seçili</span> : <span />,
+    });
+  }
+  const listeY = HY + H.h + 66 + 60;
+  const Lst = Liste({ y0: listeY, ogeler, etiket: 'Taslak' });
+
+  return (
+    <Sahne gok={GOK} cizim={svg} etiket="Taslak haritası" yukseklik={Math.max(844, Lst.y + 130)}>
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Taslak" geri={geri} /></Kutu>
+      <Metin y={122} fs={21} lh={26} serif agirlik={700} as="h1">{baslikSatir.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+      <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+      <h2 className="bolum-baslik" style={{ top: HY - 26 }}>TASLAK HARİTASI</h2>
+      {H.seritler.map((r) => {
+        const L = sarSatir(rolAdi(r.rol), 76, '650 10.5px Inter').slice(0, 2);
+        return <Metin key={r.rol.kod} y={r.y + 4 - (L.length - 1) * 5.75} x={50} fs={10.5} lh={11.5} agirlik={650} renk={r.eksik ? 'mercan' : 'ink2'} style={{ right: 'auto', width: 76, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</Metin>;
+      })}
+      <Metin y={HY + H.h + 26} x={Math.max(20, H.bugunX - 20)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>bugün</Metin>
+      {H.hedefX != null && <Metin y={HY + H.h + 26} x={Math.min(332, H.hedefX - 16)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>hedef</Metin>}
+      <div className="harita-katman gorev-harita">
+        {H.noktalar.map((n) => <button key={n.a.id} type="button" className="gezegen-hedef" aria-label={`${n.no}. ${n.a.ad}`} aria-pressed={sec === n.no} style={{ left: n.x - 14, top: n.y - 14, width: 28, height: 28 }} onClick={() => setSec(sec === n.no ? null : n.no)} />)}
+      </div>
+      {sec != null && (() => { const n = H.noktalar[sec - 1]; return <Metin y={HY + H.h + 48} fs={13} lh={17} renk="ink" className="tek-satir" as="p" style={{ left: 20, right: 20 }}>{n.no}. {n.a.ad} · tahmini {gunAy(n.bit)}</Metin>; })()}
+      <Dugme style={{ top: HY + H.h + 62 }} yukseklik={50} fs={16} onClick={() => git(`/yeni/${enc(kod)}`)}>{S.length ? 'Soruları cevapla, akışı kur' : 'Akışı kur'}</Dugme>
+      {Lst.dugum}
+    </Sahne>
+  );
+}

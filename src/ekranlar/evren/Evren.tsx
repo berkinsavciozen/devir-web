@@ -1,3 +1,4 @@
+import { taslakAdresi } from '../yeni/Taslak';
 import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -153,7 +154,7 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
 }
 
 /** Evren dokunma katmanı: galaksiler (dokun → Z1), yakınken adımlar ve kişiler. */
-function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22, alt = 0, sagUst = 60 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number } | null; merkez?: { x: number; y: number; n: number } | null; minR?: number; alt?: number; sagUst?: number }) {
+function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22, alt = 0, sagUst = 60 }: { E: ReturnType<typeof useEvrenGezinme>; b: Bolge; yer: { kod: string; x: number; y: number; rr: number }[]; tum: any[]; detay: Record<string, any>; taslak?: { x: number; y: number; n: number; adres?: string } | null; merkez?: { x: number; y: number; n: number } | null; minR?: number; alt?: number; sagUst?: number }) {
   const { gz, sonuc, ekran } = E;
   // en yakında daha da yaklaşmak akışa kendiliğinden girmez; önce sorulur (plan 27 Eki, 3.28)
   // akış bilgi kartı (plan 28 Eki, B1): dokununca ya da bir akış ortada yeterince yakınken; ikinci dokunuş ya da "Akışa geç" girer
@@ -203,7 +204,7 @@ function EvrenHedefleri({ E, b, yer, tum, detay, taslak, merkez, minR = 22, alt 
           onMouseEnter={h.kod ? () => vurgula(h.kod!) : undefined} onMouseLeave={h.kod ? () => vurgula(null) : undefined} />)}
         {/* merkez = bitti (karar 3.I): dokununca kapanan akışlar */}
         {merkez && merkez.n > 0 && (() => { const e = ekran({ x: merkez.x, y: merkez.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button role="listitem" className="gezegen-hedef" style={{ left: e.x - 22, top: e.y - 22, width: 44, height: 44 }} aria-label={`${merkez.n} akış bitti. Biten akışları aç.`} data-ipucu={`${merkez.n} akış bitti`} onClick={() => git('/akislar/arsiv')} />; })()}
-        {taslak && (() => { const e = ekran({ x: taslak.x, y: taslak.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button className="gezegen-hedef" style={{ left: e.x - 52 * e.r, top: e.y - 58 * e.r, width: 104 * e.r, height: 72 * e.r }} aria-label={`${taslak.n} taslak`} onClick={() => git('/yeni')} />; })()}
+        {taslak && (() => { const e = ekran({ x: taslak.x, y: taslak.y, r: 1, pr: 0 }); return gor(e.x, e.y) && <button className="gezegen-hedef" style={{ left: e.x - 52 * e.r, top: e.y - 58 * e.r, width: 104 * e.r, height: 72 * e.r }} aria-label={`${taslak.n} taslak`} onClick={() => git(taslak.adres || '/yeni')} />; })()}
       </div>
       {gosterilen && <AkisBilgiKarti k={tum.find((x) => x.kod === gosterilen)} d={detay[gosterilen]} yer={kartYeri} gec={() => gec(gosterilen)}
         kapat={() => { setKart(null); setKapatilan(gosterilen); }} />}
@@ -443,7 +444,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
-      <EvrenHedefleri E={E} b={T.bolge} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length } : null} merkez={cizim.U.merkez} minR={24} />
+      <EvrenHedefleri E={E} b={T.bolge} yer={cizim.U.yer} tum={tum} detay={detay} taslak={cizim.U.taslak ? { ...cizim.U.taslak, n: ozet.data.taslaklar.length, adres: taslakAdresi(ozet.data.taslaklar) } : null} merkez={cizim.U.merkez} minR={24} />
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={T.bolge.y + 4} hep={false} />
       <EvrenCipleri o={odak} P={P} secim={secimOz} x={12} y={T.bolge.y + 4} en={390 - 82} lejant={() => setLejant(true)} />
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': T.ipucu + 'px' } as React.CSSProperties} onClick={panoAc}>Pano ve bekleyen işler</button>

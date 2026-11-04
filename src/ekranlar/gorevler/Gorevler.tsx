@@ -174,7 +174,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const davetler = b?.bekleyen_davetler || ben.bekleyen_davetler || [];
   if (S.kisi === 'ben' && (taslaklar.length || davetler.length)) {
     ogeler.push({ tur: 'baslik', metin: 'BEKLEYENLER' });
-    for (const t of taslaklar) ogeler.push({ tur: 'satir', key: 't' + t.kod, ikon: taslakIkon, ust: t.baslik || t.cumle, alt: `taslak · ${t.soru_sayisi} soru · ${t.adim_sayisi} adım`, etiket: `Taslak: ${t.baslik || t.cumle}. ${t.soru_sayisi} soru bekliyor.`, git: () => git(`/yeni/${enc(t.kod)}`) });
+    for (const t of taslaklar) ogeler.push({ tur: 'satir', key: 't' + t.kod, ikon: taslakIkon, ust: t.baslik || t.cumle, alt: `taslak · ${t.soru_sayisi} soru · ${t.adim_sayisi} adım`, etiket: `Taslak: ${t.baslik || t.cumle}. ${t.soru_sayisi} soru bekliyor.`, git: () => git(`/yeni/${enc(t.kod)}/harita`) });
     for (const d of davetler) ogeler.push({ tur: 'satir', key: 'd' + d.id, ikon: zarfIkon, ust: alanAdi(d.alan || '', d.davet_eden), alt: `davet · ${d.rol === 'dis' ? 'dış' : d.rol}${d.davet_eden ? ` · ${d.davet_eden}` : ''}`, git: () => git('/hesap') });
   }
   const UstLst = Liste({ y0: ustListeY, ogeler: ustOgeler, etiket: 'Senden beklenenler ve agent’ların' });

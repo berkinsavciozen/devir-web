@@ -1113,3 +1113,5 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .ag-gecmis .ai-olay .metin-baglanti { justify-self: start; min-height: 32px; font-size: 13px; }
 .ag-gecmis-eylem { display: flex; flex-wrap: wrap; gap: 8px 20px; }
 .ag-gecmis-eylem .metin-baglanti { min-height: 40px; }
+.baslik-eylemler { display: flex; align-items: center; }
+.baslik-eylemler .satir-eylem.baslik-eylem { margin-right: 6px; }
