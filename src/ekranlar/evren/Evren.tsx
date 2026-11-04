@@ -36,6 +36,9 @@ import { akisIlerlemesi, ilerlemeMetni } from '../../api/ilerleme';
 
 /** Bu sayıdan çok aktif akışta evren ölçek düzenine geçer (J1). */
 const OLCEK = 10;
+/** İlk açılışta haritada en son üretilen bu kadar akış (B14, 4 Kas); kişi süzgeçten fazlasını seçebilir. */
+const ILK = 5;
+export const sonUretilenler = (kartlar: any[]) => [...kartlar].sort((a, b) => String(b.olusturuldu || '').localeCompare(String(a.olusturuldu || '')) || String(a.kod).localeCompare(String(b.kod))).map((k) => k.kod);
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
 /** Kapanan akışlar (dış halka). */
@@ -315,11 +318,11 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   const DD = useDetaylarDurum(kodlar), detay = DD.d;
 
   const cumleler = useMemo(() => evrenCumleleri(kartlar, detay, kisi, ozet.data?.ozet), [ozet.data, detay, kisi]); // eslint-disable-line react-hooks/exhaustive-deps
-  // akış süzgeci (3.30, karar 3.J): 10'dan çok akışta ilk açılışta en riskli 10; seçim 10'u aşarsa ölçek düzeni
+  // akış süzgeci (3.30; B14, 4 Kas): 5'ten çok akışta ilk açılışta en son üretilen 5; seçim 10'u aşarsa ölçek düzeni
   const [akisSecim, setAkisSecim] = useState<string[] | null>(null);
   const [secimAcik, setSecimAcik] = useState(false);
   const riskSirasi = useMemo(() => enRiskliSirasi(kartlar, detay, cumleler), [ozet.data, detay, cumleler]); // eslint-disable-line react-hooks/exhaustive-deps
-  const secili = kartlar.length > OLCEK ? new Set(akisSecim ?? riskSirasi.slice(0, OLCEK)) : null;
+  const secili = kartlar.length > ILK ? new Set(akisSecim ?? sonUretilenler(kartlar).slice(0, ILK)) : null;
   const tumKartlar = kartlar;
   const cizim = useMemo(() => {
     const kartlar = secili ? tumKartlar.filter((k) => secili.has(k.kod)) : tumKartlar;
@@ -461,25 +464,29 @@ export function enRiskliSirasi(kartlar: any[], detay: Record<string, any>, cumle
 }
 type AkisSecimOz = { kartlar: any[]; secili: Set<string>; sec: (k: string[] | null) => void; acik: boolean; ac: (a: boolean) => void };
 /** Akış süzgeci kutusu (3.30): sıra en riskliden; 10'dan çok seçilirse ölçek düzeni. Seçim Uygula ile geçer (plan 28 Eki, B6). */
+const gunAyKisa = (t: string) => new Date(Date.parse(t)).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', timeZone: 'Europe/Istanbul' });
 function AkisSecimKutusu({ s }: { s: AkisSecimOz }) {
   const N = s.kartlar.length;
   const [b, setB] = useState<Set<string>>(s.secili);
   useEffect(() => { if (s.acik) setB(new Set(s.secili)); }, [s.acik]); // eslint-disable-line react-hooks/exhaustive-deps
-  const degistir = (kod: string) => { const y = new Set(b); if (y.has(kod)) { if (y.size > 1) y.delete(kod); } else y.add(kod); setB(y); };
-  const enRiskli = () => setB(new Set(s.kartlar.slice(0, OLCEK).map((k) => k.kod)));
+  const degistir = (kod: string) => { const y = new Set(b); if (y.has(kod)) y.delete(kod); else y.add(kod); setB(y); };
+  const sonBes = () => setB(new Set(sonUretilenler(s.kartlar).slice(0, ILK)));
   const kapat = () => s.ac(false);
   const ayni = b.size === s.secili.size && [...b].every((k) => s.secili.has(k));
-  const alt = <><Dugme tur="ikincil" yukseklik={48} onClick={kapat}>Vazgeç</Dugme><Dugme yukseklik={48} onClick={() => { if (!ayni) s.sec([...b]); kapat(); }}>Uygula</Dugme></>;
+  const alt = <><Dugme tur="ikincil" yukseklik={48} onClick={kapat}>Vazgeç</Dugme><Dugme yukseklik={48} disabled={!b.size} onClick={() => { if (!ayni) s.sec([...b]); kapat(); }}>{b.size ? `Uygula · ${b.size}` : 'En az bir akış seç'}</Dugme></>;
+  const sira = new Map(sonUretilenler(s.kartlar).map((k, i) => [k, i]));
+  const L = [...s.kartlar].sort((x, y) => (sira.get(x.kod) ?? 0) - (sira.get(y.kod) ?? 0));
   return (
     <AltSayfa acik={s.acik} kapat={kapat} baslik="Haritadaki akışlar" yukseklik="yuksek" kutu alt={alt}>
       <div className="akis-secim">
         <div className="odak-cipler">
-          <button type="button" className="filtre-cip" onClick={enRiskli}>En riskli {OLCEK}</button>
-          <button type="button" className="filtre-cip" aria-pressed={b.size === N} onClick={() => setB(new Set(s.kartlar.map((k) => k.kod)))}>Hepsi</button>
+          <button type="button" className="filtre-cip" onClick={sonBes}>Son {ILK}</button>
+          <button type="button" className="filtre-cip" aria-pressed={b.size === N} onClick={() => setB(new Set(s.kartlar.map((k) => k.kod)))}>Hepsini ekle</button>
+          <button type="button" className="filtre-cip" aria-pressed={b.size === 0} onClick={() => setB(new Set())}>Hepsini kaldır</button>
         </div>
-        <p className="lejant-not">{OLCEK} akışa kadar usturlap tam görünür; daha çoğu seçilince kalabalık düzene geçer. {b.size}/{N} seçili.</p>
+        <p className="lejant-not" role="status">{b.size}/{N} akış seçili, en yeniden eskiye.{b.size > OLCEK ? ` ${OLCEK}'dan çoğu kalabalık düzende görünür.` : ''}</p>
         <ul aria-label="Akışlar">
-          {s.kartlar.map((k) => <li key={k.kod}><button type="button" className="akis-secim-satir" aria-pressed={b.has(k.kod)} onClick={() => degistir(k.kod)}><span aria-hidden className="akis-secim-kutu" />{akisAdi(k)}</button></li>)}
+          {L.map((k) => <li key={k.kod}><button type="button" className="akis-secim-satir" aria-pressed={b.has(k.kod)} onClick={() => degistir(k.kod)}><span aria-hidden className="akis-secim-kutu" /><span className="akis-secim-ad">{akisAdi(k)}</span>{k.olusturuldu && <small>{gunAyKisa(k.olusturuldu)}</small>}</button></li>)}
         </ul>
       </div>
     </AltSayfa>

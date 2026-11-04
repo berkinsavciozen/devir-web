@@ -281,6 +281,12 @@
 .hal-yukleniyor .dosya-satiri-metin small { font-size: 11px; font-weight: 600; }
 .hal-hata .dosya-satiri-metin small { color: var(--renk-metin-mercan); font-weight: 600; white-space: normal; }
 .hal-silindi .dosya-satiri-metin b { color: var(--renk-metin-ink3); }
+/* B16 (4 Kas): çıktı adı bütün satırı kaplayan bir bağlantı; eylem düğmeleri üstte kalır */
+.dosya-satiri-ac { all: unset; cursor: pointer; font-size: 14px; line-height: 17px; font-weight: 650; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--renk-metin-ink) 35%, transparent); text-underline-offset: 3px; }
+.dosya-satiri-ac::after { content: ''; position: absolute; inset: 0; border-radius: 18px; }
+.dosya-satiri-ac:focus-visible::after { outline: 2px solid var(--renk-odak, #D9CCFF); outline-offset: 2px; }
+.dosya-satiri:has(.dosya-satiri-ac):hover { background: color-mix(in srgb, var(--renk-zemin-kart) 90%, #FFFFFF 4%); }
+.dosya-satiri-eylem { position: relative; z-index: 1; }
 .ilerleme { display: block; height: 6px; border-radius: 3px; background: var(--renk-zemin-alan); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-cizgi-lila) 40%, transparent); overflow: hidden; }
 .ilerleme i { display: block; height: 100%; border-radius: 3px; background: var(--degrade-pirinc); transition: width var(--sure-anlik) linear; }
 .dosya-satiri-eylem { flex: none; display: flex; align-items: center; gap: 6px; }
@@ -1035,3 +1041,21 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .rk-api .alan-etiket { display: block; margin: 0 0 6px; }
 .rk-hata { margin: 10px 0 0; color: var(--renk-metin-mercan); font: 600 14px/20px var(--font-sans); }
 .rutin-kur > .dugme { margin-top: 18px; }
+.akis-secim-ad { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.akis-secim-satir small { flex: none; font-size: 12px; color: var(--renk-metin-ink3); }
+.akis-secim .odak-cipler { flex-wrap: wrap; }
+
+/* B11/B16 (4 Kas): çıktının okunur sayfası (yeni sekmede) */
+.cikti-sayfa { position: relative; max-width: 720px; margin: 0 auto; padding: 40px 0 64px; color: var(--renk-metin-ink); }
+.cikti-sayfa > :not(.baslik) { margin-left: 20px; margin-right: 20px; }
+.cikti-alt { margin-top: 6px; font: 500 13px/18px var(--font-sans); color: var(--renk-metin-ink3); }
+.cikti-ozet { margin-top: 16px; font: 400 17px/24px var(--font-serif, Caladea, serif); color: var(--renk-metin-ink2); }
+.cikti-metin { margin-top: 18px; padding: 18px 20px; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-kart) 78%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, #FFFFFF 8%, transparent); font: 400 15px/23px var(--font-sans); overflow-wrap: anywhere; }
+.cikti-metin > * + * { margin-top: 12px; }
+.cikti-metin h2 { font: 700 18px/24px var(--font-sans); }
+.cikti-metin h3 { font: 650 16px/22px var(--font-sans); }
+.cikti-metin ul, .cikti-metin ol { padding-left: 22px; display: grid; gap: 6px; }
+.cikti-metin code { font-size: 13px; padding: 1px 5px; border-radius: 6px; background: color-mix(in srgb, #FFFFFF 8%, transparent); }
+.cikti-metin a { color: var(--renk-vurgu-altin); }
+.cikti-metin hr { border: 0; height: 1px; background: color-mix(in srgb, #FFFFFF 12%, transparent); }
+.cikti-sayfa .metin-baglanti { margin-top: 18px; display: inline-block; }

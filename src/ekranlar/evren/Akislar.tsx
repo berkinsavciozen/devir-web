@@ -55,7 +55,8 @@ export function Akislar({ ben }: { ben: Ben }) {
   const kartlar: any[] = useMemo(() => [...(ozet.data?.akislar || [])].sort((a, b) => (a.pay_saat ?? 1e9) - (b.pay_saat ?? 1e9)), [ozet.data]);
   const kapanan: any[] = (hepsi.data?.akislar || []).filter((k: any) => k.durum === 'kapandi');
   const arsiv: any[] = (hepsi.data?.akislar || []).filter((k: any) => k.durum === 'arsiv');
-  const satirlar = [...kartlar, ...kapanan].slice(0, 7);
+  // B15 (4 Kas): liste 7 satırda kesiliyordu; artık süren akışların hepsi, kapananlardan son 5'i (gerisi Arşiv'de)
+  const satirlar = [...kartlar, ...kapanan.slice(0, 5)];
   const kodlar = useMemo(() => [...satirlar.map((k) => k.kod), ...arsiv.slice(0, 1).map((k) => k.kod)], [ozet.data, hepsi.data]); // eslint-disable-line react-hooks/exhaustive-deps
   const detay = useDetaylar(kodlar);
   // masaüstünde satır ↔ soldaki galaksi vurgusu (N15)
@@ -109,7 +110,7 @@ export function Akislar({ ben }: { ben: Ben }) {
   const taslakN = ozet.data?.taslaklar?.length || 0;
 
   return (
-    <Sahne gok={{ tohum: 52, yildiz: 260 }} cizim={cizim.svg} etiket="Akışlar">
+    <Sahne gok={{ tohum: 52, yildiz: 260 }} cizim={cizim.svg} etiket="Akışlar" yukseklik={cizim.yd + 64 + 130}>
       <Metin y={70} fs={26} serif agirlik={700} as="h1">Akışlar</Metin>
       <UstDugmeler y={36} />
       <Metin y={106} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>

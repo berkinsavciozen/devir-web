@@ -23,6 +23,7 @@ import { Iskelet } from './ekranlar/Iskelet';
 import { Galaksi } from './ekranlar/akis/Galaksi';
 import { Adim } from './ekranlar/akis/Adim';
 import { Kalemler } from './ekranlar/akis/Kalemler';
+import { CiktiSayfasi } from './ekranlar/akis/CiktiSayfasi';
 import { Cevapla } from './ekranlar/akis/Cevapla';
 import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
@@ -89,6 +90,8 @@ function Uygulama({ yol }: { yol: string }) {
   if (tk) return panel(<Kalemler key={tk.kod + tk.no} kod={tk.kod} no={Number(tk.no)} ben={b.kisi || ''} />, 'Akış › Kalemler');
   const bl = eslestir('/akis/:kod/bilgi', yol);
   if (bl) return panel(<AkisBilgi key={bl.kod} kod={bl.kod} ben={b.kisi || ''} />, 'Akış › Bilgi');
+  const ck = eslestir('/akis/:kod/cikti/:id', yol);
+  if (ck) return <CiktiSayfasi key={ck.id} kod={ck.kod} id={ck.id} />;
   const oz = eslestir('/akis/:kod/onizleme/:id', yol);
   if (oz) return <Baglanti key={oz.id} token="" onizleme={{ id: oz.id, kod: oz.kod }} />;
   const ks = eslestir('/akis/:kod/kisi/:ad', yol);

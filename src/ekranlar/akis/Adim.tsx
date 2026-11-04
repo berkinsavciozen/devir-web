@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKeyboardEvent } from 'react';
-import { boyutYaz, dosyaDenetle, dosyaIndir, dosyaSil, dosyaYukle, KABUL_UZANTI, turOf } from '../../api/dosya';
+import { boyutYaz, dosyaDenetle, dosyaAc, dosyaIndir, dosyaSil, dosyaYukle, KABUL_UZANTI, turOf } from '../../api/dosya';
 import { BaglantiIkon, CarpiIkon, CopIkon, DisAcIkon, DosyaSatiri, IndirIkon, YukleIkon } from '../../bilesen/DosyaSatiri';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -13,7 +13,7 @@ import { iconCloud } from '../../cizim/ekran';
 import { C, ship, sparkle } from '../../cizim/ortak.js';
 import { akisModeli, gunAy, gunAyHafta, saat, yolCiz, kisaAd } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
-import { git } from '../../yonlendirme';
+import { git, tamAdres } from '../../yonlendirme';
 import { useAkis } from './Galaksi';
 import { GorevDetay } from './GorevDetay';
 
@@ -166,15 +166,18 @@ export function Ciktilar({ a, kod }: { a: any; kod: string }) {
             : <DosyaSatiri key={y.anahtar} ad={y.ad} tur={y.tur} hal="yukleniyor" yuzde={y.yuzde} alt={`%${Math.round(y.yuzde * 100)} · ${boyutYaz(y.boyut * y.yuzde).replace(' MB', '')} / ${boyutYaz(y.boyut)}`} eylemler={[{ ad: `İptal: ${y.ad}`, ikon: <CarpiIkon />, tikla: () => y.iptal?.() }]} />);
           const d = c.dosya_id ? byId.get(c.dosya_id) : null;
           if (c.dosya_id) return (
-            <DosyaSatiri key={c.id} ad={c.ad} tur={d?.tur} alt={[d?.tur_ad || 'dosya', d ? boyutYaz(d.boyut) : null, c.kim, saatOf(c.tarih)].filter(Boolean).join(' · ')}
+            <DosyaSatiri key={c.id} ad={c.ad} tur={d?.tur} ac={() => void dosyaAc(c.dosya_id).catch((e) => setHata(e.message))} alt={[d?.tur_ad || 'dosya', d ? boyutYaz(d.boyut) : null, c.kim, saatOf(c.tarih)].filter(Boolean).join(' · ')}
               eylemler={[{ ad: `İndir: ${c.ad}`, ikon: <IndirIkon />, tikla: () => void dosyaIndir(c.dosya_id).catch((e) => setHata(e.message)) }, { ad: `Sil: ${c.ad}`, ikon: <CopIkon />, ton: 'mercan', tikla: () => setSilinecek({ ...c, d }) }]} />
           );
           if (/silindi/.test(c.kaynak || '')) return <DosyaSatiri key={c.id} ad={c.ad} hal="silindi" alt={`Dosya silindi · ${gunAy(Date.parse(c.tarih))}`} />;
           if (c.url) return (
-            <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} alt={['bağlantı', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
+            <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} ac={() => window.open(c.url, '_blank', 'noopener')} alt={['bağlantı', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
               eylemler={[{ ad: `Aç: ${c.ad}`, ikon: <DisAcIkon />, tikla: () => window.open(c.url, '_blank', 'noopener') }]} />
           );
-          return <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} alt={['metin', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')} />;
+          // metin çıktısı (AI rutininin yazdığı): ayrı sekmede okunur sayfa
+          const oku = () => window.open(tamAdres(`/akis/${encodeURIComponent(kod)}/cikti/${c.id}`) + location.search, '_blank', 'noopener');
+          return <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} ac={c.icerik || c.ozet ? oku : undefined} alt={['metin', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
+            eylemler={c.icerik || c.ozet ? [{ ad: `Aç: ${c.ad}`, ikon: <DisAcIkon />, tikla: oku }] : []} />;
         })}
       </ul>
       {hata && <p className="canli-hata-satir" role="alert">{hata}</p>}
