@@ -45,7 +45,7 @@ test('Devir AI · 390: akışta bağlamı bilir; önerilen değişiklik Uygula i
   await expect(d).toHaveCount(0);
   await page.evaluate(() => { history.pushState(null, '', '/akis/RTD5/adim/3?senaryo=berkin'); dispatchEvent(new Event('devir:yol')); });
   await page.locator('.gd-bas').waitFor();
-  await expect(page.getByRole('button', { name: 'Bitti olarak işaretle' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Bitti', exact: true })).toHaveCount(0);
 });
 
 test('Devir AI · 390: atlama ayrıca onay ister; Vazgeç yazmaz', async ({ page }) => {

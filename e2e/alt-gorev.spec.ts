@@ -62,7 +62,7 @@ test('alt görev · 390: detaydan eklenir; eklenen listede ve akış listesinde 
   await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 0/1');
   await expect(bolum.getByRole('textbox', { name: 'Yeni alt görevin adı' })).toHaveValue('');
   // açık alt görev varken üst görev "bitti" olarak işaretlenmez
-  await expect(page.getByRole('button', { name: 'Bitti olarak işaretle' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Bitti', exact: true })).toHaveCount(0);
   await expect(page.locator('.gd-eylem')).toContainText('Alt görevlerin hepsi bitince');
 });
 

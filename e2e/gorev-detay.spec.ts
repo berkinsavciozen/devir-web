@@ -7,8 +7,9 @@ const ac = async (p: Page, yol: string, w: number, h: number) => {
   await p.goto(yol);
   await p.locator('.gd-bas').waitFor();
 };
-const SIRA = ['NE YAPILACAK', 'KİM', 'NE ZAMAN', 'ETKİLEYEN VE ETKİLEDİĞİ', 'KARAR'];
-const bolumler = (p: Page) => p.locator('.gd > .gd-bolum > .gd-bolum-baslik, .gd > .gd-bolum > summary').allTextContents();
+// W1 (4 Kas): karar adımında karar formu eylemlerin hemen altında; KİM ve NE ZAMAN yan yana
+const SIRA = ['KARAR', 'NE YAPILACAK', 'KİM', 'NE ZAMAN', 'ETKİLEYEN VE ETKİLEDİĞİ'];
+const bolumler = (p: Page) => p.locator('.gd > .gd-bolum > .gd-bolum-baslik, .gd > .gd-ikili > .gd-bolum > .gd-bolum-baslik, .gd > .gd-bolum > summary').allTextContents();
 
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {
   test(`görev detayı · ${w}: bölümler sabit sırada; karar adımında karar bölümü`, async ({ page }) => {
