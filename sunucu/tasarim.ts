@@ -52,7 +52,11 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 31. Görev ve alt görev (tek düzey). 6 ve daha çok adımlı taslakta işi ana görevlere ve alt görevlere böl: ana görev tek bir somut sonuçtur (teslim, karar, kilometre taşı); alt görev o sonuca giden ve ayrı izlenmesi gereken parçadır (farklı kişi, ayrı tarih ya da ayrı çıktı). Alt görevin ust alanına ana görevin id'sini yaz; ana görevlerde ust boş kalır. Alt görevi olan ana görev bir kaptır: kendi işi yoktur, sahibi sonucun sorumlusudur, süresi 0'dır; kendi işi varsa onu ayrı bir alt görev yaz. Alt görevin alt görevi olmaz. Tek kişinin tek oturuşta yapacağı işi alt göreve bölme. Her kalem için tekrar eden iş (her aday, her müşteri) alt görev değildir; tek adım kur. Bir ana görevin bağımlılığı alt görevlerine değil, başka ana görevlere ya da başka alt görevlere yazılır; alt görev başka bir ana görevin alt görevine bağımlı olabilir. 6'dan az adımlı taslakta bölme yapma, ust alanlarını boş bırak.
 32. Dil. Yalnız Türkçe yaz; İngilizce ya da yarım kalmış kelime kullanma (rapor, şahit numune, vadeli ödeme gibi yerleşik terimleri kullan). Bir adın içinde aynı kelimeyi ya da aynı liste ögesini tekrarlama. Varsayım cümleleri tam ve tek anlamlı olsun.
 33. Bağlam kapsamı. "Ek bağlam" kullanıcının bu iş için yazdığı plandır: içinde sayılan her somut iş (modül, kurulum işi, kalan tasarım adımı, "hazır" tanımındaki her ölçüt) taslakta en az bir ana ya da alt görev olarak bulunmalı; listeyi "modülleri geliştir" gibi tek genel adıma sıkıştırma. Bağlam bir işi "paralel" ya da "hazır tanımına dahil değil" diye işaretliyorsa onu ayrı bir ana görev kur, hazır tanımındaki adımlara bağlama. Bağlamdaki kısıtları (bütçe, yetki, veri kuralları) adım değil varsayım ya da kriter olarak yaz. Bağlamda hedef tarih yoksa hedef_tarih soru adayını yine yaz.
-34. Türkçe yaz.`;
+34. Agent'lar (4 Kas). Agent bir kişinin desteğidir: her agent rolünün destek alanına desteklediği kişinin adını yaz (genelde kullanıcı). Bağlamda kişinin kendi AI asistanı geçiyorsa ("Berkin'in Claude'u") agent işlerini ona ver ve tip agent yaz; dış katılımcı yapma. Kendi asistanı bilinmiyorsa agent'a bu akışta yaptığı işe göre özgün bir ad ver ("Rakip araştırma agent'ı", "Gönderi yazım agent'ı"); en çok 3 agent, her işi gerçekten o kapsamdaki agent'a ver, hepsini tek agent'a yığma.
+35. Destek işi ve onay. Agent'ın hazırladığı işi destek verdiği kişi zaten o adımda inceleyip bitirir; agent adımının hemen ardından yalnız "kontrol et", "gözden geçir" ya da "onayla" diyen ayrı bir insan adımı kurma. Ayrı insan adımı yalnız gerçek bir karar (seçim, ödeme, imza) ya da dışarıya gönderme varsa kurulur.
+36. Doğrulama. Agent'ın internetten doğrulayamayacağı bilgi isteyen araştırma (güncel fiyat, çalışma saati, yerinde gözlem, biriyle görüşme) iki adımdır: agent araştırır ve taslak çıkarır; insan sahada ya da telefonla doğrular (doğrulama adımı agent adımına bağımlı).
+37. Ad uzunluğu. ad en çok 70 karakter; iki nokta, liste ve ayrıntı ad'a değil aciklama'ya yazılır ("Rakip kahvecileri analiz et"; fiyat, saat, ürün açıklamada).
+38. Türkçe yaz.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -67,7 +71,7 @@ export const TASLAK_ARACI: LlmTool = {
       kisa_ad: { type: "string", description: "Akışın kısa adı: varlık + iş, en çok 40 karakter." },
       amac: { type: "string" },
       hedef_tarih: { type: ["string", "null"], description: "YYYY-AA-GG; cümleden çıkıyorsa." },
-      roller: { type: "array", items: { type: "object", required: ["kod", "ad", "tip"], properties: { kod: { type: "string" }, ad: { type: "string" }, kisi: { type: ["string", "null"] }, tip: { type: "string", enum: ["insan", "dis", "agent"] }, arac: { type: ["string", "null"] } } } },
+      roller: { type: "array", items: { type: "object", required: ["kod", "ad", "tip"], properties: { kod: { type: "string" }, ad: { type: "string" }, kisi: { type: ["string", "null"] }, tip: { type: "string", enum: ["insan", "dis", "agent"] }, arac: { type: ["string", "null"] }, destek: { type: ["string", "null"], description: "Yalnız agent: desteklediği kişinin adı (genelde kullanıcı)." } } } },
       sorular: {
         type: "array",
         items: {
@@ -269,6 +273,11 @@ export function kapsamDenetimi(t: any, baglam: any): string[] {
   if (!say) return [];
   return [`Bağlamda sayılan ${say} iş taslakta adım olarak yok (${alanlar.join("; ")}). Kurmadan önce devir_taslak_duzelt ile ekle ya da gereksizse kullanıcıya söyle.`];
 }
+/** Bir kişinin AI agent'ı: "X'in Claude'u", "X'in asistanı (AI)", "ChatGPT", "agent". */
+const AGENT_RE = /\b(claude|chatgpt|gpt|gemini|copilot)|\bagent\b|yapay zek[aâ]/i;
+export const AGENT_ADI = { test: (x: string) => AGENT_RE.test(x) || /\bAI\b/.test(x) };
+const YAYIN_FIIL = /yayınla|yayımla|gönder(?!i)|paylaş|ilet|duyur|post(?:la|u)|e-?posta(?:la|yı)/i;
+const KARAR_FIIL_AD = /karar|onayla|onay\s*ver|seç(?:\s|$|im)|imzala|öde/i;
 // kurallı doğrulayıcı: bilinmeyen bağımlılık, kendine bağımlılık, döngü, bilinmeyen rol, koşulun bilinmeyen soruya bağlanması
 export function kuralDenetimi(t: any) {
   const notlar: string[] = [];
@@ -276,7 +285,16 @@ export function kuralDenetimi(t: any) {
   const ids = new Set(adimlar.map((s) => String(s.id)));
   const roller = new Set((t.roller || []).map((r: any) => r.kod));
   const soruKod = new Set((t.sorular || []).map((q: any) => q.kod));
+  // C2 (4 Kas): "Berkin'in Claude'u", "Ayşe'nin GPT'si" bir kişinin AI agent'ıdır; dış katılımcı ya da insan sayılmaz
+  for (const r of t.roller || []) {
+    if (r.tip !== "agent" && AGENT_ADI.test(`${r.kisi || ""} ${r.ad || ""}`)) { notlar.push(`"${r.kisi || r.ad}" agent olarak düzeltildi.`); r.tip = "agent"; }
+  }
   for (const s of adimlar) {
+    // C4 (4 Kas): uzun ad iki noktadan bölünür; ayrıntı açıklamaya geçer (harita etiketi cümle olmaz)
+    const ad0 = String(s.ad || ""), ik = ad0.indexOf(": ");
+    if (ad0.length > 60 && ik >= 12 && !/^(netleştir|sonucu kaydet)/i.test(ad0)) { s.ad = ad0.slice(0, ik).trim(); s.aciklama = `${ad0.slice(ik + 2).trim().replace(/\.$/, "")}.${s.aciklama ? " " + s.aciklama : ""}`; }
+    // C3 (4 Kas): yayınlamak, göndermek, paylaşmak bir iştir; karar fiili yoksa karar adımı sayılmaz
+    if (s.karar_gerekli === true && !s.karar_kriteri && YAYIN_FIIL.test(String(s.ad || "")) && !KARAR_FIIL_AD.test(String(s.ad || ""))) { s.karar_gerekli = false; notlar.push(`"${s.ad}": yayın/gönderim işi karar sayılmadı.`); }
     const once = (s.bagimli || []).map(String);
     s.bagimli = [...new Set(once.filter((x: string) => ids.has(x) && x !== String(s.id)))];
     if (s.bagimli.length !== once.length) notlar.push(`"${s.ad}": geçersiz bağımlılık çıkarıldı.`);
@@ -457,6 +475,12 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
   for (const [kod, x] of tum) {
     if (x.kaynak !== "sonra") continue;
     let c = liste.find((s) => String(s.id) === String(x.q.cevaplayan_adim || ""));
+    // C5/C14 (4 Kas): cevap bir kararla belli olur; motor soruyu agent'ın hazırlık adımına bağladıysa onu bekleyen insan karar adımına taşınır
+    // (yoksa AI yapsın açık sorulu hazırlık adımını hiç başlatmaz ve zincir sessizce durur)
+    if (c && roller.get(c.sahip_rol)?.tip === "agent") {
+      const k = liste.find((s) => s !== c && (s.bagimli || []).map(String).includes(String(c!.id)) && roller.get(s.sahip_rol)?.tip !== "agent" && (s.karar_gerekli === true || kararSezgisiAd(s)));
+      if (k) c = k;
+    }
     if (!c) { c = { id: "sonuc-" + kod, tur_kod: "sonuc-" + slug(kod), ad: `Sonucu kaydet: ${x.q.soru}`, sahip_rol: "__sahip", kriter: "Cevap Devir'e yazıldı", sure_tahmin_gun: 0.5, bagimli: [], boyut: x.q.boyut, aciklama: x.q.neden }; sonucAdimi.push(c); byId.set(c.id, c); }
     c._cevapSoru = kod;
     for (const s of liste) if (s !== c && ((s.kosul && s.kosul.soru === kod) || s.tarih_capasi?.soru === kod) && !(s.bagimli || []).map(String).includes(String(c.id)) && !ata(String(c.id), String(s.id))) s.bagimli = [...(s.bagimli || []), c.id];
@@ -505,6 +529,8 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
     return {
       ad: yazi.ad, kisa_ad: s.kisa_ad || null, aciklama: yazi.aciklama, sahip: sahipAdi(r),
       sahip_tip: r.tip === "agent" ? "agent" : r.tip === "dis" ? "dis" : "insan", arac: s.arac || r.arac || null,
+      // K1 (4 Kas): agent kişinin desteği; desteklediği kişi agent_sahibi olur ("Berkin'in Claude'u" → Berkin)
+      agent_sahibi: r.tip === "agent" ? destekKisi(r, sahip) : null,
       kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
       karar_gerekli: typeof s.karar_gerekli === "boolean" ? s.karar_gerekli : null, cikti_bekleniyor: typeof s.cikti_bekleniyor === "boolean" ? s.cikti_bekleniyor : null,
       sure_tahmin_gun: s.sure_tahmin_gun, bagimli: deps, _tur: s.tur_kod || slug(s.ad), _boyut: s.boyut, _capa: capaOf(s), _netlestir: String(s.id).startsWith("netlestir-"),
@@ -540,6 +566,8 @@ export function esle(q: any, c: string) {
   if (hayir && no) return String(no.deger);
   return c;
 }
+/** Ad ya da kriterden karar adımı sezgisi (core.kararAdimi'nin hafif eşi; tasarım core'u içe aktarmaz). */
+const kararSezgisiAd = (s: any) => !!s?.karar_kriteri || /^karar(-|$)/.test(String(s?.tur_kod || "")) || /karar\s*(ver|al)|onayla|onay\s*ver|seç(?:\s|$|im)|belirle|kesinleştir/i.test(String(s?.ad || ""));
 function sorular(t: any) { return new Map<string, any>((t.sorular || []).map((q: any) => [q.kod, q])); }
 // ---------- çoklu seçim (C2) ----------
 const OLUMSUZ = /^(hayir|hayır|yok|no|none|gerekmiyor|gerekli degil|gerekli değil|hicbiri|hiçbiri|istemiyorum|olmayacak)$/;
@@ -627,6 +655,12 @@ export function sahiplikUyarilari(t: any) {
   return notlar;
 }
 /** Rol adı ekranda: "Mert (Gümrük müşaviri)"; "Gümrük Müşaviri (Mert)" gibi rol adındaki kişi tekrarlanmaz (m2). */
+/** Agent rolünün desteklediği kişi: destek alanı, yoksa addaki iyelik ("Berkin'in Claude'u"), yoksa kullanıcı. */
+export function destekKisi(r: any, kullanici: string) {
+  if (r?.destek && String(r.destek).trim()) return String(r.destek).trim();
+  const m = String(r?.kisi || r?.ad || "").match(/^(.+?)['’](?:n?[ıiuü]n|[ıiuü]n|in|ın|un|ün)\s+\S+/i);
+  return m ? m[1].trim() : kullanici || null;
+}
 export function sahipAdi(r: any) {
   if (!r?.kisi) return String(r?.ad || "");
   const rolAd = String(r.ad || "").replace(/\s*\([^)]*\)/g, "").trim();

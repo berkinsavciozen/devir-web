@@ -84,10 +84,10 @@ console.log("\n[standart blok motorda]", /Standart süreç \(ekip/.test(SON_USER
 // gömmesiz (kelime benzerliği) yol
 const r9 = await callTool("devir_tasla", { cumle: "Ege Bank entegrasyonu için canlıya çıkış", baglam: { varlik: "Ege Bank" } }, { db, ws, key, ua: "t", now: NOW, llm } as any);
 console.log("[gömmesiz] dersler geldi:", /D\d+\]/.test(SON_USER), "benzer geldi:", /Benzer geçmiş/.test(SON_USER));
-// P1-E madde 11: yedek motorla üretilen taslak çıktıda söylenir
+// B1 (4 Kas, 0.30.0): yedek motor bilgisi kullanıcıya giden taslak metninde yok; kayıtta (taslak.model) kalır
 const r0 = await callTool("devir_tasla", { cumle: "Ege Bank için havale entegrasyonu yapmam lazım", baglam: { varlik: "Ege Bank" } }, ctx() as any);
 TASLAK_MODEL = "openai:gpt-4.1 (yedek; birincil: kredi bitti)";
 const ry = await callTool("devir_tasla", { cumle: "Ege Bank için havale entegrasyonu yapmam lazım", baglam: { varlik: "Ege Bank" } }, ctx() as any);
-const yedekOk = /yedek motorla \(OpenAI gpt-4\.1\) üretildi/.test(ry) && !/yedek motor/.test(r0);
-console.log((yedekOk ? "✓ " : "✗ ") + "yedek motorla üretilen taslak etiketlenir, birincil etiketlenmez");
+const yedekOk = !/yedek motor|gpt-4|OpenAI/.test(ry) && !/yedek motor/.test(r0);
+console.log((yedekOk ? "✓ " : "✗ ") + "yedek motorla üretilen taslağın metninde motor adı geçmez");
 if (!yedekOk) process.exitCode = 1;
