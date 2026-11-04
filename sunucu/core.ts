@@ -1484,7 +1484,8 @@ async function olustur(a: any, ctx: Ctx) {
     kosul: s._kosul, capa_soru: s._capaSoru, cevap_soru: s._cevapSoru, tarih_sabit: !!s._capa || !!s._sabit, capa_tarih: s._capa && isDate(s._capa) ? s._capa : null,
     ...(s.ust_adim != null ? { ust_adim: s.ust_adim } : {}),
     ...(s.sahip_tip === "agent" && !isDis(ctx) && (s._agentSahibi || ctx.key?.kisi) ? { agent_sahibi: s._agentSahibi || ctx.key.kisi } : {}),
-    ...(s._oto || s.oto ? { oto: true } : {}),
+    // 0.30.1: oto her satırda açıkça yazılır; toplu eklemede eksik alan null gider ve adim.oto boş olamaz (TMPH, 4 Kas)
+    oto: !!(s._oto || s.oto),
   }));
   // K2 (4 Kas, 0.30.0): agent'ın sahibinin bu agent'ın işini alacak bir rutini varsa uygun agent adımları AI yapsın açık kurulur.
   // Kullanıcı istemezse ai_yapsin: false; karar, ödeme ve dışarıya gönderme adımları hiç açılmaz.
@@ -1498,7 +1499,10 @@ async function olustur(a: any, ctx: Ctx) {
     if (acilan.length) aiNot.push(`AI yapsın ${acilan.length} agent adımında açık (${acilan.join(", ")}): sırası gelince bağlı Claude rutini kendiliğinden yapar, çıktı sahibine bakılacak olarak düşer. Kullanıcıya söyle; istemediği adımı devir_adim_guncelle oto:false ile kapat.`);
     if (rutinsiz.size) aiNot.push(`${[...rutinsiz].join(", ")} için bağlı bir Claude rutini yok; agent adımları "Claude'da aç" ile yürür. Kullanıcıya bir kez kurulumu hatırlat: Devir web › Ayarlar › AI yapsın kurulumu.`);
   }
-  const inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no);
+  // adımlar yazılamazsa adımsız akış kalmaz: akış satırı geri alınır, hata kullanıcıya gider
+  let inserted: any[];
+  try { inserted = (await ctx.db.insert("adim", await sahipBagla(ctx, rows))).map(fixStep).sort((x: any, y: any) => x.no - y.no); }
+  catch (e) { await ctx.db.delete?.("akis", { id: akis.id }).catch(() => {}); throw e; }
   const paylasim: string[] = [];
   if (Array.isArray(a.katilimcilar) && a.katilimcilar.length) {
     const base = await baglantiTabani(ctx);
@@ -2473,7 +2477,7 @@ async function altGorevEkle(a: any, ctx: Ctx) {
     if (!kendi && ust.sahip_tip === "agent") { v.agent_sahibi = ust.agent_sahibi || null; v.oto = !!ust.oto && !otoUygunDegil(v, kur); }
     if (v.son_tarih && !isDate(v.son_tarih)) throw new Error(`"${v.ad}": son_tarih YYYY-AA-GG olmalı.`);
     if (kur.karar_insanda !== false && v.sahip_tip === "agent" && kararAdimi(v)) throw new Error(kararRet(v.ad));
-    rows.push({ akis_id: akis.id, no, ust_adim: ust.no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: [...ust.bagimli, ...(onceki != null ? [onceki] : [])], kaynak: "sonradan", tur_kod: slug(v.ad), tarih_sabit: !!x.son_tarih && x.tarih_sabit === true, karar_kriteri: v.karar_kriteri, beklenen_cikti: v.beklenen_cikti, karar_gerekli: v.karar_gerekli, cikti_bekleniyor: v.cikti_bekleniyor, ...(v.agent_sahibi ? { agent_sahibi: v.agent_sahibi } : {}), ...(v.oto ? { oto: true } : {}) });
+    rows.push({ akis_id: akis.id, no, ust_adim: ust.no, ad: v.ad, aciklama: v.aciklama, sahip: v.sahip, sahip_tip: v.sahip_tip, arac: v.arac, kriter: v.kriter, son_tarih: v.son_tarih, sure_tahmin_gun: v.sure_tahmin_gun, bagimli: [...ust.bagimli, ...(onceki != null ? [onceki] : [])], kaynak: "sonradan", tur_kod: slug(v.ad), tarih_sabit: !!x.son_tarih && x.tarih_sabit === true, karar_kriteri: v.karar_kriteri, beklenen_cikti: v.beklenen_cikti, karar_gerekli: v.karar_gerekli, cikti_bekleniyor: v.cikti_bekleniyor, ...(v.agent_sahibi ? { agent_sahibi: v.agent_sahibi } : {}), oto: !!v.oto });
     if (kisaAdGecerli(x.kisa_ad)) kisaIstek.set(no, String(x.kisa_ad).trim());
     if (a.sirali === true) onceki = no;
   }
