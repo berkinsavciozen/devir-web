@@ -25,12 +25,12 @@ test.describe('dokunmatik', () => {
     await page.mouse.move(195, 330);
     for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, -60); await page.waitForTimeout(16); }
     await page.waitForTimeout(150);
-    // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: 2.5×'te hâlâ küme, ancak en yakın görünümde ayrışırlar (plan 2 Kas)
+    // RTD5'te 1 ve 2 (Brif, Marka kiti) aynı dakikada bitti: 1×'te küme, en yakın görünümde ayrışırlar (plan 2 Kas; W5 sarmalı 5 ve 8'i zaten ayırır)
     await hedefKontrol(page);
     await cek(page, 'B3-yakin');
     await page.getByRole('button', { name: 'Haritayı sığdır' }).click();
     await page.waitForTimeout(300);
-    await expect(page.getByRole('listitem', { name: /4 adım bir arada/ })).toHaveCount(1);
+    await expect(page.getByRole('listitem', { name: /2 adım bir arada/ })).toHaveCount(1);
   });
 
   // 3 Kas: en yakında tekerlek ve dokunmatik yüzey kıstırması (ctrl + tekerlek) sayfaya geçmez; geçerse sayfa yakınlaşıp titrer
@@ -71,7 +71,7 @@ test.describe('dokunmatik', () => {
   });
 
   // plan 2 Kas: yelpaze yok; rozet kümeye yakınlaşmayı sürdürür, en çok 3 dokunuşta üyeler ayrı gezegen olur.
-  // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: geometri onları en yakın görünümde ayrışacak kadar aralar
+  // RTD5'te 1, 2, 5, 8 aynı dakikada bitti: geometri onları en yakın görünümde ayrışacak kadar aralar (W5 sarmalında 1×'te kümede kalan 1 ve 2)
   test('B3-kume: küme rozeti → en çok 3 dokunuşta ayrı gezegenler; üye → adım', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     const rozet = page.getByRole('listitem', { name: /adım bir arada/ });
@@ -82,12 +82,15 @@ test.describe('dokunmatik', () => {
     await expect(rozet).toHaveCount(0);
     await expect(page.getByRole('list', { name: 'Küme' })).toHaveCount(0);
     const hedef = (no: number) => page.getByRole('listitem', { name: new RegExp(`^${no}\\. adım`) });
-    const kutu = await Promise.all([1, 2, 5, 8].map(async (no) => (await hedef(no).boundingBox())!));
+    const kutu = await Promise.all([1, 2].map(async (no) => (await hedef(no).boundingBox())!));
     for (let i = 0; i < kutu.length; i++) for (let j = i + 1; j < kutu.length; j++) {
       const a = kutu[i], b = kutu[j];
       expect(Math.hypot(a.x + a.width / 2 - b.x - b.width / 2, a.y + a.height / 2 - b.y - b.height / 2)).toBeGreaterThanOrEqual(44);
     }
     await cek(page, 'B3-kume');
+    // W5 (K4): telefonda ilk dokunuş kutuyu açar, ikincisi görevi
+    await hedef(1).click();
+    await expect(page.getByRole('dialog', { name: /^1\. / })).toBeVisible();
     await hedef(1).click();
     await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/1/);
   });
@@ -111,9 +114,10 @@ test.describe('dokunmatik', () => {
   test('B3-ikon: 2×+ yakınlıkta bulut ve bayrak kendi hedefleri', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     // engelli "Görsel" gezegeni (zaman ölçeğiyle konum, plan 27 Eki D)
-    await page.mouse.move(120, 455);
-    for (let i = 0; i < 10; i++) { await page.mouse.wheel(0, -60); await page.waitForTimeout(16); }
-    await page.waitForTimeout(100);
+    const g = (await page.getByRole('listitem', { name: /^6\. adım/ }).boundingBox())!;
+    await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
+    for (let i = 0; i < 14; i++) { await page.mouse.wheel(0, -60); await page.waitForTimeout(16); }
+    await page.waitForTimeout(400);
     await hedefKontrol(page);
     await cek(page, 'B3-ikon');
     await page.getByRole('listitem', { name: /^Engel:/ }).first().click();

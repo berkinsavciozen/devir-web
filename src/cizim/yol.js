@@ -361,6 +361,24 @@ export function yolCiz(M, o = {}) {
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
     gorunen[u.ad] = { u, p };
   }
+  // B22 (W5, 4 Kas): gemi gezegenlerden ve simgelerden en az bir dokunma hedefi (44 px) uzakta durur. Yolun üstünde, gezegene
+  // varmışken bile gezegenin dışına, ondan uzağa itilir; birkaç turda en yakın çakışan çözülür (çizim ve dokunma hedefi aynı yerde)
+  const engeller = vis.filter((no) => !inCl.has(no)).map((no) => ({ x: G.gezegen[no].x, y: G.gezegen[no].y, d: Math.max(22, radOf(no)) + 22 }))
+    .concat(cl.map((c) => ({ x: G.gezegen[c[0]].x, y: G.gezegen[c[0]].y, d: Math.max(22, radOf(c[0]) + 12) + 22 })), ikonlar.map((k) => ({ x: k.x, y: k.y, d: 44 })));
+  const uzaklas = (p) => {
+    let x = p.x, y = p.y;
+    for (let tur = 0; tur < 6; tur++) {
+      let en = null, ea = 0;
+      for (const e of engeller) { const a = e.d - Math.hypot(x - e.x, y - e.y); if (a > ea + 1e-6) { ea = a; en = e; } }
+      if (!en) break;
+      let dx = x - en.x, dy = y - en.y, n = Math.hypot(dx, dy);
+      // tam üstündeyse yolun yönüne dik (geminin sol yanı) itilir
+      if (n < 1e-3) { dx = -Math.sin(p.yon || 0); dy = Math.cos(p.yon || 0); n = 1; }
+      x = en.x + dx / n * en.d; y = en.y + dy / n * en.d;
+    }
+    return x === p.x && y === p.y ? p : { ...p, x, y };
+  };
+  if (o.gemiAyrik !== false) for (const ad of Object.keys(gorunen)) gorunen[ad].p = uzaklas(gorunen[ad].p);
   for (const ad of Object.keys(gorunen)) {
     const { u, p } = gorunen[ad];
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
