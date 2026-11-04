@@ -1092,3 +1092,18 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .ai-olay time { font-size: 11.5px; font-weight: 600; color: var(--renk-metin-ink3); }
 .ai-olay .metin-baglanti { justify-self: start; text-align: left; font-weight: 650; }
 .ai-olay span { color: var(--renk-metin-ink2); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+/* W3 (4 Kas, K3) · Agent'larım: agent detayı ve kurulumda "göreceğin" satırı */
+.ag-ust { display: flex; align-items: center; gap: 10px; }
+.ag-ust svg { flex: none; }
+.ag-rutinler { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ag-rutin { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px 12px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--renk-zemin-kart) 80%, #B9A6F2 8%); }
+.ag-rutin > span:first-child { display: grid; gap: 2px; min-width: 0; }
+.ag-rutin small { font-size: 12.5px; line-height: 17px; color: var(--renk-metin-ink3); overflow-wrap: anywhere; }
+.ag-rutin-eylem { display: flex; gap: 14px; }
+.ag-rutin-eylem .metin-baglanti { min-height: 32px; font-size: 13.5px; }
+.ag-rutin .gd-alt-ekle { grid-column: 1 / -1; }
+.ag-bagla { display: grid; gap: 8px; margin: 10px 0; }
+.agent-detay .metin-baglanti.mercan { color: var(--renk-metin-mercan, #FF9A8A); }
+.agent-detay .ai-grup > .metin-baglanti { margin-top: 8px; min-height: 36px; }
+.rk-gor { display: block; margin-top: 2px; font-size: 12.5px; line-height: 17px; color: var(--renk-metin-ink3); }
+.rk-yoksa b { color: var(--renk-metin-ink2); }

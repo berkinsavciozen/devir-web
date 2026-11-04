@@ -40,11 +40,11 @@ test('AI yapsın: insan görevinde bölüm yok', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'AI YAPSIN' })).toHaveCount(0);
 });
 
-test('Ayarlar: Claude rutini listelenir; kurulum sayfası adım adım, iki yol seçilebilir', async ({ page }) => {
+test('Ayarlar: agent rutiniyle listelenir; kurulum sayfası adım adım, iki yol seçilebilir', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=ai', 390, 844);
-  await expect(page.getByRole('heading', { name: 'AI YAPSIN · CLAUDE RUTİNLERİ' })).toBeVisible();
-  await expect(page.getByText('Berkin’in Claude’u')).toBeVisible();
-  await page.getByText('Kurulum adımları').click();
+  await expect(page.getByRole('heading', { name: 'AGENT’LARIM' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Berkin’in Claude’u/ })).toBeVisible();
+  await page.getByRole('button', { name: /^AI yapsın kurulumu/ }).click();
   const d = page.getByRole('dialog', { name: 'AI yapsın kurulumu' });
   await expect(d.getByRole('heading', { name: /Claude’u Devir’e bağla/ })).toBeVisible();
   await expect(d.getByRole('heading', { name: /Claude’da rutini kur/ })).toBeVisible();
@@ -60,7 +60,7 @@ test('Ayarlar: Claude rutini listelenir; kurulum sayfası adım adım, iki yol s
   await d.getByRole('button', { name: 'Bağla', exact: true }).click();
   await expect(d.getByText(/Kod agent’ı tetiği eklendi/)).toBeVisible();
   await d.getByRole('button', { name: 'Kapat', exact: true }).click();
-  await expect(page.getByText('Kod agent’ı')).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Kod agent’ı/ })).toBeVisible();
 });
 
 test('AI yapsın kurulumu: rutin yokken adımlar yapılacak; görevdeki bağlantı kurulumu açar', async ({ page }) => {

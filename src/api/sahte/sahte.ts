@@ -205,13 +205,20 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   // 3 Kas · NM8R (canlı yapı): 36 ana adım + 123 alt görev, hedef ve son tarih yok
   if (o.hal === 'nm8r' || o.hal === 'nm8r-hedef') halNm8r(T, o.hal === 'nm8r-hedef' ? '2027-05-26' : null);
   // 3 Kas · AI yapsın (0.29.0): Berkin'in bir Claude rutini; RTD5'te biri bakılacak, biri öncül bekleyen iki AI yapsın görevi
-  const rtdAi = (o.hal === 'ai' || o.hal === 'w1') && senaryo === 'berkin' ? T.akis.find((x) => x.kisa_kod === 'RTD5') : undefined;
+  const rtdAi = (o.hal === 'ai' || o.hal === 'w1' || o.hal === 'w3') && senaryo === 'berkin' ? T.akis.find((x) => x.kisa_kod === 'RTD5') : undefined;
   if (rtdAi) {
     const rtd = rtdAi;
     T.agent_tetik = [{ id: 'sahte-tetik-1', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Berkin’in Claude’u', url: 'https://api.anthropic.com/v1/claude_code/routines/trig_sahte/fire', jeton: 'sahte', aktif: true, son_tetik_at: '2026-10-14T06:30:00Z', son_hata: null, created_at: '2026-10-12T09:00:00Z' }];
     const s6 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 6)!, s10 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 10)!;
     Object.assign(s6, { sahip: 'Berkin’in Claude’u', sahip_tip: 'agent', agent_sahibi: 'Berkin', durum: 'suruyor', engel: null, oto: true, oto_durum: 'bakilacak', oto_oturum: 'https://claude.ai/code/session_sahte' });
     Object.assign(s10, { sahip: 'Berkin’in Claude’u', sahip_tip: 'agent', agent_sahibi: 'Berkin', oto: true });
+    // W3 (4 Kas, K3) · Agent'larım: genel zamanlanmış rutin ve henüz işi olmayan ikinci bir rutin (Araştırma agent'ı)
+    if (o.hal === 'w3') {
+      T.agent_tetik.push(
+        { id: 'sahte-tetik-2', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Zamanlanmış rutin', url: 'zamanli', jeton: null, aktif: true, son_tetik_at: '2026-10-14T09:00:00Z', son_hata: null, created_at: '2026-10-13T09:00:00Z' },
+        { id: 'sahte-tetik-3', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Araştırma rutini', url: 'https://api.anthropic.com/v1/claude_code/routines/trig_sahte2/fire', jeton: 'sahte', aktif: true, son_tetik_at: null, son_hata: null, created_at: '2026-10-13T10:00:00Z' },
+      );
+    }
     // W1 (4 Kas) · düğme matrisi halleri: çıktı beklenen insan işi, AI kapalı agent işi, AI'ın yapamadığı iş
     if (o.hal === 'w1') {
       const s3 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 3)!, s9 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 9)!;
