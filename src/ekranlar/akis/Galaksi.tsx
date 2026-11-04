@@ -14,7 +14,7 @@ import { GorevDetay } from './GorevDetay';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
-import { git, arama } from '../../yonlendirme';
+import { git, arama, listeyeDon } from '../../yonlendirme';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { BaglantiGonder } from './BaglantiGonder';
@@ -432,7 +432,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     return (
       <GenisSahne gok={{ tohum: 101, yildiz: 280, parilti: 10, sakin }} w={GD.W} h={GD.H} etiket={ad} sinif={gelis ? 'harita-gelis' : ''}
         cizim={panelZemini(GD) + cizim.svg}>
-        <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (history.length > 1 ? history.back() : git('/'))} />
+        <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (secim != null ? git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : listeyeDon())} />
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <BaglantiKopyala kod={kod} ikon style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22 }} />
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
@@ -461,7 +461,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     <Sahne gok={{ tohum: 33, yildiz: 280, sakin }} cizim={cizim.svg} etiket={ad} sinif={gelis ? 'harita-gelis' : ''} yukseklik={B.y + 40}>
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <div style={{ opacity: tarihNo != null ? .58 : 1, transition: 'opacity var(--sure-kisa)' }}>
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} sagBos={48} /></Kutu>
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={listeyeDon} sagBos={48} /></Kutu>
       <Kutu x={326} y={40} w={44} h={44}><DevirAiDugme /></Kutu>
       </div>
 

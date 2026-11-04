@@ -170,6 +170,8 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   };
   const onculNotu = (z: any) => (BITTI(z.durum) ? (z.durum === 'tamam' ? `bitti ${gunAy(Date.parse(z.durum_at))}` : z.durum_etiket || z.durum) : `${z.durum_etiket || z.durum}${z.en_erken_bitis ? ` · en erken ${gunAy(Date.parse(z.en_erken_bitis))}` : ''}; bitmeden bu görev başlayamaz`);
   // N17: çıktı bölümü yalnız gerekiyorsa; planlamada "çıktı yok" denen adımda, çıktı yazılmadıkça görünmez
+  // B11 (4 Kas): çıktı geldiyse detayda ilk o görünür (eylemlerin hemen altında); yoksa yeri aşağıda
+  const ciktiUstte = (A.ciktilar || []).length > 0;
   const ciktiVar = !!A.beklenen_cikti || A.cikti_bekleniyor === true || (A.ciktilar || []).length > 0 || A.cikti_sayisi > 0 || (benim && !A.karar_adimi && A.cikti_bekleniyor !== false);
   const altlar: any[] = A.tekrar?.kalemler || [];
   // W5 (N23, N24): gerçek alt görevler; alt görevin üstü
@@ -196,6 +198,8 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
 
   // alt görevler aynı sayfada akordiyon (plan 28 Eki, B5): bütün yönetimi içinde; ayrı sayfa yok
   const altAkordiyon = (z: any) => <AltGorev key={z.no} kod={kod} z={z} d={d} ben={ben} ustNo={A.no} acik={secAlt === z.no} />;
+
+  const ciktiBolumu = <div id="gd-ciktilar" className="gd-bolum gd-ciktilar"><Ciktilar a={A} kod={kod} /></div>;
 
   return (
     <div className="gd" ref={kok}>
@@ -235,6 +239,8 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         {claude && <Dugme className="statik" tur={benim || sahipDis ? 'ikincil' : 'birincil'} ton="lila" yukseklik={benim || sahipDis ? 48 : undefined} fs={benim || sahipDis ? 15 : undefined} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
         {bitir.isError && <p className="canli-hata-satir" role="alert">{(bitir.error as Error).message}</p>}
       </div>
+
+      {ciktiUstte && ciktiBolumu}
 
       {(altGorevler.length > 0 || altEklenir) && <Bolum baslik={altGorevler.length ? `ALT GÖREVLER · ${altKN}` : 'ALT GÖREVLER'} id="gd-alt-gorevler">
         {altGorevler.length > 0 && <ul className="gd-baglar gd-alt-liste">{altGorevler.map(altAkordiyon)}</ul>}
@@ -284,7 +290,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
 
       {A.karar_adimi && <Bolum baslik="KARAR" id="gd-karar"><KararBolumu a={A} kod={kod} ben={ben} /></Bolum>}
 
-      {ciktiVar && <div id="gd-ciktilar" className="gd-bolum gd-ciktilar"><Ciktilar a={A} kod={kod} /></div>}
+      {ciktiVar && !ciktiUstte && ciktiBolumu}
 
       {altlar.length > 0 && <Bolum baslik={`KALEMLER · ${altlar.length}`}>
         <ul className="gd-baglar">{altlar.map((k) => <li key={k.ad}><button type="button" className="gd-bag" onClick={() => (k.akis ? git(`/akis/${encodeURIComponent(k.akis)}`) : git(`/akis/${encodeURIComponent(kod)}/tekrar/${A.no}`))}><span><b>{k.ad}</b><small>{A.tekrar.kalem_turu || 'kalem'}</small></span></button></li>)}</ul>

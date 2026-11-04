@@ -91,5 +91,14 @@ export async function dosyaIndir(id: string, taban = '') {
   document.body.appendChild(a); a.click(); a.remove();
 }
 
+/** B16 (4 Kas): dosyayı indirmeden yeni sekmede açar (PDF ve görsel tarayıcıda önizlenir). Sekme tıklama anında açılır, açılır pencere engeline takılmaz. */
+export async function dosyaAc(id: string, taban = '') {
+  const w = window.open('', '_blank');
+  try {
+    const r = await api.get<any>(`${taban}/dosya/${id}`);
+    if (w) { w.opener = null; w.location.href = r.url; } else window.open(r.url, '_blank', 'noopener');
+  } catch (e) { w?.close(); throw e; }
+}
+
 export const dosyaSil = (id: string) => api.post<any>(`/dosya/${id}/sil`, {});
 export { ApiHatasi };

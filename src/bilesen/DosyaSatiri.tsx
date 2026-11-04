@@ -28,14 +28,16 @@ export interface Eylem { ad: string; ikon: ReactNode; ton?: 'lila' | 'mercan'; t
 /**
  * Dosya satırı (§3.22): 62 px, yarıçap 18. Haller: kayitli, yukleniyor (yuzde), hazir (altın + tik), hata (mercan), silindi.
  */
-export function DosyaSatiri({ ad, tur, alt, hal = 'kayitli', yuzde, eylemler = [], ikon }: {
+export function DosyaSatiri({ ad, tur, alt, hal = 'kayitli', yuzde, eylemler = [], ikon, ac }: {
   ad: string; tur?: string; alt: ReactNode; hal?: 'kayitli' | 'yukleniyor' | 'hazir' | 'hata' | 'silindi'; yuzde?: number; eylemler?: Eylem[]; ikon?: ReactNode;
+  /** B16 (4 Kas): satırın adına basınca çıktı yeni sekmede açılır */
+  ac?: () => void;
 }) {
   return (
     <li className={`dosya-satiri hal-${hal}`} aria-label={`${ad}. ${hal === 'yukleniyor' ? `Yükleniyor yüzde ${Math.round((yuzde || 0) * 100)}` : hal === 'hata' ? `Hata: ${alt}` : hal === 'silindi' ? 'Dosya silindi' : ''}`}>
       <span className="dosya-satiri-glif">{ikon || <DosyaGlif ad={ad} tur={tur} silindi={hal === 'silindi'} />}</span>
       <span className="dosya-satiri-metin">
-        <b>{ad}</b>
+        {ac ? <button type="button" className="dosya-satiri-ac" onClick={ac} aria-label={`Önizle: ${ad}`}>{ad}</button> : <b>{ad}</b>}
         {hal === 'yukleniyor' && <span className="ilerleme" role="progressbar" aria-valuenow={Math.round((yuzde || 0) * 100)} aria-valuemin={0} aria-valuemax={100}><i style={{ width: `${(yuzde || 0) * 100}%` }} /></span>}
         <small>{hal === 'hata' && <UyariIkon />}{alt}</small>
       </span>

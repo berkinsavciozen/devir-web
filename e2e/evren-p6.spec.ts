@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// P6 (plan 27 Eki, Epic 3 I grubu): merkez = bitti, akış süzgeci (en riskli 10), Akışlar ızgarası yakınlaşmasız.
+// P6 (plan 27 Eki, Epic 3 I grubu): merkez = bitti, akış süzgeci (son üretilen 5; B14 4 Kas), Akışlar ızgarası yakınlaşmasız.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
   await p.setViewportSize({ width: w, height: h });
   await p.emulateMedia({ reducedMotion: 'reduce' });
@@ -10,17 +10,22 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('3.J: 10\'dan çok akışta ilk açılış en riskli 10, usturlap; Hepsi seçilince kalabalık düzen', async ({ page }) => {
+test('3.J: 5\'ten çok akışta ilk açılış son üretilen 5; hepsini kaldır/ekle; Hepsi seçilince kalabalık düzen', async ({ page }) => {
   await ac(page, '/?senaryo=berkin&hal=olcek');
-  const hap = page.getByRole('button', { name: /^Haritada 10 \/ \d+ akış/ });
+  const hap = page.getByRole('button', { name: /^Haritada 5 \/ \d+ akış/ });
   await expect(hap).toBeVisible();
   await cek(page, 'P6-suzgec');
   await hap.click();
   const sayfa = page.getByRole('dialog', { name: 'Haritadaki akışlar' });
-  await expect(sayfa.getByRole('list', { name: 'Akışlar' }).getByRole('button', { pressed: true })).toHaveCount(10);
-  await sayfa.getByRole('button', { name: 'Hepsi' }).click();
+  const liste = sayfa.getByRole('list', { name: 'Akışlar' });
+  await expect(liste.getByRole('button', { pressed: true })).toHaveCount(5);
+  await sayfa.getByRole('button', { name: 'Hepsini kaldır' }).click();
+  await expect(liste.getByRole('button', { pressed: true })).toHaveCount(0);
+  await expect(sayfa.getByRole('button', { name: 'En az bir akış seç' })).toBeDisabled();
+  await cek(page, 'P6-suzgec-kutu');
+  await sayfa.getByRole('button', { name: 'Hepsini ekle' }).click();
   // seçim Uygula ile geçer (plan 28 Eki, Q1)
-  await sayfa.getByRole('button', { name: 'Uygula' }).click();
+  await sayfa.getByRole('button', { name: /^Uygula/ }).click();
   await expect(page.getByRole('button', { name: /^Haritada (\d+) \/ \1 akış/ })).toBeVisible();
 });
 

@@ -57,6 +57,7 @@ export function ayniHarita(a: string, b: string) {
 export function useYol(): string {
   const [yol, setYol] = useState(yolAl);
   const sonYol = useRefYol(yol);
+  useEffect(() => listeyiKaydet(yol), [yol]);
   useEffect(() => {
     const d = () => {
       const yeni = yolAl(), yon = sonrakiYon ?? 'geri';
@@ -78,9 +79,24 @@ function useRefYol(yol: string) {
   return r;
 }
 
-/** Yola git. `yerine`: geçmiş kaydı büyümez (çapraz geçiş); `gecissiz`: geçiş animasyonu yok (Z1 kendi çizer). */
-export function git(yol: string, o: { yerine?: boolean; gecissiz?: boolean } = {}) {
-  const yon = o.gecissiz ? 'yok' : o.yerine ? 'yer' : 'ileri';
+/**
+ * Akış haritasının geri düğmesi her zaman bir liste sayfasına döner (B12, 4 Kas): tarayıcı geçmişi harita içindeki
+ * seçimlerle (adım aç/kapat) dolar, history.back() aynı haritada bırakabilir. Son görülen liste sayfası burada tutulur.
+ */
+const LISTE = new Set(['/', '/akislar', '/gorevler', '/akislar/arsiv']);
+let sonListe = '/akislar';
+try { sonListe = sessionStorage.getItem('devir:sonListe') || sonListe; } catch { /* gizli pencere */ }
+export function listeyiKaydet(yol: string) {
+  if (!LISTE.has(yol)) return;
+  sonListe = yol + (HASH ? '' : location.search);
+  try { sessionStorage.setItem('devir:sonListe', sonListe); } catch { /* gizli pencere */ }
+}
+/** Akış haritasından geldiği liste sayfasına (yoksa Akışlar'a) geri döner. */
+export const listeyeDon = () => git(sonListe, { geri: true });
+
+/** Yola git. `yerine`: geçmiş kaydı büyümez (çapraz geçiş); `gecissiz`: geçiş animasyonu yok (Z1 kendi çizer); `geri`: geri yönde geçiş. */
+export function git(yol: string, o: { yerine?: boolean; gecissiz?: boolean; geri?: boolean } = {}) {
+  const yon = o.gecissiz ? 'yok' : o.geri ? 'geri' : o.yerine ? 'yer' : 'ileri';
   if (HASH) {
     if ('#' + yol === location.hash) return;
     sonrakiYon = yon;

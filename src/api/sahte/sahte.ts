@@ -342,7 +342,7 @@ function halOtuz(T: Record<string, any[]>) {
 /** C1 · 7 Kas: Karadeniz'de çiftçi kabul kararının sırası geldi; Claude 5 çiftçi önerdi. */
 async function halKarar(yaz: Yaz) {
   const a = (no: number) => `/api/v1/akis/XPVZ/adim/${no}`;
-  await yaz('2026-10-15T11:00:00+03:00', a(1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme' } });
+  await yaz('2026-10-15T11:00:00+03:00', a(1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme', icerik: '## Teklif paketi\n\n- **Komisyon:** %12\n- **Ödeme:** teslimden sonra 7 gün\n\nÇiftçiye gidecek metin hazır; gönderme kararı sende.' } });
   await yaz('2026-10-16T15:00:00+03:00', a(16), { durum: 'tamam', not: 'Kargo: Rize ve Trabzon toplama noktası' });
   await yaz('2026-10-17T10:00:00+03:00', a(4), { durum: 'suruyor' });
   await yaz('2026-10-21T17:00:00+03:00', a(4), { durum: 'tamam', not: '4 kooperatif yönetimiyle görüşüldü' });

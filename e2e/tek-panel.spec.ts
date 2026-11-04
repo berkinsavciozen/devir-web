@@ -56,10 +56,10 @@ test('Q1 · 390: süzgeç satırı haritanın üstünde; hedefler 44 px', async 
 
 test('Q1 · evren: akış seçimi Uygula ile geçer, Vazgeç bırakır', async ({ page }) => {
   await ac(page, '/?senaryo=berkin&hal=olcek', 1440, 900);
-  const hap = page.getByRole('button', { name: /^Haritada 10 \/ \d+ akış/ });
+  const hap = page.getByRole('button', { name: /^Haritada 5 \/ \d+ akış/ });
   await hap.click();
   const kutu = page.getByRole('dialog', { name: 'Haritadaki akışlar' });
-  await kutu.getByRole('button', { name: 'Hepsi' }).click();
+  await kutu.getByRole('button', { name: 'Hepsini ekle' }).click();
   await kutu.getByRole('button', { name: 'Vazgeç' }).click();
   await expect(hap).toBeVisible();
   await cek(page, 'Q1-evren-1440');
