@@ -591,9 +591,9 @@ export const tokens = {
   },
   "galaksi": {
     "sarmal": {
-      "tur": "Arşimet r = b·φ",
-      "PHI_SON": 8,
-      "b": "etkinGün / S(PHI_SON), S(φ)=½(φ√(1+φ²)+asinh φ)"
+      "tur": "Arşimet r = r₀ + b·φ (W5, K5): r₀ = b·φ₀, φ₀ = 0.19·PHI; çizgi merkezden çıkar, merkez–r₀ arası zamansız",
+      "PHI": "2π · clamp(0.75 + adım/12, 1, 2.25) · clamp(R0/170, 0.85, 1.1)",
+      "b": "etkinGün / (S(φ₀+PHI) − S(φ₀)), S(φ)=½(φ√(1+φ²)+asinh φ)"
     },
     "hiz": "c = 1 gün/birim; piksel/gün k = R / en uzak nokta",
     "faz": "ψ_i = −90° + i·360°/n (+ spin)",

@@ -24,6 +24,20 @@ const SABIT_Z = (G: ReturnType<typeof GG.kur>) => {
 };
 
 describe('galaksi geometrisi', () => {
+  // W5 (K5): sarmal r₀'dan başlar, çizgi merkezden çıkar; tur sayısı adım sayısıyla artar
+  it('K5: tur sayısı az adımda 1, çok adımda en çok 2.25 tur', () => {
+    expect(GG.turSayisi(3) / (2 * Math.PI)).toBeCloseTo(1, 6);
+    expect(GG.turSayisi(12) / (2 * Math.PI)).toBeCloseTo(1.75, 6);
+    expect(GG.turSayisi(40) / (2 * Math.PI)).toBeCloseTo(2.25, 6);
+  });
+  for (const [kod, akis] of Object.entries(akislar).slice(0, 3)) it(`K5 ${kod}: yollar merkezden çıkar, gemi t0'da r₀'dadır`, () => {
+    const G = GG.kur(akis, MOBIL);
+    for (const u of G.uyeler) {
+      expect(u.yol[0].x).toBeCloseTo(MOBIL.cx, 6); expect(u.yol[0].y).toBeCloseTo(MOBIL.cy, 6);
+      const p = G.konumAn(u.ad, u.t0)!;
+      expect(Math.hypot(p.x - MOBIL.cx, p.y - MOBIL.cy)).toBeGreaterThan(MOBIL.R * 0.08);
+    }
+  });
   it('S ve phiOfS birbirinin tersi', () => {
     for (const s of [0.01, 1, 10, 33.3]) expect(GG.S(GG.phiOfS(s))).toBeCloseTo(s, 9);
   });
@@ -39,7 +53,7 @@ describe('galaksi geometrisi', () => {
     });
     // plan 27 Eki (3.A): gezegen boyu sabit (darboğaz taçla), sürüyor ve ertelendi ayrı durum; geri kalanı kaynakla birebir
     it(`${kod}: kaynak modülle birebir aynı (boy ve yeni durumlar dışında)`, () => {
-      const a = GG.kur(akis, MOBIL), b = Ref.kur(akis, MOBIL);
+      const a = GG.kur(akis, { ...MOBIL, eskiSarmal: true }), b = Ref.kur(akis, MOBIL);
       expect(a.k).toBeCloseTo(b.k, 9);
       expect(Object.keys(a.gezegen)).toEqual(Object.keys(b.gezegen));
       for (const no of Object.keys(b.gezegen)) {

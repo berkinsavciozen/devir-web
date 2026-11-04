@@ -72,6 +72,8 @@ export interface KurSecenek {
   kuyrukMax?: number;
   /** yakınlaşmasız çizimin R'si: harita yakınlaşınca R büyür, aynı andakilerin aralığı da onunla büyür (plan 2 Kas) */
   R0?: number;
+  /** W5 öncesi sarmal (r₀ = 0, sabit PHI_SON): yalnız kaynak modülle kıyas testinde */
+  eskiSarmal?: boolean;
 }
 
 type Polar = { r: number; th: number };
@@ -146,7 +148,8 @@ export interface Galaksi {
 
 const GUN = 864e5, TAU = Math.PI * 2;
 export const SABIT = Object.freeze({
-  PHI_SON: 8.0,      // t0'da çıkan üye akış sonunda sarmalda 8 radyan (≈1.3 tur) dönmüş olur
+  PHI_SON: 8.0,      // eski sabit tur (W5 öncesi); artık turSayisi(n, R0) ile adım sayısına göre seçilir
+  PHI0_KAT: 0.19,    // K5: sarmal merkezden r₀ = b·PHI0_KAT·PHI kadar dışarıda başlar (≈ R'nin %16'sı); çizgi yine merkezden çıkar
   ORNEK: 48,         // bir yol parçasındaki örnek nokta sayısı
   K_MAX: 3,          // aktarma yolunda en çok fazladan tam tur
   DEVIR_PAY: 3600e3, // girdi, alıcı başladıktan en az 1 saat sonra bittiyse yollar kesişir
@@ -163,6 +166,11 @@ const modT = (a: number) => ((a % TAU) + TAU) % TAU;
 
 // ---------- Arşimet sarmalı r = b·φ ; yay uzunluğu = b·S(φ), S(φ) = ½(φ√(1+φ²) + asinh φ) ----------
 export const S = (phi: number) => 0.5 * (phi * Math.sqrt(1 + phi * phi) + Math.asinh(phi));
+/** K5 (4 Kas): akış sonunda dönülen açı. Az adım halkaları açar, çok adım sıkılaştırır; küçük ekranda biraz daha az tur. */
+export function turSayisi(n: number, R0 = 170): number {
+  const tur = Math.min(2.25, Math.max(1, 0.75 + n / 12)), ekran = Math.min(1.1, Math.max(0.85, R0 / 170));
+  return TAU * tur * ekran;
+}
 export function phiOfS(s: number) { // S(φ) = s → φ (Newton; S'(φ) = √(1+φ²))
   if (s <= 0) return 0;
   let p = Math.sqrt(2 * s);
@@ -287,11 +295,13 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   const tSon = bitti ? (akis.kapandi as number) : Math.max(akis.hedef, tAktif);
   const payGun = bitti ? 0 : Math.max(0, (akis.hedef - tAktif) / GUN);
   const Dgun = Math.max(0.5, bitti ? ((akis.kapandi as number) - T0) / GUN : aktifGun + Math.min(payGun, KMAX * Math.max(aktifGun, 1)));
-  const b = Dgun / S(SABIT.PHI_SON);
+  // K5: r = r₀ + b·φ. r₀ = b·φ₀; yay uzunluğu φ₀'dan ölçülür, yol = zaman değişmez (§11)
+  const PHI = o.eskiSarmal ? SABIT.PHI_SON : turSayisi(adimlar.length, o.R0 ?? R), phi0 = o.eskiSarmal ? 0 : SABIT.PHI0_KAT * PHI;
+  const b = Dgun / (S(phi0 + PHI) - S(phi0)), r0 = b * phi0;
   // 4) zaman sırasıyla yerleşim
   const durum: Record<string, { p: Polar; t: number; yol: HamParca[] }> = {}; for (const u of uyeler) durum[u.ad] = { p: { r: 0, th: u.psi }, t: u.t0, yol: [] };
   const gez: Record<number, { r: number; th: number; t: number; uyeler: string[] }> = {}, ipler: Ip[] = [];
-  const bas = (u: Uye): Polar => (durum[u.ad].p.r < 1e-9 ? { r: 0, th: u.psi } : durum[u.ad].p);
+  const bas = (u: Uye): Polar => (durum[u.ad].p.r < 1e-9 ? { r: r0, th: u.psi } : durum[u.ad].p);
   const ekle = (u: Uye, P: Polar, t: number, tur: 'dogal' | 'aktarma') => {
     const D = durum[u.ad], L = Math.max(0, (t - D.t) / GUN), A = bas(u);
     const seg = tur === 'dogal' ? { P: araYol(A, P, (P.r - A.r) / b, 0), hata: 0 } : aktarma(A, P, L);
@@ -356,7 +366,9 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   for (const u of uyeler) {
     u.parcalar = durum[u.ad].yol.map((s) => ({ ta: s.ta, tb: s.tb, L: s.L, hata: s.hata, tur: s.tur, pts: zamanla(s) }));
     u.yol = []; for (const s of u.parcalar) for (const p of s.pts) { const l = u.yol[u.yol.length - 1]; if (!l || p.t > l.t) u.yol.push(p); }
-    if (!u.yol.length) u.yol.push({ x: cx, y: cy, t: u.t0 });
+    if (!u.yol.length) { const [x, y] = px(...kart({ r: r0, th: u.psi })); u.yol.push({ x, y, t: u.t0 }); }
+    // K5: çizgi merkezden çıkar; merkez–r₀ arası zamansızdır (gemi t0'da r₀'dadır)
+    if (r0 > 0) u.yol.unshift({ x: cx, y: cy, t: u.yol[0].t - 1 });
     u.tSon = durum[u.ad].t;
   }
   if (kuyruk) kuyruk.pts = zamanla(kuyruk);
@@ -385,7 +397,7 @@ export function kur(akis: GirdiAkis, o: KurSecenek = {}): Galaksi {
   /** üyenin yolunun [ta, tb] aralığı (piksel nokta dizisi) */
   function kesit(ad: string, ta: number, tb: number, o2: { kuyruk?: boolean } = {}): Nokta[] {
     const u = uyeOf[ad]; if (!u) return [];
-    const Y = yolu(ad, o2.kuyruk), a = Math.max(ta, Y[0].t), z = Math.min(tb, Y[Y.length - 1].t);
+    const Y = yolu(ad, o2.kuyruk), a = Math.max(ta, Y[0].t, u.t0), z = Math.min(tb, Y[Y.length - 1].t);
     if (z <= a) return [];
     const out: Nokta[] = [], pa = konumAn(ad, a, o2)!, pz = konumAn(ad, z, o2)!;
     out.push([pa.x, pa.y]); for (const p of Y) if (p.t > a && p.t < z) out.push([p.x, p.y]); out.push([pz.x, pz.y]);
