@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
-import { planet, ship, kapi } from '../../cizim/ortak.js';
-import { tac, elmas, belge } from '../../cizim/yol.js';
+import { destekGemisi, planet, ship, kapi } from '../../cizim/ortak.js';
+import { tac, elmas, belge, otoRozet } from '../../cizim/yol.js';
 import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
 import { yuzeyKodlamalari, type Yuzey } from '../../geometri/kodlama';
 import { bSuzgecAdresi, type OlayTuru } from '../bildirimler/model';
 import { git } from '../../yonlendirme';
 
 /** Lejant satırının anahtarı: sayı bu anahtarla gelir; olay türü olan satır o türün bildirimlerine gider (N2). */
-export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'ortak' | 'ip' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi';
+export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'ortak' | 'ip' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi' | 'ai' | 'ai_onay';
 const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 'sira', engel: 'engel', atlandi: 'atlandi', karar: 'karar' };
 
 // Harita dili (denetim planı, CELISKILER 64): haritadaki işaretlerin ne demek olduğu. "?" düğmesiyle açılır.
@@ -23,7 +23,8 @@ const SATIRLAR: Satir[] = [
   [planet(22, 22, 9, 'ertele', { life: false }), 'Ertelendi', 'Soluk, saatli; açık iş olarak kalır', 'ertele'],
   [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Kesik çizgili, üstü çizik', 'atlandi'],
   [planet(22, 22, 9, 'wait', { life: false, waitRings: 1, karar: true }), 'Karar', 'Bayraklı: son söz insanda', 'karar'],
-  [planet(22, 22, 9, 'dark', { life: false, oto: 'bakilacak' }), 'AI yapsın', 'Kıvılcım: zamanı gelince Claude rutini yapar; lila bekliyor ya da çalışıyor, altın bakılacak'],
+  [planet(22, 22, 9, 'dark', { life: false, oto: 'bekliyor' }), 'AI yapsın', 'Kıvılcım: zamanı gelince Claude rutini yapar; çizgili bekliyor, dolu çalışıyor, mercan yapamadı', 'ai'],
+  [planet(22, 24, 9, 'run', { life: false, oto: 'bakilacak' }), 'AI yazdı, onayını bekliyor', 'Camgöbeği flama: bakıp onayla ya da düzelttir', 'ai_onay'],
   [planet(22, 24, 8, 'dark', { life: false }) + tac(22, 24, 8, 1, true), 'Darboğaz', 'Lila taç: arkasında en çok iş bekleyen adım; ne kadar parlaksa o kadar çok', 'darbogaz'],
   [planet(22, 22, 8, 'dark', { life: false }) + elmas(13, 13, 1.3), 'Kritik yol', 'Altın elmas: gecikirse hedef tarih kayar', 'kritik'],
   [planet(22, 22, 8, 'lit', { life: false }) + belge(31, 30, 1.3), 'Çıktı', 'Belge: adımın teslim ettiği bir iş var', 'cikti'],
@@ -31,6 +32,7 @@ const SATIRLAR: Satir[] = [
   [`<defs><linearGradient id="lj-ip" x1="0" x2="1"><stop offset="0" stop-color="#FFC9A3"/><stop offset="1" stop-color="#8EC5FF"/></linearGradient></defs><path d="M6,30 L34,14" stroke="url(#lj-ip)" stroke-width="1.6"/><path d="M38,12 L31,13 L34,18Z" fill="#8EC5FF"/>`, 'Devir', 'Renk geçişli ok: iş bir kişiden ötekine geçiyor', 'ip'],
   [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Kapsül; penceresinde baş harfi', 'insan'],
   [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'Robot; ışığı sahibinin renginde', 'agent'],
+  [destekGemisi(26, 28, -12, -12, '#FFC9A3', .62) + ship(26, 28, -12, 'insan', 'B', '#FFC9A3', .62, { flame: false }), 'Destek', 'Kişinin agent’ı gemisine kolla yapışık; o kişi için çalışır'],
   [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'Balon; yalnız kendi adımlarını görür', 'dis'],
   [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol'],
 ];
@@ -124,7 +126,7 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
   );
 }
 
-const GEZEGEN_ISARETI = new Set<LejantAnahtar>(['bitti', 'suruyor', 'sira', 'engel', 'sirada', 'ertele', 'atlandi', 'karar', 'kritik', 'cikti', 'darbogaz', 'ortak']);
+const GEZEGEN_ISARETI = new Set<LejantAnahtar>(['bitti', 'suruyor', 'sira', 'engel', 'sirada', 'ertele', 'atlandi', 'karar', 'kritik', 'cikti', 'darbogaz', 'ortak', 'ai', 'ai_onay']);
 /** Lejant satırının haritadaki gezegenleri (yalnız çizilen ana görevler); darboğaz: taçlı ya da sunucunun darboğazı. */
 export function lejantGezegenleri(d: any, G?: { gezegen: Record<number, { kritik?: boolean; korona?: number; ortak?: boolean }> }): Record<string, number[]> {
   const A = (d?.adimlar || []).filter((a: any) => a.ust_adim == null && G?.gezegen[a.no]);
@@ -135,6 +137,7 @@ export function lejantGezegenleri(d: any, G?: { gezegen: Record<number, { kritik
     sirada: s((a) => a.durum === 'sirada'), ertele: s((a) => a.durum === 'ertelendi'), atlandi: s((a) => a.durum === 'atlandi'),
     karar: s((a) => a.karar_adimi && acik(a)), kritik: s((a) => !!G?.gezegen[a.no].kritik && acik(a)), cikti: s((a) => (a.cikti_sayisi || 0) > 0),
     darbogaz: s((a) => acik(a) && ((G?.gezegen[a.no].korona || 0) > 0 || a.no === sunucu)), ortak: s((a) => !!G?.gezegen[a.no].ortak),
+    ai: s((a) => acik(a) && !!a.oto && otoRozet(a) !== 'bakilacak'), ai_onay: s((a) => acik(a) && otoRozet(a) === 'bakilacak'),
   };
 }
 
@@ -149,6 +152,7 @@ export function galaksiSayilari(adimlar: any[], d?: { kritik_yol?: number[]; aki
     kritik: n((a) => a.ust_adim == null && kritik.has(a.no) && acik(a)), cikti: n((a) => a.ust_adim == null && (a.cikti_sayisi || 0) > 0),
     darbogaz: d?.akis?.karar_ozeti?.darbogaz?.no != null ? 1 : undefined,
     karar: n((a) => a.karar_adimi && a.durum !== 'tamam' && a.durum !== 'atlandi'), insan: kisi('insan'), agent: kisi('agent'), dis: kisi('dis'),
+    ai: n((a) => acik(a) && !!a.oto && otoRozet(a) !== 'bakilacak'), ai_onay: n((a) => acik(a) && otoRozet(a) === 'bakilacak'),
   };
 }
 /** Evren haritasının sayıları: akış sayısı, takılan, bekleyen ve karar bekleyen işler (bütün akışlarda). */

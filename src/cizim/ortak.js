@@ -494,9 +494,23 @@ function aiRozet(r, durum, mini) {
   const d = `M0,${f(-k * .62)} Q${f(k * .1)},${f(-k * .1)} ${f(k * .62)},0 Q${f(k * .1)},${f(k * .1)} 0,${f(k * .62)} Q${f(-k * .1)},${f(k * .1)} ${f(-k * .62)},0 Q${f(-k * .1)},${f(-k * .1)} 0,${f(-k * .62)}Z`;
   return `<g transform="translate(${f(-r * .8)},${f(-r * .8)})"${durum === 'calisiyor' ? ' class="dongu-halka"' : ''}><circle r="${f(k)}" fill="${dolgu}" stroke="${durum === 'bekliyor' ? cizgi : '#FFF3E8'}" stroke-width="1"/><path d="${d}" fill="${durum === 'bekliyor' ? cizgi : cizgi}"/></g>`;
 }
+/** W2 (4 Kas): kişinin gemisine kısa bir kolla yapışık destek robotu (agent = kişinin desteği, K1). dx, dy robotun gemiye göre yeri. */
+function destekGemisi(x, y, dx, dy, col = C.lilac, sc = 1) {
+  const kol = `<path d="M${f(x - 2 * sc)},${f(y - 7 * sc)} Q${f(x + dx * .45)},${f(y + dy * .62)} ${f(x + dx * .8)},${f(y + dy * .8)}" fill="none" stroke="${col}" stroke-width="${f(Math.max(1.2, 2 * sc))}" stroke-linecap="round"/>`;
+  return kol + ship(x + dx, y + dy, 0, 'agent', '', col, sc * .72, { flame: false });
+}
+/**
+ * W2 (4 Kas): "AI yazdı, onayını bekliyor" işareti. Camgöbeği çatal flama, üstünde göz; sol üstte, karar bayrağının
+ * (sağ üst, altın üçgen) karşısında. Haritadaki hiçbir işaret bu renk ve biçimi kullanmaz.
+ */
+const ONAY_RENK = '#5FE3F0';
+function onayFlamasi(r, mini) {
+  const h = Math.max(mini ? 8 : 11, r * (mini ? .95 : 1.05));
+  return `<g class="onay-flama" transform="rotate(-28)"><g transform="translate(0,${f(-r + 1)})"><rect x="-.8" y="${f(-h)}" width="1.6" height="${f(h)}" fill="#FFF1E2"/><path d="M.8,${f(-h)} H${f(h * .9)} L${f(h * .62)},${f(-h + h * .22)} L${f(h * .9)},${f(-h + h * .44)} H.8Z" fill="${ONAY_RENK}" stroke="#08222E" stroke-width="${mini ? .7 : 1}"/><g transform="translate(${f(h * .4)},${f(-h + h * .22)})"><path d="M${f(-h * .19)},0 Q0,${f(-h * .16)} ${f(h * .19)},0 Q0,${f(h * .16)} ${f(-h * .19)},0Z" fill="#08222E"/><circle r="${f(Math.max(.6, h * .065))}" fill="#FFF1E2"/></g></g></g>`;
+}
 function planet(x, y, r, state, o = {}) {
   const s = planetGovde(x, y, r, state, o);
   if (!o.oto) return s;
-  return s.replace(/<\/g>$/, aiRozet(r, o.oto, o.mini) + '</g>');
+  return s.replace(/<\/g>$/, (o.oto === 'bakilacak' ? onayFlamasi(r, o.mini) : aiRozet(r, o.oto, o.mini)) + '</g>');
 }
-export { kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
+export { onayFlamasi, ONAY_RENK, destekGemisi, kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };

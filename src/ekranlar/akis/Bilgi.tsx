@@ -49,10 +49,14 @@ export const adimIkon = (a: any, h = 58) => a.ust_adim != null
   // alt görev: üstüne bağlı küçük uydu (W5, N24)
   ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${planet(37, 29, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`
   : `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`;
+/** AI yapsın durumunun liste dili (W2). */
+export const AI_DURUM: Record<string, string> = { bekliyor: 'AI yapsın açık', calisiyor: 'AI çalışıyor', bakilacak: 'AI yazdı, onayını bekliyor', hata: 'AI yapamadı' };
 /** "Berkin · hazır · en erken 21 Eki" */
 export function adimAlt(a: any) {
   const t = BITTI(a.durum) ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.en_erken_bitis ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : '';
-  return [kisaAd(a.sahip), a.durum_etiket || a.durum, t].filter(Boolean).join(' · ');
+  // W2 (4 Kas): AI yapsın işinde durum yerine AI'ın durumu; agent adı kısaltılmaz ("Berkin'in" değil "Berkin'in Claude'u")
+  const ai = BITTI(a.durum) ? null : AI_DURUM[otoRozet(a) || ''] || null;
+  return [a.sahip_tip === 'agent' ? a.sahip : kisaAd(a.sahip), ai || a.durum_etiket || a.durum, t].filter(Boolean).join(' · ');
 }
 const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-8,-12 H4 L10,-6 V12 H-8Z" fill="#08222E" stroke="#D9CCFF" stroke-width="1.3" stroke-linejoin="round"/><path d="M4,-12 V-6 H10" fill="none" stroke="#D9CCFF" stroke-width="1.3"/><path d="M-4,0 H6 M-4,5 H4" stroke="#B9A6F2" stroke-width="1.3" stroke-linecap="round"/></g>`;
 

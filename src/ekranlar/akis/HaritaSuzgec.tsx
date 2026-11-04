@@ -8,8 +8,10 @@ export type HaritaCipi = { ad: string; etiket: string; kaldir: () => void };
  * Haritanın üstündeki süzgeç satırı (plan 28 Eki, Q1 · B6, B10, K9): seçici kutuyu açan düğme (akışta "Kişiler", evrende
  * "10/16 akış"), harita dili ("?") ve seçili süzgeçler çip olarak; çipe dokununca o süzgeç kalkar. Üç nokta menüsünün yerini alır.
  */
-export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Harita dili', cipler }: {
+export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Harita dili', cipler, ai }: {
   x: number; y: number; en: number; secici?: { yazi: string; etiket?: string; ikon?: boolean; ac: () => void };
+  /** W2: akıştaki AI etkinliği (onay bekleyen varsa çip camgöbeği flamalı) */
+  ai?: { yazi: string; onay: boolean; ac: () => void } | null;
   lejantAc: () => void; lejantEtiket?: string; cipler: HaritaCipi[];
 }) {
   return (
@@ -19,6 +21,12 @@ export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Hari
         {secici.yazi}<span aria-hidden className="harita-cip-ok">▾</span>
       </button>}
       <button type="button" className="harita-cip ana yuvarlak lejant-dugme" aria-label={lejantEtiket} aria-haspopup="dialog" onClick={lejantAc}><SoruIkon /></button>
+      {ai && <button type="button" className={`harita-cip ana ai-cip${ai.onay ? ' onay' : ''}`} aria-haspopup="dialog" aria-label={`AI etkinliği: ${ai.yazi.replace(/^AI · /, '')}`} onClick={ai.ac}>
+        <svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16">{ai.onay
+          ? <><rect x="-5.6" y="-7" width="1.3" height="14" fill="currentColor" /><path d="M-4.3,-7 H6 L3.4,-4.6 L6,-2.2 H-4.3Z" fill="#5FE3F0" stroke="#08222E" strokeWidth=".8" /></>
+          : <path d="M0,-6 Q1,-1 6,0 Q1,1 0,6 Q-1,1 -6,0 Q-1,-1 0,-6Z" fill="currentColor" />}</svg>
+        {ai.yazi}
+      </button>}
       {cipler.map((c) => <button key={c.etiket} type="button" className="harita-cip secili" aria-label={`${c.etiket}: ${c.ad}. Kaldır.`} onClick={c.kaldir}>{c.ad}<span aria-hidden>×</span></button>)}
     </div>
   );
