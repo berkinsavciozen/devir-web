@@ -24,6 +24,7 @@ import { TumHaritaDili } from '../akis/Lejant';
 import { whatsappAdresi } from '../akis/BaglantiGonder';
 import { uyumDurumu } from '../../api/surum';
 import { RutinKur } from './RutinKur';
+import { AgentDetay, agentCumlesi, agentIkonu, baglantiOf, useAgentlar } from './Agentlarim';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const MCP_TABAN = () => (SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN);
@@ -81,7 +82,13 @@ export function Ayarlar() {
   const bk = useQuery({ queryKey: ['bekleme'], queryFn: () => api.get<any>('/bekleme'), enabled: oturum && sahip, retry: false });
   // 0.29.0 AI yapsın: kişinin Claude rutin tetikleri; eski sunucuda bölüm görünmez
   const tk = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), enabled: !!ben && !dis, retry: false });
-  const [rutin, setRutin] = useState(() => arama().get('kur') === 'ai');
+  // W3 (K3): agent'lar tek listede (0.30.0 /agentlar); eski sunucuda iki ayrı bölüm (bağlantılar, rutinler) kalır
+  const aa = useAgentlar(!!ben && !dis);
+  const [agentAc, setAgentAc] = useState<string | null>(null);
+  // yeniden adlandırmadan sonra liste tazelenene kadar detay eski agent'la açık kalır
+  const sonAgent = useRef<any>(null), agentEski = useRef<string | null>(null);
+  const agentAdDegisti = (yeni: string) => { agentEski.current = sonAgent.current?.ad ?? null; setAgentAc(yeni); };
+  const [rutin, setRutin] = useState<boolean | string>(() => arama().get('kur') === 'ai');
   const [rutinKaldir, setRutinKaldir] = useState<any>(null);
   const [iptal, setIptal] = useState<any>(null);
   const [yeni, setYeni] = useState(false);
@@ -113,9 +120,16 @@ export function Ayarlar() {
   let y = 150;
   bY.ben = y;
   y = hesapYuksekligi(ben, y + 14, false);
-  const agY = y + 34; y = agY + 14 + AG.length * 68 + 66;
   const TK: any[] = tk.data?.tetikler || [];
-  const tkY = tk.data ? y + 34 : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
+  const AA = aa.data?.agentlar || [];
+  const genelT = aa.data?.genel_rutin ? TK.find((t) => t.id === aa.data!.genel_rutin!.id) : null;
+  const tek = !!aa.data;
+  const agY = y + 34;
+  // tek liste: agent'lar, genel rutin, kurulum satırı; altta bağlı uygulamalar
+  const agSatir = tek ? AA.length + (genelT ? 1 : 0) + 1 : AG.length + 1;
+  y = agY + 14 + agSatir * 68 - 2;
+  const bgY = tek ? y + 34 : null; if (bgY != null) y = bgY + 14 + (AG.length + 1) * 68 - 2;
+  const tkY = !tek && tk.data ? y + 34 : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
   const kuY = k ? y + 34 : null; if (kuY != null) y = kuY + 14 + 70;
   bY.kisiler = y + 46; y = bY.kisiler + 14 + (sahip ? 2 * 74 : 66);
   const onerVar = !dis && !!rf.data;
@@ -141,7 +155,7 @@ export function Ayarlar() {
     if (!el) return;
     kaydi.current = true;
     el.scrollIntoView({ block: 'start' });
-  }, [hedef, ben, an.data, uy.data, rf.data, ag.data, ku.data]);
+  }, [hedef, ben, an.data, uy.data, rf.data, ag.data, ku.data, aa.data]);
 
   const baslik = (b: Bolum, ek?: ReactNode) => <>
     <h2 id={`ayar-${b}`} className="bolum-baslik ayar-grup" style={{ top: bY[b] - 12 }}>{BASLIK[b]}</h2>{ek}
@@ -158,12 +172,30 @@ export function Ayarlar() {
         {baslik('ben')}
         <HesapIcerik y={bY.ben + 14} ben={ben} cikis={false} />
         <h3 className="bolum-baslik" style={{ top: agY - 12 }}>AGENT’LARIM</h3>
+        {tek ? <>
+          {AA.map((a, i) => (
+            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a)} ust={a.ad} alt={agentCumlesi(a, !!genelT, true)} onClick={() => setAgentAc(a.ad)} />
+          ))}
+          {genelT && <SatirKart y={agY + 14 + AA.length * 68} h={60} ikon={ozelIkon('<circle r="6" fill="none" stroke="#B9A6F2" stroke-width="1.6"/><path d="M0,-3.5 L0,0 L2.5,1.5" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linecap="round"/>')} ust={genelT.ad}
+            alt={`Tüm agent’larının işine bakar · ${genelT.son_tetik_at ? `son uğradı ${gunAy(Date.parse(genelT.son_tetik_at))} ${saat(Date.parse(genelT.son_tetik_at))}` : 'henüz uğramadı'}`}
+            sag={<button type="button" className="satir-eylem mercan" onClick={() => setRutinKaldir(genelT)} aria-label={`${genelT.ad} rutinini kaldır`}>Kaldır</button>} />}
+          <SatirKart y={agY + 14 + (agSatir - 1) * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
+            ust={AA.length || genelT ? 'AI yapsın kurulumu' : 'AI yapsın’ı kur'} alt={AA.length || genelT ? 'Yeni rutin kur ya da bağlantıyı kontrol et' : 'İki adım, bir kez: Claude’u bağla, rutini kur'} onClick={() => setRutin(true)} />
+          <h3 className="bolum-baslik" style={{ top: bgY! - 12 }}>BAĞLI UYGULAMALAR</h3>
+          {AG.map((a, i) => (
+            <SatirKart key={a.id} y={bgY! + 14 + i * 68} h={60} ikon={ozelIkon(`<text y="4.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFC9A3">${(a.ad[0] || 'C').toLocaleUpperCase('tr')}</text>`)} ust={a.ad} alt={a.alt}
+              sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
+          ))}
+          <SatirKart y={bgY! + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
+            ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
+        </> : <>
         {AG.map((a, i) => (
           <SatirKart key={a.id} y={agY + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (a.ad[0] || 'C').toLocaleUpperCase('tr'), '#FFC9A3', .62, { flame: false })} ust={a.ad} alt={a.alt}
             sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
         ))}
         <SatirKart y={agY + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
           ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
+        </>}
         {tkY != null && <>
           <h3 className="bolum-baslik" style={{ top: tkY - 12 }}>AI YAPSIN · CLAUDE RUTİNLERİ</h3>
           {TK.map((t, i) => (
@@ -244,7 +276,9 @@ export function Ayarlar() {
       {politikaAcik && <KararPolitikasi ak={pol.data?.politika?.agent_karari} kapat={() => setPolitikaAcik(false)} />}
       {iptal && <AnahtarIptal k={iptal} kapat={() => setIptal(null)} />}
       {kaldir && <AgentKaldir a={kaldir} kapat={() => setKaldir(null)} />}
-      {rutin && <RutinKur mcpAdres={MCP_TABAN()} mcpBagli={!!(AG.length || ben?.mcp_son_kullanim)} kapat={() => setRutin(false)} />}
+      {agentAc && aa.data && (() => { const a = AA.find((x) => x.ad === agentAc) || (sonAgent.current?.ad === agentEski.current ? sonAgent.current : undefined); if (a) sonAgent.current = a; return a ? <AgentDetay a={a} veri={aa.data} kip="yonetim" baglanti={baglantiOf(a.ad, AG)} kapat={() => setAgentAc(null)}
+        kurAc={(ad) => { setAgentAc(null); setRutin(ad); }} adDegisti={agentAdDegisti} rutinKaldir={(t) => { setAgentAc(null); setRutinKaldir(TK.find((x) => x.id === t.id) || t); }} /> : null; })()}
+      {rutin && <RutinKur mcpAdres={MCP_TABAN()} mcpBagli={!!(AG.length || ben?.mcp_son_kullanim)} agent={typeof rutin === 'string' ? rutin : null} kapat={() => setRutin(false)} />}
       {rutinKaldir && <RutinKaldir t={rutinKaldir} kapat={() => setRutinKaldir(null)} />}
       {yeni && <YeniAnahtar kapat={() => setYeni(false)} />}
     </>
@@ -362,7 +396,7 @@ function AgentKaldir({ a, kapat }: { a: { id: string; ad: string; istemci?: stri
 }
 
 function RutinKaldir({ t, kapat }: { t: { id: string; ad: string }; kapat: () => void }) {
-  const m = useMutation({ mutationFn: () => api.post<any>(`/tetikler/${t.id}/kaldir`, {}), onSuccess: () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['tetikler'] }); kapat(); } });
+  const m = useMutation({ mutationFn: () => api.post<any>(`/tetikler/${t.id}/kaldir`, {}), onSuccess: () => { for (const q of [['tetikler'], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: q }); kapat(); } });
   const y0 = 560, P = (y: number) => y - (y0 + 28);
   return (
     <AltSayfa acik kapat={kapat} baslik={`${t.ad} rutini kaldırılsın mı?`} yukseklik={y0} duraklar={['orta']} guclu>
