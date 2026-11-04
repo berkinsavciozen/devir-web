@@ -83,9 +83,14 @@ export function useDetaylarDurum(kodlar: string[]) {
 
 /** Küçük galaksi: aynı yol geometrisinin küçük çizimi (§4.13). */
 export function kucukGalaksi(d: any, ben: string, x: number, y: number, r: number, pr: number, now: number) {
-  if (!d) return `<circle cx="${x}" cy="${y}" r="${r * .5}" fill="url(#glowLilac)" opacity=".5"/>`;
-  return yolCiz(akisModeli(d, { sahip: ben }), { lod: 'kucuk', cx: x, cy: y, R: r, now, pr }).svg;
+  const bos = `<circle cx="${x}" cy="${y}" r="${r * .5}" fill="url(#glowLilac)" opacity=".5"/>`;
+  if (!cizilir(d)) return bos;
+  // tek akışın beklenmedik verisi bütün evreni düşürmesin: o galaksi yer tutucu olarak kalır
+  try { return yolCiz(akisModeli(d, { sahip: ben }), { lod: 'kucuk', cx: x, cy: y, R: r, now, pr }).svg; } catch (e) { console.warn('Galaksi çizilemedi:', d?.akis?.kisa_kod, e); return bos; }
 }
+
+/** Adımsız akış (kurulumu yarıda kalmış) çizilemez; evrende yer tutucu olarak durur. */
+export const cizilir = (d: any) => !!d && !!(d.adimlar || []).length;
 
 /** Galaksi yer tutucusu: yakınlaşınca aynı akış ekran koordinatında ayrıntılı çizilir (§4.13: yalnız R, ps ve ayrıntı katmanı değişir). */
 const yerTutucu = (kod: string) => `<!--g:${kod}-->`;
@@ -135,8 +140,8 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
       const g = cizim.konum[kod], e = g && ekran(g);
       // küçük çizim yarıçapı r; ayrıntılı çizim kilit parantezinin içini doldurur (r × 1.35)
       const R = e.r * 1.35;
-      if (!g || !detay[kod] || R < 64 || !icerde(e.x, e.y, R)) return kucukler[kod] || '';
-      ayrinti.push({ kod, Y: yolCiz(akisModeli(detay[kod], { sahip: kisi }), { cx: e.x, cy: e.y, R, ps: Math.max(.36, Math.min(.78, R * .005)), now, x: now, labels: [], shipSc: .9, minR: 6.5, kuleEtiket: false }) });
+      if (!g || !cizilir(detay[kod]) || R < 64 || !icerde(e.x, e.y, R)) return kucukler[kod] || '';
+      try { ayrinti.push({ kod, Y: yolCiz(akisModeli(detay[kod], { sahip: kisi }), { cx: e.x, cy: e.y, R, ps: Math.max(.36, Math.min(.78, R * .005)), now, x: now, labels: [], shipSc: .9, minR: 6.5, kuleEtiket: false }) }); } catch (er) { console.warn('Galaksi çizilemedi:', kod, er); return kucukler[kod] || ''; }
       return '';
     });
     // merkez ışığı (K6): konumu ölçeklenir, boyu sabit kalır
