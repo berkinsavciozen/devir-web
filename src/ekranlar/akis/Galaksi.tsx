@@ -187,7 +187,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // alt sayfa kapanırken geçmiş bir adım geri gider; kaydırma ondan sonra yapılır
   const bolumAc = (s?: AkisSuzgec) => { if (s) B.sec(s); if (GD) { if (secim != null) git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }); return; } setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
-  const M = useMemo(() => (d ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip]);
+  // adımsız akış (4 Kas, TMPH: kurulum yarıda kaldı) haritayı kırmaz; açıklama gösterilir
+  const adimsiz = !!d && !(d.adimlar || []).length;
+  const M = useMemo(() => (d && !adimsiz ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip, adimsiz]);
   const geo = useMemo(() => (GD ? GD.harita : TD.harita), [GD, TD]);
   const SU = GD ? GD.surgu : TD.surgu;
   // masaüstünde seçim adreste (/adim/:no); seçim yokken panelde adım listesi (N16)
@@ -294,6 +296,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   }, [oynuyor]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (q.isPending) return <HaritaYukleniyor />;
+  if (adimsiz) return <HaritaHata hata={`${d.akis?.baslik || 'Bu akış'} adımsız kaldı: kurulum yarıda kesilmiş. Taslaktan yeniden kurabilirsin.`} yeniden={() => void q.refetch()} />;
   if (q.isError || !d || !cizim || !M) return <HaritaHata hata={(q.error as Error)?.message} yeniden={() => void q.refetch()} />;
 
   if (d.akis.kapandi_at) return <KapaliGalaksi d={d} kod={kod} sahipMi={ben.data?.rol === 'sahip'} sahip={sahip} />;
@@ -516,7 +519,7 @@ function HaritaHata({ hata, yeniden }: { hata?: string; yeniden: () => void }) {
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Akış açılamadı" geri={() => git('/akislar')} /></Kutu>
       <Kutu y={600} className="kart hata-karti" role="alert">
         <p>{hata || 'Akış şu an açılamadı.'}</p>
-        {hata && /bulunamadı|açık değil/.test(hata)
+        {hata && /bulunamadı|açık değil|adımsız/.test(hata)
           ? <button className="dugme dugme-ikincil ton-mercan" onClick={() => git('/akislar', { yerine: true })}>Akışlara dön</button>
           : <button className="dugme dugme-ikincil ton-mercan" onClick={yeniden}>Yeniden dene</button>}
       </Kutu>

@@ -10,7 +10,8 @@ const DEF: Record<string, any> = { adim: { durum: "sirada", ciktilar: [], oto: f
 const db: any = {
   async one(t: string, w: any) { const r = (T[t] || []).find((r) => match(r, w)); return r ? JSON.parse(JSON.stringify(r)) : null; },
   async many(t: string, w: any, o?: string) { const x = (T[t] || []).filter((r) => match(r, w)); return (o ? x.sort((a, b) => (a[o] > b[o] ? 1 : a[o] < b[o] ? -1 : 0)) : x).map((r) => JSON.parse(JSON.stringify(r))); },
-  async insert(t: string, rows: any[]) { T[t] = T[t] || []; const now = new Date(NOW).toISOString(); const out = rows.map((r) => ({ id: ["adim", "akis", "taslak"].includes(t) ? crypto.randomUUID() : idc++, created_at: now, updated_at: now, durum_at: now, ...(DEF[t] || {}), ...r })); T[t].push(...out); return out.map((r) => JSON.parse(JSON.stringify(r))); },
+  // PostgREST toplu eklemede satırların anahtar birleşimini gönderir: bir satırda olmayan alan null gider (varsayılan değil)
+  async insert(t: string, rows: any[]) { T[t] = T[t] || []; const now = new Date(NOW).toISOString(); const tum = [...new Set(rows.flatMap((r) => Object.keys(r)))]; rows = rows.map((r) => Object.fromEntries(tum.map((k) => [k, k in r ? r[k] : null]))); if (t === "adim" && rows.some((r) => "oto" in r && r.oto == null)) throw new Error('null value in column "oto" of relation "adim" violates not-null constraint'); const out = rows.map((r) => ({ id: ["adim", "akis", "taslak"].includes(t) ? crypto.randomUUID() : idc++, created_at: now, updated_at: now, durum_at: now, ...(DEF[t] || {}), ...r })); T[t].push(...out); return out.map((r) => JSON.parse(JSON.stringify(r))); },
   async update(t: string, w: any, p: any) { for (const r of T[t] || []) if (match(r, w)) Object.assign(r, JSON.parse(JSON.stringify(p))); },
 };
 let hata0 = 0;
