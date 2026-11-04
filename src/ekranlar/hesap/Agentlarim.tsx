@@ -7,6 +7,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { destekGemisi } from '../../cizim/ortak.js';
 import { gunAy, saat } from '../../cizim/yol.js';
 import { git } from '../../yonlendirme';
+import { AgentIsleri } from './AgentIsleri';
 
 /**
  * W3 (4 Kas, K3): kişinin agent'ları tek bileşende. Her agent: bağlantısı (Claude / ChatGPT), bağlı rutin(ler)i
@@ -82,15 +83,6 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, 
     ...veri.agentlar.filter((x) => x.ad !== a.ad && !x.acik_is && !x.son_etkinlik).flatMap((x) => x.rutinler.filter((t) => k(t.ad) === k(x.ad))),
     ...ortak,
   ].filter((t, i, L) => L.findIndex((u) => u.id === t.id) === i);
-  const isAc = (i: { akis: string; no: number }) => { kapat(); git(`/akis/${encodeURIComponent(i.akis)}/adim/${i.no}`); };
-  const isler = (baslik: string, L: AgentIs[], alt: string) => L.length > 0 && (
-    <section className="ai-grup" aria-label={baslik}>
-      <h3 className="gd-bolum-baslik">{baslik} · {L.length}</h3>
-      <ul className="gd-baglar">{L.map((i) => (
-        <li key={`${i.akis}-${i.no}`}><button type="button" className="gd-bag" onClick={() => isAc(i)}><span><b>{i.ad}</b><small>{i.akis_ad ? `${i.akis_ad} · ` : ''}{i.no}. görev · {alt}</small></span></button></li>
-      ))}</ul>
-    </section>
-  );
   const rutinSatiri = (t: AgentRutin, not?: string) => (
     <li key={t.id} className="ag-rutin">
       <span><b>{t.ad}</b><small>{rutinTuru(t)} · {t.son_hata ? `son deneme başarısız: ${t.son_hata}` : t.son_calisma ? `son çalışma ${zaman(t.son_calisma)}` : 'henüz çalışmadı'}{not ? ` · ${not}` : ''}</small></span>
@@ -113,11 +105,11 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, 
         </div>
         <p className="gd-satir">{agentCumlesi(a, !!veri.genel_rutin)}.</p>
 
-        <section className="ai-grup" aria-label="Bağlantı">
+        {kip === 'yonetim' && <section className="ai-grup" aria-label="Bağlantı">
           <h3 className="gd-bolum-baslik">BAĞLANTI</h3>
           <p className="gd-satir">{baglanti ? `${uygulamaOf(a.ad)} · ${baglanti.alt}` : `${uygulamaOf(a.ad)} bu hesaba bağlı görünmüyor. Bağlanınca ${a.ad} Devir’de yazabilir.`}</p>
           {!baglanti && kip === 'yonetim' && <button type="button" className="metin-baglanti" onClick={() => { kapat(); git('/bagla'); }}>{uygulamaOf(a.ad)}’u bağla</button>}
-        </section>
+        </section>}
 
         <section className="ai-grup" aria-label="Rutinler">
           <h3 className="gd-bolum-baslik">RUTİN</h3>
@@ -135,13 +127,10 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, 
           {ad.data?.not && <p className="gd-satir" role="status">{ad.data.not}</p>}
         </section>
 
-        {isler('ŞU AN', a.simdi, 'üzerinde çalışıyor')}
-        {isler('ONAYINI BEKLİYOR', a.bakilacak, 'çıktıyı yazdı; bakıp onayla')}
-        <section className="ai-grup" aria-label="İşler">
-          <h3 className="gd-bolum-baslik">İŞLER</h3>
-          <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık iş${a.sirada ? `; ${a.sirada} tanesi AI yapsın, sırası gelince başlar` : ''}.` : 'Açık işi yok.'}</p>
-          {a.son_etkinlik && <p className="gd-satir">Son etkinlik {zaman(a.son_etkinlik.zaman)}: <button type="button" className="metin-baglanti" onClick={() => isAc(a.son_etkinlik!)}>{a.son_etkinlik.ozet}</button></p>}
+        <section className="ai-grup" aria-label="Özet">
+          <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık iş${a.sirada ? `; ${a.sirada} tanesi AI yapsın, sırası gelince başlar` : ''}.` : 'Açık işi yok.'}{a.son_etkinlik ? ` Son etkinlik ${zaman(a.son_etkinlik.zaman)}.` : ''}</p>
         </section>
+        <AgentIsleri agent={a.ad} kapat={kapat} />
       </div>
     </AltSayfa>
   );

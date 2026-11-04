@@ -29,6 +29,7 @@ test('W3 · agent detayı: bağlantı, rutin, onay bekleyen iş; işe gider', as
   await expect(d.getByRole('button', { name: /rutinini bağla/ })).toHaveCount(0);
   await cek(page, 'W3-agent-detay');
   await d.getByRole('region', { name: 'ONAYINI BEKLİYOR' }).getByRole('button', { name: /Post görseli/ }).click();
+  await d.getByRole('button', { name: 'Göreve git' }).click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
 });
 

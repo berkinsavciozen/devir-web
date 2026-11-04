@@ -79,7 +79,7 @@ export interface Harita { seritler: { ad: string; tip: 'kisi' | 'akis'; sahipTip
  * Görev haritası (quest haritası): tek zaman ekseninde şeritler. Kişi süzgeci "hepsi" ise şerit kişi başına,
  * tek kişi seçiliyse akış başına. Aynı şeritte yakın düşen görevler dikeyde ayrışır. En çok 6 şerit, gerisi "+n".
  */
-export function gorevHaritasi(G: any[], o: { kisiBasina: boolean; now: number; x0?: number; x1?: number; y0?: number; satir?: number; en?: number }): Harita {
+export function gorevHaritasi(G: any[], o: { kisiBasina: boolean; now: number; x0?: number; x1?: number; y0?: number; satir?: number; en?: number; yakin?: number; adim?: number }): Harita {
   const x0 = o.x0 ?? 112, x1 = o.x1 ?? 360, y0 = o.y0 ?? 0, S = o.satir ?? 36, EN = o.en ?? 6;
   const anahtar = (a: any) => (o.kisiBasina ? a.sahip : a.akis);
   const sayi = new Map<string, number>();
@@ -98,9 +98,9 @@ export function gorevHaritasi(G: any[], o: { kisiBasina: boolean; now: number; x
     if (s < 0) return;
     const x = X(anlar[i]);
     // aynı şeritte 14 px'ten yakın olanlar: sırayla üst, alt, daha üst…
-    const yakin = noktalar.filter((n) => n.serit === s && Math.abs(n.x - x) < 14).length;
-    const dy = yakin ? (yakin % 2 ? -1 : 1) * Math.ceil(yakin / 2) * 8 : 0;
-    noktalar.push({ a, x, y: seritler[s].y + Math.max(-S / 2 + 6, Math.min(S / 2 - 6, dy)), serit: s });
+    const yakin = noktalar.filter((n) => n.serit === s && Math.abs(n.x - x) < (o.yakin ?? 14)).length, ad = o.adim ?? 8;
+    const dy = yakin ? (yakin % 2 ? -1 : 1) * Math.ceil(yakin / 2) * ad : 0;
+    noktalar.push({ a, x, y: seritler[s].y + Math.max(-S / 2 + ad * .75, Math.min(S / 2 - ad * .75, dy)), serit: s });
   });
   return { seritler, noktalar, t0, t1, x0, x1, bugunX: X(o.now), h: Math.max(1, sirali.length) * S };
 }
@@ -114,4 +114,29 @@ export function haftaCizgileri(t0: number, t1: number): number[] {
   const out: number[] = [];
   for (let t = PAZARTESI_TR + Math.ceil((t0 - PAZARTESI_TR) / HAFTA) * HAFTA; t <= t1; t += HAFTA) out.push(t);
   return out;
+}
+
+/**
+ * W6 (4 Kas): Görevler = "sen ve agent'ların". Senden beklenenler tek listede, öncelik sırasıyla: AI'ın yazıp onayını
+ * beklediği çıktılar, kararların, sırası gelen ve engelli işlerin (gecikme riski olan her grubun başında).
+ */
+export interface Beklenen { onay: any[]; karar: any[]; is: any[]; hepsi: any[] }
+export function beklenenler(G: any[], ben: string): Beklenen {
+  const risk = (L: any[]) => [...L].sort((a, b) => Number(!!b.gec_risk) - Number(!!a.gec_risk));
+  const acik = G.filter((a) => !BITTI(a.durum));
+  const onay = risk(acik.filter((a) => a.oto && a.oto_durum === 'bakilacak'));
+  const karar = risk(acik.filter((a) => a.sahip === ben && a.karar_adimi && a.durum === 'hazir' && !onay.includes(a)));
+  const is = risk(acik.filter((a) => a.sahip === ben && !a.karar_adimi && (a.durum === 'hazir' || a.durum === 'engelli')));
+  return { onay, karar, is, hepsi: [...onay, ...karar, ...is] };
+}
+
+const sayi = (n: number, ad: string) => `${n} ${ad}`;
+/** "Senden 2 onay ve 1 karar bekleniyor. Agent'ların 1 iş yapıyor, 4 iş sırada." */
+export function benCumlesi(B: Beklenen, agentlar: { simdi: unknown[]; sirada: number }[] | null): string {
+  const p = [B.onay.length && sayi(B.onay.length, 'onay'), B.karar.length && sayi(B.karar.length, 'karar'), B.is.length && sayi(B.is.length, 'iş')].filter(Boolean) as string[];
+  const sen = p.length ? `Senden ${p.length > 1 ? `${p.slice(0, -1).join(', ')} ve ${p[p.length - 1]}` : p[0]} bekleniyor.` : 'Şu an senden beklenen bir şey yok.';
+  if (!agentlar?.length) return sen;
+  const calisan = agentlar.reduce((t, a) => t + a.simdi.length, 0), sirada = agentlar.reduce((t, a) => t + a.sirada, 0);
+  const ag = calisan && sirada ? `Agent’ların ${calisan} iş yapıyor, ${sirada} iş sırada.` : calisan ? `Agent’ların ${calisan} iş yapıyor.` : sirada ? `Agent’larının ${sirada} işi sırada.` : 'Agent’ların boşta.';
+  return `${sen} ${ag}`;
 }
