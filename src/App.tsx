@@ -28,6 +28,7 @@ import { Cevapla } from './ekranlar/akis/Cevapla';
 import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
+import { TaslakHaritasi } from './ekranlar/yeni/TaslakHaritasi';
 import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
 import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
@@ -115,6 +116,8 @@ function Uygulama({ yol }: { yol: string }) {
   if (yol === '/bana') return <Yonlen yol={'/gorevler' + (arama().toString() ? '?' + arama().toString() : '')} />;
   if (yol === '/akislar/arsiv') return panel(<Arsiv ben={b} />, 'Akışlar › Arşiv', { aktif: 'akislar' });
   if (yol === '/yeni') return panel(<YeniIs />, 'Yeni iş');
+  const th = eslestir('/yeni/:kod/harita', yol);
+  if (th) return panel(<TaslakHaritasi key={th.kod} kod={th.kod} />, 'Yeni iş › Taslak haritası');
   const ty = eslestir('/yeni/:kod', yol);
   if (ty) return panel(<TaslakSorulari key={ty.kod} kod={ty.kod} />, 'Yeni iş › Taslak');
   return <Bulunamadi />;
