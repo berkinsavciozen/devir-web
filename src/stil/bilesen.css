@@ -1107,3 +1107,9 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .agent-detay .ai-grup > .metin-baglanti { margin-top: 8px; min-height: 36px; }
 .rk-gor { display: block; margin-top: 2px; font-size: 12.5px; line-height: 17px; color: var(--renk-metin-ink3); }
 .rk-yoksa b { color: var(--renk-metin-ink2); }
+/* W6 · agent detayında işler: satıra dokununca çalışma geçmişi */
+.ag-gecmis { display: grid; gap: 10px; margin: 8px 0 14px 4px; }
+.ag-gecmis .ai-olay b { font-size: 13.5px; font-weight: 650; color: var(--renk-metin-ink); }
+.ag-gecmis .ai-olay .metin-baglanti { justify-self: start; min-height: 32px; font-size: 13px; }
+.ag-gecmis-eylem { display: flex; flex-wrap: wrap; gap: 8px 20px; }
+.ag-gecmis-eylem .metin-baglanti { min-height: 40px; }

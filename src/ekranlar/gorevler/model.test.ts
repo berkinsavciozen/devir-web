@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bagIsareti, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
+import { bagIsareti, beklenenler, benCumlesi, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const g = (o: any) => ({ akis: 'A', akis_baslik: 'Hasat', sahip: 'Berkin', sahip_tip: 'insan', durum: 'hazir', onceki: [], sonraki: [], ...o });
@@ -43,5 +43,23 @@ describe('görevler', () => {
     for (const t of T) expect(tr(t)).toMatch(/Pazartesi.*00:00/);
     // 14 Eki çarşamba: sonraki çizgi 19 Eki, bugünün yanına 15 Eki düşmez
     expect(tr(T[0])).toContain('19 Eki');
+  });
+});
+
+describe('W6 sen ve agent’ların', () => {
+  const ben = 'Berkin';
+  const G = [
+    { no: 1, sahip: 'Berkin’in Claude’u', sahip_tip: 'agent', agent_sahibi: ben, oto: true, oto_durum: 'bakilacak', durum: 'suruyor' },
+    { no: 2, sahip: ben, karar_adimi: true, durum: 'hazir' },
+    { no: 3, sahip: ben, durum: 'hazir' },
+    { no: 4, sahip: ben, durum: 'engelli', gec_risk: true },
+    { no: 5, sahip: ben, durum: 'sirada' },
+    { no: 6, sahip: 'Ayşe', durum: 'hazir' },
+  ];
+  it('öncelik: onay, karar, iş (riskli önce)', () => expect(beklenenler(G, ben).hepsi.map((a) => a.no)).toEqual([1, 2, 4, 3]));
+  it('cümle', () => {
+    expect(benCumlesi(beklenenler(G, ben), [{ simdi: [1], sirada: 4 }])).toBe('Senden 1 onay, 1 karar ve 2 iş bekleniyor. Agent’ların 1 iş yapıyor, 4 iş sırada.');
+    expect(benCumlesi(beklenenler([], ben), null)).toBe('Şu an senden beklenen bir şey yok.');
+    expect(benCumlesi(beklenenler([G[1]], ben), [{ simdi: [], sirada: 0 }])).toBe('Senden 1 karar bekleniyor. Agent’ların boşta.');
   });
 });
