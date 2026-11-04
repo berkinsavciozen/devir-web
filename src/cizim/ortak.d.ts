@@ -24,3 +24,6 @@ export function bAt(b: number[][], t: number): number[];
 export function galaxy(cx: number, cy: number, steps: O[], o?: O): string;
 export function galaxyPos(cx: number, cy: number, n: number, o?: O): O[];
 export function page(w: number, h: number, body: string, extraCss?: string): string;
+export function destekGemisi(x: number, y: number, dx: number, dy: number, col?: string, sc?: number): string;
+export function onayFlamasi(r: number, mini?: boolean): string;
+export const ONAY_RENK: string;

@@ -1,0 +1,47 @@
+import { expect, test, type Page } from '@playwright/test';
+
+// W2 (4 Kas): AI yapsın görünürlüğü. Destek gemisi kişinin gemisine yapışık; onay bekleyen işte camgöbeği flama;
+// haritada AI çipi → AI etkinliği (durum grupları + zaman çizelgesi); listede AI durumu; harita dilinde AI satırları.
+const ac = async (p: Page, yol: string, w = 390, h = 844) => {
+  await p.setViewportSize({ width: w, height: h });
+  await p.emulateMedia({ reducedMotion: 'reduce' });
+  await p.goto(yol);
+};
+const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
+
+for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+  test(`W2 · ${w}: AI çipi onay sayısını söyler; AI etkinliği onay bekleyen işi ve zaman çizelgesini gösterir`, async ({ page }) => {
+    await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai', w, h);
+    const cip = page.getByRole('button', { name: /^AI etkinliği: 1 onay/ });
+    await expect(cip).toBeVisible();
+    await cek(page, `W2-harita-${w}`);
+    await cip.click();
+    const d = page.getByRole('dialog', { name: 'AI etkinliği' });
+    await expect(d.getByRole('region', { name: 'ONAYINI BEKLİYOR' })).toContainText('6. Post görseli');
+    await expect(d.getByRole('region', { name: 'SIRADA' })).toContainText('10. Rapor');
+    await expect(d.getByRole('link', { name: 'Oturumu aç' })).toHaveAttribute('href', 'https://claude.ai/code/session_sahte');
+    await cek(page, `W2-ai-etkinligi-${w}`);
+    await d.getByRole('button', { name: /6\. Post görseli/ }).first().click();
+    await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
+  });
+}
+
+test('W2 · 1440: listede AI durumu yazar; agent adı kısalmaz', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai', 1440, 900);
+  await expect(page.getByText('Berkin’in Claude’u · AI yazdı, onayını bekliyor')).toBeVisible();
+  await expect(page.getByText('Berkin’in Claude’u · AI yapsın açık')).toBeVisible();
+});
+
+test('W2 · 390: harita dilinde AI satırları; onay satırı haritada gösterir', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
+  await page.getByRole('button', { name: 'Harita dili' }).click();
+  await expect(page.getByRole('button', { name: /AI yazdı, onayını bekliyor: 1\./ })).toBeVisible();
+  await expect(page.getByText('Destek', { exact: true })).toBeVisible();
+  await cek(page, 'W2-lejant-390');
+});
+
+test('W2 · AI işi olmayan akışta AI çipi yok', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin');
+  await page.getByRole('button', { name: 'Harita dili' }).waitFor();
+  await expect(page.getByRole('button', { name: /^AI etkinliği/ })).toHaveCount(0);
+});

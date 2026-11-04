@@ -17,6 +17,7 @@ import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { git, arama, listeyeDon } from '../../yonlendirme';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
+import { AiEtkinligi, aiCipYazisi } from './AiEtkinligi';
 import { BaglantiGonder } from './BaglantiGonder';
 import { galaksiSayilari, lejantGezegenleri, Lejant, SoruIkon, type OdakAyar } from './Lejant';
 import { BaglantiKopyala, akisKisileri, useAkisBolumu, type AkisSuzgec } from './Bilgi';
@@ -137,6 +138,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // durum odağı (plan 27 Eki, 2.C): "?" sayfasından; uymayan gezegenler söner
   const [durumOdak, setDurumOdak] = useState<GDurum | null>(null);
   const [lejant, setLejant] = useState(false);
+  const [aiAcik, setAiAcik] = useState(false);
   // lejant satırı → o işaretli gezegenler kısa süre yanıp söner (plan 27 Eki, 3.G)
   const [parla, setParla] = useState<Set<number> | null>(null);
   useEffect(() => { if (!parla) return; const t = setTimeout(() => setParla(null), 2600); return () => clearTimeout(t); }, [parla]);
@@ -375,6 +377,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // lejant: sayılar ve satıra dokununca yanıp sönecek gezegenler (yalnız haritada çizilen ana görevler)
   const isaretli = lejantGezegenleri(d, temel?.G);
   const lejantSayilari = { ...galaksiSayilari(d.adimlar, d), ortak: isaretli.ortak.length, ip: temel?.G.ipler.length ?? 0, darbogaz: isaretli.darbogaz.length || undefined };
+  const aiYazi = aiCipYazisi(d.adimlar);
   const vurgula = (an: string) => { const n = (isaretli as Record<string, number[]>)[an]; if (n?.length) setParla(new Set(n)); };
   // kişi süzgeci ayrı kutuda (Kişiler ▾); lejant yalnız durum süzer (plan 28 Eki, B6)
   const odakAyar: OdakAyar = {
@@ -409,7 +412,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
 
       {/* süzgeç satırı: Kişiler ▾, harita dili, seçili süzgeç çipleri (plan 28 Eki, B6, B10) */}
       <HaritaCipleri x={bolge.x + 12} y={bolge.y + 8} en={bolge.w - (GD ? 88 : 82)} secici={{ yazi: 'Kişiler', ikon: true, ac: () => setKisiKutu(true) }} lejantAc={() => setLejant(true)}
+        ai={aiYazi ? { yazi: aiYazi, onay: /onay/.test(aiYazi), ac: () => setAiAcik(true) } : null}
         cipler={[odak && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }].filter(Boolean) as HaritaCipi[]} />
+      <AiEtkinligi acik={aiAcik} kapat={() => setAiAcik(false)} kod={kod} d={d} />
       <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d)} secili={odak}
         uygula={(k) => { setKisiKarti(null); setOdak(k); }} kisiSayfasi={(ad) => git(`/akis/${encodeURIComponent(kod)}/kisi/${encodeURIComponent(ad)}`)} />
       {/* geçmişe ya da tahmine bakarken haritanın üstünde şerit ve "Bugüne dön" (plan 27 Eki, 3.25) */}

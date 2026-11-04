@@ -4,7 +4,7 @@
 import { apidenAkis } from '../geometri/galaksi-geometri';
 import { ilerleme } from '../api/ilerleme';
 import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
-import { C, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
+import { C, destekGemisi, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 
 export const GUN = 864e5;
 const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -352,15 +352,33 @@ export function yolCiz(M, o = {}) {
   for (const no of vis) if (!inCl.has(no)) L[sahipGrubu(no)] += durumda(no) ? pl(no) : `<g opacity=".16">${pl(no)}</g>`;
   for (const c of cl) { const g = G.gezegen[c[0]]; L[o.focus && c.some((n) => G.gezegen[n].uyeler.includes(o.focus)) ? o.focus : byNo[c[0]].sahip] += clusterBadge(g.x, g.y, c, radOf, (n) => [stOf(n) === 'tahmin' ? 'lit' : stOf(n), ex(n)], ps * .9); }
   const gemiler = [];
+  // W2 (4 Kas, K1): agent kişinin desteğidir; sahibinin gemisi haritadaysa robot ona kısa bir kolla yapışık çizilir
+  const destek = ajanSahipleri(F.steps), gorunen = {};
   if (o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
     if (u.hayalet || (o.sis && o.focus !== u.ad)) continue;
     const acik = u.ziyaret.some((no) => !BIT(byNo[no].durum)) || X < u.tSon;
     const p = G.konumAn(u.ad, X); if (!p || !acik) continue;
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
+    gorunen[u.ad] = { u, p };
+  }
+  for (const ad of Object.keys(gorunen)) {
+    const { u, p } = gorunen[ad];
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
     const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK;
+    const ev = kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
+    if (ev && ev.u.tip !== 'agent') continue; // sahibinin gemisiyle birlikte çizilir
+    const yapisik = G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
+    const renk = o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u);
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
-    L[u.ad] += `<g opacity="${X > NOWx ? .75 : 1}">` + ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u), sc, { flame: kind !== 'dis' && X <= NOWx }) + '</g>';
+    let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx });
+    yapisik.forEach((a, i) => {
+      // kuyruğun üst yanında (geminin yönüne göre), ikinci robot bir sıra geride
+      const k = sc / .78, yx = Math.cos(p.yon || 0), yy = Math.sin(p.yon || 0), ger = -17 - i * 15, yan = -15;
+      const dx = (ger * yx - yan * yy) * k, dy = (ger * yy + yan * yx) * k;
+      gemiler.push({ ad: a.ad, tip: 'agent', x: p.x + dx, y: p.y + dy, sc: sc * .72, destek: u.ad });
+      g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc) + g;
+    });
+    L[u.ad] += `<g opacity="${X > NOWx ? .75 : 1}">` + g + '</g>';
   }
   for (const u of G.uyeler) { const d = dim(u.ad); if (d) s += `<g opacity="${o.sel ? Math.min(d, .55) : d}" ${o.sis && o.focus !== u.ad ? 'filter="url(#blur2)"' : ''}>${L[u.ad]}</g>`; }
   s += ust;
