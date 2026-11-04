@@ -9,26 +9,29 @@ const ac = async (p: Page, yol: string, w = 1440, h = 900) => {
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {
-  test(`AI yapsın · ${w}: bakılacak görevde "baktım, bitir" görevi tamamlar`, async ({ page }) => {
+  test(`AI yapsın · ${w}: onay bekleyen görevde "Onayla, bitir" görevi tamamlar`, async ({ page }) => {
     await ac(page, '/akis/RTD5/adim/6?senaryo=berkin&hal=ai', w, h);
     const b = page.getByRole('region', { name: 'AI YAPSIN' });
-    await expect(b.getByRole('checkbox', { name: /kendiliğinden yapsın/ })).toBeChecked();
-    await expect(b.getByRole('status')).toHaveText(/bakıp bitirmen gerekiyor/);
-    await expect(b.getByRole('button', { name: 'Claude oturumunu aç' })).toBeVisible();
-    await page.getByRole('button', { name: 'Çıktıya baktım, bitir' }).click();
-    await expect(page.getByRole('button', { name: 'Çıktıya baktım, bitir' })).toHaveCount(0);
+    await expect(b.getByRole('status')).toHaveText(/^Açık\./);
+    await expect(page.locator('.gd-cumle')).toHaveText(/çıktısını yazdı\. Bakıp onayla\.$/);
+    const e = page.getByRole('group', { name: 'Eylemler' });
+    await expect(e.getByRole('button', { name: 'Claude’la düzelt' })).toBeVisible();
+    await e.getByRole('button', { name: 'Onayla, bitir' }).click();
+    await expect(page.getByRole('button', { name: 'Onayla, bitir' })).toHaveCount(0);
     await expect(page.locator('.gd-bas small')).toContainText(/tamam/i);
   });
 }
 
-test('AI yapsın: öncül bekleyen görev ne beklediğini söyler; kapatılınca kapanır', async ({ page }) => {
+test('AI yapsın: öncül bekleyen görev ne beklediğini söyler; ⋯ menüsünden kapatılır', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=ai');
   const b = page.getByRole('region', { name: 'AI YAPSIN' });
-  await expect(b.getByRole('status')).toHaveText(/Bekliyor: öncüller/);
+  await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlar.');
   await expect(b.getByRole('checkbox', { name: /planlanan başlangıç/i })).not.toBeChecked();
-  await b.getByRole('checkbox', { name: /kendiliğinden yapsın/ }).click();
-  await expect(b.getByRole('checkbox', { name: /kendiliğinden yapsın/ })).not.toBeChecked();
+  await page.getByRole('button', { name: 'Diğer eylemler' }).click();
+  await page.getByRole('menuitem', { name: 'AI yapsın’ı kapat' }).click();
+  await expect(b.getByRole('status')).toHaveText(/^Kapalı\./);
   await expect(b.getByText(/dışarıya gönderme işleri otomatik yapılmaz/)).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Eylemler' }).getByRole('button', { name: 'AI yapsın', exact: true })).toBeVisible();
 });
 
 test('AI yapsın: insan görevinde bölüm yok', async ({ page }) => {
