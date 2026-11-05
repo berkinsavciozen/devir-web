@@ -1,10 +1,10 @@
 import { callTool, INSTRUCTIONS, TOOLS, kimlikBagla, aracOf, otoGunluk, type DB, type Ctx, type TetikFn } from "./core.ts";
-import type { LlmFn, SohbetFn } from "./llm.ts";
+import { motorDurumu, type LlmFn, type SohbetFn } from "./llm.ts";
 import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, referansBilgisi, beklemeYonlendir, agentBaglantisi, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.31.0";
+export const SURUM = "0.32.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
 export const SEMA = "20261103180000_s029_ai_yapsin";
 async function semaDurumu(db: DB) {
@@ -113,7 +113,7 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     }
     if (yol[1] !== "v1") throw new ApiHata(404, "Uçlar /api/v1/ altında.");
     // kimliksiz: giriş ekranı kaydın açık olup olmadığını bilir (§9-19)
-    if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, sema: await semaDurumu(db), acik_kayit: await acikKayit(db) });
+    if (yol[2] === "durum" && !yol[3] && req.method === "GET") return json({ ok: true, surum: SURUM, sema: await semaDurumu(db), acik_kayit: await acikKayit(db), motor: (({ devre_acik, devre_bitis, son_hata_at, yedek_sayisi }) => ({ devre_acik, devre_bitis, son_hata_at, yedek_sayisi }))(motorDurumu()) });
     // AI yapsın günlük taraması (0.29.0): pg_cron çağırır; ayar.oto_cron_anahtari ile korunur
     if (yol[2] === "oto" && yol[3] === "tara" && req.method === "POST") {
       const bek = (await db.one("ayar", { anahtar: "oto_cron_anahtari" }).catch(() => null))?.deger;
