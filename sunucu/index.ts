@@ -117,7 +117,7 @@ const OPENAI_MODELLER = {
   yedek: (Deno.env.get("DEVIR_OPENAI_YEDEK_MODELLER") || "gpt-4o").split(",").map((s) => s.trim()).filter(Boolean),
 };
 
-let motorlar: { claude?: LlmFn; openai?: LlmFn; ikisi?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; openaiKey: string } | null = null;
+let motorlar: { claude?: LlmFn; openai?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; openaiKey: string } | null = null;
 let hazirlandi = 0;
 let testBasliklari = false; // x-devir-motor / x-devir-openai-model yalnız ayar.test_basliklari = "acik" iken dinlenir
 async function hazirla() {
@@ -131,7 +131,7 @@ async function hazirla() {
   const openai = openaiKey ? openaiLlm(openaiKey, OPENAI_MODELLER) : undefined;
   // Devir AI sohbeti (P8, karar 5.C): taslakla aynı sağlayıcı, hızlı model; OpenAI yedeği
   const sohbet = yedekliSohbet(claudeKey ? anthropicSohbet(claudeKey, modeller.hizli) : undefined, openaiKey ? openaiSohbet(openaiKey, OPENAI_MODELLER.hizli) : undefined);
-  motorlar = { claude, openai, openaiKey, sohbet, gom: openaiKey ? openaiGomme(openaiKey) : undefined, ikisi: yedekli(claude, openai, (e) => console.warn("Claude hata verdi, OpenAI yedeğine geçildi:", e)) };
+  motorlar = { claude, openai, openaiKey, sohbet, gom: openaiKey ? openaiGomme(openaiKey) : undefined };
   hazirlandi = Date.now();
   return motorlar;
 }
@@ -143,6 +143,7 @@ Deno.serve(async (req) => {
   const zorla = testBasliklari ? (req.headers.get("x-devir-motor") || "").toLowerCase() : "";
   const om = testBasliklari ? req.headers.get("x-devir-openai-model") : null;
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
-  const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : m.ikisi;
+  // 0.32.0 (P1, M5): yedekli her istek için kurulur; bir istekte motor bir kez seçilir (taslak ve denetim aynı sağlayıcıdan)
+  const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : yedekli(m.claude, m.openai, (e) => console.warn("Claude hata verdi, OpenAI yedeğine geçildi:", e));
   return handle(req, db, Date.now(), { tetik, llm, sohbet: m.sohbet, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre });
 });

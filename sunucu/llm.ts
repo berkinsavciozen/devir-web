@@ -8,6 +8,11 @@ const openaiKullanim = (u: any): Kullanim => { const o = Number(u?.prompt_tokens
 
 // Edge fonksiyonun duvar saati sınırı 150 sn; her motor bunun içinde kalmalı ki yedek devreye girebilsin.
 const SINIR_MS = 110_000;
+/** 0.32.0 (P1, M2): iki motorda aynı yanıt sınırı. Çağıran daha küçük verirse (denetçi, ders) o kullanılır. */
+export const YANIT_SINIRI = 16_000;
+/** Kalıcı motor hatası (kredi, anahtar, yetki): beklemekle düzelmez; devre kesici bunu bekler. */
+export class MotorHata extends Error { constructor(m: string, public kalici = false) { super(m); } }
+export const kalici = (durum: number, metin: string) => durum === 401 || durum === 403 || /credit balance|billing|insufficient_quota|exceeded your current quota|invalid.*api.?key/i.test(metin);
 async function zamanli(url: string, init: RequestInit, kalan: number) {
   if (kalan < 5_000) throw new Error("süre doldu");
   try { return await fetch(url, { ...init, signal: AbortSignal.timeout(kalan) }); }
@@ -25,14 +30,15 @@ export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SIN
         method: "POST",
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({
-          model: m, max_tokens: max_tokens || 12000,
+          // 0.32.0 (P1, M1–M2): araç çağrısı OpenAI'deki gibi zorunlu; yanıt sınırı iki motorda aynı (16.000)
+          model: m, max_tokens: max_tokens || YANIT_SINIRI,
           system: [{ type: "text", text: system + `\n\nYanıtını yalnızca ${tool.name} aracını tek kez çağırarak ver; düz metin yazma.`, cache_control: { type: "ephemeral" } }],
-          tools: [tool],
+          tools: [tool], tool_choice: { type: "tool", name: tool.name },
           messages: [{ role: "user", content: user }],
         }),
       }, sinirMs - (Date.now() - t0)); } catch (e) { lastErr = (e as Error).message; break; }
       const data: any = await res.json().catch(() => ({}));
-      if (!res.ok) { lastErr = `${res.status} ${data?.error?.message || ""}`; if (res.status >= 500 || res.status === 429) continue; break; }
+      if (!res.ok) { lastErr = `${res.status} ${data?.error?.message || ""}`; if (res.status >= 500 || res.status === 429) continue; throw new MotorHata(`Taslak motoruna ulaşılamadı (${lastErr}).`, kalici(res.status, lastErr)); }
       const block = (data.content || []).find((c: any) => c.type === "tool_use" && c.name === tool.name);
       if (block) return { input: fixJson(block.input), model: data.model || m, ms: Date.now() - t0, kullanim: anthropicKullanim(data.usage) };
       lastErr = data.stop_reason === "max_tokens" ? "yanıt sınırı aşıldı" : "model aracı çağırmadı";
@@ -57,7 +63,7 @@ export function openaiLlm(apiKey: string, modeller: { taslak: string; hizli: str
           method: "POST",
           headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
           body: JSON.stringify({
-            model: m, max_completion_tokens: Math.max(max_tokens || 12000, 16000),
+            model: m, max_completion_tokens: AKIL.test(m) ? Math.max(max_tokens || YANIT_SINIRI, YANIT_SINIRI) : max_tokens || YANIT_SINIRI, // akıl yürüten model düşünmeye de token harcar
             ...(AKIL.test(m) ? { reasoning_effort: hizli ? "minimal" : "low" } : {}),
             messages: [{ role: "system", content: system + `\n\nYanıtını yalnızca ${tool.name} fonksiyonunu tek kez çağırarak ver; düz metin yazma.` }, { role: "user", content: user }],
             tools: [{ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.input_schema } }],
@@ -69,7 +75,7 @@ export function openaiLlm(apiKey: string, modeller: { taslak: string; hizli: str
           lastErr = `${m}: ${res.status} ${data?.error?.message || ""}`;
           if (res.status === 404 || data?.error?.code === "model_not_found") break; // sıradaki modele geç
           if (res.status >= 500 || res.status === 429) continue;
-          throw new Error(`OpenAI yanıt vermedi (${lastErr}).`);
+          throw new MotorHata(`OpenAI yanıt vermedi (${lastErr}).`, kalici(res.status, lastErr));
         }
         const call = data.choices?.[0]?.message?.tool_calls?.find((c: any) => c.function?.name === tool.name);
         if (call) { try { return { input: fixJson(JSON.parse(call.function.arguments)), model: "openai:" + (data.model || m), ms: Date.now() - t0, kullanim: openaiKullanim(data.usage) }; } catch { lastErr = `${m}: araç çıktısı JSON değil`; continue; } }
@@ -81,17 +87,38 @@ export function openaiLlm(apiKey: string, modeller: { taslak: string; hizli: str
 }
 
 // Birincil motor hata verirse (kredi, kesinti, aşırı yük) yedeğe düşer; hangi motorun kullanıldığı model alanında görünür.
-export function yedekli(birincil: LlmFn | undefined, yedek: LlmFn | undefined, uyar: (e: string) => void = () => {}): LlmFn | undefined {
+// 0.32.0 (P1):
+// - M4: yedeğe geçiş eşiği 40 sn yerine 60 sn; kalıcı hata (kredi, anahtar) hemen geçer.
+// - M5: bir istek içinde motor bir kez seçilir. Birincil düştüyse aynı istekteki sonraki çağrılar (denetçi, ders) doğrudan yedeğe gider;
+//   böylece taslak ve denetim aynı sağlayıcıdan gelir. yedekli() her istek için yeniden kurulur.
+// - M7: kalıcı hatada devre kesici 1 saat açılır; o süre birincil hiç denenmez (her taslakta boşuna kredi hatası yok). Durum motorDurumu()'nda.
+export const DEVRE_MS = 60 * 6e4;
+const devre: { acik_bitis: number; son_hata: string | null; son_hata_at: number | null; yedek_sayisi: number } = { acik_bitis: 0, son_hata: null, son_hata_at: null, yedek_sayisi: 0 };
+export const motorDurumu = (now = Date.now()) => ({ devre_acik: devre.acik_bitis > now, devre_bitis: devre.acik_bitis > now ? new Date(devre.acik_bitis).toISOString() : null, son_hata: devre.son_hata, son_hata_at: devre.son_hata_at ? new Date(devre.son_hata_at).toISOString() : null, yedek_sayisi: devre.yedek_sayisi });
+export const devreSifirla = () => { devre.acik_bitis = 0; devre.son_hata = null; devre.son_hata_at = null; devre.yedek_sayisi = 0; };
+export function yedekli(birincil: LlmFn | undefined, yedek: LlmFn | undefined, uyar: (e: string) => void = () => {}, saat: () => number = Date.now): LlmFn | undefined {
   if (!birincil) return yedek;
   if (!yedek) return birincil;
+  let dustu: string | null = null; // bu istekte birincil düştü mü
   return async (req) => {
-    const t0 = Date.now();
+    const t0 = saat();
+    if (dustu || devre.acik_bitis > t0) {
+      const neden = dustu || `devre açık: ${devre.son_hata || "kalıcı hata"}`;
+      const r = await yedek(req);
+      devre.yedek_sayisi++;
+      return { ...r, model: `${r.model} (yedek; birincil: ${neden.slice(0, 120)})` };
+    }
     try { return await birincil(req); }
     catch (e) {
-      uyar((e as Error).message);
-      if (Date.now() - t0 > 40_000) throw e; // birincil çok zaman yedi; yedeğe süre kalmadı
+      const m = String((e as Error).message);
+      uyar(m);
+      devre.son_hata = m.slice(0, 300); devre.son_hata_at = t0;
+      if ((e as MotorHata).kalici) devre.acik_bitis = t0 + DEVRE_MS;
+      if (!(e as MotorHata).kalici && saat() - t0 > 60_000) throw e; // birincil çok zaman yedi; yedeğe süre kalmadı
+      dustu = m;
       const r = await yedek(req);
-      return { ...r, model: `${r.model} (yedek; birincil: ${String((e as Error).message).slice(0, 120)})` };
+      devre.yedek_sayisi++;
+      return { ...r, model: `${r.model} (yedek; birincil: ${m.slice(0, 120)})` };
     }
   };
 }

@@ -2,8 +2,8 @@
 
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn, SohbetFn } from "./llm.ts";
-import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
-import { kapsamDenetimi, sahipAdi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
+import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, kelimeBenzer, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
+import { kapsamDenetimi, sahipAdi, destekKisi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
 import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, akisKisaAdi, KISA_AD_EN_COK } from "./ad.ts";
 
@@ -1022,7 +1022,7 @@ export const TOOLS = [
   },
   {
     name: "devir_akis_olustur",
-    description: "Akışı kurar. Asıl yol: devir_tasla'nın verdiği taslak kodu ve kullanıcının cevaplarıyla çağır ({ taslak, cevaplar }). Diğer yollar: sablon_kod + cevaplar + degiskenler ya da adimlar listesini kendin ver; taslak çıkardıysan adimlar ile birlikte taslak'ı da ver. hedef_tarih varsa son tarihler geriye doğru planlanır; yoksa kullanıcıya sor, akış hedef tarihi açık soru olarak tutar.",
+    description: "Akışı kurar. Asıl yol: devir_tasla'nın verdiği taslak kodu ve kullanıcının cevaplarıyla çağır ({ taslak, cevaplar }). Taslağın adımlarını kendin baştan yazma; kullanıcı bir adımı değiştirmek isterse önce devir_taslak_duzelt kullan. Kendi adımlarını taslakla verirsen Devir'in derslere ve bilgi kartlarına dayanan adımları korunur, fark kaydedilir. Diğer yollar: sablon_kod + cevaplar + degiskenler ya da adimlar listesini kendin ver; taslak çıkardıysan adimlar ile birlikte taslak'ı da ver. hedef_tarih varsa son tarihler geriye doğru planlanır; yoksa kullanıcıya sor, akış hedef tarihi açık soru olarak tutar.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1344,6 +1344,36 @@ async function kurallar(a: any, ctx: Ctx) {
   return out.join("\n");
 }
 
+/**
+ * 0.32.0 (P2): taslak + ajanın kendi adımları. Önceden bu yolda taslağın dersleri (D…), bilgi kartları (K:…) ve geçmiş iş
+ * dayanaklı adımları sessizce düşüyordu (7EK2: taslak 8 adım, ajan 39 adımla kurdu). Şimdi:
+ * - dayanaklı (ders/kart) koşulsuz taslak adımı ajanın listesinde yoksa eklenir; bağımlılıkları adla eşlenir,
+ * - taslak ile kurulan liste arasındaki fark baglam.taslak_fark'a yazılır (öğrenme ve denetim için),
+ * - karar adımı agent'a verilmişse hata yerine sahibi kullanıcı yapılır (taslak yolundaki gibi; olustur içinde).
+ */
+function tkElleUygula(tkElle: any, raw: any[], ctx: Ctx, baglam: any, notes: string[]) {
+  const t = tkElle.taslak || {};
+  const TA: any[] = Array.isArray(t.adimlar) ? t.adimlar : [];
+  const rol = new Map<string, any>((t.roller || []).map((r: any) => [r.kod, r]));
+  const esit = (x: any, y: any) => norm(x.ad) === norm(y.ad) || (!!x.tur_kod && x.tur_kod === (y.tur_kod || y._tur)) || kelimeBenzer(kokler(x.ad), kokler(y.ad)) >= 0.6;
+  const bul = (x: any) => raw.findIndex((r) => esit(x, r));
+  const eklenen: string[] = [];
+  for (const x of TA) {
+    const dayanak: string[] = Array.isArray(x.dayanak) ? x.dayanak.map(String) : [];
+    if (!dayanak.some((d) => /^(D\d+|K:)/.test(d)) || (x.kosul && x.kosul.soru) || bul(x) >= 0) continue;
+    const r0 = rol.get(x.sahip_rol);
+    const tip = r0?.tip === "agent" ? "agent" : r0?.tip === "dis" ? "dis" : "insan";
+    const bag = (x.bagimli || []).map((id: string) => TA.find((y) => String(y.id) === String(id))).filter(Boolean).map((y: any) => bul(y) + 1).filter((n: number) => n > 0);
+    raw.push({ ad: x.ad, kisa_ad: x.kisa_ad, aciklama: x.aciklama || null, sahip: r0 ? sahipAdi(r0) : ctx.key.kisi, sahip_tip: tip, kriter: x.kriter || x.ad, beklenen_cikti: x.beklenen_cikti || null, karar_kriteri: x.karar_kriteri || null, karar_gerekli: typeof x.karar_gerekli === "boolean" ? x.karar_gerekli : undefined, cikti_bekleniyor: typeof x.cikti_bekleniyor === "boolean" ? x.cikti_bekleniyor : undefined, sure_tahmin_gun: x.sure_tahmin_gun || 1, bagimli: [...new Set(bag)], ...(tip === "agent" ? { agent_sahibi: destekKisi(r0, ctx.key.kisi) } : {}), _ek: true, _tur: x.tur_kod || slug(x.ad) });
+    eklenen.push(`"${x.ad}" (${dayanak.join(", ")})`);
+  }
+  if (eklenen.length) notes.push(`Kendi adımlarında Devir'in derslerine ya da bilgi kartlarına dayanan ${eklenen.length} iş yoktu; eklendi: ${eklenen.join("; ")}. Gereksizse atlama_nedeni ile atla, Devir öğrenir.`);
+  const cikarilan = TA.filter((x) => !(x.kosul && x.kosul.soru) && bul(x) < 0).map((x) => String(x.ad));
+  const yeni = raw.filter((r) => !r._ek && !TA.some((x) => esit(x, r))).map((r) => String(r.ad));
+  baglam.taslak_fark = { taslak_adim: TA.length, kurulan_adim: raw.length, eklenen: yeni.slice(0, 40), cikarilan: cikarilan.slice(0, 40), devir_ekledi: eklenen.length };
+  baglam.kurulum = "taslak_elle";
+}
+
 async function olustur(a: any, ctx: Ctx) {
   needTeam(ctx, "Akış oluşturmayı");
   if (a.hedef_tarih && !isDate(a.hedef_tarih)) throw new Error("hedef_tarih YYYY-AA-GG olmalı.");
@@ -1436,6 +1466,12 @@ async function olustur(a: any, ctx: Ctx) {
     }
   }
   if (!baslik) throw new Error("baslik gerekli.");
+  // 0.32.0 (P2, Tek Plan Sözleşmesi): ajanın kendi adımlarıyla kurulan taslakta da Devir'in dersleri ve kartları korunur, fark kaydedilir
+  if (tkElle) tkElleUygula(tkElle, raw, ctx, baglam, notes);
+  else if (!a.sablon_kod && Array.isArray(a.adimlar) && a.adimlar.length && !baglam.ust_akis) {
+    baglam.kurulum = "elle";
+    notes.push("Taslaksız kuruldu: Devir'in dersleri, bilgi kartları ve denetimi bu akışa uygulanmadı. Yeni bir iş için önce devir_tasla'yı çağır, sonra adımları taslakla birlikte ver.");
+  }
   // aynı varlıkta son 24 saatte kurulmuş aktif akış varsa önce onay (P1-B, J2LU: aynı iş iki kez kuruldu)
   if (baglam.musteri && !baglam.ust_akis && a.ayni_varlik_onay !== true) {
     const yakin = (await varlikAkislari(ctx, baglam.musteri, true)).filter((f: any) => f.durum === "aktif" && !f.baglam?.ust_akis && ctx.now - ts(f.created_at) < DAY);
@@ -1455,7 +1491,7 @@ async function olustur(a: any, ctx: Ctx) {
     }
     for (const s of raw) { const ek = L.ek_sure.get(norm(s.ad)) ?? L.ek_sure.get(norm(s._tur || "")); if (ek) s.sure_tahmin_gun = num(s.sure_tahmin_gun) + ek; }
   }
-  if (tk && kur.karar_insanda !== false) for (const s of raw) if (s.sahip_tip === "agent" && kararAdimi(s)) { notes.push(`"${s.ad}" bir karar adımı; sahibi agent yerine ${ctx.key.kisi} yapıldı.`); s.sahip = ctx.key.kisi; s.sahip_tip = "insan"; }
+  if ((tk || tkElle) && kur.karar_insanda !== false) for (const s of raw) if (s.sahip_tip === "agent" && kararAdimi(s)) { notes.push(`"${s.ad}" bir karar adımı; sahibi agent yerine ${ctx.key.kisi} yapıldı.`); s.sahip = ctx.key.kisi; s.sahip_tip = "insan"; }
   const steps = validateSteps(raw, kur);
   steps.forEach((s, i) => { s._agentSahibi = raw[i].agent_sahibi ? String(raw[i].agent_sahibi).trim().slice(0, 80) : null; s._oto = raw[i].oto === true; s._tur = raw[i]._tur || slug(s.ad); s._capa = raw[i]._capa || null; s._netlestir = !!raw[i]._netlestir; s._kosul = raw[i]._kosul || null; s._capaSoru = raw[i]._capaSoru || null; s._cevapSoru = raw[i]._cevapSoru || null; s._sabit = !!raw[i].son_tarih; });
   const bugun = dayNum(todayIst(ctx.now));
@@ -1774,6 +1810,7 @@ async function tasla(a: any, ctx: Ctx) {
     const ek = [h.ders.length ? `Getirilen dersler:\n${h.ders.map(dersSatiri).join("\n")}` : "", h.kart.length ? `Bilgi kartları:\n${h.kart.map(kartSatiri).join("\n")}` : ""].filter(Boolean).join("\n");
     const d = await ctx.llm({ system: DENETCI_SISTEM, user: `İş: ${t.baslik || cumle}\nCümle: ${cumle}\n${denetimListesi(t)}${ek ? `\n${ek}` : ""}`, tool: DENETCI_ARACI, model: ctx.modeller?.hizli, max_tokens: 2500 });
     t._denetim = denetimUygula(t, d.input || {});
+    t._denetim_model = d.model; // 0.32.0 (P1, M5): denetimi hangi motor yaptı
   } catch (e) { console.warn("denetim yapılamadı:", (e as Error).message); }
   // kesin dersler motor ya da denetçi atlamış olsa da uygulanır; ardından kurallı doğrulayıcı
   t._ders_notlari = derslerUygula(t, h.ders);
