@@ -59,6 +59,9 @@ export function yurutmeDoldur(s: any, karar: boolean): YurutmeAlanlari {
 }
 
 export const YURUTME_AD: Record<Yurutme, string> = { ai_yapar: "AI yapar", ai_hazirlar_insan_bitirir: "AI hazırlar, insan bitirir", insan: "", dis: "dış" };
+/** Yürütmenin kişiye görünen adı: insan adımında "AI hazırlar" agent değil, kişinin Claude'la hazırlamasıdır (rutin tetiklenmez). */
+export const yurutmeEtiketi = (y: string | null | undefined, tip?: string | null) =>
+  y === "ai_hazirlar_insan_bitirir" && tip !== "agent" ? "Claude'la hazırlarsın" : YURUTME_AD[y as Yurutme] || "";
 export const INCELEME_AD: Record<Inceleme, string> = { yok: "", hizli_onay: "hızlı onay", yorumlu_inceleme: "yorumlu inceleme" };
 export const KARAR_TUR_AD: Record<KararTur, string> = { secim: "seçim", coklu_secim: "çoklu seçim", onay_red: "onay/red", tutar_tarih: "tutar/tarih", serbest: "serbest karar" };
 /** Kullanıcının zamanı (tahmin, dakika): karar anı ve AI çıktısına bakış başına. */

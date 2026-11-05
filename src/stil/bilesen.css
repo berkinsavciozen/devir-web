@@ -1138,3 +1138,19 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .harita-kutu-eylem { margin-top: 10px; }
 .harita-kutu-eylem .gd-eylem { margin-top: 0; }
 .harita-kutu-ayrinti { align-self: flex-start; min-height: 32px; padding: 6px 0 0; font-size: 14px; }
+
+/* P6 (5 Kas) · plan ekranı: senin zamanın şeridi, yürütme rozetleri */
+.taslak-serit { margin: 10px 0 4px; padding: 10px 14px; border-radius: 14px; font: 600 14.5px/20px var(--font-sans); background: color-mix(in srgb, var(--renk-vurgu-altin) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 45%, transparent); }
+.taslak-plan-liste { list-style: none; margin: 16px 0 20px; padding: 0; display: grid; gap: 12px; }
+.taslak-plan-liste li { display: grid; gap: 3px; padding-bottom: 12px; border-bottom: 1px solid color-mix(in srgb, var(--renk-vurgu-cizgi-lila) 50%, transparent); }
+.taslak-plan-liste li.alt { padding-left: 18px; }
+.taslak-plan-liste b { font: 650 15px/20px var(--font-sans); }
+.taslak-plan-liste small { font: 13px/18px var(--font-sans); color: var(--renk-metin-ink2, inherit); opacity: .85; }
+.taslak-rozetler { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.taslak-rozet { padding: 2px 9px; border-radius: 10px; font: 650 12px/18px var(--font-sans); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.taslak-rozet.ai { color: #2A1D4F; background: #B9A6F2; box-shadow: none; }
+.taslak-rozet.hazir { box-shadow: inset 0 0 0 1.5px #B9A6F2; }
+.taslak-rozet.sen { color: #2A1D4F; background: var(--renk-vurgu-altin, #FFD27A); box-shadow: none; }
+.taslak-rozet.dis { box-shadow: inset 0 0 0 1.5px #5FE3F0; }
+.taslak-rozet.karar { color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1.5px currentColor; }
+.taslak-rozet.inceleme { opacity: .9; }

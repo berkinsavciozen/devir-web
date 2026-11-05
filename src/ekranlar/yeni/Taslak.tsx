@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { sorguIstemcisi, useOzet } from '../../api/sorgular';
@@ -9,6 +9,7 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { f, galaxy, pill, ship, sparkle, kapi } from '../../cizim/ortak.js';
 import { sarSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
+import { adimRozetleri, KARAR_ANI_SINIRI, zamanSeridi } from './plan';
 
 const CX = 195, CY = 318;
 /** Yörüngedeki rozet açıları (tasarım H1; 7'den fazlası sürer). */
@@ -95,6 +96,10 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   ], [t, ek]);
   const S: Soru[] = useMemo(() => [...(t?.sorular || []), ...ek], [t, ek]);
   const [vazgec, setVazgec] = useState(false);
+  // P6 (K2): plan özeti; sorular bitince ya da soru yoksa açılır, başlıktaki "Plan" ile her an açılır
+  const [plan, setPlan] = useState(false);
+  const [planGoruldu, setPlanGoruldu] = useState(false);
+  useEffect(() => { if (t && t.durum === 'acik' && !planGoruldu && !(t.sorular || []).length) { setPlan(true); setPlanGoruldu(true); } }, [t, planGoruldu]);
   const [ayni, setAyni] = useState<AyniVarlik | null>(null);
   const tazele = () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['akislar'] }); };
   const kur = useMutation({
@@ -116,13 +121,14 @@ export function TaslakSorulari({ kod }: { kod: string }) {
     const sonraki = S.findIndex((x, j) => j > i && (yeni[x.kod] == null || yeni[x.kod] === ''));
     const bos = sonraki >= 0 ? sonraki : S.findIndex((x) => yeni[x.kod] == null || yeni[x.kod] === '');
     if (bos >= 0) setTimeout(() => { setSira(bos); setMetin(''); }, 220);
+    else if (!planGoruldu) setTimeout(() => { setPlan(true); setPlanGoruldu(true); }, 320);
   };
   const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Caladea').slice(0, 3) : [];
   const vA = acik != null ? V[acik] : null;
   return (
     <>
       <Sahne gok={GOK} cizim={cizim + (s ? `<rect x="16" y="${qy}" width="358" height="${kartH}" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>` : '')} etiket="Yeni iş">
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button><button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem baslik-eylem" onClick={() => setPlan(true)}>Plan</button><button type="button" className="satir-eylem baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button><button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
         <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
         {V.slice(0, ACI.length).map((v, j) => { const [x, y] = rozetYeri(j); return <button key={j} type="button" className="varsayim-rozet" style={{ left: x - 22, top: y - 22 }} aria-label={`Varsayım: ${v.metin}`} onClick={() => setAcik(j)} />; })}
         {t.motor?.yedek && <Metin y={122 + satirlar.length * 24 + 8} x={24} fs={11.5} lh={20} as="p"><span className="hap hap-yedek" title={`Taslak yedek motorla (${t.motor.ad}) üretildi; birincil motor yanıt vermedi. Birincil dönünce aynı cümleyle yeniden taslak çıkarılabilir.`}>Yedek motor</span></Metin>}
@@ -149,9 +155,36 @@ export function TaslakSorulari({ kod }: { kod: string }) {
             : <Dugme tur="ikincil" ton="lila" fs={15} style={{ top: 168 }} onClick={() => setAcik(null)}>Tamam</Dugme>}
         </div>}
       </AltSayfa>
+      <TaslakPlani t={t} acik={plan} kapat={() => setPlan(false)} hazir={hepsi} mesgul={kur.isPending} kur={() => { setPlan(false); kur.mutate(false); }} />
       {vazgec && <TaslakVazgec kod={kod} kapat={() => setVazgec(false)} bitti={() => { tazele(); git('/'); }} />}
       {ayni && <AyniVarlikOnay a={ayni} kapat={() => setAyni(null)} mesgul={kur.isPending} kur={() => kur.mutate(true)} />}
     </>
+  );
+}
+
+/** P6 · K2 plan özeti: "senin zamanın" şeridi ve yürütme rozetli adım listesi; Kur buradan da yapılır. */
+function TaslakPlani({ t, acik, kapat, hazir, mesgul, kur }: { t: any; acik: boolean; kapat: () => void; hazir: boolean; mesgul: boolean; kur: () => void }) {
+  const A: any[] = t.adimlar || [];
+  const no = new Map(A.map((x, i) => [x.id, i + 1]));
+  const serit = zamanSeridi(t.pay);
+  return (
+    <AltSayfa acik={acik} kapat={kapat} baslik="Plan" yukseklik="yuksek">
+      <div className="ai-etkinlik taslak-plan" role="dialog" aria-label="Plan">
+        <h2 className="ai-etkinlik-baslik">{t.baslik || 'Plan'}</h2>
+        {serit && <p className="taslak-serit">{serit}</p>}
+        {(t.pay?.karar || 0) > KARAR_ANI_SINIRI && <p className="gd-satir mercan">Bu planda senden {t.pay.karar} karar bekleniyor; aynı konudaki kararları birleştirmeyi düşün.</p>}
+        {(t.yurutme_notlari || []).map((n: string, i: number) => <p key={i} className="gd-satir">{n}</p>)}
+        <ol className="taslak-plan-liste">{A.map((x, i) => (
+          <li key={x.id} className={x.ust ? 'alt' : ''}>
+            <b>{i + 1}. {x.kisa_ad || x.ad}</b>
+            <small>{x.sahip}{x.kosul?.soru ? ` · yalnızca ${x.kosul.soru} = ${x.kosul.deger} ise` : ''}{x.ust && no.get(x.ust) ? ` · ${no.get(x.ust)}. adımın alt görevi` : ''}</small>
+            <span className="taslak-rozetler">{adimRozetleri(x).map((r, j) => <span key={j} className={`taslak-rozet ${r.ton}`}>{r.metin}</span>)}</span>
+            {x.karar_secenekleri?.length > 0 && <small>Seçenekler: {x.karar_secenekleri.join(' · ')}</small>}
+          </li>
+        ))}</ol>
+        <Dugme className="statik" yukseklik={50} fs={16} disabled={!hazir} mesgul={mesgul} onClick={kur}>{hazir ? 'Akışı kur' : 'Önce soruları cevapla'}</Dugme>
+      </div>
+    </AltSayfa>
   );
 }
 
