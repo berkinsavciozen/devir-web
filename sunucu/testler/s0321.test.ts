@@ -21,6 +21,15 @@ const arac = { name: "taslak_yaz", description: "", input_schema: { type: "objec
 
   const r = await anthropicLlm("k", "claude-sonnet-5-5")({ system: "s", user: "u", tool: arac });
   ok("Claude Sonnet 5.5 çağrısı 400 almadan döner", r.input?.x === 1, r);
+  ok("0.32.2: taslak medium çaba", istekler[0].b.output_config?.effort === "medium", istekler[0].b.output_config);
+  istekler.length = 0;
+  await anthropicLlm("k", "claude-sonnet-5-5")({ system: "s", user: "u", tool: arac, model: "claude-haiku-5-5" });
+  ok("0.32.2: denetçi (haiku) low çaba", istekler[0].b.output_config?.effort === "low", istekler[0].b.output_config);
+  istekler.length = 0;
+  await anthropicLlm("k", "claude-sonnet-5-5", undefined, "low")({ system: "s", user: "u", tool: arac });
+  ok("0.32.2: DEVIR_TASLAK_CABA ile değişir", istekler[0].b.output_config?.effort === "low", istekler[0].b.output_config);
+  istekler.length = 0;
+  await anthropicLlm("k", "claude-sonnet-5-5")({ system: "s", user: "u", tool: arac });
   ok("tool_choice auto + tek çağrı", istekler[0].b.tool_choice?.type === "auto" && istekler[0].b.tool_choice?.disable_parallel_tool_use === true, istekler[0].b.tool_choice);
 
   ok("gpt-6 ailesi akıl yürüten model sayılır", AKIL.test("gpt-6.1-sol") && AKIL.test("gpt-6-luna") && AKIL.test("gpt-5") && !AKIL.test("gpt-4.1"));
