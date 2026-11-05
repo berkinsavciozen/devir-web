@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bagIsareti, beklenenler, benCumlesi, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
+import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const g = (o: any) => ({ akis: 'A', akis_baslik: 'Hasat', sahip: 'Berkin', sahip_tip: 'insan', durum: 'hazir', onceki: [], sonraki: [], ...o });
@@ -62,4 +62,18 @@ describe('W6 sen ve agent’ların', () => {
     expect(benCumlesi(beklenenler([], ben), null)).toBe('Şu an senden beklenen bir şey yok.');
     expect(benCumlesi(beklenenler([G[1]], ben), [{ simdi: [], sirada: 0 }])).toBe('Senden 1 karar bekleniyor. Agent’ların boşta.');
   });
+});
+
+describe('P5 karar kuyruğu', () => {
+  it('hızlı onaylı AI çıktısı: Onayla', () => expect(kararKarti({ oto: true, oto_durum: 'bakilacak', inceleme: 'hizli_onay' })).toEqual({ alt: 'AI yazdı, onayını bekliyor', hizli: { etiket: 'Onayla', govde: { durum: 'tamam' } } }));
+  it('yorumlu inceleme: hızlı eylem yok, sürüm sayılır', () => expect(kararKarti({ oto: true, oto_durum: 'bakilacak', inceleme: 'yorumlu_inceleme', inceleme_gecmisi: [{}] })).toEqual({ alt: 'AI yazdı (2. sürüm), incelemeni bekliyor', hizli: null }));
+  it('AI önerisi: tek dokunuşla seç', () => {
+    const k = kararKarti({ karar_adimi: true, karar: { secenekler: [{ ad: 'Ege' }, { ad: 'Marmara' }], oneri: { kim: 'Claude', secim: ['Ege'] } } });
+    expect(k.alt).toBe('Claude önerdi: Ege');
+    expect(k.hizli?.etiket).toBe('“Ege” seç');
+    expect(k.hizli?.govde).toMatchObject({ durum: 'tamam', karar_secimi: ['Ege'] });
+  });
+  it('önerisiz seçim: seçenekler görünür, detayda verilir', () => expect(kararKarti({ karar_adimi: true, karar_tur: 'secim', karar: { secenekler: [{ ad: 'A' }, { ad: 'B' }, { ad: 'C' }, { ad: 'D' }] } })).toEqual({ alt: 'seçim: A / B / C …', hizli: null }));
+  it('onay/red kararı', () => expect(kararKarti({ karar_adimi: true, karar_tur: 'onay_red' }).alt).toBe('onay/red'));
+  it('boş kuyruk cümlesi', () => { expect(bosKuyruk(3, 0)).toBe('Şu an kararın yok; AI 3 iş üzerinde çalışıyor.'); expect(bosKuyruk(0, 0)).toBe('Şu an kararın yok.'); });
 });

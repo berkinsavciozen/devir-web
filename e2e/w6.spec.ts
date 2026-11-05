@@ -9,17 +9,17 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png`, fullPage: true });
 
-test('W6 · üst cümle ve senden beklenenler: önce AI onayı, sonra karar; satır çıktıyı açar', async ({ page }) => {
+test('W6 · üst cümle ve karar kuyruğu (P5): önce AI onayı, sonra karar; satır çıktıyı açar', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3');
   await expect(page.getByText(/Senden 1 onay, 1 karar ve \d+ iş bekleniyor\./)).toBeVisible();
   await expect(page.getByRole('button', { name: /Kişi: Ben \+ agent’larım/ })).toBeVisible();
-  const L = page.getByRole('list', { name: 'Senden beklenenler ve agent’ların' });
-  await expect(L.getByRole('heading', { name: /SENDEN BEKLENENLER/ })).toBeVisible();
+  const L = page.getByRole('list', { name: 'Kararların, işlerin ve agent’ların' });
+  await expect(L.getByRole('heading', { name: /KARARLARIN/ })).toBeVisible();
   const satirlar = L.locator('.satir-kart');
   await expect(satirlar.nth(0)).toContainText('Post görseli');
   await expect(satirlar.nth(0)).toContainText('AI yazdı, onayını bekliyor');
   await expect(satirlar.nth(1)).toContainText('karar');
-  await expect(L.getByRole('button', { name: /: onayla, bitir$/ })).toHaveCount(1);
+  await expect(L.getByRole('button', { name: /: Onayla$/ })).toHaveCount(1);
   await cek(page, 'W6-gorevler');
   await satirlar.nth(0).click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
@@ -27,7 +27,7 @@ test('W6 · üst cümle ve senden beklenenler: önce AI onayı, sonra karar; sat
 
 test('W6 · Onayla satırdan bitirir; liste ve cümle güncellenir', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3');
-  await page.getByRole('button', { name: /: onayla, bitir$/ }).first().click();
+  await page.getByRole('button', { name: /: Onayla$/ }).first().click();
   await expect(page.getByText(/Senden 1 karar ve \d+ iş bekleniyor\./)).toBeVisible();
 });
 
@@ -54,6 +54,6 @@ test('W6 · harita sen ve agent’ların şeritleri; masaüstünde solda', async
 
 test('W6 · başka kişi süzgecinde eski görünüm kalır', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3&kisi=hepsi');
-  await expect(page.getByRole('heading', { name: /SENDEN BEKLENENLER/ })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: /KARARLARIN/ })).toHaveCount(0);
   await expect(page.getByRole('heading', { name: 'GÖREV HARİTASI · KİŞİLER' })).toBeVisible();
 });

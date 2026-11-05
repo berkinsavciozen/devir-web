@@ -130,6 +130,32 @@ export function beklenenler(G: any[], ben: string): Beklenen {
   return { onay, karar, is, hepsi: [...onay, ...karar, ...is] };
 }
 
+/**
+ * P5 (5 Kas, karar kuyruğu): kuyruktaki bir kartın alt satırı ve tek dokunuşluk eylemi. Kart ancak girdisi hazırsa gelir
+ * (karar adımı hazır, AI çıktısı yazılmış). Hızlı eylem: hızlı onaylı AI çıktısını onayla, AI'ın önerdiği seçeneği seç;
+ * yorumlu inceleme, önerisiz seçim ve onay/red kararı detayda verilir.
+ */
+export type HizliEylem = { etiket: string; govde: Record<string, unknown> } | null;
+const KARAR_BICIM: Record<string, string> = { secim: 'seçim', coklu_secim: 'çoklu seçim', onay_red: 'onay/red', tutar_tarih: 'tutar/tarih', serbest: 'karar' };
+export function kararKarti(a: any): { alt: string; hizli: HizliEylem } {
+  if (a.oto && a.oto_durum === 'bakilacak') {
+    const tur = (a.inceleme_gecmisi || []).length, yorumlu = a.inceleme === 'yorumlu_inceleme';
+    return { alt: `AI yazdı${tur ? ` (${tur + 1}. sürüm)` : ''}, ${yorumlu ? 'incelemeni' : 'onayını'} bekliyor`, hizli: yorumlu ? null : { etiket: 'Onayla', govde: { durum: 'tamam' } } };
+  }
+  const K = a.karar || {}, sec: any[] = K.secenekler || [], oneri = K.oneri;
+  if (oneri?.secim?.length) {
+    const ad = oneri.secim.join(', ');
+    return { alt: `${oneri.kim || 'AI'} önerdi: ${ad}`, hizli: { etiket: oneri.secim.length > 1 ? 'Öneriyi kabul et' : `${oneri.secim[0].length > 14 ? 'Öneriyi' : `“${oneri.secim[0]}”`} seç`, govde: { durum: 'tamam', karar_secimi: oneri.secim, cikti: { ad: 'Karar', ozet: `Kabul: ${ad}.`, icerik: `Kabul: ${ad}.` } } } };
+  }
+  const bicim = KARAR_BICIM[a.karar_tur] || 'karar';
+  return { alt: sec.length ? `${bicim}: ${sec.map((x) => x.ad).slice(0, 3).join(' / ')}${sec.length > 3 ? ' …' : ''}` : bicim, hizli: null };
+}
+
+/** Kuyruk boşken tek satır: "Şu an kararın yok; AI 3 iş üzerinde çalışıyor." */
+export function bosKuyruk(calisan: number, sirada: number): string {
+  return `Şu an kararın yok${calisan ? `; AI ${calisan} iş üzerinde çalışıyor` : sirada ? `; AI’ın ${sirada} işi sırada` : ''}.`;
+}
+
 const sayi = (n: number, ad: string) => `${n} ${ad}`;
 /** "Senden 2 onay ve 1 karar bekleniyor. Agent'ların 1 iş yapıyor, 4 iş sırada." */
 export function benCumlesi(B: Beklenen, agentlar: { simdi: unknown[]; sirada: number }[] | null): string {

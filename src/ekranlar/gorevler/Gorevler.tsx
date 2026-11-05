@@ -20,7 +20,7 @@ import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { alanAdi, SatirKart } from '../hesap/Hesap';
-import { bagIsareti, beklenenler, benCumlesi, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
+import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
 import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 import { useMutation } from '@tanstack/react-query';
 import { sorguIstemcisi } from '../../api/sorgular';
@@ -88,8 +88,8 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const [agentAc, setAgentAc] = useState<string | null>(null);
   const B = useMemo(() => beklenenler(L, kisi), [L, kisi]);
   const onayla = useMutation({
-    mutationFn: (a: any) => api.post<any>(`/akis/${enc(a.akis)}/adim/${a.no}`, { durum: 'tamam' }),
-    onSuccess: (_r, a) => { for (const k of [['gorevler'], ['ozet'], ['akis', a.akis], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); },
+    mutationFn: ({ a, govde }: { a: any; govde: Record<string, unknown> }) => api.post<any>(`/akis/${enc(a.akis)}/adim/${a.no}`, govde),
+    onSuccess: (_r, { a }) => { for (const k of [['gorevler'], ['ozet'], ['akis', a.akis], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); },
   });
   // masaüstünde görev haritası sol bölmede büyük çizilir (GorevlerSol); panelde yalnız liste
   const panelde = usePanelIcinde();
@@ -102,7 +102,9 @@ export function Gorevler({ ben }: { ben: Ben }) {
   // W6 (ben kipi): üstte senden beklenenler ve agent'ların, harita onların altında; listenin boyu satır sayısından
   const AA = benKip ? AG.data?.agentlar || [] : [];
   const ustListeY = 196 + kayma + (G.data && benKip && L.length ? 22 : 0);
-  const ustListeBoyu = benKip ? 32 + (B.hepsi.length ? B.hepsi.length * 66 : 36) + (AA.length ? 32 + AA.length * 66 : 0) : 0;
+  // P5: üstte karar kuyruğu (AI çıktısı + kararlar), altında sırası gelen işlerin
+  const KK = [...B.onay, ...B.karar];
+  const ustListeBoyu = benKip ? 32 + (KK.length ? KK.length * 66 : 36) + (B.is.length ? 32 + B.is.length * 66 : 0) + (AA.length ? 32 + AA.length * 66 : 0) : 0;
   const HY = benKip && !panelde ? ustListeY + ustListeBoyu + 52 : HARITA_Y + kayma;
   const kisiBasina = S.kisi === 'hepsi' || benKip;
   const H = useMemo(() => gorevHaritasi(L, { kisiBasina, now: NOW, y0: HY + 8, ...(benKip ? { satir: 64, yakin: 22, adim: 14 } : {}) }), [L, kisiBasina, NOW, HY, benKip]);
@@ -153,13 +155,16 @@ export function Gorevler({ ben }: { ben: Ben }) {
   // W6: üst liste (senden beklenenler, agent'ların); alttakinde beklenenler tekrar etmez
   const ustOgeler: Oge[] = [];
   if (benKip) {
-    ustOgeler.push({ tur: 'baslik', metin: `SENDEN BEKLENENLER · ${B.hepsi.length}` });
-    if (!B.hepsi.length) ustOgeler.push({ tur: 'not', metin: 'Şu an senden beklenen bir şey yok.' });
-    for (const a of B.hepsi) {
-      const o = satir(a) as Extract<Oge, { tur: 'satir' }>;
-      if (B.onay.includes(a)) ustOgeler.push({ ...o, alt: `AI yazdı, onayını bekliyor · ${akisAdi(a)}`,
-        sag: <button type="button" className="satir-eylem" disabled={onayla.isPending} onClick={(e) => { e.stopPropagation(); onayla.mutate(a); }} aria-label={`${a.ad}: onayla, bitir`}>Onayla</button> });
-      else ustOgeler.push(B.karar.includes(a) ? { ...o, alt: `karar · ${o.alt}` } : o);
+    ustOgeler.push({ tur: 'baslik', metin: `KARARLARIN · ${KK.length}` });
+    if (!KK.length) ustOgeler.push({ tur: 'not', metin: bosKuyruk(AA.reduce((t: number, g: any) => t + (g.simdi?.length || 0), 0), AA.reduce((t: number, g: any) => t + (g.sirada || 0), 0)) });
+    for (const a of KK) {
+      const o = satir(a) as Extract<Oge, { tur: 'satir' }>, k = kararKarti(a);
+      ustOgeler.push({ ...o, alt: `${k.alt} · ${akisAdi(a)}`,
+        ...(k.hizli ? { sag: <button type="button" className="satir-eylem" disabled={onayla.isPending} onClick={(e) => { e.stopPropagation(); onayla.mutate({ a, govde: k.hizli!.govde }); }} aria-label={`${a.ad}: ${k.hizli.etiket}`}>{k.hizli.etiket}</button> } : {}) });
+    }
+    if (B.is.length) {
+      ustOgeler.push({ tur: 'baslik', metin: `SIRASI GELEN İŞLERİN · ${B.is.length}` });
+      for (const a of B.is) ustOgeler.push(satir(a));
     }
     if (AA.length) {
       ustOgeler.push({ tur: 'baslik', metin: `AGENT’LARIN · ${AA.length}` });
@@ -177,7 +182,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
     for (const t of taslaklar) ogeler.push({ tur: 'satir', key: 't' + t.kod, ikon: taslakIkon, ust: t.baslik || t.cumle, alt: `taslak · ${t.soru_sayisi} soru · ${t.adim_sayisi} adım`, etiket: `Taslak: ${t.baslik || t.cumle}. ${t.soru_sayisi} soru bekliyor.`, git: () => git(`/yeni/${enc(t.kod)}/harita`) });
     for (const d of davetler) ogeler.push({ tur: 'satir', key: 'd' + d.id, ikon: zarfIkon, ust: alanAdi(d.alan || '', d.davet_eden), alt: `davet · ${d.rol === 'dis' ? 'dış' : d.rol}${d.davet_eden ? ` · ${d.davet_eden}` : ''}`, git: () => git('/hesap') });
   }
-  const UstLst = Liste({ y0: ustListeY, ogeler: ustOgeler, etiket: 'Senden beklenenler ve agent’ların' });
+  const UstLst = Liste({ y0: ustListeY, ogeler: ustOgeler, etiket: 'Kararların, işlerin ve agent’ların' });
   const listeY = benKip ? (L.length && !panelde ? HY + H.h + 66 : ustListeY + ustListeBoyu + 16) : L.length && !panelde ? HY + H.h + 66 : (L.length ? HY : 196 + kayma);
   const Lst = Liste({ y0: listeY, ogeler, etiket: benKip ? 'Diğer işler' : 'Görevler' });
 

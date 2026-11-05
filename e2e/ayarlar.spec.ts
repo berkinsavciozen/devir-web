@@ -41,9 +41,9 @@ test('N1-gorevler: eski /bana adresi Görevler’e döner; gruplar, harita, sat�
   await ac(page, '/bana?senaryo=berkin');
   await expect(page).toHaveURL(/\/gorevler/);
   // W6: varsayılan görünüm "sen ve agent'ların"; sırası gelen işler "senden beklenenler"de
-  await expect(page.getByRole('heading', { name: /SENDEN BEKLENENLER/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /KARARLARIN/ })).toBeVisible();
   await expect(page.locator('.gorev-harita .gezegen-hedef').first()).toBeAttached();
-  const L = page.getByRole('list', { name: 'Senden beklenenler ve agent’ların' });
+  const L = page.getByRole('list', { name: 'Kararların, işlerin ve agent’ların' });
   await L.getByRole('listitem').first().waitFor();
   await page.waitForTimeout(200);
   await cek(page, 'N1-gorevler');
