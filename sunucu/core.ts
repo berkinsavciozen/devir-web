@@ -5,7 +5,7 @@ import type { LlmFn, SohbetFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, kelimeBenzer, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
 import { kapsamDenetimi, sahipAdi, destekKisi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
-import { yurutmeDoldur, kontrolKatla, insanPayi, kararEkonomisi, secenekler as secenekListesi, geriBildirimSatirlari, YURUTME, INCELEME, KARAR_TUR, YURUTME_AD, INCELEME_AD, KARAR_TUR_AD, INCELEME_TUR_SINIRI, type IncelemeKaydi } from "./yurutme.ts";
+import { yurutmeDoldur, kontrolKatla, insanPayi, kararEkonomisi, secenekler as secenekListesi, geriBildirimSatirlari, YURUTME, INCELEME, KARAR_TUR, YURUTME_AD, INCELEME_AD, KARAR_TUR_AD, INCELEME_TUR_SINIRI, yurutmeEtiketi, type IncelemeKaydi } from "./yurutme.ts";
 import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, akisKisaAdi, KISA_AD_EN_COK } from "./ad.ts";
 
 export interface DB {
@@ -1918,13 +1918,13 @@ function yurutmeTaslak(t: any) {
     Object.assign(x, yurutmeDoldur({ ...x, sahip_tip: tip }, alanDoldur(x).karar_gerekli));
   }
 }
-function taslakPayi(t: any, kisi: string) {
+export function taslakPayi(t: any, kisi: string) {
   const rol = new Map<string, any>((t.roller || []).map((x: any) => [x.kod, x]));
   return insanPayi(t.adimlar || [], (x: any) => { const r = rol.get(x.sahip_rol); const tip = r?.tip || "insan"; return { tip, kisi: tip === "agent" ? destekKisi(r, kisi) : r?.kisi || (r ? null : kisi) }; }, kisi);
 }
 /** Adım satırındaki yürütme, inceleme ve karar biçimi. */
-export function yurutmeRozeti(x: any, karar: boolean) {
-  const y = YURUTME_AD[x.yurutme as keyof typeof YURUTME_AD] || "", i = INCELEME_AD[x.inceleme as keyof typeof INCELEME_AD] || "";
+export function yurutmeRozeti(x: any, karar: boolean, tip?: string | null) {
+  const y = yurutmeEtiketi(x.yurutme, tip), i = INCELEME_AD[x.inceleme as keyof typeof INCELEME_AD] || "";
   const kt = karar ? KARAR_TUR_AD[x.karar_tur as keyof typeof KARAR_TUR_AD] || "" : "";
   const sec = karar && Array.isArray(x.karar_secenekleri) && x.karar_secenekleri.length ? ` (${x.karar_secenekleri.join(" / ")})` : "";
   return `${y ? ` · ${y}` : ""}${i ? ` · ${i}` : ""}${karar ? ` · karar${kt ? `: ${kt}` : ""}${sec}` : ""}`;
@@ -1951,7 +1951,7 @@ function taslakAdimlari(t: any) {
   (t.adimlar || []).forEach((x: any, i: number) => {
     const r0 = rol.get(x.sahip_rol), al = alanDoldur(x);
     const ust = x.ust ? (t.adimlar || []).findIndex((y: any) => y.id === x.ust) : -1;
-    out.push(`${ust >= 0 ? "   ↳ " : ""}${i + 1}. ${x.ad}${ust >= 0 ? ` (${ust + 1}. adımın alt görevi)` : ""}${x.kisa_ad && norm(x.kisa_ad) !== norm(x.ad) ? ` (kısa ad: ${x.kisa_ad})` : ""} — ${r0 ? sahipAdi(r0) : x.sahip_rol}${x.kosul && x.kosul.soru ? ` [yalnızca ${x.kosul.soru}=${x.kosul.deger} ise]` : ""}${yurutmeRozeti(x, al.karar_gerekli)}${al.cikti_bekleniyor ? " · çıktı" : ""}`);
+    out.push(`${ust >= 0 ? "   ↳ " : ""}${i + 1}. ${x.ad}${ust >= 0 ? ` (${ust + 1}. adımın alt görevi)` : ""}${x.kisa_ad && norm(x.kisa_ad) !== norm(x.ad) ? ` (kısa ad: ${x.kisa_ad})` : ""} — ${r0 ? sahipAdi(r0) : x.sahip_rol}${x.kosul && x.kosul.soru ? ` [yalnızca ${x.kosul.soru}=${x.kosul.deger} ise]` : ""}${yurutmeRozeti(x, al.karar_gerekli, r0?.tip)}${al.cikti_bekleniyor ? " · çıktı" : ""}`);
   });
   return out;
 }
@@ -2194,7 +2194,7 @@ async function adimOku(a: any, ctx: Ctx) {
   else if (s.cikti_bekleniyor) out.push("Beklenen çıktı: bu adım bir çıktı üretir; bitince cikti olarak yaz.");
   if (s.karar_kriteri) out.push(`Karar kriteri: ${s.karar_kriteri}`);
   else if (kararAdimi(s)) out.push("Karar kriteri: yazılmamış; karar adımı. Kriteri kullanıcıyla netleştir, devir_adim_guncelle karar_kriteri ile yaz.");
-  if (s.yurutme || s.inceleme || s.karar_tur) out.push(`Yürütme: ${[s.yurutme && YURUTME_AD[s.yurutme as keyof typeof YURUTME_AD], s.inceleme && s.inceleme !== "yok" && INCELEME_AD[s.inceleme as keyof typeof INCELEME_AD], s.karar_tur && `karar biçimi: ${KARAR_TUR_AD[s.karar_tur as keyof typeof KARAR_TUR_AD]}`].filter(Boolean).join(" · ")}`);
+  if (s.yurutme || s.inceleme || s.karar_tur) out.push(`Yürütme: ${[s.yurutme && yurutmeEtiketi(s.yurutme, s.sahip_tip), s.inceleme && s.inceleme !== "yok" && INCELEME_AD[s.inceleme as keyof typeof INCELEME_AD], s.karar_tur && `karar biçimi: ${KARAR_TUR_AD[s.karar_tur as keyof typeof KARAR_TUR_AD]}`].filter(Boolean).join(" · ")}`);
   { const ig: IncelemeKaydi[] = akis.baglam?.inceleme?.[String(s.no)] || []; if (ig.length) out.push(`İnceleme geçmişi (${ig.length}/${INCELEME_TUR_SINIRI}): ${ig.map((k, i) => `${i + 1}. ${k.tur === "red" ? "reddedildi" : "yorumla geri gönderildi"}: ${k.metin}`).join(" · ")}`); }
   if (s.ilerleme) out.push(`Son ilerleme: ${s.ilerleme}`);
   if (s.engel) out.push(`Engel: ${s.engel}`);

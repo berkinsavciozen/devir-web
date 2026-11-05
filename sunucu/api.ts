@@ -2,7 +2,7 @@
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
   callTool, TOOLS, otoToplu, aiGecmisi, agentlarV, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
-  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, otoBekledigi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc,
+  kararlar, ciktilar, acikIsler, fixStep, kararAdimi, otoBekledigi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc, taslakPayi,
 } from "./core.ts";
 import { aiKullanimi, aylikSinir, kullanimYaz } from "./islem.ts";
 import { yuklemeIste, dosyaCiktilari, indir, sil as dosyaSil, akisDosyalari, dosyaIdOf, type Depo } from "./dosya.ts";
@@ -11,6 +11,8 @@ import type { GomFn } from "./bellek.ts";
 import { ANAHTAR_OMRU } from "./hesap.ts";
 import { belirtecAc, belirtecAlanlari, belirtecBul, yeniBelirtec, linkV, baglantiSonu, BAGLANTI_GUN, iptalMi } from "./baglanti.ts";
 import { akisKarari, gecmisYukle } from "./plan.ts";
+import { sahipAdi } from "./tasarim.ts";
+import { yurutmeEtiketi, yurutmeDoldur } from "./yurutme.ts";
 import { adimKisaAdi, akisKisaAdi } from "./ad.ts";
 
 type Ek = { llm?: LlmFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string } };
@@ -325,6 +327,8 @@ async function taslakV(ctx: Ctx, kod: string) {
   const t = await ctx.db.one("taslak", { kisa_kod: String(kod).toUpperCase(), ws_id: ctx.ws.id });
   if (!t) throw new ApiHata(404, `'${kod}' taslağı yok.`);
   const tt = t.taslak || {};
+  // 0.33.0 öncesi taslakta yürütme alanları yok: kuralla doldurulur (gösterim için; taslak değişmez)
+  const dolu = (tt.adimlar || []).map((x: any) => x.yurutme ? x : { ...x, ...yurutmeDoldur({ ...x, sahip_tip: (tt.roller || []).find((y: any) => y.kod === x.sahip_rol)?.tip || "insan" }, !!alanDoldur(x).karar_gerekli) });
   return {
     kod: t.kisa_kod, cumle: t.cumle, durum: t.durum, akis_id: t.akis_id || null, baslik: tt.baslik || null, amac: tt.amac || null, varlik: t.baglam?.musteri || tt.anahtar_varlik?.ad || null,
     hedef_tarih: tt.hedef_tarih || null, is_turu: t.is_turu_ad || t.is_turu || null, olusturuldu: t.created_at,
@@ -333,7 +337,14 @@ async function taslakV(ctx: Ctx, kod: string) {
     varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null, boyut: q.boyut || null, tip: q.tip || null, secenekler: q.secenekler || null })),
     // 0.10.0: taslağın metin varsayımları (H1 yörünge rozetleri)
     varsayim_metinleri: (Array.isArray(t.varsayimlar) ? t.varsayimlar : tt.varsayimlar || []).map((v: any) => ({ boyut: v.boyut || null, metin: v.metin })),
-    adimlar: (tt.adimlar || []).map((x: any) => ({ id: x.id, ad: x.ad, sahip_rol: x.sahip_rol, kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null, ust: x.ust || null })),
+    adimlar: dolu.map((x: any) => {
+      const r = (tt.roller || []).find((y: any) => y.kod === x.sahip_rol), al = alanDoldur(x);
+      // P6 (0.33.1): plan ekranı satırı: kim, yürütme, inceleme, karar biçimi ve seçenekleri
+      return { id: x.id, ad: x.ad, kisa_ad: x.kisa_ad || null, sahip_rol: x.sahip_rol, sahip: r ? sahipAdi(r) : x.sahip_rol, sahip_tip: r?.tip || "insan", kriter: x.kriter, sure_tahmin_gun: x.sure_tahmin_gun ?? null, bagimli: x.bagimli || [], kosul: x.kosul || null, ust: x.ust || null,
+        yurutme: x.yurutme || null, yurutme_ad: yurutmeEtiketi(x.yurutme, r?.tip) || null, inceleme: x.inceleme || null, karar: !!al.karar_gerekli, karar_tur: al.karar_gerekli ? x.karar_tur || null : null, karar_secenekleri: al.karar_gerekli && Array.isArray(x.karar_secenekleri) ? x.karar_secenekleri : [], cikti: !!al.cikti_bekleniyor };
+    }),
+    pay: (({ karar, bakis, dk, ai, senin, dis }) => ({ karar, bakis, dk, ai, senin, dis }))(taslakPayi({ ...tt, adimlar: dolu }, ctx.key.kisi)),
+    yurutme_notlari: tt._yurutme_notlari || [],
     roller: tt.roller || [], hatirlananlar: tt._hatira?.satirlar || [],
     // P1-E madde 11: yedek motorla üretilen taslak arayüzde etiketlenir
     motor: t.model ? { ad: motorAdi(t.model), yedek: yedekMotor(t.model) } : null,

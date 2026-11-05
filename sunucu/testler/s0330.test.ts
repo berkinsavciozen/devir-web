@@ -1,7 +1,7 @@
 // 0.33.0 (5 Kas, P3/P4): yürütme tasarımı (yurutme/inceleme/karar_tur), insan payı, kontrol katlama, AI çıktısını reddet/yorumla geri gönder.
 import { callTool } from "../core.ts";
 import { apiYonlendir } from "../api.ts";
-import { yurutmeDoldur, kontrolKatla, insanPayi, kararEkonomisi, secenekler, geriBildirimSatirlari } from "../yurutme.ts";
+import { yurutmeDoldur, kontrolKatla, insanPayi, kararEkonomisi, secenekler, geriBildirimSatirlari, yurutmeEtiketi } from "../yurutme.ts";
 
 let idc = 1;
 const T: Record<string, any[]> = {};
@@ -52,6 +52,7 @@ const hata = async (f: () => Promise<unknown>) => { try { await f(); return ""; 
   ok("insan adımı inceleme yok", yurutmeDoldur({ sahip_tip: "insan", inceleme: "hizli_onay" }, false).inceleme === "yok");
   ok("dış adım: dis", yurutmeDoldur({ sahip_tip: "dis" }, false).yurutme === "dis");
   ok("karar: 2+ seçenek → seçim", yurutmeDoldur({ sahip_tip: "insan", karar_secenekleri: ["A", "B"] }, true).karar_tur === "secim");
+  ok("insan adımında AI hazırlar = Claude'la hazırlarsın", yurutmeEtiketi("ai_hazirlar_insan_bitirir", "insan") === "Claude'la hazırlarsın" && yurutmeEtiketi("ai_hazirlar_insan_bitirir", "agent") === "AI hazırlar, insan bitirir");
   ok("geçersiz değer kuralla düzelir", yurutmeDoldur({ sahip_tip: "agent", yurutme: "uydurma", inceleme: "x" }, false).yurutme === "ai_yapar");
   ok("karar ekonomisi: 6 karar anı uyarı", !!kararEkonomisi({ karar: 6 }) && !kararEkonomisi({ karar: 5 }));
   const gb = geriBildirimSatirlari([{ tur: "red", metin: "Fiyatlar eski", kim: "Berkin", tarih: "2026-11-05", cikti: "Tablo" }]);
@@ -72,6 +73,11 @@ const hata = async (f: () => Promise<unknown>) => { try { await f(); return ""; 
   ok("taslakta katlama notu", /kontrol/i.test(r) && !/\d\. Karşılaştırma tablosunu kontrol et/.test(r), r);
   ok("taslak satırında yürütme rozeti", /AI yapar/.test(r) && /karar: seçim \(Ambalajcı A \/ Ambalajcı B \/ Ambalajcı C\)/.test(r), r);
   const tk = /Taslak (T\w+)/.exec(r)![1];
+  const tv: any = await apiYonlendir(ctx(), "GET", ["taslak", tk], new URLSearchParams(), null, { fn: "", link: "" });
+  ok("P6: taslak API'de insan payı", tv.pay?.karar === 1 && tv.pay?.ai === 2 && tv.pay?.dk > 0, tv.pay);
+  const ta1 = tv.adimlar.find((x: any) => /karşılaştır/i.test(x.ad)), ta3 = tv.adimlar.find((x: any) => x.karar);
+  ok("P6: taslak adımında yürütme ve karar biçimi", ta1?.yurutme_ad === "AI yapar" && ta1?.sahip_tip === "agent" && ta3?.karar_tur === "secim" && ta3?.karar_secenekleri?.length === 3, [ta1, ta3]);
+  ok("P6: katlama notu API'de", tv.yurutme_notlari?.length === 1, tv.yurutme_notlari);
   r = await callTool("devir_taslak_duzelt", { taslak: tk, duzelt: [{ no: 1, inceleme: "yorumlu_inceleme" }] }, ctx());
   ok("taslak düzelt: inceleme değişir", /yorumlu inceleme/.test(r), r);
   r = await callTool("devir_akis_olustur", { taslak: tk, cevaplar: {} }, ctx());
