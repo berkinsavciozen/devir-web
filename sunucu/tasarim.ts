@@ -56,7 +56,8 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 35. Destek işi ve onay. Agent'ın hazırladığı işi destek verdiği kişi zaten o adımda inceleyip bitirir; agent adımının hemen ardından yalnız "kontrol et", "gözden geçir" ya da "onayla" diyen ayrı bir insan adımı kurma. Ayrı insan adımı yalnız gerçek bir karar (seçim, ödeme, imza) ya da dışarıya gönderme varsa kurulur.
 36. Doğrulama. Agent'ın internetten doğrulayamayacağı bilgi isteyen araştırma (güncel fiyat, çalışma saati, yerinde gözlem, biriyle görüşme) iki adımdır: agent araştırır ve taslak çıkarır; insan sahada ya da telefonla doğrular (doğrulama adımı agent adımına bağımlı).
 37. Ad uzunluğu. ad en çok 70 karakter; iki nokta, liste ve ayrıntı ad'a değil aciklama'ya yazılır ("Rakip kahvecileri analiz et"; fiyat, saat, ürün açıklamada).
-38. Türkçe yaz.`;
+38. Türkçe yaz.
+39. Yürütme tasarımı. Her adım için kimin nasıl yaptığını yaz. yurutme: ai_yapar (agent tek başına yapar; araştırma, taslak, analiz, tablo, metin), ai_hazirlar_insan_bitirir (agent hazırlar, son adımı insan atar: dışarıya gönderme, para, imza, hassas iletişim), insan, dis. Agent'a uygun işi insana yığma: araştırma, karşılaştırma tablosu, metin ve rapor yazımı agent işidir; insan yalnız karar verir, sahada doğrular ya da dışarıyla konuşur. inceleme (yalnız agent adımında): hizli_onay (çıktıya bakıp onaylar), yorumlu_inceleme (dışarıya gidecek ya da riskli çıktıda yorumla düzeltir), yok. Karar adımında karar_tur yaz: secim (seçenekler şimdi biliniyorsa karar_secenekleri'ne 2–6 seçenek; yoksa seçenekleri önceki agent adımı üretir), coklu_secim, onay_red, tutar_tarih, serbest. Kullanıcının karar anlarını en çok 5'te tut: aynı konudaki kararları tek adımda topla; küçük onayları varsayım yap. "Yetenekler" verildiyse agent işlerini o agent'lara ver.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -106,6 +107,10 @@ export const TASLAK_ARACI: LlmTool = {
             tarih_capasi: { type: ["object", "null"], description: "Adım belirli bir günde gerçekleşiyorsa: {tarih} ya da o günü soran {soru}.", properties: { soru: { type: "string" }, tarih: { type: "string" } } },
             dayanak: { type: "array", items: { type: "string" }, description: "Bu adımı ya da süresini belirleyen ders, kart ya da geçmiş iş kodları (D12, K:kod, G:akış)." },
             ust: { type: ["string", "null"], description: "Alt görevse ana görevin id'si; ana görevse null. Tek düzey (ilke 31)." },
+            yurutme: { type: "string", enum: ["ai_yapar", "ai_hazirlar_insan_bitirir", "insan", "dis"], description: "Kim, nasıl yapar (ilke 39)." },
+            inceleme: { type: "string", enum: ["yok", "hizli_onay", "yorumlu_inceleme"], description: "Yalnız agent adımı: AI çıktısı gelince insan ne yapar." },
+            karar_tur: { type: ["string", "null"], enum: ["secim", "coklu_secim", "onay_red", "tutar_tarih", "serbest", null], description: "Yalnız karar adımı: kararın biçimi." },
+            karar_secenekleri: { type: "array", items: { type: "string" }, description: "secim/coklu_secim ve seçenekler şimdi biliniyorsa 2–6 seçenek." },
           },
         },
       },
@@ -334,10 +339,11 @@ const nv = (v: unknown) => String(v ?? "").toLocaleLowerCase("tr").trim();
 export const BILMIYORUM = /^(bilmiyorum|emin değilim|emin degilim|belirsiz|\?|bilinmiyor)$/i;
 
 const GUN = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
-export function kullaniciMesaji(o: { cumle: string; bugun: string; kisi: string; baglam: any; turler: any[]; ogrenim?: string[]; istatistik: string[]; gecmis: string[]; kararlar?: string[]; acikIsler?: string[]; benzer?: string[]; dersler?: string[]; kartlar?: string[]; standart?: string | null }) {
+export function kullaniciMesaji(o: { cumle: string; bugun: string; kisi: string; baglam: any; turler: any[]; ogrenim?: string[]; istatistik: string[]; gecmis: string[]; kararlar?: string[]; acikIsler?: string[]; benzer?: string[]; dersler?: string[]; kartlar?: string[]; standart?: string | null; yetenek?: string[] }) {
   const g = GUN[new Date(o.bugun + "T12:00:00Z").getUTCDay()];
   const L = [`Bugün: ${o.bugun} (${g}). Akışı kuran: ${o.kisi}.`, `Cümle: "${o.cumle}"`];
   if (o.baglam && Object.keys(o.baglam).length) L.push(`Ek bağlam: ${JSON.stringify(o.baglam)}`);
+  if (o.yetenek?.length) L.push("", "Yetenekler (ilke 39; agent işlerini bunlara ver):", ...o.yetenek.map((x) => `- ${x}`));
   if (o.standart) L.push("", "Standart süreç (ekip bu işi böyle yürütmeyi sabitledi; temel al, yalnızca cevaplara ve dallara göre uyarla):", o.standart);
   // iş türü yalnızca etikettir; adım yapısı benzer işlerden, derslerden ve kartlardan gelir
   if (o.turler.length) L.push("", `Kullanılmış iş türü etiketleri (uyuyorsa kodu aynen kullan, yoksa yeni aç): ${o.turler.map((t: any) => `${t.kod} (${t.ad})`).join("; ")}`);
@@ -538,6 +544,8 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
       _capaSoru: s.tarih_capasi?.soru && acik(s.tarih_capasi.soru) ? s.tarih_capasi.soru : null,
       _cevapSoru: s._cevapSoru || null,
       _ust: ustNo(s),
+      // 0.33.0 (P3): yürütme tasarımı taslaktan kurulan adıma taşınır; boş olanı validateSteps doldurur
+      yurutme: s.yurutme || null, inceleme: s.inceleme || null, karar_tur: s.karar_tur || null, karar_secenekleri: Array.isArray(s.karar_secenekleri) ? s.karar_secenekleri : [],
     };
   });
   let hedef: string | null = t.hedef_tarih || null;

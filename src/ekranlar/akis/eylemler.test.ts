@@ -21,7 +21,8 @@ describe('W1 düğme matrisi', () => {
   });
   it('9 · agent işi, AI açık, bekliyor: Claude, ⋯ kapat', () => expect(p({ ...agent, durum: 'sirada', oto: true, oto_bekledigi: 'öncüller' })).toEqual({ ana: null, ikincil: 'claude', menu: ['oto_kapat'] }));
   it('10 · AI çalışıyor: oturumu aç', () => expect(p({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'tetiklendi', oto_oturum: 'https://claude.ai/code/s1' })).toEqual({ ana: 'oturum', ikincil: null, menu: ['oto_kapat'] }));
-  it('11 · AI yaptı, onay bekliyor: Onayla, Claude’la düzelt', () => expect(p({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'bakilacak' })).toEqual({ ana: 'onayla', ikincil: 'duzelt', menu: ['kendim_yapacagim'] }));
+  it('11 · AI yaptı, onay bekliyor: Onayla, yorumla geri gönder; menüde reddet', () => expect(p({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'bakilacak' })).toEqual({ ana: 'onayla', ikincil: 'geri_gonder', menu: ['reddet', 'duzelt', 'kendim_yapacagim'] }));
+  it('11b · 4 inceleme turundan sonra: Onayla, Claude’la düzelt', () => expect(p({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'bakilacak', inceleme_gecmisi: [1, 2, 3, 4] })).toEqual({ ana: 'onayla', ikincil: 'duzelt', menu: ['kendim_yapacagim'] }));
   it('12 · AI yapamadı: Yeniden dene', () => expect(p({ ...agent, durum: 'engelli', oto: true, oto_durum: 'hata' })).toEqual({ ana: 'yeniden_dene', ikincil: 'claude', menu: ['oto_kapat'] }));
   it('13 · açık alt görevli üst görev: düğme yok', () => expect(p({ ...insan, durum: 'suruyor' }, { acikAlt: 3 })).toEqual({ ana: null, ikincil: null, menu: [] }));
   it('14 · ekipten başkasının işi (ve başkasının agent’ı): düğme yok', () => {
@@ -41,6 +42,7 @@ describe('W1 düğme matrisi', () => {
 describe('W1 cümleler', () => {
   const o = { ben, tetikYok: false, zaman: () => '08:25', ek: (t: string) => `${t}’te`, kisa: () => 'Claude' };
   it('onay bekleyen AI işi', () => expect(otoDurumCumlesi({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'bakilacak', ciktilar: [{ ad: 'Rakip tablosu', tarih: '2026-11-04T05:25:00Z' }] }, o)).toBe('Claude 08:25’te “Rakip tablosu” çıktısını yazdı. Bakıp onayla.'));
+  it('geri gönderilmiş, yorumlu incelenen AI işi', () => expect(otoDurumCumlesi({ ...agent, durum: 'suruyor', oto: true, oto_durum: 'bakilacak', inceleme: 'yorumlu_inceleme', inceleme_gecmisi: [{}], ciktilar: [{ ad: 'Rakip tablosu v2', tarih: '2026-11-04T05:25:00Z' }] }, o)).toBe('Claude 08:25’te “Rakip tablosu v2” çıktısının 2. sürümünü yazdı. İncele; onayla ya da yorumla geri gönder.'));
   it('soru bekleyen AI işi', () => {
     const by = new Map<number, any>([[3, { no: 3, sahip: ben }]]);
     expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, oto_bekledigi: 'açık soru', capa_soru: 'butce' }, { ...o, by, sorular: [{ kod: 'butce', kisa: 'Bütçe', adim_no: 3 }] }))

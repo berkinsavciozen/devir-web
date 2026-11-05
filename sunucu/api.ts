@@ -52,6 +52,9 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
     karar_gerekli: typeof s.karar_gerekli === "boolean" ? s.karar_gerekli : null, cikti_bekleniyor: alanDoldur(s).cikti_bekleniyor,
     // W5: alt görev (tek düzey); üst görevin alt görev numaraları
     ust_adim: s.ust_adim ?? null, alt_gorevler: steps.filter((x: any) => x.ust_adim === s.no).sort((p: any, r: any) => p.no - r.no).map((x: any) => x.no),
+    // P3/P4 (0.33.0): yürütme tasarımı ve AI çıktısı inceleme geçmişi
+    yurutme: s.yurutme || null, inceleme: s.inceleme || null, karar_tur: s.karar_tur || null,
+    inceleme_gecmisi: (akis.baglam?.inceleme?.[String(s.no)] || []).map((k: any) => ({ tur: k.tur, metin: k.metin, kim: opts.dis ? null : k.kim || null, tarih: k.tarih })),
     tekrar: grup ? { grup: grup.id, kalem_turu: grup.kalem_turu, kalemler: grup.kalemler.map((k) => ({ ad: k.ad, akis: k.kod })) } : null,
   };
   if (opts.dis) v.agent_sahibi = null;
