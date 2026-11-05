@@ -4,8 +4,13 @@
  */
 export type Eylem =
   | 'bitti' | 'cikti_ekle' | 'ciktisiz_bitir' | 'claude' | 'claude_dusun' | 'engel_bildir' | 'engel_kaldir'
-  | 'oto_ac' | 'oto_kur' | 'oto_kapat' | 'kendim_bitir' | 'oturum' | 'onayla' | 'duzelt' | 'kendim_yapacagim'
+  | 'oto_ac' | 'oto_kur' | 'oto_kapat' | 'kendim_bitir' | 'oturum' | 'onayla' | 'geri_gonder' | 'reddet' | 'duzelt' | 'kendim_yapacagim'
   | 'yeniden_dene' | 'yeniden_ac' | 'baglanti' | 'onizle';
+
+/** Sunucudaki INCELEME_TUR_SINIRI ile aynı (sunucu/yurutme.ts). */
+export const INCELEME_TUR_SINIRI = 4;
+/** Sunucudaki RED_NEDENLERI ile aynı: hazır red nedenleri. */
+export const RED_NEDENLERI = ['Bilgi yanlış ya da eksik', 'İstediğim bu değildi', 'Kalite yetersiz'] as const;
 
 export interface EylemPlani { ana: Eylem | null; ikincil: Eylem | null; menu: Eylem[] }
 
@@ -48,7 +53,10 @@ export function eylemPlani({ a, ben, acikAlt, tetikYok }: EylemGirdisi): EylemPl
       if (a.durum === 'engelli') return yap('engel_kaldir', claude);
       return yap(tetikYok ? 'oto_kur' : 'oto_ac', claude, [(a.durum === 'hazir' || a.durum === 'suruyor') && 'kendim_bitir']);
     }
-    if (a.oto_durum === 'bakilacak') return yap('onayla', 'duzelt', ['kendim_yapacagim']);
+    // P4 (0.33.0): AI çıktısı yorumla geri gönderilir ya da nedenle reddedilir; AI yeni sürüm yazar. 4 turdan sonra düzeltme kullanıcıda.
+    if (a.oto_durum === 'bakilacak') return (a.inceleme_gecmisi || []).length >= INCELEME_TUR_SINIRI
+      ? yap('onayla', 'duzelt', ['kendim_yapacagim'])
+      : yap('onayla', 'geri_gonder', ['reddet', 'duzelt', 'kendim_yapacagim']);
     if (a.oto_durum === 'hata' || a.durum === 'engelli') return yap('yeniden_dene', claude, ['oto_kapat']);
     if (a.oto_durum === 'tetiklendi') return a.oto_oturum ? yap('oturum', null, ['oto_kapat']) : yap(null, claude, ['oto_kapat']);
     return yap(tetikYok ? 'oto_kur' : null, claude, ['oto_kapat']);
@@ -86,6 +94,8 @@ export const EYLEM_AD: Record<Eylem, string> = {
   kendim_bitir: 'Kendim yaptım, bitir',
   oturum: 'Claude oturumunu aç',
   onayla: 'Onayla, bitir',
+  geri_gonder: 'Yorumla geri gönder',
+  reddet: 'Reddet',
   duzelt: 'Claude’la düzelt',
   kendim_yapacagim: 'Kendim yapacağım (AI’ı kapat)',
   yeniden_dene: 'Yeniden dene',
@@ -108,7 +118,9 @@ export function otoDurumCumlesi(a: any, o: { ben: string; tetikYok: boolean; sor
   if (a.oto_durum === 'bakilacak') {
     const son = [...(a.ciktilar || [])].sort((x: any, y: any) => Date.parse(y.tarih) - Date.parse(x.tarih))[0];
     const t = son ? Date.parse(son.tarih) : NaN;
-    return `${Number.isFinite(t) ? `${ag} ${o.ek(o.zaman(t))}` : ag} ${son ? `“${son.ad}” çıktısını` : 'çıktısını'} yazdı. Bakıp onayla.`;
+    const tur = (a.inceleme_gecmisi || []).length;
+    const ne = a.inceleme === 'yorumlu_inceleme' ? 'İncele; onayla ya da yorumla geri gönder.' : 'Bakıp onayla.';
+    return `${Number.isFinite(t) ? `${ag} ${o.ek(o.zaman(t))}` : ag} ${son ? `“${son.ad}” ` : ''}${tur ? `çıktısının ${tur + 1}. sürümünü` : 'çıktısını'} yazdı. ${ne}`;
   }
   if (a.oto_durum === 'hata') return `${ag} bu işi yapamadı${a.engel ? `: ${String(a.engel).replace(/\.$/, '')}` : ''}. Yeniden dene ya da Claude’da aç.`;
   if (a.oto_durum === 'tetiklendi') return `${ag} şu an bu görev üzerinde çalışıyor.`;

@@ -13,9 +13,9 @@ describe('web–sunucu sürüm uyumu (N-8)', () => {
     expect(eskiMi('1.0.0', '0.27.0')).toBe(false);
   });
   it('eski sunucu, uygulanmamış migration ve tamam', () => {
-    expect(uyumDurumu({ surum: '0.21.0' })).toEqual({ tamam: false, metin: 'Sunucu 0.21.0 · web 0.32.2 bekliyor, Edge kodu yüklenmeli' });
-    expect(uyumDurumu({ surum: '0.32.2', sema: { beklenen: SEMA, canli: null, uyumlu: false } }).metin).toMatch(/migration bekleniyor/);
-    expect(uyumDurumu({ surum: '0.32.2', sema: { beklenen: SEMA, canli: SEMA, uyumlu: true } })).toEqual({ tamam: true, metin: 'Sunucu 0.32.2 · erişim açık' });
+    expect(uyumDurumu({ surum: '0.21.0' })).toEqual({ tamam: false, metin: 'Sunucu 0.21.0 · web 0.33.0 bekliyor, Edge kodu yüklenmeli' });
+    expect(uyumDurumu({ surum: '0.33.0', sema: { beklenen: SEMA, canli: null, uyumlu: false } }).metin).toMatch(/migration bekleniyor/);
+    expect(uyumDurumu({ surum: '0.33.0', sema: { beklenen: SEMA, canli: SEMA, uyumlu: true } })).toEqual({ tamam: true, metin: 'Sunucu 0.33.0 · erişim açık' });
     expect(uyumDurumu(undefined).tamam).toBe(false);
   });
 });

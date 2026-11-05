@@ -1072,6 +1072,14 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-menu-oge:hover { background: color-mix(in srgb, var(--renk-metin-ink) 7%, transparent); }
 .gd-menu-oge.mercan { color: var(--renk-metin-mercan); }
 .gd-engel { margin-top: 10px; }
+/* P4 (0.33.0) · AI çıktısına geri bildirim: red nedenleri çip, yorum alanı */
+.gd-geri { margin-top: 10px; flex-wrap: wrap; align-items: flex-end; }
+.gd-geri .alan { height: auto; min-height: 64px; padding: 10px 14px; resize: vertical; flex-basis: 100%; }
+.gd-geri-nedenler { display: flex; flex-wrap: wrap; gap: 8px; flex-basis: 100%; }
+.gd-cip { min-height: 40px; padding: 0 14px; border: 0; border-radius: 20px; font: 600 14px/18px var(--font-sans); color: var(--renk-metin-ink); background: color-mix(in srgb, var(--renk-metin-ink) 5%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); cursor: pointer; }
+.gd-cip.secili { background: color-mix(in srgb, var(--renk-vurgu-altin) 16%, transparent); box-shadow: inset 0 0 0 1.8px var(--renk-vurgu-altin); }
+.gd-cip:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.gd-geri .gd-alt-ekle-dugme { margin-left: auto; }
 .gd-ikili { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); column-gap: 24px; }
 /* W2 (4 Kas) · AI etkinliği: haritada çip, alt sayfada durum grupları ve zaman çizelgesi */
 .ai-cip { display: inline-flex; align-items: center; gap: 6px; }

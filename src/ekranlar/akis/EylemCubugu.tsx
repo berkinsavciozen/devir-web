@@ -7,7 +7,7 @@ import { ship } from '../../cizim/ortak.js';
 import { kisaAd } from '../../cizim/yol.js';
 import { ozelEk } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
-import { duzeltIstemi, EYLEM_AD, type Eylem, type EylemPlani } from './eylemler';
+import { duzeltIstemi, EYLEM_AD, RED_NEDENLERI, type Eylem, type EylemPlani } from './eylemler';
 
 /**
  * W1 (4 Kas): görev detayının eylem çubuğu. Başlığın altında; en çok bir ana, bir ikincil düğme ve seyrek işler için
@@ -31,6 +31,10 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, children }: {
   const [engelAc, setEngelAc] = useState(false);
   const [engel, setEngel] = useState('');
   const [bilgi, setBilgi] = useState<string | null>(null);
+  // P4 (0.33.0): AI çıktısına geri bildirim; geri_gonder yorum ister, reddet neden ister (hazır nedenler + ek)
+  const [geri, setGeri] = useState<null | 'geri_gonder' | 'reddet'>(null);
+  const [neden, setNeden] = useState<string | null>(null);
+  const [yorum, setYorum] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   const kat = useQuery({ queryKey: ['katilimcilar', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/katilimcilar`), enabled: plan.menu.includes('onizle'), retry: false });
   useEffect(() => {
@@ -39,7 +43,12 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, children }: {
     addEventListener('keydown', kapat); addEventListener('pointerdown', kapat);
     return () => { removeEventListener('keydown', kapat); removeEventListener('pointerdown', kapat); };
   }, [menuAcik]);
-  useEffect(() => { setEngelAc(false); setBilgi(null); setMenuAcik(false); }, [a.no]);
+  useEffect(() => { setEngelAc(false); setBilgi(null); setMenuAcik(false); setGeri(null); setNeden(null); setYorum(''); }, [a.no]);
+  const geriMetni = () => (geri === 'reddet' ? [neden, yorum.trim()].filter(Boolean).join(': ') : yorum.trim());
+  const geriGonder = () => {
+    const v = geriMetni(); if (!v || !geri) return;
+    yaz.mutate({ [geri]: v }, { onSuccess: () => { setGeri(null); setNeden(null); setYorum(''); setBilgi('Geri bildirim AI’a gitti; yeni sürüm gelince yeniden onayına düşer.'); } });
+  };
 
   const ac = (u?: string | null) => { if (u) window.open(u, '_blank', 'noopener'); };
   const calis = (e: Eylem) => {
@@ -57,6 +66,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, children }: {
       case 'oto_kapat': case 'kendim_yapacagim': return yaz.mutate({ oto: false });
       // yeniden dene: deneme sayısı sıfırlanır (AI yapsın kapatılıp açılır), görev hazıra döner ve rutin yeniden çağrılır
       case 'yeniden_dene': return yaz.mutate(a.oto_durum === 'hata' ? { durum: 'hazir', oto: true } : [{ oto: false }, { durum: 'hazir', oto: true }]);
+      case 'geri_gonder': case 'reddet': setEngelAc(false); return setGeri((x) => (x === e ? null : e));
       case 'duzelt': {
         // D4: AI'ın oturumu (yoksa görevin bağlamıyla Claude) açılır, düzeltme istemi panoya konur; görev bakılacak kalır
         const metin = duzeltIstemi(kod, a);
@@ -72,7 +82,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, children }: {
     }
   };
   const ad = (e: Eylem) => (e === 'baglanti' ? `${ozelEk(kisaAd(a.sahip), 'e')} bağlantı gönder` : EYLEM_AD[e]);
-  const mesgul = (e: Eylem | null) => !!e && yaz.isPending && !['claude', 'claude_dusun', 'oturum', 'cikti_ekle', 'oto_kur', 'baglanti', 'onizle', 'duzelt', 'engel_bildir'].includes(e);
+  const mesgul = (e: Eylem | null) => !!e && yaz.isPending && !['claude', 'claude_dusun', 'oturum', 'cikti_ekle', 'oto_kur', 'baglanti', 'onizle', 'duzelt', 'engel_bildir', 'geri_gonder', 'reddet'].includes(e);
 
   const { ana, ikincil, menu } = plan;
   if (!ana && !ikincil && !menu.length && !children) return null;
@@ -87,13 +97,21 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, children }: {
             <svg aria-hidden width="20" height="20" viewBox="-10 -10 20 20"><circle cx="-6" r="1.8" /><circle r="1.8" /><circle cx="6" r="1.8" /></svg>
           </button>
           {menuAcik && <div className="gd-menu" role="menu" aria-label="Diğer eylemler">
-            {menu.map((e) => <button key={e} type="button" role="menuitem" className={`gd-menu-oge${e === 'engel_bildir' || e === 'oto_kapat' || e === 'kendim_yapacagim' ? ' mercan' : ''}`} onClick={() => calis(e)}>{ad(e)}</button>)}
+            {menu.map((e) => <button key={e} type="button" role="menuitem" className={`gd-menu-oge${e === 'engel_bildir' || e === 'oto_kapat' || e === 'kendim_yapacagim' || e === 'reddet' ? ' mercan' : ''}`} onClick={() => calis(e)}>{ad(e)}</button>)}
           </div>}
         </div>}
       </div>}
       {engelAc && <form className="gd-alt-ekle gd-engel" onSubmit={(e) => { e.preventDefault(); const v = engel.trim(); if (v) yaz.mutate({ durum: 'engelli', engel: v }, { onSuccess: () => { setEngelAc(false); setEngel(''); } }); }}>
         <input className="alan" value={engel} autoFocus onChange={(e) => setEngel(e.target.value)} placeholder="Ne ya da kim bekleniyor?" aria-label="Neye takıldın" maxLength={160} />
         <button type="submit" className="gd-alt-ekle-dugme" disabled={!engel.trim() || yaz.isPending}>Kaydet</button>
+      </form>}
+      {geri && <form className="gd-alt-ekle gd-geri" aria-label={EYLEM_AD[geri]} onSubmit={(e) => { e.preventDefault(); geriGonder(); }}>
+        {geri === 'reddet' && <div className="gd-geri-nedenler" role="radiogroup" aria-label="Red nedeni">
+          {RED_NEDENLERI.map((n) => <button key={n} type="button" role="radio" aria-checked={neden === n} className={`gd-cip${neden === n ? ' secili' : ''}`} onClick={() => setNeden((x) => (x === n ? null : n))}>{n}</button>)}
+        </div>}
+        <textarea className="alan" rows={2} value={yorum} autoFocus onChange={(e) => setYorum(e.target.value)} maxLength={1000}
+          placeholder={geri === 'reddet' ? 'Ne yanlıştı? (isteğe bağlı ayrıntı)' : 'AI neyi değiştirsin?'} aria-label={geri === 'reddet' ? 'Red ayrıntısı' : 'Yorum'} />
+        <button type="submit" className="gd-alt-ekle-dugme" disabled={!geriMetni() || yaz.isPending}>{geri === 'reddet' ? 'Reddet, yeniden yapsın' : 'Geri gönder'}</button>
       </form>}
       {children}
       {bilgi && <p className="gd-satir" role="status">{bilgi}</p>}
