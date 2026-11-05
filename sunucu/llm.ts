@@ -19,7 +19,7 @@ async function zamanli(url: string, init: RequestInit, kalan: number) {
   catch (e) { throw new Error((e as Error).name === "TimeoutError" ? "süre doldu" : (e as Error).message); }
 }
 
-/** 0.33.0: Sonnet 5.5 varsayılan çabada (high) taslağı 88–104 sn'de yazdı; denetçi süre yüzünden atlandı, MCP istemcisi 60 sn'de koptu.
+/** 0.32.2: Sonnet 5.5 varsayılan çabada (high) taslağı 88–104 sn'de yazdı; denetçi süre yüzünden atlandı, MCP istemcisi 60 sn'de koptu.
  * Taslak "medium", hızlı işler (denetçi, ders) "low" çabayla çağrılır. DEVIR_TASLAK_CABA ile değiştirilebilir. */
 export type Caba = "low" | "medium" | "high" | "xhigh" | "max";
 export const cabaOf = (m: string, taslakCaba: Caba = "medium"): Caba => (/haiku|mini|hizli/i.test(m) ? "low" : taslakCaba);
