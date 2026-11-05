@@ -390,11 +390,17 @@ export function yolCiz(M, o = {}) {
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
     let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx });
     yapisik.forEach((a, i) => {
-      // kuyruğun üst yanında (geminin yönüne göre), ikinci robot bir sıra geride
-      const k = sc / .78, yx = Math.cos(p.yon || 0), yy = Math.sin(p.yon || 0), ger = -17 - i * 15, yan = -15;
-      const dx = (ger * yx - yan * yy) * k, dy = (ger * yy + yan * yx) * k;
+      // 5 Kas (Berkin): agent kendi sarmalındaki yerinde gider; sahibinin gemisine iple bağlıdır. İp, ikisinin yerine göre
+      // uzar, kısalır ve yön değiştirir. İkisi üst üste gelirse robot kuyruğun üst yanına (eski yapışık yer) kadar açılır.
+      const k = sc / .78, q = gorunen[a.ad].p, yx = Math.cos(p.yon || 0), yy = Math.sin(p.yon || 0);
+      let dx = q.x - p.x, dy = q.y - p.y;
+      const enAz = 20 * k, d = Math.hypot(dx, dy);
+      if (d < enAz) {
+        if (d > 1e-3) { dx = dx / d * enAz; dy = dy / d * enAz; }
+        else { const ger = -17 - i * 15, yan = -15; dx = (ger * yx - yan * yy) * k; dy = (ger * yy + yan * yx) * k; }
+      }
       gemiler.push({ ad: a.ad, tip: 'agent', x: p.x + dx, y: p.y + dy, sc: sc * .72, destek: u.ad });
-      g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc) + g;
+      g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc, { ip: true, yon: q.yon, alev: X <= NOWx }) + g;
     });
     L[u.ad] += `<g opacity="${X > NOWx ? .75 : 1}">` + g + '</g>';
   }

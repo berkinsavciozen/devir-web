@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 
-// W2 (4 Kas): AI yapsın görünürlüğü. Destek gemisi kişinin gemisine yapışık; onay bekleyen işte camgöbeği flama;
+// W2 (4 Kas): AI yapsın görünürlüğü. Destek gemisi kendi sarmalında, kişinin gemisine iple bağlı (5 Kas); onay bekleyen işte camgöbeği flama;
 // haritada AI çipi → AI etkinliği (durum grupları + zaman çizelgesi); listede AI durumu; harita dilinde AI satırları.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
   await p.setViewportSize({ width: w, height: h });
@@ -44,4 +44,14 @@ test('W2 · AI işi olmayan akışta AI çipi yok', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Harita dili' }).waitFor();
   await expect(page.getByRole('button', { name: /^AI etkinliği/ })).toHaveCount(0);
+});
+
+test('W2 · 390: destek agent kendi sarmalında gider, sahibinin gemisine iple bağlı', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
+  const ip = page.locator('path.destek-ip').first();
+  await expect(ip).toBeAttached();
+  const d = await ip.getAttribute('d');
+  const [, x0, y0, x1, y1] = /^M([\d.-]+),([\d.-]+) Q[\d.-]+,[\d.-]+ ([\d.-]+),([\d.-]+)$/.exec(d || '') || [];
+  expect(Math.hypot(+x1 - +x0, +y1 - +y0)).toBeGreaterThan(19);
+  await cek(page, 'W2-destek-ip-390');
 });
