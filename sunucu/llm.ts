@@ -30,10 +30,11 @@ export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SIN
         method: "POST",
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({
-          // 0.32.0 (P1, M1–M2): araç çağrısı OpenAI'deki gibi zorunlu; yanıt sınırı iki motorda aynı (16.000)
+          // 0.32.1: Sonnet 5.5 / Opus 5.5 zorunlu tool_choice'u (tool/any) 400 ile reddediyor. auto + tek çağrı + istem talimatı;
+          // araç çağrılmazsa döngü bir kez daha dener. Yanıt sınırı iki motorda aynı (16.000).
           model: m, max_tokens: max_tokens || YANIT_SINIRI,
           system: [{ type: "text", text: system + `\n\nYanıtını yalnızca ${tool.name} aracını tek kez çağırarak ver; düz metin yazma.`, cache_control: { type: "ephemeral" } }],
-          tools: [tool], tool_choice: { type: "tool", name: tool.name },
+          tools: [tool], tool_choice: { type: "auto", disable_parallel_tool_use: true },
           messages: [{ role: "user", content: user }],
         }),
       }, sinirMs - (Date.now() - t0)); } catch (e) { lastErr = (e as Error).message; break; }
