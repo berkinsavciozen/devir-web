@@ -589,6 +589,9 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     if (r0 === "akis" && r1 && r2 === "cevap" && !r3) { const mesaj = await arac(ctx, "devir_cevapla", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }
     if (r0 === "akis" && r1 && r2 === "tekrar" && !r3) { const mesaj = await arac(ctx, "devir_alt_akis", { ...b, akis: r1 }); return { mesaj, ...(await akisV(ctx, r1)) }; }
     if (r0 === "akis" && r1 && r2 === "kapat" && !r3) { const mesaj = await arac(ctx, "devir_akis_kapat", { ...b, akis: r1 }); return { mesaj }; }
+    // 0.31.0: arşiv ve yeniden adlandırma; güncel kart döner
+    if (r0 === "akis" && r1 && r2 === "arsiv" && !r3) { const mesaj = await arac(ctx, "devir_akis_arsivle", { akis: r1, geri_al: b.geri_al === true }); return { mesaj, ...(await akisV(ctx, r1)) }; }
+    if (r0 === "akis" && r1 && r2 === "ad" && !r3) { const mesaj = await arac(ctx, "devir_akis_adlandir", { akis: r1, ad: b.ad }); return { mesaj, ...(await akisV(ctx, r1)) }; }
     if (r0 === "akis" && r1 && r2 === "sabitle" && !r3) { const mesaj = await arac(ctx, "devir_sabitle", { ...b, akis: r1 }); return { mesaj }; }
     if (r0 === "olaylar" && r1 === "okundu" && !r2) return okunduYaz(ctx, b);
     // P8 (0.28.0): Devir AI sohbeti; yazan araçlar önizleme olarak döner, "Uygula" ile çalışır
@@ -788,7 +791,7 @@ export async function baglantiDosya(db: DB, token: string, now: number, ua: stri
 // Sohbet MCP araçlarını sunucu içinden, kişinin kendi kapsamıyla kullanır. Okuma araçları hemen çalışır; yazan araçlar
 // önizleme kartı olarak döner ve kişi "Uygula" deyince aynı araçla yazılır. Kapatma ve atlama ayrıca onay ister.
 const SOHBET_OKUMA = new Set(["devir_akislar", "devir_akis", "devir_adim_oku", "devir_cikti_oku", "devir_kurallar", "devir_tasla"]);
-const SOHBET_YAZMA = new Set(["devir_adim_guncelle", "devir_adim_ekle", "devir_alt_gorev", "devir_cevapla", "devir_karar", "devir_akis_olustur", "devir_taslak_duzelt", "devir_akis_kapat"]);
+const SOHBET_YAZMA = new Set(["devir_adim_guncelle", "devir_adim_ekle", "devir_alt_gorev", "devir_cevapla", "devir_karar", "devir_akis_olustur", "devir_taslak_duzelt", "devir_akis_kapat", "devir_akis_arsivle", "devir_akis_adlandir"]);
 const sohbetAraclari = () => (TOOLS as any[]).filter((t) => SOHBET_OKUMA.has(t.name) || SOHBET_YAZMA.has(t.name)).map((t) => ({ name: t.name, description: t.description + (SOHBET_YAZMA.has(t.name) ? " (Sohbette bu araç hemen yazmaz: değişiklik kullanıcıya önizleme olarak gösterilir, kullanıcı Uygula derse yazılır.)" : ""), input_schema: t.inputSchema }));
 const onayGerekir = (arac: string, g: any) => arac === "devir_akis_kapat" || (arac === "devir_adim_guncelle" && (g?.durum === "atlandi" || g?.durum === "ertelendi"));
 const DURUM_AD: Record<string, string> = { suruyor: "sürüyor", engelli: "engelli", tamam: "tamam", atlandi: "atlandı", ertelendi: "ertelendi", hazir: "hazır" };
@@ -815,6 +818,8 @@ export function oneriOzeti(arac: string, g: any): string {
     case "devir_akis_olustur": return `${g.taslak ? `${g.taslak} taslağından ` : ""}akış kurulacak${g.baslik ? `: ${g.baslik}` : ""}`;
     case "devir_taslak_duzelt": return `${g.taslak || "Taslak"} düzeltilecek`;
     case "devir_akis_kapat": return `${g.akis || "Akış"} kapatılacak`;
+    case "devir_akis_arsivle": return `${g.akis || "Akış"} ${g.geri_al ? "arşivden çıkarılacak" : "arşive taşınacak"}`;
+    case "devir_akis_adlandir": return `${ak}ad → "${g.ad || "?"}"`;
     default: return arac;
   }
 }
