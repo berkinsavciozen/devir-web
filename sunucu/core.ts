@@ -1057,7 +1057,7 @@ export const TOOLS = [
   {
     name: "devir_akislar",
     description: "Akışları özetler: her akışta ilerleme, şu an kimde ne kadar süredir beklediği, hedef tarih ve en erken bitiş. En üstte portföy özeti ve riskteki akışlar. 'Bugün neye bakayım', 'ne durumdayız' sorularında çağır.",
-    inputSchema: { type: "object", properties: { durum: { type: "string", enum: ["aktif", "kapandi", "hepsi"] }, sablon_kod: { type: "string" }, ara: { type: "string", description: "Başlık ya da müşteri adında arama." } } },
+    inputSchema: { type: "object", properties: { durum: { type: "string", enum: ["aktif", "kapandi", "arsiv", "hepsi"], description: "arsiv: arşivdeki akışlar." }, sablon_kod: { type: "string" }, ara: { type: "string", description: "Başlık ya da müşteri adında arama." } } },
   },
   {
     name: "devir_akis",
@@ -1178,6 +1178,16 @@ export const TOOLS = [
     inputSchema: { type: "object", required: ["akis"], properties: { akis: { type: "string" }, degerlendirme: { type: "string" }, zorla: { type: "boolean" }, neden: { type: "string", enum: ["tamamlandi", "iptal", "mukerrer"], description: "Varsayılan tamamlandi. iptal (iş yapılmayacak) ve mukerrer (başka akışın kopyası) deneyim yazmaz; bu akışa uygulanan dersler 'bu işte uymadı' sayılır." } } },
   },
   {
+    name: "devir_akis_arsivle",
+    description: "Akışı arşive taşır ya da arşivden geri alır (geri_al=true). Kullanıcı listeleri toparlamak, artık bakmadığı ya da yarım kalmış bir akışı kenara koymak istediğinde çağır. Arşiv silmez ve kapatmaz: adımlar, kararlar ve çıktılar durur, deneyim yazılmaz; akış listelerde, evrende ve AI işlerinde görünmez. Geri alınınca önceki durumuna (aktif ya da kapandı) döner. Arşivdekileri devir_akislar({ durum: \"arsiv\" }) listeler. Biten işi arşivleme, devir_akis_kapat ile kapat.",
+    inputSchema: { type: "object", required: ["akis"], properties: { akis: { type: "string", description: "Akış kodu." }, geri_al: { type: "boolean", description: "true: arşivden çıkar." } } },
+  },
+  {
+    name: "devir_akis_adlandir",
+    description: "Akışın adını değiştirir. Kullanıcı akışa başka bir ad vermek istediğinde çağır; ad aynen yazılır, listelerde görünen kısa ad 40 karakteri aşarsa kısaltılır.",
+    inputSchema: { type: "object", required: ["akis", "ad"], properties: { akis: { type: "string" }, ad: { type: "string", description: "Yeni ad (en çok 120 karakter; listelerde ilk 40 karakteri sığacak biçimde yaz)." } } },
+  },
+  {
     name: "devir_sabitle",
     description: "Bir akışı ekibin standart süreci olarak sabitler (düzenli tekrar eden ya da düzenlemeye tabi işler için). Benzer bir sonraki işte taslak bu süreçten başlar; motor yalnızca soruları ve dalları uyarlar. kaldir ile sabitlenmiş süreci kaldırır. Kullanıcı açıkça isterse çağır.",
     inputSchema: { type: "object", properties: { akis: { type: "string", description: "Sabitlenecek akışın kodu." }, ad: { type: "string", description: "Sürecin adı (ör. Aylık kapanış)." }, aciklama: { type: "string" }, kaldir: { type: "string", description: "Kaldırılacak standart sürecin kodu." } } },
@@ -1257,6 +1267,7 @@ export const INSTRUCTIONS = `Devir, insanların ve AI agent'larının aynı işi
 - Konuşmada akışta olmayan yeni bir iş doğarsa devir_adim_ekle ile ekle ve nedenini yaz; Devir hangi sorunun eksik kaldığını öğrenir.
 - Karar, onay ve ödeme adımlarında son söz kullanıcıdadır: özetle, önerini göster ve kullanıcının kararını iste. Kullanıcı kararı bu konuşmada açıkça verirse devir_karar_ver ile kaydet; kararı sen verme. Kayıt kullanıcının adına, senin aracınla verilmiş olarak düşer; Devir yazanı bağlantının sahibinden belirler.
 - Akış bitince devir_akis_kapat ile kapat; Devir bu işten ders çıkarır ve benzer bir sonraki işte hatırlar.
+- Kullanıcı bir akışı kenara koymak ya da listeleri toparlamak isterse devir_akis_arsivle ile arşive taşı (silme yoktur, geri_al=true ile döner); adını değiştirmek isterse devir_akis_adlandir.
 - Taslakta "Devir'in hatırladıkları" bölümü varsa kullanıcıya kısaca aktar; kullanıcı bir dersi yanlış bulursa devir_dersler ile reddet, doğrularsa onayla.
 - Akışta dış katılımcı (müşteri, usta, tedarikçi) varsa devir_akis_olustur'un katilimcilar alanına adımlardaki sahip adıyla yaz; kurulmuş akışa sonradan eklemek ya da bağlantıyı yeniden almak için devir_baglanti'yı çağır. Dönen bağlantıyı ve hazır mesajı kullanıcıya ver; bağlantıyı uydurma, kendin gönderme.
 - Aynı adımlar birden çok kalem için ayrı yürüyecekse (her çiftçi, müşteri ya da aday için) devir_alt_akis ile kalem başına alt akışa böl; sonra her kalemin adımını kendi alt akışında güncelle.
@@ -1278,6 +1289,8 @@ export async function callTool(name: string, a: any, ctx: Ctx): Promise<string> 
     case "devir_karar_ver": if (kararDuzeyi(ctx, actor(ctx, a)) !== "insan") return kararBeyan(a, ctx); return adimGuncelle({ akis: a.akis, no: a.no, durum: "tamam", not: a.not, cikti: a.cikti, ...(Array.isArray(a.secim) && a.secim.length ? { karar_secimi: a.secim } : {}) }, ctx, { kararAraci: true });
     case "devir_adim_ekle": return adimEkle(a, ctx);
     case "devir_akis_kapat": return kapat(a, ctx);
+    case "devir_akis_arsivle": return arsivle(a, ctx);
+    case "devir_akis_adlandir": return adlandir(a, ctx);
     case "devir_cikti_oku": return ciktiOku(a, ctx);
     case "devir_karar": return karar(a, ctx);
     case "devir_cevapla": return cevapla(a, ctx);
@@ -1937,19 +1950,19 @@ async function akislar(a: any, ctx: Ctx) {
     const vis = steps.filter((s: any) => stepInScope(ctx, s));
     const m = metrics(f, steps, allEv.filter((e: any) => e.akis_id === f.id), ctx.now);
     const il = ilerlemeSay(steps); tamam += il.tamam; toplam += il.toplam;
-    const waits = vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ s, w: m.tl.get(s.no)!.simdi }));
+    const waits = f.durum === "arsiv" ? [] : vis.filter((s: any) => s.durum === "hazir" || s.durum === "engelli").map((s: any) => ({ s, w: m.tl.get(s.no)!.simdi }));
     for (const { s, w } of waits) { acikBekleme += w; bekleyen.set(s.sahip, (bekleyen.get(s.sahip) || 0) + w); }
     rows.push({ f, steps, vis, m, waits });
   }
   rows.sort((x, y) => (x.f.durum === "aktif" ? (x.m.pay ?? Infinity) : Infinity) - (y.f.durum === "aktif" ? (y.m.pay ?? Infinity) : Infinity));
-  const out = [`${durum === "aktif" ? "Aktif" : durum === "kapandi" ? "Kapanmış" : "Tüm"} akışlar (${rows.length}) · bugün ${fmtD(todayIst(ctx.now))}`];
+  const out = [`${durum === "aktif" ? "Aktif" : durum === "kapandi" ? "Kapanmış" : durum === "arsiv" ? "Arşivdeki" : "Tüm"} akışlar (${rows.length}) · bugün ${fmtD(todayIst(ctx.now))}`];
   if (!isDis(ctx)) {
     out.push(`Toplam ${tamam}/${toplam} adım tamam · şu an açık bekleme ${dur(acikBekleme)}`);
     const top = [...bekleyen.entries()].sort((x, y) => y[1] - x[1]).slice(0, 3);
     if (top.length) out.push(`En çok bekleten: ${top.map(([k, v]) => `${k} ${dur(v)}`).join(" · ")}`);
     const risk = rows.filter((r) => r.f.durum === "aktif" && r.m.pay != null && r.m.pay < 0);
     if (risk.length) out.push(`⚠ Hedefi kaçırma riski: ${risk.map((r) => `${r.f.kisa_kod} (${dur(-r.m.pay)})`).join(", ")}`);
-    const tumAkis = (await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at")).filter((f: any) => !akisKapsami(ctx) || rows.some((r) => r.f.id === f.id));
+    const tumAkis = (await ctx.db.many("akis", { sahip_id: ctx.ws.id }, "created_at")).filter((f: any) => f.durum !== "arsiv").filter((f: any) => !akisKapsami(ctx) || rows.some((r) => r.f.id === f.id));
     const er = tumAkis.length ? await ctx.db.many("adim", { akis_id: tumAkis.map((f: any) => f.id), durum: "ertelendi" }, "no") : [];
     if (er.length) { const kod = new Map(tumAkis.map((f: any) => [f.id, f])); out.push(`↷ Ertelenmiş açık işler (${er.length}): ${er.map((x: any) => { const f: any = kod.get(x.akis_id); return `${x.ad} (${f?.kisa_kod}${f?.baglam?.musteri ? ` · ${f.baglam.musteri}` : ""})`; }).join("; ")}`); }
   }
@@ -1959,6 +1972,7 @@ async function akislar(a: any, ctx: Ctx) {
     const il = ilerlemeSay(steps);
     const parts = [`${f.kisa_kod} · ${f.baslik}`, `${il.tamam}/${il.toplam}${il.atlandi ? ` (${il.atlandi} atlandı)` : ""}`];
     if (f.durum === "kapandi") parts.push(`kapandı, ${dur(m.sure)} sürdü, ${dur(m.bekleme)} bekleme`);
+    else if (f.durum === "arsiv") parts.push("arşivde");
     else {
       const act = vis.filter((s: any) => s.durum === "suruyor").map((s: any) => `${s.no}. ${s.ad} (${s.sahip}) sürüyor`);
       const w = waits.sort((x: any, y: any) => y.w - x.w).map(({ s, w }: any) => `${s.no}. ${s.ad} → ${s.sahip}, ${s.durum === "engelli" ? "engelli" : "bekliyor"}: ${dur(w)}`);
@@ -2860,6 +2874,58 @@ async function vazgec(ctx: Ctx, a: any, akis: any, neden: string, acik: number) 
   }
   if (notlar.length) { out.push("", "Bu akışa uygulanan dersler:"); for (const x of notlar.slice(0, 6)) out.push(`- ${x}`); }
   return out.join("\n");
+}
+
+// ---------- 0.31.0 arşiv ve yeniden adlandırma (Berkin, 5 Kas) ----------
+// Arşiv akışı silmez ve kapatmaz: listelerden, evrenden ve AI işlerinden kalkar; geri alınınca önceki durumuna döner.
+// Alt akışlar üstleriyle birlikte arşive gider ve döner. Deneyim yazılmaz, kararlar dokunulmaz.
+async function arsivle(a: any, ctx: Ctx) {
+  needTeam(ctx, "Akışı arşivlemeyi");
+  const akis = await getAkis(ctx, a.akis);
+  const geriAl = a.geri_al === true || a.geri_al === "true";
+  if (akis.baglam?.ust_akis) throw new Error(`${akis.kisa_kod} bir alt akış; üst akış ${akis.baglam.ust_kod || ""} ile birlikte ${geriAl ? "arşivden çıkar" : "arşivlenir"}.`.replace("  ", " "));
+  const at = new Date(ctx.now).toISOString(), act = actor(ctx, a), ad = akisKisaAdi(akis);
+  const cocukId = altGruplar(akis).flatMap((g) => g.kalemler).map((k) => k.akis_id);
+  const cocuklar = cocukId.length ? await ctx.db.many("akis", { id: cocukId }, "created_at") : [];
+  if (!geriAl) {
+    if (akis.durum === "arsiv") throw new Error(`${akis.kisa_kod} · ${ad} zaten arşivde. Geri almak için geri_al=true ver.`);
+    for (const f of [akis, ...cocuklar.filter((c: any) => c.durum !== "arsiv")]) {
+      await ctx.db.update("akis", { id: f.id }, { durum: "arsiv", baglam: { ...(f.baglam || {}), arsiv: { onceki: f.durum, at, kim: act.kim } } });
+      await log(ctx, f.id, null, act, "guncelleme", f.id === akis.id ? "Akış arşive taşındı" : `Üst akış ${akis.kisa_kod} ile birlikte arşive taşındı`, { tur: "arsiv", onceki: f.durum });
+    }
+    return [`■ ${akis.kisa_kod} · ${ad} arşive taşındı.`, "Listelerde, evrende ve AI işlerinde görünmez; adımlar, kararlar ve çıktılar olduğu gibi durur.", `Geri almak için devir_akis_arsivle({ akis: "${akis.kisa_kod}", geri_al: true }).`].join("\n");
+  }
+  if (akis.durum !== "arsiv") throw new Error(`${akis.kisa_kod} · ${ad} arşivde değil (${akis.durum}).`);
+  const out: string[] = [];
+  for (const f of [akis, ...cocuklar.filter((c: any) => c.durum === "arsiv")]) {
+    const { arsiv, ...b } = f.baglam || {};
+    const onceki = arsiv?.onceki === "kapandi" ? "kapandi" : "aktif";
+    // iptal ya da mükerrer kapanışla arşive düşmüş akış (arsiv kaydı yok) yeniden açılır
+    const p: any = { durum: onceki, baglam: arsiv ? b : (({ kapanis_nedeni, ...r }: any) => r)(b) };
+    if (!arsiv) p.kapandi_at = null;
+    await ctx.db.update("akis", { id: f.id }, p);
+    await log(ctx, f.id, null, act, "guncelleme", f.id === akis.id ? "Akış arşivden çıkarıldı" : `Üst akış ${akis.kisa_kod} ile birlikte arşivden çıkarıldı`, { tur: "arsivden_cikti", durum: onceki });
+    if (f.id === akis.id) {
+      out.push(`■ ${akis.kisa_kod} · ${ad} arşivden çıkarıldı; ${onceki === "kapandi" ? "kapanan akışlar arasında" : "yeniden aktif"}.`);
+      if (!arsiv && f.baglam?.kapanis_nedeni === "iptal") out.push("Bu akış iptal edilmişti; o sırada geçerlilikten düşen kararlar kendiliğinden geri gelmez. Hâlâ geçerliyse devir_karar ile yeniden kaydet.");
+    }
+  }
+  return out.join("\n");
+}
+
+async function adlandir(a: any, ctx: Ctx) {
+  needTeam(ctx, "Akışın adını değiştirmeyi");
+  const akis = await getAkis(ctx, a.akis);
+  const ad = String(a.ad ?? "").replace(/\s+/g, " ").trim();
+  if (!ad) throw new Error("ad gerekli: akışın yeni adı.");
+  if (ad.length > 120) throw new Error("Ad en çok 120 karakter olabilir.");
+  const eski = akisKisaAdi(akis);
+  if (ad === akis.baslik && ad === eski) return `${akis.kisa_kod} zaten "${ad}" adını taşıyor.`;
+  // listelerde görünen kısa ad: 40 karaktere sığıyorsa yazılan ad aynen, sığmıyorsa ondan kısaltılır
+  const kisa = ad.length <= KISA_AD_EN_COK && !/…|\.\.\.$/.test(ad) ? ad : kisaAkis(ad);
+  await ctx.db.update("akis", { id: akis.id }, { baslik: ad, baglam: { ...(akis.baglam || {}), kisa_ad: kisa } });
+  await log(ctx, akis.id, null, actor(ctx, a), "guncelleme", `Akışın adı değişti: ${eski} → ${kisa}`, { tur: "ad", eski: akis.baslik, eski_kisa: eski, yeni: ad, yeni_kisa: kisa });
+  return `■ ${akis.kisa_kod} artık "${ad}"${kisa !== ad ? ` (listelerde: ${kisa})` : ""}.`;
 }
 
 // ---------- A2 tekrarlı alt akış ----------

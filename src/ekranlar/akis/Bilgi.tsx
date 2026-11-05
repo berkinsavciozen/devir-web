@@ -14,6 +14,7 @@ import { odakCumlesi } from './cumleler';
 import { useAkis } from './Galaksi';
 import { ilerleme } from '../../api/ilerleme';
 import { GorevAdi } from '../../bilesen/Kirinti';
+import { AkisYonetSatiri, YONET_Y } from './AkisYonet';
 
 // Akış bilgisi (denetim bulgusu: haritada olmayan liste görünümü) ve kişi sayfası. Tasarımda ayrı ekranları yok;
 // K satır kartlarıyla, B4'teki gezegen dilinde (CELISKILER 56).
@@ -161,12 +162,13 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
   const satirSayisi = ogeler.filter((o) => o.tur === 'satir').length;
   const ray = zincir ? <svg aria-hidden className="zincir-ray" style={{ top: ly + 29, height: (satirSayisi - 1) * 66 }} width="4" viewBox={`0 0 4 ${(satirSayisi - 1) * 66}`} preserveAspectRatio="none" dangerouslySetInnerHTML={{ __html: (ogeler as any[]).slice(0, -1).map((o, i) => `<rect x="1" y="${i * 66}" width="2" height="66" fill="${zincirRenk(o)}"/>`).join('') }} /> : null;
   return {
-    sec, ad: 'Adımlar', y: L.y,
+    sec, ad: 'Adımlar', y: L.y + 12 + YONET_Y,
     dugum: (
       <>
         {ust}
         {ray}
         {L.dugum}
+        <AkisYonetSatiri d={d} kod={kod} y={L.y + 12} />
       </>
     ),
   };
