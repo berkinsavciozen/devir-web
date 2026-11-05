@@ -19,7 +19,11 @@ async function zamanli(url: string, init: RequestInit, kalan: number) {
   catch (e) { throw new Error((e as Error).name === "TimeoutError" ? "süre doldu" : (e as Error).message); }
 }
 
-export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SINIR_MS): LlmFn {
+/** 0.32.2: Sonnet 5.5 varsayılan çabada (high) taslağı 88–104 sn'de yazdı; denetçi süre yüzünden atlandı, MCP istemcisi 60 sn'de koptu.
+ * Taslak "medium", hızlı işler (denetçi, ders) "low" çabayla çağrılır. DEVIR_TASLAK_CABA ile değiştirilebilir. */
+export type Caba = "low" | "medium" | "high" | "xhigh" | "max";
+export const cabaOf = (m: string, taslakCaba: Caba = "medium"): Caba => (/haiku|mini|hizli/i.test(m) ? "low" : taslakCaba);
+export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SINIR_MS, taslakCaba: Caba = "medium"): LlmFn {
   return async ({ system, user, tool, model, max_tokens }) => {
     const t0 = Date.now();
     const m = model || defaultModel;
@@ -32,7 +36,7 @@ export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SIN
         body: JSON.stringify({
           // 0.32.1: Sonnet 5.5 / Opus 5.5 zorunlu tool_choice'u (tool/any) 400 ile reddediyor. auto + tek çağrı + istem talimatı;
           // araç çağrılmazsa döngü bir kez daha dener. Yanıt sınırı iki motorda aynı (16.000).
-          model: m, max_tokens: max_tokens || YANIT_SINIRI,
+          model: m, max_tokens: max_tokens || YANIT_SINIRI, output_config: { effort: cabaOf(m, taslakCaba) },
           system: [{ type: "text", text: system + `\n\nYanıtını yalnızca ${tool.name} aracını tek kez çağırarak ver; düz metin yazma.`, cache_control: { type: "ephemeral" } }],
           tools: [tool], tool_choice: { type: "auto", disable_parallel_tool_use: true },
           messages: [{ role: "user", content: user }],

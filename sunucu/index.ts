@@ -2,7 +2,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 import type { DB } from "./core.ts";
 import { handle } from "./server.ts";
-import { anthropicLlm, openaiLlm, yedekli, anthropicSohbet, openaiSohbet, yedekliSohbet, type LlmFn, type SohbetFn } from "./llm.ts";
+import { type Caba, anthropicLlm, openaiLlm, yedekli, anthropicSohbet, openaiSohbet, yedekliSohbet, type LlmFn, type SohbetFn } from "./llm.ts";
 import { openaiGomme, type GomFn } from "./bellek.ts";
 import { KOVA, type Depo } from "./dosya.ts";
 import type { KimlikFn, Posta } from "./hesap.ts";
@@ -129,7 +129,7 @@ async function hazirla() {
   testBasliklari = (await oku("test_basliklari")) === "acik";
   const claudeKey = (await oku("anthropic_api_key")) || Deno.env.get("ANTHROPIC_API_KEY") || "";
   const openaiKey = (await oku("openai_api_key")) || Deno.env.get("OPENAI_API_KEY") || "";
-  const claude = claudeKey ? anthropicLlm(claudeKey, modeller.taslak) : undefined;
+  const claude = claudeKey ? anthropicLlm(claudeKey, modeller.taslak, undefined, (Deno.env.get("DEVIR_TASLAK_CABA") || "medium") as Caba) : undefined;
   const openai = openaiKey ? openaiLlm(openaiKey, OPENAI_MODELLER) : undefined;
   // Devir AI sohbeti (P8, karar 5.C): taslakla aynı sağlayıcı, hızlı model; OpenAI yedeği
   const sohbet = yedekliSohbet(claudeKey ? anthropicSohbet(claudeKey, modeller.hizli) : undefined, openaiKey ? openaiSohbet(openaiKey, OPENAI_MODELLER.hizli, undefined, "gpt-4.1-mini") : undefined);
