@@ -32,7 +32,7 @@ const SATIRLAR: Satir[] = [
   [`<defs><linearGradient id="lj-ip" x1="0" x2="1"><stop offset="0" stop-color="#FFC9A3"/><stop offset="1" stop-color="#8EC5FF"/></linearGradient></defs><path d="M6,30 L34,14" stroke="url(#lj-ip)" stroke-width="1.6"/><path d="M38,12 L31,13 L34,18Z" fill="#8EC5FF"/>`, 'Devir', 'Renk geçişli ok: iş bir kişiden ötekine geçiyor', 'ip'],
   [ship(22, 22, -12, 'insan', 'B', '#8EC5FF', .62, { flame: false }), 'İnsan', 'Kapsül; penceresinde baş harfi', 'insan'],
   [ship(22, 22, -12, 'agent', 'C', '#B9A6F2', .62, { flame: false }), 'Agent', 'Robot; ışığı sahibinin renginde', 'agent'],
-  [destekGemisi(26, 28, -12, -12, '#FFC9A3', .62) + ship(26, 28, -12, 'insan', 'B', '#FFC9A3', .62, { flame: false }), 'Destek', 'Kişinin agent’ı gemisine kolla yapışık; o kişi için çalışır'],
+  [destekGemisi(30, 30, -18, -14, '#FFC9A3', .62, { ip: true, yon: -.5 }) + ship(30, 30, -12, 'insan', 'B', '#FFC9A3', .62, { flame: false }), 'Destek', 'Kişinin agent’ı kendi yolunda gider, gemisine iple bağlı; o kişi için çalışır'],
   [ship(22, 24, 0, 'dis', '', '#F2B8D8', .6), 'Dış katılımcı', 'Balon; yalnız kendi adımlarını görür', 'dis'],
   [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol'],
 ];

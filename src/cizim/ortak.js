@@ -495,7 +495,13 @@ function aiRozet(r, durum, mini) {
   return `<g transform="translate(${f(-r * .8)},${f(-r * .8)})"${durum === 'calisiyor' ? ' class="dongu-halka"' : ''}><circle r="${f(k)}" fill="${dolgu}" stroke="${durum === 'bekliyor' ? cizgi : '#FFF3E8'}" stroke-width="1"/><path d="${d}" fill="${durum === 'bekliyor' ? cizgi : cizgi}"/></g>`;
 }
 /** W2 (4 Kas): kişinin gemisine kısa bir kolla yapışık destek robotu (agent = kişinin desteği, K1). dx, dy robotun gemiye göre yeri. */
-function destekGemisi(x, y, dx, dy, col = C.lilac, sc = 1) {
+function destekGemisi(x, y, dx, dy, col = C.lilac, sc = 1, o = {}) {
+  if (o.ip) {
+    // 5 Kas: agent kendi sarmalında gider; sahibinin gemisine esnek bir iple bağlı (ip uzar, kısalır, yön değiştirir)
+    const n = Math.hypot(dx, dy) || 1, sark = Math.min(14 * sc, n * .18), mx = x + dx / 2 - dy / n * sark, my = y + dy / 2 + dx / n * sark;
+    const ip = `<path class="destek-ip" d="M${f(x)},${f(y)} Q${f(mx)},${f(my)} ${f(x + dx)},${f(y + dy)}" fill="none" stroke="${col}" stroke-width="${f(Math.max(1, 1.5 * sc))}" stroke-linecap="round" opacity=".85"/>`;
+    return ip + ship(x + dx, y + dy, (o.yon || 0) * 180 / Math.PI, 'agent', '', col, sc * .72, { flame: !!o.alev });
+  }
   const kol = `<path d="M${f(x - 2 * sc)},${f(y - 7 * sc)} Q${f(x + dx * .45)},${f(y + dy * .62)} ${f(x + dx * .8)},${f(y + dy * .8)}" fill="none" stroke="${col}" stroke-width="${f(Math.max(1.2, 2 * sc))}" stroke-linecap="round"/>`;
   return kol + ship(x + dx, y + dy, 0, 'agent', '', col, sc * .72, { flame: false });
 }
