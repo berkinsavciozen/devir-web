@@ -49,7 +49,7 @@ const adimlar = (kod: string) => T.adim.filter((s) => s.akis_id === akisOf(kod).
   const arac = { name: "taslak_yaz", description: "", input_schema: { type: "object" } };
   await anthropicLlm("k", "claude-sonnet-5-5")({ system: "s", user: "u", tool: arac });
   await openaiLlm("k", { taslak: "gpt-4.1", hizli: "gpt-4.1-mini" })({ system: "s", user: "u", tool: arac });
-  ok("M1: Claude'da araç çağrısı zorunlu (tool_choice)", istekler[0].b.tool_choice?.type === "tool" && istekler[0].b.tool_choice?.name === "taslak_yaz", istekler[0].b.tool_choice);
+  ok("M1 (0.32.1): Claude'da tool_choice auto + tek çağrı (zorunlu tool Sonnet 5.5'te 400)", istekler[0].b.tool_choice?.type === "auto" && istekler[0].b.tool_choice?.disable_parallel_tool_use === true && /taslak_yaz aracını tek kez çağırarak/.test(JSON.stringify(istekler[0].b.system)), istekler[0].b.tool_choice);
   ok("M2: iki motorda aynı yanıt sınırı (16.000)", istekler[0].b.max_tokens === YANIT_SINIRI && istekler[1].b.max_completion_tokens === YANIT_SINIRI, [istekler[0].b.max_tokens, istekler[1].b.max_completion_tokens]);
   await openaiLlm("k", { taslak: "gpt-4.1", hizli: "gpt-4.1-mini" })({ system: "s", user: "u", tool: arac, max_tokens: 2500 });
   ok("M2: küçük çağrının sınırı korunur (denetçi 2500)", istekler[2].b.max_completion_tokens === 2500, istekler[2].b.max_completion_tokens);

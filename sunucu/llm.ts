@@ -30,10 +30,11 @@ export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SIN
         method: "POST",
         headers: { "x-api-key": apiKey, "anthropic-version": "2023-06-01", "content-type": "application/json" },
         body: JSON.stringify({
-          // 0.32.0 (P1, M1–M2): araç çağrısı OpenAI'deki gibi zorunlu; yanıt sınırı iki motorda aynı (16.000)
+          // 0.32.1: Sonnet 5.5 / Opus 5.5 zorunlu tool_choice'u (tool/any) 400 ile reddediyor. auto + tek çağrı + istem talimatı;
+          // araç çağrılmazsa döngü bir kez daha dener. Yanıt sınırı iki motorda aynı (16.000).
           model: m, max_tokens: max_tokens || YANIT_SINIRI,
           system: [{ type: "text", text: system + `\n\nYanıtını yalnızca ${tool.name} aracını tek kez çağırarak ver; düz metin yazma.`, cache_control: { type: "ephemeral" } }],
-          tools: [tool], tool_choice: { type: "tool", name: tool.name },
+          tools: [tool], tool_choice: { type: "auto", disable_parallel_tool_use: true },
           messages: [{ role: "user", content: user }],
         }),
       }, sinirMs - (Date.now() - t0)); } catch (e) { lastErr = (e as Error).message; break; }
@@ -48,8 +49,10 @@ export function anthropicLlm(apiKey: string, defaultModel: string, sinirMs = SIN
 }
 
 // OpenAI (Chat Completions, function calling). Claude model adları gelirse kendi modelleriyle eşlenir.
-// gpt-5 ve o-serisi akıl yürütme modelleri: taslakta düşük, hızlı işlerde en az çaba (süre sınırı için)
-const AKIL = /^(gpt-5|o\d)/i;
+// gpt-5/gpt-6 ve o-serisi akıl yürütme modelleri: düşük çaba (süre sınırı için). 0.32.1: gpt-6 ailesi eklendi;
+// "minimal" her modelde yok, gpt-6'da "low" kullanılır.
+export const AKIL = /^(gpt-[56]|o\d)/i;
+const caba = (m: string, hizli: boolean) => (hizli && /^gpt-5/i.test(m) ? "minimal" : "low");
 export function openaiLlm(apiKey: string, modeller: { taslak: string; hizli: string; yedek?: string[] }, sinirMs = SINIR_MS): LlmFn {
   return async ({ system, user, tool, model, max_tokens }) => {
     const t0 = Date.now();
@@ -64,7 +67,7 @@ export function openaiLlm(apiKey: string, modeller: { taslak: string; hizli: str
           headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
           body: JSON.stringify({
             model: m, max_completion_tokens: AKIL.test(m) ? Math.max(max_tokens || YANIT_SINIRI, YANIT_SINIRI) : max_tokens || YANIT_SINIRI, // akıl yürüten model düşünmeye de token harcar
-            ...(AKIL.test(m) ? { reasoning_effort: hizli ? "minimal" : "low" } : {}),
+            ...(AKIL.test(m) ? { reasoning_effort: caba(m, hizli) } : {}),
             messages: [{ role: "system", content: system + `\n\nYanıtını yalnızca ${tool.name} fonksiyonunu tek kez çağırarak ver; düz metin yazma.` }, { role: "user", content: user }],
             tools: [{ type: "function", function: { name: tool.name, description: tool.description, parameters: tool.input_schema } }],
             tool_choice: { type: "function", function: { name: tool.name } },
@@ -177,9 +180,10 @@ export function anthropicSohbet(apiKey: string, defaultModel: string, sinirMs = 
   };
 }
 
-export function openaiSohbet(apiKey: string, defaultModel: string, sinirMs = SINIR_MS): SohbetFn {
+export function openaiSohbet(apiKey: string, defaultModel: string, sinirMs = SINIR_MS, yedekModel?: string): SohbetFn {
   return async ({ system, gecmis, araclar, calistir, model, maxTur }) => {
-    const t0 = Date.now(), m = model && !/^claude/i.test(model) ? model : defaultModel;
+    const t0 = Date.now();
+    let m = model && !/^claude/i.test(model) ? model : defaultModel;
     const mesajlar: any[] = [{ role: "system", content: system }, ...gecmis.map((g) => ({ role: g.rol, content: g.metin }))];
     const tools = araclar.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }));
     let kullanim = SIFIR;
@@ -188,9 +192,11 @@ export function openaiSohbet(apiKey: string, defaultModel: string, sinirMs = SIN
       try { res = await zamanli("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { authorization: `Bearer ${apiKey}`, "content-type": "application/json" },
-        body: JSON.stringify({ model: m, max_completion_tokens: 4000, messages: mesajlar, tools }),
+        body: JSON.stringify({ model: m, max_completion_tokens: AKIL.test(m) ? 8000 : 4000, ...(AKIL.test(m) ? { reasoning_effort: "low" } : {}), messages: mesajlar, tools }),
       }, sinirMs - (Date.now() - t0)); } catch (e) { throw new Error(`Devir AI'a ulaşılamadı (${(e as Error).message}).`); }
       const data: any = await res.json().catch(() => ({}));
+      // 0.32.1: model adı bu hesapta yoksa (404) bir kez yedek modele geç
+      if ((res.status === 404 || data?.error?.code === "model_not_found") && yedekModel && m !== yedekModel) { m = yedekModel; tur--; continue; }
       if (!res.ok) throw new Error(`Devir AI'a ulaşılamadı (${res.status} ${data?.error?.message || ""}).`);
       kullanim = topla(kullanim, openaiKullanim(data.usage));
       const msg = data.choices?.[0]?.message || {};

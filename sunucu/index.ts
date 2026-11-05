@@ -110,11 +110,13 @@ const depo: Depo = {
 };
 
 const modeller = { taslak: Deno.env.get("DEVIR_MODEL") || "claude-sonnet-5-5", hizli: Deno.env.get("DEVIR_MODEL_HIZLI") || "claude-haiku-5-5" };
-// OpenAI yedek motor: gpt-4.1 taslağı ~20 sn'de bitiriyor; gpt-5 110 sn sınırını aştı (13 Eki canlı deneme)
+// OpenAI yedek motor. 0.32.1 (5 Kas): Claude ile aynı fiyat basamağı. gpt-6.1-sol = Sonnet 5.5 ($2/$10),
+// gpt-6-luna = Haiku 5.5 ($0.10/$0.50). Model adı hesapta yoksa (404) yedek listesindeki gpt-4.1'e geçer.
+// Not: 13 Eki'de gpt-5 110 sn sınırını aşmıştı; gpt-6 ailesi düşük çabayla çağrılır.
 const OPENAI_MODELLER = {
-  taslak: Deno.env.get("DEVIR_OPENAI_MODEL") || "gpt-4.1",
-  hizli: Deno.env.get("DEVIR_OPENAI_MODEL_HIZLI") || "gpt-4.1-mini",
-  yedek: (Deno.env.get("DEVIR_OPENAI_YEDEK_MODELLER") || "gpt-4o").split(",").map((s) => s.trim()).filter(Boolean),
+  taslak: Deno.env.get("DEVIR_OPENAI_MODEL") || "gpt-6.1-sol",
+  hizli: Deno.env.get("DEVIR_OPENAI_MODEL_HIZLI") || "gpt-6-luna",
+  yedek: (Deno.env.get("DEVIR_OPENAI_YEDEK_MODELLER") || "gpt-4.1").split(",").map((s) => s.trim()).filter(Boolean),
 };
 
 let motorlar: { claude?: LlmFn; openai?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; openaiKey: string } | null = null;
@@ -130,7 +132,7 @@ async function hazirla() {
   const claude = claudeKey ? anthropicLlm(claudeKey, modeller.taslak) : undefined;
   const openai = openaiKey ? openaiLlm(openaiKey, OPENAI_MODELLER) : undefined;
   // Devir AI sohbeti (P8, karar 5.C): taslakla aynı sağlayıcı, hızlı model; OpenAI yedeği
-  const sohbet = yedekliSohbet(claudeKey ? anthropicSohbet(claudeKey, modeller.hizli) : undefined, openaiKey ? openaiSohbet(openaiKey, OPENAI_MODELLER.hizli) : undefined);
+  const sohbet = yedekliSohbet(claudeKey ? anthropicSohbet(claudeKey, modeller.hizli) : undefined, openaiKey ? openaiSohbet(openaiKey, OPENAI_MODELLER.hizli, undefined, "gpt-4.1-mini") : undefined);
   motorlar = { claude, openai, openaiKey, sohbet, gom: openaiKey ? openaiGomme(openaiKey) : undefined };
   hazirlandi = Date.now();
   return motorlar;
