@@ -117,6 +117,8 @@ export const FIYAT: Record<string, { g: number; o: number; c: number }> = {
   "claude-opus-5-5": { g: 4, o: 0.4, c: 20 },
   "claude-sonnet-5-5": { g: 2, o: 0.2, c: 10 },
   "claude-haiku-5-5": { g: 0.1, o: 0.01, c: 0.5 },
+  "gpt-6.1-sol": { g: 2, o: 0.1, c: 10 },
+  "gpt-6-luna": { g: 0.1, o: 0.01, c: 0.5 },
   "gpt-4.1-mini": { g: 0.4, o: 0.1, c: 1.6 },
   "gpt-4.1": { g: 2, o: 0.5, c: 8 },
   "gpt-4o": { g: 2.5, o: 1.25, c: 10 },
