@@ -15,7 +15,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await expect(b.getByRole('status')).toHaveText(/^Açık\./);
     await expect(page.locator('.gd-cumle')).toHaveText(/çıktısını yazdı\. Bakıp onayla\.$/);
     const e = page.getByRole('group', { name: 'Eylemler' });
-    await expect(e.getByRole('button', { name: 'Claude’la düzelt' })).toBeVisible();
+    await expect(e.getByRole('button', { name: 'Yorumla geri gönder' })).toBeVisible();
     await e.getByRole('button', { name: 'Onayla, bitir' }).click();
     await expect(page.getByRole('button', { name: 'Onayla, bitir' })).toHaveCount(0);
     await expect(page.locator('.gd-bas small')).toContainText(/tamam/i);

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { sorguIstemcisi, useOzet } from '../../api/sorgular';
@@ -96,10 +96,9 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   ], [t, ek]);
   const S: Soru[] = useMemo(() => [...(t?.sorular || []), ...ek], [t, ek]);
   const [vazgec, setVazgec] = useState(false);
-  // P6 (K2): plan özeti; sorular bitince ya da soru yoksa açılır, başlıktaki "Plan" ile her an açılır
+  // P6 (K2): plan özeti; başlıktaki "Plan" ile açılır (kendiliğinden açılmaz: "Akışı kur" sayfada kalır)
   const [plan, setPlan] = useState(false);
-  const [planGoruldu, setPlanGoruldu] = useState(false);
-  useEffect(() => { if (t && t.durum === 'acik' && !planGoruldu && !(t.sorular || []).length) { setPlan(true); setPlanGoruldu(true); } }, [t, planGoruldu]);
+
   const [ayni, setAyni] = useState<AyniVarlik | null>(null);
   const tazele = () => { void sorguIstemcisi.invalidateQueries({ queryKey: ['ozet'] }); void sorguIstemcisi.invalidateQueries({ queryKey: ['akislar'] }); };
   const kur = useMutation({
@@ -121,7 +120,6 @@ export function TaslakSorulari({ kod }: { kod: string }) {
     const sonraki = S.findIndex((x, j) => j > i && (yeni[x.kod] == null || yeni[x.kod] === ''));
     const bos = sonraki >= 0 ? sonraki : S.findIndex((x) => yeni[x.kod] == null || yeni[x.kod] === '');
     if (bos >= 0) setTimeout(() => { setSira(bos); setMetin(''); }, 220);
-    else if (!planGoruldu) setTimeout(() => { setPlan(true); setPlanGoruldu(true); }, 320);
   };
   const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Caladea').slice(0, 3) : [];
   const vA = acik != null ? V[acik] : null;
