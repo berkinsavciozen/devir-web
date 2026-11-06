@@ -29,7 +29,7 @@ import { Cevapla } from './ekranlar/akis/Cevapla';
 import { AkisBilgi, KisiSayfasi } from './ekranlar/akis/Bilgi';
 import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
-import { TaslakHaritasi } from './ekranlar/yeni/TaslakHaritasi';
+import { TaslakHaritasi, TaslakSol } from './ekranlar/yeni/TaslakHaritasi';
 import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
 import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
@@ -120,9 +120,12 @@ function Uygulama({ yol }: { yol: string }) {
   if (yol === '/akislar/arsiv') return panel(<Arsiv ben={b} />, 'Akışlar › Arşiv', { aktif: 'akislar' });
   if (yol === '/yeni') return panel(<YeniIs />, 'Yeni iş');
   const th = eslestir('/yeni/:kod/harita', yol);
-  if (th) return panel(<TaslakHaritasi key={th.kod} kod={th.kod} />, 'Yeni iş › Taslak haritası');
   const ty = eslestir('/yeni/:kod', yol);
-  if (ty) return panel(<TaslakSorulari key={ty.kod} kod={ty.kod} />, 'Yeni iş › Taslak');
+  // W3 (B8): masaüstünde taslak solda haritasıyla, sağda soruları (evren yerine); iki adres de aynı sayfadır
+  const tk2 = th || ty;
+  if (tk2 && genis) return <Kabuk sol={<TaslakSol key={tk2.kod} kod={tk2.kod} />} aktif={null} konum="Yeni iş › Taslak" etiket="Taslak"><TaslakSorulari key={tk2.kod} kod={tk2.kod} haritaSolda /></Kabuk>;
+  if (th) return <TaslakHaritasi key={th.kod} kod={th.kod} />;
+  if (ty) return <TaslakSorulari key={ty.kod} kod={ty.kod} />;
   return <Bulunamadi />;
 }
 

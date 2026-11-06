@@ -10,6 +10,7 @@ import { f, galaxy, pill, ship, sparkle, kapi } from '../../cizim/ortak.js';
 import { sarSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { adimRozetleri, KARAR_ANI_SINIRI, zamanSeridi } from './plan';
+import { cevaplariYaz, useTaslakDurumu } from './taslakDurum';
 
 const CX = 195, CY = 318;
 /** Yörüngedeki rozet açıları (tasarım H1; 7'den fazlası sürer). */
@@ -82,7 +83,7 @@ export function YeniIs() {
 }
 
 /** H1 · Taslak soruları: cümle, koza + varsayım rozetleri, soru kartı, "Akışı kur" (§5 H1). */
-export function TaslakSorulari({ kod }: { kod: string }) {
+export function TaslakSorulari({ kod, haritaSolda = false }: { kod: string; haritaSolda?: boolean }) {
   const q = useQuery({ queryKey: ['taslak', kod], queryFn: () => api.get<any>(`/taslak/${encodeURIComponent(kod)}`) });
   const t = q.data;
   const [cevap, setCevap] = useState<Record<string, string>>({});
@@ -98,6 +99,10 @@ export function TaslakSorulari({ kod }: { kod: string }) {
     ...(t.varsayimlar || []).filter((v: any) => !ek.some((e) => e.kod === v.kod)).map((v: any) => ({ metin: v.soru, boyut: v.boyut || 'girdi', cevap: v.secenekler?.find((o: any) => String(o.deger) === String(v.cevap))?.etiket || v.cevap, soru: { kod: v.kod, soru: v.soru, tip: v.tip || 'secim', secenekler: v.secenekler } })),
   ], [t, ek]);
   const S: Soru[] = useMemo(() => [...(t?.sorular || []), ...ek], [t, ek]);
+  // W3 (B8): masaüstünde soldaki taslak haritası cevapları görür; haritadaki "?" buradaki soruyu açar
+  useEffect(() => { cevaplariYaz(kod, cevap); }, [kod, cevap]);
+  const odak = useTaslakDurumu(kod);
+  useEffect(() => { if (!odak.n || !odak.odak) return; const j = S.findIndex((x) => x.kod === odak.odak); if (j >= 0) { setSira(j); setMetin(''); } }, [odak.n]); // eslint-disable-line react-hooks/exhaustive-deps
   const [vazgec, setVazgec] = useState(false);
   // P6 (K2): plan özeti; başlıktaki "Plan" ile açılır (kendiliğinden açılmaz: "Akışı kur" sayfada kalır)
   const [plan, setPlan] = useState(false);
@@ -129,7 +134,7 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   return (
     <>
       <Sahne gok={GOK} cizim={cizim + (s ? `<rect x="16" y="${qy}" width="358" height="${kartH}" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>` : '')} etiket="Yeni iş">
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => setPlan(true)}>Plan</button><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button><button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => setPlan(true)}>Plan</button>{!haritaSolda && <button type="button" className="satir-eylem lila baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button>}<button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
         <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
         {V.slice(0, ACI.length).map((v, j) => { const [x, y] = rozetYeri(j); return <button key={j} type="button" className="varsayim-rozet" style={{ left: x - 22, top: y - 22 }} aria-label={`Varsayım: ${v.metin}`} onClick={() => setAcik(j)} />; })}
         {t.motor?.yedek && <Metin y={122 + satirlar.length * 24 + 8} x={24} fs={11.5} lh={20} as="p"><span className="hap hap-yedek" title={`Taslak yedek motorla (${t.motor.ad}) üretildi; birincil motor yanıt vermedi. Birincil dönünce aynı cümleyle yeniden taslak çıkarılabilir.`}>Yedek motor</span></Metin>}

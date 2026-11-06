@@ -416,6 +416,14 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   // evren dili (madde 2, 3): "?" ile; ilk açılışta bir kez kendiliğinden tanıtılır
   const [lejant, setLejant] = useState(false);
   useEffect(() => { if (cizim && !cizim.olcek && evrenDiliGorulmeli()) setLejant(true); }, [!!cizim]); // eslint-disable-line react-hooks/exhaustive-deps
+  // W3 (B7): ilk akıştan önce sohbetten taslak düştüyse ilk ekran o taslak (oturumda taslak başına bir kez; geri dönünce evren kalır)
+  const ilkTaslak: string | null = !panel && ozet.data && !kartlar.length && !kapanan.length && ozet.data.taslaklar?.length ? ozet.data.taslaklar[0].kod : null;
+  useEffect(() => {
+    if (!ilkTaslak) return;
+    const k = 'devir:ilk-taslak:' + ilkTaslak;
+    try { if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, '1'); } catch { return; }
+    git(genis ? `/yeni/${encodeURIComponent(ilkTaslak)}` : taslakAdresi(ozet.data!.taslaklar));
+  }, [ilkTaslak]); // eslint-disable-line react-hooks/exhaustive-deps
   const lejantKapat = () => { setLejant(false); try { localStorage.setItem(LEJANT_ANAHTAR, '1'); } catch { /* depolama kapalı */ } };
 
   if (ozet.isPending || (ozet.isError && !ozet.data)) return (

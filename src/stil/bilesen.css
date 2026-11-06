@@ -758,6 +758,13 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gorev-sol-ad { position: absolute; font-size: 13px; line-height: 20px; font-weight: 650; color: var(--renk-metin-ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .gorev-sol-tarih { position: absolute; width: 60px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--renk-metin-ink3); pointer-events: none; }
 .gorev-sol-tarih.bugun { color: var(--renk-metin-altin); font-weight: 750; }
+.gorev-sol-tarih.hedef { width: 90px; margin-left: -15px; color: var(--renk-metin-altin); }
+.gorev-sol-ad.eksik { color: #FF9A8A; }
+.gorev-sol-ad small { font-weight: 500; opacity: .85; }
+.taslak-sol-baslik { position: absolute; margin: 0; font-family: var(--font-serif); font-weight: 700; font-size: 24px; line-height: 30px; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.taslak-sol-cumle { position: absolute; margin: 0; font-size: 14.5px; line-height: 20px; color: var(--renk-metin-ink2); }
+.taslak-sol-not { position: absolute; margin: 0; font-size: 13.5px; line-height: 19px; color: var(--renk-metin-ink2); }
+.taslak-sol-not b { color: var(--renk-metin-ink); font-weight: 650; }
 .gorev-sol-bos { position: absolute; left: 48px; top: 160px; margin: 0; font-family: var(--font-serif); font-size: 17px; color: var(--renk-metin-ink2); }
 
 /* W2 · tek görev detayı (GorevDetay): telefonda alt sayfada, masaüstünde akış panelinde; akan düzen */

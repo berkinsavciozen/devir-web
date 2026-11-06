@@ -11,19 +11,19 @@ const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulam
 
 test('W3 · agent’lar tek listede: onay bekleyen, boştaki rutin, genel rutin; bağlı uygulamalar ayrı', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=w3');
-  await expect(page.getByRole('heading', { name: 'AGENT’LARIM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AGENT’LARIM', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: /^Berkin’in Claude’u.*1 çıktı onayını bekliyor/ })).toBeVisible();
-  // 0.34.0 (K1): rutin agent değildir; "Araştırma rutini" ayrı bir agent olarak listelenmez
-  await expect(page.getByRole('button', { name: /^Araştırma rutini/ })).toHaveCount(0);
-  await expect(page.locator('.satir-kart', { hasText: 'Tüm agent’larının işine bakar' })).toHaveCount(1);
-  await expect(page.getByRole('heading', { name: 'BAĞLI UYGULAMALAR' })).toBeVisible();
+  // 0.34.0 (K1) + W2: rutin agent değildir; "Araştırma rutini" Rutinlerim'de, tüm agent'lar için
+  await expect(page.getByRole('heading', { name: 'RUTİNLERİM · AI YAPSIN' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Araştırma rutini.*tüm agent/ })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'BAĞLANTILAR' })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'AI YAPSIN · CLAUDE RUTİNLERİ' })).toHaveCount(0);
   await cek(page, 'W3-agentlarim');
 });
 
 test('W3 · agent detayı: bağlantı, rutin, onay bekleyen iş; işe gider', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=w3');
-  await page.getByRole('button', { name: /^Berkin’in Claude’u/ }).click();
+  await page.getByRole('button', { name: /^Berkin’in Claude’u (?!Anında)/ }).click();
   const d = page.getByRole('dialog', { name: 'Berkin’in Claude’u' });
   await expect(d.getByRole('region', { name: 'Bağlantı' })).toContainText('Claude · senin adına yazar');
   await expect(d.getByRole('region', { name: 'Rutinler' })).toContainText('Anında · Berkin’in Claude’u · bu agent’ın işini o başlatır · son çalışma');
@@ -37,7 +37,7 @@ test('W3 · agent detayı: bağlantı, rutin, onay bekleyen iş; işe gider', as
 
 test('W3 · 0.34.0: rutinin adı agent yaratmaz; rutin kaldırılınca öbür rutinler işi alır; rutin agent’a eklenir', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=w3');
-  await page.getByRole('button', { name: /^Berkin’in Claude’u/ }).click();
+  await page.getByRole('button', { name: /^Berkin’in Claude’u (?!Anında)/ }).click();
   let d = page.getByRole('dialog', { name: 'Berkin’in Claude’u' });
   const r = d.getByRole('region', { name: 'Rutinler' });
   await r.locator('.ag-rutin', { hasText: 'Araştırma rutini' }).getByRole('button', { name: 'Adlandır' }).click();
@@ -46,12 +46,13 @@ test('W3 · 0.34.0: rutinin adı agent yaratmaz; rutin kaldırılınca öbür ru
   await expect(d.getByRole('status')).toContainText('Rutinin adı Araştırma agent’ı oldu.');
   await page.keyboard.press('Escape');
   // eskiden ad değişince yeni bir agent doğardı (C20)
-  await expect(page.getByRole('button', { name: /^Araştırma agent’ı/ })).toHaveCount(0);
-  await page.getByRole('button', { name: /^Berkin’in Claude’u/ }).click();
+  await expect(page.getByRole('button', { name: /^Araştırma agent’ı (?!Anında)/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Araştırma agent’ı Anında/ })).toHaveCount(1);
+  await page.getByRole('button', { name: /^Berkin’in Claude’u (?!Anında)/ }).click();
   d = page.getByRole('dialog', { name: 'Berkin’in Claude’u' });
   await d.locator('.ag-rutin', { hasText: 'bu agent’ın işini o başlatır' }).getByRole('button', { name: 'Kaldır' }).click();
   await page.getByRole('dialog', { name: /rutini kaldırılsın mı/ }).getByRole('button', { name: 'Kaldır', exact: true }).click();
-  await page.getByRole('button', { name: /^Berkin’in Claude’u/ }).click();
+  await page.getByRole('button', { name: /^Berkin’in Claude’u (?!Anında)/ }).click();
   d = page.getByRole('dialog', { name: 'Berkin’in Claude’u' });
   await expect(d.getByRole('region', { name: 'Rutinler' })).toContainText('Araştırma agent’ıAnında · tüm agent’ların · bu agent’ın işini o başlatır');
   await cek(page, 'W3-rutin-bagla');
@@ -65,7 +66,7 @@ test('W3 · kurulum: her adım ne göreceğini söyler; Devir listede yoksa notu
   await expect(d.getByRole('radio', { name: /Jeton gerekmez/ })).toBeVisible();
   await cek(page, 'W3-kurulum');
   await ac(page, '/ayarlar?senaryo=berkin&hal=w3');
-  await page.getByRole('button', { name: /^Berkin’in Claude’u/ }).click();
+  await page.getByRole('button', { name: /^Berkin’in Claude’u (?!Anında)/ }).click();
   await page.getByRole('dialog', { name: 'Berkin’in Claude’u' }).getByRole('button', { name: 'Kurulum adımları' }).click();
   const k = page.getByRole('dialog', { name: 'AI yapsın kurulumu' });
   await expect(k.getByRole('heading', { name: /Berkin’in Claude’u/ })).toBeVisible();
