@@ -234,6 +234,16 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   };
   const satirlar = (L: [string, string, boolean?][]) => <dl className="gd-satirlar">{L.map(([k, v, uy]) => <div key={k} className={uy ? 'ihlal' : undefined}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>;
 
+  const komsu = (n: number | null, yon: 'Önceki' | 'Sonraki') => {
+    const z = n == null ? null : d.adimlar.find((x: any) => x.no === n);
+    if (!z) return null;
+    return (
+      <button type="button" className={`gd-komsu gd-komsu-${yon === 'Önceki' ? 'ust' : 'alt'}`} aria-label={`${yon} görev: ${z.no}. ${z.ad}`} title={`${yon} görev (${yon === 'Önceki' ? '←' : '→'})`} onClick={() => adimaGit(n)}>
+        <svg aria-hidden width="52" height="22" viewBox="-26 -11 52 22" dangerouslySetInnerHTML={{ __html: gezegen(z, 6.5) }} />
+        <span><small>{yon.toLocaleUpperCase('tr')}</small> {z.ad}</span>
+      </button>
+    );
+  };
   return (
     <div className="gd" ref={kok}>
       {/* başlık kartı: akış ve sahip; gezegen, ad, görev cümlesi; durum hapları; engel */}
@@ -247,13 +257,11 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
             <svg aria-hidden width="26" height="22" viewBox="-13 -11 26 22" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gemiKucuk }} />
             <span>{sahipAd}</span>
           </span>
-          <nav className="gd-gez" aria-label="Görevler arasında">
-          <button type="button" aria-label={onceki != null ? `Önceki görev: ${onceki}` : 'Önceki görev yok'} disabled={onceki == null} onClick={() => adimaGit(onceki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M3,-6 L-3,0 L3,6" /></svg></button>
-          <button type="button" aria-label={sonraki != null ? `Sonraki görev: ${sonraki}` : 'Sonraki görev yok'} disabled={sonraki == null} onClick={() => adimaGit(sonraki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-3,-6 L3,0 L-3,6" /></svg></button>
-          {kapat && <button type="button" aria-label="Kapat" onClick={kapat}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,-5 L5,5 M5,-5 L-5,5" /></svg></button>}
-        </nav>
+          {kapat && <button type="button" className="gd-kapat" aria-label="Kapat" onClick={kapat}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,-5 L5,5 M5,-5 L-5,5" /></svg></button>}
         </div>
-        <div className="gd-bas">
+        {/* Berkin 6 Kas 20:49: ok yerine zincir; önceki ve sonraki görev büyük gezegenin üstünde ve altında, küçük adıyla, durumu gezegeninde */}
+        {komsu(onceki, 'Önceki')}
+        <div className={`gd-bas${onceki != null ? ' z-ust' : ''}${sonraki != null ? ' z-alt' : ''}`}>
           <svg aria-hidden className="gd-gezegen" width="52" height="52" viewBox="-26 -26 52 52" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 12 : 17) + (altGorevler.length ? `<ellipse rx="25" ry="6.5" fill="none" stroke="#B9A6F2" stroke-width="1.5" stroke-opacity=".8" transform="rotate(-16)"/>` : '') + (h ? damla(h, 0, ust ? -20 : -25, .85) : '') }} />
           <div className="gd-bas-metin">
             {ust && <span className="gd-tur">ALT GÖREV</span>}
@@ -262,6 +270,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
             <p className={`gd-gorev-cumle ton-${G.ton}`}>{gCumle}{sahipAjan && A.agent_sahibi ? ` · ${kisaAd(A.agent_sahibi)} adına` : ''}</p>
           </div>
         </div>
+        {komsu(sonraki, 'Sonraki')}
         <ul className="gd-haplar" aria-label="Durum">{haplar.map((x) => <li key={x.t} className={x.ton ? `h-${x.ton}` : undefined}>{x.t}</li>)}</ul>
         {A.durum === 'engelli' && A.engel ? <p className="gd-engel" role="status"><b>Engel</b> {A.engel}</p>
           : ipucu ? <p className="gd-cumle">{ipucu}</p> : null}

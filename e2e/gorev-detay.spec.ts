@@ -23,14 +23,14 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
   });
 }
 
-test('görev detayı · 390: alt sayfa ilk açılışta NE YAPILACAK\'a kadar görünür; tutamaçla büyür (W5)', async ({ page }) => {
+test('görev detayı · 390: alt sayfa ilk açılışta başlık kartı ve eylemler görünür; tutamaçla büyür (W5)', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/6?senaryo=berkin', 390, 844);
   const s = page.locator('.alt-sayfa');
   const once = (await s.boundingBox())!;
   expect(once.height).toBeLessThanOrEqual(844 - 290 + 1);
-  // ne yapılacak mesajı ilk görünümde başlıyor
-  const m = (await page.getByRole('region', { name: 'NE YAPILACAK' }).boundingBox())!;
-  expect(m.y).toBeLessThan(844);
+  // önceki/sonraki zinciri eklenince başlık kartı uzadı: ilk görünümde ana eylem görünür
+  const m = (await page.getByRole('group', { name: 'Eylemler' }).getByRole('button').first().boundingBox())!;
+  expect(m.y + m.height).toBeLessThan(844);
   const t = (await page.locator('.alt-sayfa-tutamac').boundingBox())!;
   await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2);
   await page.mouse.down();

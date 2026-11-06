@@ -1303,3 +1303,20 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-bas-kart .gd-r1 .gd-gez { margin-left: 6px; }
 .gd-bas-kart .gd-r1 { justify-content: flex-start; } .gd-bas-kart .gd-r1-kim { margin-left: auto; }
 .gd .gd-kart.gd-gecmis { padding: 4px 16px; } .gd .gd-kart.gd-gecmis[open] { padding-bottom: 14px; }
+
+/* W5 (Berkin 6 Kas 20:49): okların yerine görev zinciri; önceki/sonraki görev büyük gezegenin üstünde ve altında */
+.gd-kapat { margin-left: 6px; width: 34px; height: 34px; border-radius: 17px; flex: none; display: grid; place-items: center; border: 0; cursor: pointer; background: color-mix(in srgb, var(--renk-zemin-kart) 88%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.gd-kapat svg { width: 14px; height: 14px; fill: none; stroke: var(--renk-metin-ink); stroke-width: 2; stroke-linecap: round; }
+.gd-komsu { position: relative; display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 12px; width: 100%; min-height: 34px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; color: var(--renk-metin-ink3); font: 500 12.5px/16px var(--font-sans); }
+.gd-komsu-ust { margin-top: 6px; }
+.gd-komsu span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gd-komsu small { font: 700 10px/16px var(--font-sans); letter-spacing: .06em; opacity: .75; margin-right: 2px; }
+.gd-komsu:hover span, .gd-komsu:focus-visible span { color: var(--renk-metin-ink); text-decoration: underline; text-underline-offset: 2px; }
+.gd-komsu:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; border-radius: 8px; }
+.gd-komsu svg { position: relative; z-index: 1; overflow: visible; }
+.gd-komsu::before, .gd-bas.z-ust::before, .gd-bas.z-alt::after { content: ''; position: absolute; left: 25.25px; width: 1.5px; background: var(--renk-vurgu-cizgi-lila); opacity: .8; }
+.gd-komsu-ust::before { top: 50%; bottom: 0; }
+.gd-komsu-alt::before { top: 0; bottom: 50%; }
+.gd-bas-kart .gd-bas.z-ust { margin-top: 16px; }
+.gd-bas.z-ust::before { top: -16px; height: 25px; }
+.gd-bas.z-alt::after { top: 43px; bottom: 0; }
