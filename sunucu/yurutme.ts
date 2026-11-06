@@ -13,7 +13,7 @@ export type Inceleme = (typeof INCELEME)[number];
 export type KararTur = (typeof KARAR_TUR)[number];
 
 /** core.ts DIS_FIIL ile aynı: dışarıya gönderme, yayın, başvuru, ödeme, imza. */
-const DIS = /gönder(?!i)|ilet(?:\s|$|il)|yayınla|yayımla|paylaş|postala|başvur|sipariş\s*ver|satın\s*al|transfer|imzala|öde(?:\s|$|meyi|mesini)/i;
+const DIS = /gönder(?!i)|ilet(?:\s|$|il)|yayınla|yayımla|paylaş|(?<![\p{L}-])postala|başvur|sipariş\s*ver|satın\s*al|transfer|imzala|öde(?:\s|$|meyi|mesini)/iu;
 const PARA_IMZA = /öde(?:\s|$|meyi|mesini)|ödemeyi|imzala|sözleşme|teklifi\s*(kabul|onayla)|bütçe|tutar|fiyat/i;
 const ONAY_AD = /onayla|onay\s*ver|kabul\s*et|reddet|izin\s*ver|imzala/i;
 const SECIM_AD = /seç(?:\s|$|im|ilecek)|belirle|karar\s*ver|kararlaştır/i;

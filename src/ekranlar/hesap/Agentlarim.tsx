@@ -13,15 +13,16 @@ import { AgentIsleri } from './AgentIsleri';
  * W3 (4 Kas, K3): kişinin agent'ları tek bileşende. Her agent: bağlantısı (Claude / ChatGPT), bağlı rutin(ler)i
  * (zamanlanmış / anında), şu an yaptığı iş, onayını bekleyen çıktılar, son etkinliği. Ayarlar "yönetim" kipinde kullanır
  * (rutin bağla, yeniden adlandır, kaldır); Görevler (W6) "iş" kipinde yalnız işi gösterir.
- * Rutinin hangi agent'ın işini yaptığı adıyla belirlenir (sunucu rutinSec): bağlamak, rutinin adını agent'ın adı yapmaktır.
+ * 0.34.0 (K1): rutin ile agent ayrı kayıttır. Rutinin hangi agent'ların işini aldığı rutinde açıkça yazılır
+ * (agentlar; null = tüm agent'larım) ve buradan değişir; rutinin adı yalnız etikettir.
  */
 export interface AgentIs { akis: string; akis_ad: string | null; no: number; ad: string; durum: string; oto_durum: string | null }
-export interface AgentRutin { id: string; ad: string; tur: 'zamanli' | 'api'; son_calisma: string | null; son_hata: string | null }
+export interface AgentRutin { id: string; ad: string; tur: 'zamanli' | 'api'; son_calisma: string | null; son_hata: string | null; /** null = tüm agent'lar */ agentlar?: string[] | null }
 export interface Agent {
-  ad: string; rutinler: AgentRutin[]; durum: 'hata' | 'calisiyor' | 'bosta'; simdi: AgentIs[]; sirada: number; bakilacak: AgentIs[]; acik_is: number;
+  ad: string; renk?: string | null; isleyen_rutin?: string | null; ai_kapali?: number; rutinler: AgentRutin[]; durum: 'hata' | 'calisiyor' | 'bosta'; simdi: AgentIs[]; sirada: number; bakilacak: AgentIs[]; acik_is: number;
   son_etkinlik: { zaman: string; ozet: string; akis: string; no: number } | null;
 }
-export interface Agentlar { kisi: string; agentlar: Agent[]; genel_rutin: { id: string; son_calisma: string | null } | null }
+export interface Agentlar { kisi: string; agentlar: Agent[]; rutinler?: AgentRutin[]; genel_rutin: { id: string; son_calisma: string | null } | null }
 /** OAuth bağlantısı (Ayarlar'daki /ben/agentlar satırı) */
 export interface Baglanti { id: string; ad: string; istemci?: string; alt: string; eski?: boolean }
 
@@ -54,39 +55,50 @@ export const agentIkonu = (a: Pick<Agent, 'durum' | 'bakilacak'>, x = 26, y = 30
   destekGemisi(x, y, 1, -.35, a.bakilacak.length ? '#5FE3F0' : a.durum === 'hata' ? '#FF9A8A' : a.durum === 'calisiyor' ? '#9EE6CF' : '#FFC9A3', sc);
 
 /** Agent detayı (alt sayfa). kip "yonetim": rutin bağla, adlandır, kaldır, kur; kip "is": yalnız iş. */
-export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, adDegisti }: {
+export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }: {
   a: Agent; veri: Agentlar; kip: 'yonetim' | 'is'; baglanti?: Baglanti | null; kapat: () => void;
   /** AI yapsın kurulumunu bu agent için açar */
   kurAc?: (agent: string) => void;
   rutinKaldir?: (t: AgentRutin) => void;
-  /** agent'ın adını taşıyan rutin yeniden adlandırıldı: agent artık yeni adla listelenir */
+  /** eski çağıranlar için; 0.34.0'dan beri rutinin adı agent'ı değiştirmez */
   adDegisti?: (yeni: string) => void;
 }) {
   const [adlandir, setAdlandir] = useState<string | null>(null);
   const [yeniAd, setYeniAd] = useState('');
   const ad = useMutation({
     mutationFn: ({ id, ad }: { id: string; ad: string }) => api.post<any>(`/tetikler/${id}/ad`, { ad }),
-    onSuccess: (_r, v) => {
-      setAdlandir(null); tazele();
-      // agent yalnız bu rutinden geliyorsa (işi yok) adı rutinle değişir; detay yeni adla açık kalır
-      const t = a.rutinler.find((x) => x.id === v.id);
-      if (t && t.ad.toLocaleLowerCase('tr') === a.ad.toLocaleLowerCase('tr') && !a.acik_is && !a.son_etkinlik) adDegisti?.(v.ad);
-    },
+    onSuccess: () => { setAdlandir(null); tazele(); },
   });
-  // bağlanabilecek rutinler: genel zamanlanmış rutin ve işi olmayan, yalnız rutin olarak duran agent'ların rutinleri
+  // K1: rutinin kapsamı (hangi agent'lar). Değişince yeni kapsamdaki açık adımlarda AI yapsın açılır (K3); geri alınabilir.
+  const kapsam = useMutation({
+    mutationFn: ({ id, agentlar }: { id: string; agentlar: string[] | null }) => api.post<any>(`/tetikler/${id}/agentlar`, { agentlar }),
+    onSuccess: () => tazele(),
+  });
+  const geriAl = useMutation({
+    mutationFn: async (acilan: { akis: string; no: number }[]) => {
+      const by = new Map<string, number[]>();
+      for (const x of acilan) by.set(x.akis, [...(by.get(x.akis) || []), x.no]);
+      for (const [kod, nolar] of by) await api.post<any>(`/akis/${encodeURIComponent(kod)}/ai`, { oto: false, nolar });
+    },
+    onSuccess: () => { kapsam.reset(); tazele(); },
+  });
+  const otoAc = useMutation({ mutationFn: () => api.post<any>(`/agentlar/${encodeURIComponent(a.ad)}/ai`, {}), onSuccess: () => tazele() });
   const k = (x: string) => x.toLocaleLowerCase('tr');
-  const bagli = a.rutinler.filter((t) => k(t.ad) === k(a.ad));
-  const ortak = a.rutinler.filter((t) => !bagli.includes(t));
-  const genel = veri.genel_rutin && !a.rutinler.some((t) => t.id === veri.genel_rutin!.id) ? veri.genel_rutin : null;
-  const serbest: AgentRutin[] = [
-    ...(genel ? [{ id: genel.id, ad: 'Zamanlanmış rutin', tur: 'zamanli' as const, son_calisma: genel.son_calisma, son_hata: null }] : []),
-    ...veri.agentlar.filter((x) => x.ad !== a.ad && !x.acik_is && !x.son_etkinlik).flatMap((x) => x.rutinler.filter((t) => k(t.ad) === k(x.ad))),
-    ...ortak,
-  ].filter((t, i, L) => L.findIndex((u) => u.id === t.id) === i);
-  const rutinSatiri = (t: AgentRutin, not?: string) => (
+  const tum: AgentRutin[] = (veri.rutinler || []).filter((t, i, L) => L.findIndex((u) => u.id === t.id) === i);
+  const kapsar = (t: AgentRutin) => t.agentlar == null || t.agentlar.some((x) => k(x) === k(a.ad));
+  const bakan = tum.length ? tum.filter(kapsar) : a.rutinler;
+  const digerleri = tum.filter((t) => !kapsar(t));
+  const ekle = (t: AgentRutin) => kapsam.mutate({ id: t.id, agentlar: [...(t.agentlar || []), a.ad] });
+  const cikar = (t: AgentRutin) => {
+    // "tüm agent'larım" rutininden çıkarmak: o an bilinen öbür agent'lar açıkça yazılır
+    const L = t.agentlar == null ? veri.agentlar.map((x) => x.ad).filter((x) => k(x) !== k(a.ad)) : t.agentlar.filter((x) => k(x) !== k(a.ad));
+    if (L.length) kapsam.mutate({ id: t.id, agentlar: L });
+  };
+  const rutinSatiri = (t: AgentRutin) => (
     <li key={t.id} className="ag-rutin">
-      <span><b>{t.ad}</b><small>{rutinTuru(t)} · {t.son_hata ? `son deneme başarısız: ${t.son_hata}` : t.son_calisma ? `son çalışma ${zaman(t.son_calisma)}` : 'henüz çalışmadı'}{not ? ` · ${not}` : ''}</small></span>
+      <span><b>{t.ad}</b><small>{rutinTuru(t)} · {t.agentlar == null ? 'tüm agent’ların' : t.agentlar.join(', ')}{t.id === a.isleyen_rutin ? ' · bu agent’ın işini o başlatır' : ''} · {t.son_hata ? `son deneme başarısız: ${t.son_hata}` : t.son_calisma ? `son çalışma ${zaman(t.son_calisma)}` : 'henüz çalışmadı'}</small></span>
       {kip === 'yonetim' && adlandir !== t.id && <span className="ag-rutin-eylem">
+        {kapsar(t) && (t.agentlar ? t.agentlar.length > 1 : veri.agentlar.length > 1) && <button type="button" className="metin-baglanti" disabled={kapsam.isPending} onClick={() => cikar(t)}>Bu agent’tan ayır</button>}
         <button type="button" className="metin-baglanti" onClick={() => { setAdlandir(t.id); setYeniAd(t.ad); ad.reset(); }}>Adlandır</button>
         {rutinKaldir && <button type="button" className="metin-baglanti mercan" onClick={() => rutinKaldir(t)}>Kaldır</button>}
       </span>}
@@ -96,6 +108,7 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, 
       </form>}
     </li>
   );
+  const sonuc = kapsam.data;
   return (
     <AltSayfa acik kapat={kapat} baslik={a.ad} yukseklik="yuksek">
       <div className="ai-etkinlik agent-detay">
@@ -108,23 +121,23 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir, 
         {kip === 'yonetim' && <section className="ai-grup" aria-label="Bağlantı">
           <h3 className="gd-bolum-baslik">BAĞLANTI</h3>
           <p className="gd-satir">{baglanti ? `${uygulamaOf(a.ad)} · ${baglanti.alt}` : `${uygulamaOf(a.ad)} bu hesaba bağlı görünmüyor. Bağlanınca ${a.ad} Devir’de yazabilir.`}</p>
-          {!baglanti && kip === 'yonetim' && <button type="button" className="metin-baglanti" onClick={() => { kapat(); git('/bagla'); }}>{uygulamaOf(a.ad)}’u bağla</button>}
+          {!baglanti && kip === 'yonetim' && <button type="button" className="metin-baglanti" onClick={() => { kapat(); git(/chatgpt/i.test(uygulamaOf(a.ad)) ? '/bagla?uygulama=chatgpt' : '/bagla'); }}>{/chatgpt/i.test(uygulamaOf(a.ad)) ? 'ChatGPT’yi' : `${uygulamaOf(a.ad)}’u`} bağla</button>}
         </section>}
 
         <section className="ai-grup" aria-label="Rutinler">
           <h3 className="gd-bolum-baslik">RUTİN</h3>
-          {bagli.length + ortak.length > 0 ? <ul className="ag-rutinler">
-            {bagli.map((t) => rutinSatiri(t))}
-            {ortak.map((t) => rutinSatiri(t, t.id === veri.genel_rutin?.id ? 'genel rutin; bu agent’ın işlerine de bakar' : 'başka rutin bağlı olmadığı için bu agent’ın işlerini de yapar'))}
-          </ul> : <p className="gd-satir">{genel ? `Bu agent’a bağlı rutin yok; genel zamanlanmış rutinin (son uğradı ${zaman(genel.son_calisma) || '—'}) işlerine bakar.` : 'Bu agent’a bağlı rutin yok; AI yapsın işleri kendiliğinden başlamaz.'}</p>}
-          {kip === 'yonetim' && !bagli.length && serbest.length > 0 && <div className="ag-bagla">
-            <p className="gd-satir">Başka bir agent’a bağlı olmayan rutinini bu agent’a bağlayabilirsin. Rutinin adı “{a.ad}” olur; Devir işleri ona göre dağıtır.</p>
-            {serbest.map((t) => <Dugme key={t.id} type="button" tur="ikincil" ton="lila" yukseklik={44} fs={14} mesgul={ad.isPending && ad.variables?.id === t.id} onClick={() => ad.mutate({ id: t.id, ad: a.ad })}>“{t.ad}” rutinini bağla</Dugme>)}
+          {bakan.length > 0 ? <ul className="ag-rutinler">{bakan.map((t) => rutinSatiri(t))}</ul>
+            : <p className="gd-satir">Bu agent’ın işine bakan rutin yok; AI yapsın işleri kendiliğinden başlamaz.</p>}
+          {kip === 'yonetim' && digerleri.length > 0 && <div className="ag-bagla">
+            <p className="gd-satir">Rutinlerinden birini bu agent için de çalıştırabilirsin. Rutinin adı değişmez; başka agent’ları da kalır.</p>
+            {digerleri.map((t) => <Dugme key={t.id} type="button" tur="ikincil" ton="lila" yukseklik={44} fs={14} mesgul={kapsam.isPending && kapsam.variables?.id === t.id} onClick={() => ekle(t)}>“{t.ad}” bu agent için de çalışsın</Dugme>)}
           </div>}
-          {kip === 'yonetim' && bagli.length > 0 && !a.acik_is && !a.son_etkinlik && <p className="gd-satir">Bu rutin henüz hiçbir görevin sahibi değil. Bir agent’ın işlerini yapsın istersen adını o agent’ın adı yap; ya da görevlerde sahip olarak “{a.ad}” seç.</p>}
-          {kip === 'yonetim' && kurAc && <button type="button" className="metin-baglanti" onClick={() => kurAc(a.ad)}>{bagli.length ? 'Kurulum adımları' : `${a.ad} için rutin kur`}</button>}
-          {ad.isError && <p className="canli-hata-satir" role="alert">{(ad.error as Error).message}</p>}
+          {kip === 'yonetim' && !!a.ai_kapali && a.isleyen_rutin && <p className="gd-satir">{a.ai_kapali} açık işte AI yapsın kapalı. <button type="button" className="metin-baglanti" disabled={otoAc.isPending} onClick={() => otoAc.mutate()}>Hepsinde aç</button></p>}
+          {kip === 'yonetim' && kurAc && <button type="button" className="metin-baglanti" onClick={() => kurAc(a.ad)}>{bakan.length ? 'Kurulum adımları' : `${a.ad} için rutin kur`}</button>}
+          {(ad.isError || kapsam.isError) && <p className="canli-hata-satir" role="alert">{((ad.error || kapsam.error) as Error).message}</p>}
           {ad.data?.not && <p className="gd-satir" role="status">{ad.data.not}</p>}
+          {sonuc?.not && <p className="gd-satir" role="status">{sonuc.not}{sonuc.acilan?.length ? <> <button type="button" className="metin-baglanti" disabled={geriAl.isPending} onClick={() => geriAl.mutate(sonuc.acilan)}>Geri al</button></> : null}</p>}
+          {otoAc.data?.not && <p className="gd-satir" role="status">{otoAc.data.not}{otoAc.data.acilan?.length ? <> <button type="button" className="metin-baglanti" disabled={geriAl.isPending} onClick={() => geriAl.mutate(otoAc.data.acilan)}>Geri al</button></> : null}</p>}
         </section>
 
         <section className="ai-grup" aria-label="Özet">

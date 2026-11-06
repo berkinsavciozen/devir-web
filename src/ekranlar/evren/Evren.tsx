@@ -19,7 +19,7 @@ import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
 import { tanitimGorulmeli } from './Tanitim';
 import { yakinlas } from '../../cizim/yakinlas';
-import { AvatarAd, BosEvren } from './BosEvren';
+import { AvatarAd, BosEvren, BosEvrenGenis } from './BosEvren';
 import { evrenCumleleri } from './cumleler';
 import { evrenTakvimi } from '../../geometri/evren';
 import { haritaCercevesi, useGezinme, type Bolge } from '../akis/gezinme';
@@ -426,7 +426,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   );
   const bos = ozet.data && !kartlar.length && !ozet.data.taslaklar?.length;
   const avatar = () => git('/ayarlar?bolum=ben');
-  if (bos) return <BosEvren ad={kisi} avatar={avatar} />;
+  if (bos) return genis ? <BosEvrenGenis ad={kisi} avatar={avatar} panel={panel} konum={konum} geri={geri} aktif={aktif} /> : <BosEvren ad={kisi} avatar={avatar} />;
   if (!cizim) return null;
 
   const odak: OdakAyar = {

@@ -54,13 +54,17 @@ test('Ayarlar: agent rutiniyle listelenir; kurulum sayfası adım adım, iki yol
   await d.getByRole('radio', { name: /İş hazır olunca hemen/ }).click();
   await expect(d.getByText(/bir kez gösterilen/).first()).toBeVisible();
   await cek(page, 'ai-kurulum-api');
-  await d.getByPlaceholder('Ör. Berkin’in Claude’u').fill('Kod agent’ı');
+  await d.getByPlaceholder('Ör. Devir AI yapsın').fill('Kod rutini');
+  await expect(d.getByRole('checkbox', { name: /Tüm agent’larım/ })).toBeChecked();
+  await d.getByPlaceholder(/routines\/…\/fire/).fill('https://api.anthropic.com/v1/claude_code/routines/trig_kod123');
+  await expect(d.getByRole('alert')).toContainText('/fire ile bitmeli');
   await d.getByPlaceholder(/routines\/…\/fire/).fill('https://api.anthropic.com/v1/claude_code/routines/trig_kod123/fire');
   await d.getByPlaceholder(/bir kez gösterilen jeton/).fill('sk-ant-oat01-sahtejetonsahtejeton');
   await d.getByRole('button', { name: 'Bağla', exact: true }).click();
-  await expect(d.getByText(/Kod agent’ı tetiği eklendi/)).toBeVisible();
+  await expect(d.getByText(/Kod rutini tetiği eklendi; tüm agent'ların için çalışır/)).toBeVisible();
   await d.getByRole('button', { name: 'Kapat', exact: true }).click();
-  await expect(page.getByRole('button', { name: /^Kod agent’ı/ })).toBeVisible();
+  // 0.34.0 (K1): rutin ayrı bir agent olarak listelenmez
+  await expect(page.getByRole('button', { name: /^Kod rutini/ })).toHaveCount(0);
 });
 
 test('AI yapsın kurulumu: rutin yokken adımlar yapılacak; görevdeki bağlantı kurulumu açar', async ({ page }) => {

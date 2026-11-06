@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
 import { sorguIstemcisi, useOzet } from '../../api/sorgular';
@@ -86,6 +86,9 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   const q = useQuery({ queryKey: ['taslak', kod], queryFn: () => api.get<any>(`/taslak/${encodeURIComponent(kod)}`) });
   const t = q.data;
   const [cevap, setCevap] = useState<Record<string, string>>({});
+  // 0.34.0 (C10): sohbette verilmiş cevaplar hazır gelir; kişi değiştirebilir
+  const onYuklendi = useRef(false);
+  useEffect(() => { if (t && !onYuklendi.current) { onYuklendi.current = true; const o = t.on_cevaplar || {}; if (Object.keys(o).length) setCevap((c) => ({ ...o, ...c })); } }, [t]);
   const [ek, setEk] = useState<Soru[]>([]);
   const [sira, setSira] = useState(0);
   const [acik, setAcik] = useState<number | null>(null);
@@ -126,7 +129,7 @@ export function TaslakSorulari({ kod }: { kod: string }) {
   return (
     <>
       <Sahne gok={GOK} cizim={cizim + (s ? `<rect x="16" y="${qy}" width="358" height="${kartH}" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>` : '')} etiket="Yeni iş">
-        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem baslik-eylem" onClick={() => setPlan(true)}>Plan</button><button type="button" className="satir-eylem baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button><button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
+        <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => setPlan(true)}>Plan</button><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button><button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
         <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
         {V.slice(0, ACI.length).map((v, j) => { const [x, y] = rozetYeri(j); return <button key={j} type="button" className="varsayim-rozet" style={{ left: x - 22, top: y - 22 }} aria-label={`Varsayım: ${v.metin}`} onClick={() => setAcik(j)} />; })}
         {t.motor?.yedek && <Metin y={122 + satirlar.length * 24 + 8} x={24} fs={11.5} lh={20} as="p"><span className="hap hap-yedek" title={`Taslak yedek motorla (${t.motor.ad}) üretildi; birincil motor yanıt vermedi. Birincil dönünce aynı cümleyle yeniden taslak çıkarılabilir.`}>Yedek motor</span></Metin>}

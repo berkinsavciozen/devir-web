@@ -3,7 +3,7 @@
 import { akisKarari, aralikMetni, gecmisYukle } from "./plan.ts";
 import type { LlmFn, SohbetFn } from "./llm.ts";
 import { type GomFn, hatirla, deneyimSatiri, dersSatiri, kartSatiri, standartBlok, derslerUygula, zorunluIsler, hatirlatmaSatirlari, dayanaklar, deneyimKaydet, dersUymadi, atlamaNedeni, vnorm, kokler, kelimeBenzer, standartMetni, dersMetni, type Hatira } from "./bellek.ts";
-import { kapsamDenetimi, sahipAdi, destekKisi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
+import { AGENT_ADI, kapsamDenetimi, sahipAdi, destekKisi, SISTEM, TASLAK_ARACI, TUR_ARACI, DENETCI_SISTEM, DENETCI_ARACI, denetimListesi, denetimUygula, kuralDenetimi, turDogrula, kullaniciMesaji, sec, uygula, slug, cevapCoz, cevapDegerleri, kosulEslesir, dilDenetimi, sahiplikUyarilari, BILMIYORUM as BILMIYORUM_RE, type Stat } from "./tasarim.ts";
 import { belirtecAc, belirtecAlanlari, yeniBelirtec, linkV, baglantiDurumu, baglantiSonu, BAGLANTI_GUN, type Sifre } from "./baglanti.ts";
 import { yurutmeDoldur, kontrolKatla, insanPayi, kararEkonomisi, secenekler as secenekListesi, geriBildirimSatirlari, YURUTME, INCELEME, KARAR_TUR, YURUTME_AD, INCELEME_AD, KARAR_TUR_AD, INCELEME_TUR_SINIRI, yurutmeEtiketi, type IncelemeKaydi } from "./yurutme.ts";
 import { kisaAdGecerli, kisaAdim, kisaAkis, tekillestir, adimKisaAdlari, akisKisaAdi, KISA_AD_EN_COK } from "./ad.ts";
@@ -585,7 +585,7 @@ async function recalc(ctx: Ctx, akis: any, steps: any[]) {
 // Kişi agent adımını "AI yapsın" diye işaretler. Adım hazır olunca (öncüller bitti, beklenen çıktılar yazıldı, açık soru yok,
 // istenirse planlanan gün geldi) sahibin Claude rutini API tetiğiyle başlatılır. Rutin işi yapar, çıktıyı yazar; adım "bakılacak"
 // olur ve sahibi onaylayınca tamam. Karar, onay, ödeme ve dışarıya gönderme işleri otomatiğe uygun değildir.
-export const DIS_FIIL = /gönder(?!i)|ilet(?:\s|$|il)|yayınla|yayımla|paylaş|postala|başvur|sipariş\s*ver|satın\s*al|transfer|imzala|öde(?:\s|$|meyi|mesini)/i;
+export const DIS_FIIL = /gönder(?!i)|ilet(?:\s|$|il)|yayınla|yayımla|paylaş|(?<![\p{L}-])postala|başvur|sipariş\s*ver|satın\s*al|transfer|imzala|öde(?:\s|$|meyi|mesini)/iu;
 export const OTO_DENEME = 2;
 /** Adım AI yapsın'a uygun değilse nedeni. */
 export function otoUygunDegil(s: any, kurallar: any = {}): string | null {
@@ -619,22 +619,32 @@ export const otoMetni = (akis: any, s: any, taban?: string) => [
   ...(taban ? [`Devir: ${taban}`] : []),
 ].join("\n");
 /**
- * Rutin ↔ agent eşlemesi (K3, 0.30.0). Bir AI yapsın adımını kişinin hangi rutini yapar:
- * 1) adı adımın agent'ıyla aynı olan rutin (API tetiği ya da zamanlanmış); 2) kişinin tek rutini varsa o;
- * 3) birden çoksa ve adla eşleşen yoksa: tek API tetiği varsa o (anında), yoksa genel zamanlanmış rutin (adı "Zamanlanmış rutin").
- * Başka bir agent'ın adını taşıyan rutin o agent'a ayrılmıştır; ötekilerin işini almaz.
+ * Rutin ↔ agent eşlemesi. 0.34.0 (K1): rutin ile agent ayrı kayıttır; rutinin hangi agent'ların işini yaptığı
+ * agent_tetik.agentlar alanında açıkça durur (null = kişinin tüm agent'ları). Bir AI yapsın adımını kim yapar:
+ * 1) bu agent'ı açıkça seçmiş rutin (API tetiği önce, anında başlar); 2) "tüm agent'larım" rutini (API önce).
+ * Eski satır (agentlar alanı hiç yok, 0.30–0.33): adı agent'ın adıyla aynıysa o agent'ındır, başka bir agent'ın adını
+ * taşıyorsa ötekilerin işini almaz, adı hiçbir agent'a uymuyorsa geneldir.
  */
 export function rutinSec(L: any[], agentAd: string | null | undefined, adlar: string[] = []) {
   const R = L.filter((t: any) => t.aktif !== false);
   if (!R.length) return null;
-  const tam = agentAd ? R.find((t: any) => norm(t.ad) === norm(agentAd)) : null;
-  if (tam) return tam;
-  if (R.length === 1) return R[0];
-  const ayrilmis = new Set(adlar.map(norm));
-  const serbest = R.filter((t: any) => !ayrilmis.has(norm(t.ad)));
-  const api = serbest.filter((t: any) => t.url !== ZAMANLI);
-  if (api.length === 1) return api[0];
-  return serbest.find((t: any) => t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD)) || serbest.find((t: any) => t.url === ZAMANLI) || null;
+  const n = norm(agentAd || ""), ayrilmis = new Set(adlar.map(norm));
+  const eski = (t: any) => t.agentlar === undefined;
+  const ozel = (t: any) => !!n && (eski(t) ? norm(t.ad) === n : Array.isArray(t.agentlar) && t.agentlar.some((x: unknown) => norm(String(x)) === n));
+  const tumu = (t: any) => (eski(t) ? !ayrilmis.has(norm(t.ad)) : !Array.isArray(t.agentlar));
+  for (const grup of [R.filter(ozel), R.filter((t: any) => !ozel(t) && tumu(t))]) {
+    const api = grup.find((t: any) => t.url !== ZAMANLI);
+    if (api) return api;
+    const z = grup.find((t: any) => t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD)) || grup.find((t: any) => t.url === ZAMANLI);
+    if (z) return z;
+  }
+  return null;
+}
+/** Rutinin kapsamı (görünüm): null = tüm agent'lar, dizi = seçilen agent adları. Eski satırda addan çıkarılır. */
+export function rutinKapsami(t: any, adlar: string[]): string[] | null {
+  if (t.agentlar !== undefined) return Array.isArray(t.agentlar) ? t.agentlar.map(String) : null;
+  const a = adlar.find((x) => norm(x) === norm(t.ad));
+  return a ? [a] : null;
 }
 export const ZAMANLI_AD = "Zamanlanmış rutin";
 async function kisiRutinleri(ctx: Ctx, kisi: string) {
@@ -678,11 +688,13 @@ async function aiIsler(a: any, ctx: Ctx) {
     // eski tek satır (0.29.x "Zamanlanmış rutin"): ilk adlı çağrıda o adı alır
     || (rutinAd !== ZAMANLI_AD ? L0.find((t: any) => t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD) && !L0.some((x: any) => x !== t && x.url === ZAMANLI)) : null);
   if (!almadan) {
-    const alan = { ad: rutinAd, aktif: true, son_tetik_at: nowIso, son_hata: null };
+    const alan: any = { ad: rutinAd, aktif: true, son_tetik_at: nowIso, son_hata: null };
+    // eski genel satır ilk adlı çağrıda o agent'ın rutini olur (0.34.0: kapsam açıkça yazılır)
+    if (ben && norm(ben.ad) !== norm(rutinAd) && rutinAd !== ZAMANLI_AD) alan.agentlar = [rutinAd];
     if (ben) { await ctx.db.update("agent_tetik", { id: ben.id }, alan).catch(() => {}); ben = { ...ben, ...alan }; }
-    else ben = (await ctx.db.insert("agent_tetik", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id || null, kisi, kisi_norm: nk, url: ZAMANLI, jeton: "", ...alan }]).catch(() => []))[0] || null;
+    else ben = (await ctx.db.insert("agent_tetik", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id || null, kisi, kisi_norm: nk, url: ZAMANLI, jeton: "", agentlar: rutinAd !== ZAMANLI_AD ? [rutinAd] : null, ...alan }]).catch(() => []))[0] || null;
   }
-  const benR = ben || { id: "__bakis", url: ZAMANLI, ad: rutinAd, aktif: true };
+  const benR = ben || { id: "__bakis", url: ZAMANLI, ad: rutinAd, aktif: true, agentlar: rutinAd !== ZAMANLI_AD ? [rutinAd] : null };
   const rutinler = [...(await kisiRutinleri(ctx, kisi)).filter((t: any) => t.id !== benR.id), benR];
   const adlar = await kisiAgentAdlari(ctx, kisi);
   const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at")) as any[];
@@ -1013,6 +1025,7 @@ export const TOOLS = [
         karar_gerekli: { type: "boolean" }, cikti_bekleniyor: { type: "boolean" },
         yurutme: { type: "string", enum: ["ai_yapar", "ai_hazirlar_insan_bitirir", "insan", "dis"], description: "Kim, nasıl yapar: AI yapar, AI hazırlar insan bitirir, insan, dış." }, inceleme: { type: "string", enum: ["yok", "hizli_onay", "yorumlu_inceleme"], description: "Yalnız agent adımı: AI çıktısı gelince insan ne yapar." }, karar_tur: { type: "string", enum: ["secim", "coklu_secim", "onay_red", "tutar_tarih", "serbest"], description: "Yalnız karar adımı: kararın biçimi." }, karar_secenekleri: { type: "array", items: { type: "string" } },
       } } },
+      cevaplar: { type: "object", description: "Kullanıcı taslağın sorularını sohbette cevapladıysa ama akışı sonra (ör. webden) kuracaksa cevapları buraya yaz: { soru_kodu: değer }. Cevaplar taslakta kalır, kurulumda yeniden sorulmaz. Bunun için devir_karar kullanma." },
       sil: { type: "array", items: { type: "integer" }, description: "Silinecek adım numaraları. Onları bekleyenler onların öncüllerini bekler." },
       ekle: { type: "array", items: { type: "object", required: ["ad", "sahip", "kriter"], properties: {
         ad: { type: "string" }, kisa_ad: { type: "string" }, aciklama: { type: "string" }, sahip: { type: "string" }, sahip_tip: { type: "string", enum: ["insan", "agent", "dis"] }, kriter: { type: "string" }, beklenen_cikti: { type: "string" }, karar_kriteri: { type: "string" },
@@ -1269,6 +1282,9 @@ export const INSTRUCTIONS = `Devir, insanların ve AI agent'larının aynı işi
 - Kullanıcı bir hedef ya da iş cümlesi yazdığında ("…kazandırmam lazım", "…hazırlamam lazım") önce devir_tasla'yı çağır; tavsiyeyi ondan sonra, taslağın varsayımları ve sorularıyla birlikte ver. Önceki işlerden ya da sohbet hafızandan bildiklerini (bölge, kanal, lojistik, onay) bu iş için de geçerli sayma; Devir'in sorularıyla kullanıcıya sor.
 - Sohbet hafızanda olup Devir'in geçerli kararlarında olmayan bir kural ya da karar varsa (ör. "pilotta hayvansal ürün yok") kullanıcıya hâlâ geçerli olup olmadığını sor; onaylarsa devir_karar ile kaydet.
 - Kullanıcı çok adımlı yeni bir iş başlattığında (proje, organizasyon, müşteri süreci, taşınma, kampanya…) devir_tasla'yı kullanıcının cümlesiyle çağır. Kullanıcı hakkında bildiklerini baglam'a koy; özellikle varlık (şirket, proje, kişi) ve kullanıcının onunla ilişkisi (kendi, musteri, isveren, kisisel). Dönen soruları kullanıcıya tek mesajda sor, cevaplarla devir_akis_olustur({ taslak, cevaplar }) çağır. Sorulmayanlar için Devir varsayım yapar; varsayımları kullanıcıya kısaca söyle ve yanlış olanı kurmadan önce düzelt. Kullanıcı taslakta bir adımı yanlış, eksik ya da gereksiz bulursa kurmadan önce devir_taslak_duzelt ile düzelt; kurulmuş akışta adımın adını, kriterini ya da açıklamasını devir_adim_guncelle ile düzelt.
+- Kullanıcı soruları sohbette cevaplar ama akışı sonra (webden) kuracaksa cevapları devir_taslak_duzelt'in cevaplar alanıyla taslağa yaz; bunun için devir_karar kullanma. Taslak düzeltmesinin yanıtındaki listeye bak; yanıtta olmayan bir değişikliği yapıldı diye bildirme.
+- Seçim kararı için AI'ın öneri hazırlaması gerekiyorsa ayrı bir "öneri hazırla" adımı ekleme; karar adımının karar_secenekleri'ni yaz, öneri karar kartında gelir. Eklediğin adımı bagimli ve bekleyenler ile doğru yere bağla.
+- Kullanıcıya "kontrol etmen gerekenler" listesi verirken yalnız onun karar vermesi gereken en çok 3 maddeyi yaz; Devir'in kuralla düzelttiklerini ve varsayılanı makul olanları sayma.
 - Bir adımı atlarken atlama_nedeni ver: gerek_kalmadi, mukerrer ya da varsayim_yanlis; not'a nedenini yaz. Sahibini değiştiriyorsan sahip_tip'i de ver. Devir yanlış çıkan varsayımı öğrenir ve bir dahaki sefere sorar.
 - Akışın tamamını görmek için devir_akis'ı çağır; devir_adim_oku'yu yalnızca üzerinde çalışacağın adım için çağır. Başlarken, ilerledikçe ve bitince devir_adim_guncelle ile yaz. Kullanıcı ayrıca istemese de yaz.
 - Ürettiğin her işi cikti olarak yaz: ozet her zaman; mesaj, teklif, brif gibi metinlerin tamamı icerik'e; dış bir araçtaysa (Confluence, Docs, sosyal medya) url ve kaynak. Devir işin kendisini sonraki adıma devreder.
@@ -1425,7 +1441,7 @@ async function olustur(a: any, ctx: Ctx) {
     const kk = await kararlar(ctx, baglam.musteri || tk.baglam?.musteri || t.anahtar_varlik?.ad || null);
     const konular = new Map<string, any>(kk.filter((k: any) => k.konu).map((k: any) => [k.konu, k]));
     for (const x of t.adimlar || []) { const k = x.tur_kod && konular.get(x.tur_kod); if (k) notes.push(`"${x.ad}" kurulmadı; karar zaten verilmiş: ${k.karar} (${fmtMs(ts(k.created_at))}).`); }
-    u = uygula(t, S.secilen || [], S.varsayim || [], a.cevaplar || {}, ctx.key.kisi, new Set(konular.keys()), S.sonra || []);
+    u = uygula(t, S.secilen || [], S.varsayim || [], { ...(S.on_cevap || {}), ...(a.cevaplar || {}) }, ctx.key.kisi, new Set(konular.keys()), S.sonra || []);
     raw = u.adimlar;
     if (!baslik) baslik = t.baslik;
     if (!hedef && u.hedef && isDate(u.hedef)) hedef = u.hedef;
@@ -1530,6 +1546,9 @@ async function olustur(a: any, ctx: Ctx) {
   baglam.kisa_ad = kAkis ? kAkis.trim() : kisaAkis(baslik);
   const kAdim = tekillestir(steps.map((s, i) => { const k = [raw[i].kisa_ad].find(kisaAdGecerli); return k ? { no: s.no, kisa: k.trim(), sabit: true } : { no: s.no, kisa: kisaAdim(s.ad), ad: s.ad }; }));
   baglam.kisa_adlar = Object.fromEntries([...kAdim].map(([no, k]) => [String(no), k]));
+  // 0.34.0 (K6): görev cümlesinin parçaları (nesne + fiil); taslak motoru yazdıysa saklanır, yoksa web kuralla ayırır
+  const yapi = Object.fromEntries(steps.map((s, i) => [String(s.no), raw[i]]).filter(([, r]: any) => !!r?.fiil).map(([no, r]: any) => [no, { nesne: r.nesne || null, fiil: r.fiil }]));
+  if (Object.keys(yapi).length) baglam.ad_yapisi = yapi;
   let akis: any = null;
   for (let i = 0; i < 6 && !akis; i++) {
     try {
@@ -1880,7 +1899,7 @@ async function tasla(a: any, ctx: Ctx) {
       const sec = q.tip === "secim" && Array.isArray(q.secenekler) && q.secenekler.length ? ` Seçenekler: ${q.secenekler.map((o: any) => o.etiket ? `${o.etiket} (${o.deger})` : o.deger).join(" / ")}.` : q.tip === "tarih" ? " (tarih, YYYY-AA-GG)" : "";
       out.push(`${i + 1}. [${q.kod}] ${q.soru}${sec}${q.varsayilan ? ` Varsayılan: ${q.varsayilan}.` : ""} — Neden: ${q.neden}`);
     });
-    out.push("", `Cevaplar gelince: devir_akis_olustur({ taslak: "${tk.kisa_kod}", cevaplar: { ${s.secilen.map((q: any) => `${q.kod}: "…"`).join(", ")} } }). Kullanıcı "bilmiyorum" derse cevabı "bilmiyorum" yaz; akış durmaz, bir "Netleştir" adımı eklenir. Kullanıcı bir soruyu geçerse o soruyu cevaplar'a koyma; varsayılan kullanılır. Birden çok seçenek birlikte geçerliyse virgülle yaz ("organik, gida-kalite") ya da "her ikisi" de; her birinin adımları kurulur.`);
+    out.push("", `Cevaplar gelince: devir_akis_olustur({ taslak: "${tk.kisa_kod}", cevaplar: { ${s.secilen.map((q: any) => `${q.kod}: "…"`).join(", ")} } }). Kullanıcı "bilmiyorum" derse cevabı "bilmiyorum" yaz; akış durmaz, bir "Netleştir" adımı eklenir. Kullanıcı bir soruyu geçerse o soruyu cevaplar'a koyma; varsayılan kullanılır. Birden çok seçenek birlikte geçerliyse virgülle yaz ("organik, gida-kalite") ya da "her ikisi" de; her birinin adımları kurulur. Kullanıcı akışı sonra webden kuracaksa cevapları devir_taslak_duzelt({ taslak: "${tk.kisa_kod}", cevaplar }) ile taslağa yaz; devir_karar ile yazma.`);
   } else out.push("", `Soru gerekmiyor. Hemen kur: devir_akis_olustur({ taslak: "${tk.kisa_kod}" }).`);
   out.push("", `Kullanıcı bir adımı yanlış, eksik ya da gereksiz bulursa kurmadan önce devir_taslak_duzelt({ taslak: "${tk.kisa_kod}", duzelt, sil, ekle }) ile düzelt.`);
   if (s.sonra?.length) { out.push("", "Sonradan belli olacaklar (şimdi sorma; akış iki dalı da kurar, cevap gelince devir_cevapla ile yazılır):"); for (const q of s.sonra) { const c = t.adimlar.find((x: any) => String(x.id) === String(q.cevaplayan_adim || "")); out.push(`- [${q.kod}] ${q.soru}${c ? ` · "${c.ad}" adımında belli olur` : ""}`); } }
@@ -1970,8 +1989,21 @@ async function taslakDuzelt(a: any, ctx: Ctx) {
   const duzelt: any[] = Array.isArray(a.duzelt) ? a.duzelt : [];
   const sil: number[] = [...new Set(((a.sil || []) as unknown[]).map(Number))];
   const ekle: any[] = Array.isArray(a.ekle) ? a.ekle : [];
-  if (!duzelt.length && !sil.length && !ekle.length) throw new Error("duzelt, sil ya da ekle ver.");
-  sil.forEach(at);
+  const cevap0 = a.cevaplar && typeof a.cevaplar === "object" && !Array.isArray(a.cevaplar) ? a.cevaplar as Record<string, unknown> : {};
+  if (!duzelt.length && !sil.length && !ekle.length && !Object.keys(cevap0).length) throw new Error("duzelt, sil, ekle ya da cevaplar ver.");
+  // 0.34.0 (C10): sohbette verilen cevaplar taslağa yazılır; kurulumda (web ya da devir_akis_olustur) hazır gelir
+  const S0 = tk.sorular || {};
+  const tumSoru = new Map<string, any>([...(S0.secilen || []), ...(S0.varsayim || []), ...(S0.sonra || [])].map((q: any) => [q.kod, q]));
+  const onCevap: Record<string, string> = { ...(S0.on_cevap || {}) };
+  const cevapNot: string[] = [];
+  for (const [k, v] of Object.entries(cevap0)) {
+    const q = tumSoru.get(k);
+    if (!q) throw new Error(`cevaplar: '${k}' bu taslağın sorusu değil. Sorular: ${[...tumSoru.keys()].join(", ") || "yok"}.`);
+    const d = String(v ?? "").trim();
+    if (!d) { delete onCevap[k]; cevapNot.push(`[${k}] cevabı kaldırıldı`); continue; }
+    onCevap[k] = d.slice(0, 500); cevapNot.push(`[${k}] = ${d.slice(0, 80)}`);
+  }
+  const silX = sil.map(at); // yer değiştirmeden önce (C11 araya ekleme numaraları kaydırır)
   if (n0 - sil.length + ekle.length < 1) throw new Error("Taslakta en az bir adım kalmalı.");
   if (n0 - sil.length + ekle.length > 40) throw new Error("En fazla 40 adım; daha büyük işi birden çok akışa böl.");
   const secimler = new Map<string, any>((t.sorular || []).filter((q: any) => q.tip === "secim").map((q: any) => [q.kod, q]));
@@ -1993,6 +2025,7 @@ async function taslakDuzelt(a: any, ctx: Ctx) {
     return { soru: q.kod, deger: d.join("|") };
   };
   const notlar: string[] = [];
+  const istenen: [any, string | null, string | null][] = [];
   for (const d of duzelt) {
     const x = at(d?.no), deg: string[] = [];
     for (const [k, e] of [["ad", "ad"], ["kisa_ad", "kısa ad"], ["aciklama", "açıklama"], ["kriter", "kriter"], ["beklenen_cikti", "beklenen çıktı"], ["karar_kriteri", "karar kriteri"]] as const) {
@@ -2005,6 +2038,7 @@ async function taslakDuzelt(a: any, ctx: Ctx) {
     if (d.sure_tahmin_gun != null) { x.sure_tahmin_gun = num(d.sure_tahmin_gun); deg.push("süre"); }
     for (const k of ["karar_gerekli", "cikti_bekleniyor"] as const) if (typeof d[k] === "boolean") { x[k] = d[k]; deg.push(k === "karar_gerekli" ? (d[k] ? "karar adımı" : "karar değil") : (d[k] ? "çıktı bekleniyor" : "çıktı yok")); }
     deg.push(...yurutmeYamasi(x, d));
+    if (d.yurutme != null || d.inceleme != null) istenen.push([x, d.yurutme ?? null, d.inceleme ?? null]);
     if (d.sahip) { x.sahip_rol = rolBul(d.sahip, d.sahip_tip); deg.push(`sahip → ${d.sahip}`); }
     if ("kosul" in d) { x.kosul = kosulOf(d.kosul); deg.push(x.kosul ? `koşul ${x.kosul.soru}=${x.kosul.deger}` : "koşul kaldırıldı"); }
     if (Array.isArray(d.bagimli)) { x.bagimli = d.bagimli.map((n: unknown) => String(at(n).id)); deg.push("bağımlılık"); }
@@ -2013,6 +2047,7 @@ async function taslakDuzelt(a: any, ctx: Ctx) {
     notlar.push(`${d.no}. ${x.ad}: ${deg.join(", ")}`);
   }
   let e = 0;
+  const yerler: { yeni: any; once: any[]; sonra: any[] }[] = [];
   for (const y of ekle) {
     const ad = String(y?.ad || "").trim(), kriter = String(y?.kriter || "").trim();
     if (!ad || !y?.sahip || !kriter) throw new Error("Eklenen her adımda ad, sahip ve kriter gerekli.");
@@ -2022,24 +2057,37 @@ async function taslakDuzelt(a: any, ctx: Ctx) {
     for (const k of ["karar_gerekli", "cikti_bekleniyor"]) if (typeof y[k] === "boolean") yeni[k] = y[k];
     yurutmeYamasi(yeni, y);
     for (const b of (y.bekleyenler || []) as unknown[]) { const s0 = at(b); s0.bagimli = [...new Set([...(s0.bagimli || []).map(String), id])]; }
-    A.push(yeni);
+    // 0.34.0 (C11): yeni adım listenin sonuna değil yerine girer: bekleyenlerinin önüne, yoksa öncüllerinin arkasına
+    yerler.push({ yeni, once: ((y.bekleyenler || []) as unknown[]).map(at), sonra: ((y.bagimli || []) as unknown[]).map(at) });
     notlar.push(`+ ${ad}`);
   }
+  for (const { yeni, once, sonra } of yerler) {
+    const i0 = once.length ? Math.min(...once.map((x) => A.indexOf(x))) : -1;
+    const i1 = sonra.length ? Math.max(...sonra.map((x) => A.indexOf(x))) + 1 : -1;
+    const i = i0 >= 0 ? (i1 >= 0 ? Math.min(Math.max(i1, 0), i0) : i0) : i1 >= 0 ? i1 : A.length;
+    A.splice(i, 0, yeni);
+  }
   // silinen adımı bekleyenler onun öncüllerini bekler (zincir kopmaz)
-  const silId = new Set(sil.map((n) => String(at(n).id)));
+  const silId = new Set(silX.map((x) => String(x.id)));
   const byId = new Map(A.map((s) => [String(s.id), s]));
   const coz = (id: string, gor: Set<string>): string[] => { if (!silId.has(id)) return [id]; if (gor.has(id)) return []; gor.add(id); return ((byId.get(id) || {}).bagimli || []).map(String).flatMap((d: string) => coz(d, gor)); };
-  for (const n of sil) notlar.push(`− ${at(n).ad}`);
+  for (const x of silX) notlar.push(`− ${x.ad}`);
   t.adimlar = A.filter((s) => !silId.has(String(s.id))).map((s) => ({ ...s, bagimli: [...new Set((s.bagimli || []).map(String).flatMap((d: string) => coz(d, new Set())))].filter((d) => d !== String(s.id)) }));
-  const dongu = kuralDenetimi({ ...t, sorular: [] }).filter((x) => /döngüsü|geçersiz bağımlılık/.test(x));
+  // 0.34.0 (C8): kural denetimi taslağın kendi sorularıyla çalışır; eskiden sorular boş verildiği için her koşul siliniyordu.
+  // Yaptığı her düzeltme (döngü, ad bölme, sahip, koşul) yanıtta söylenir; sessiz değişiklik olmaz.
+  const dongu = kuralDenetimi(t);
   // seçilmiş bir soru artık hiçbir adımı değiştirmiyorsa söyle (cevabı yine kullanılabilir)
   const S = tk.sorular || {};
   const bagli = new Set(t.adimlar.flatMap((s: any) => [s.kosul?.soru, s.tarih_capasi?.soru]).filter(Boolean));
   const bos = (S.secilen || []).filter((q: any) => q.tip === "secim" && !q._ilgili?.length && !bagli.has(q.kod) && !["hedef_tarih", "ekip", "iliski"].includes(q.kod)).map((q: any) => q.kod);
   t._duzeltme = [...(t._duzeltme || []), { at: new Date(ctx.now).toISOString(), kim: ctx.key.kisi, ozet: notlar }];
   yurutmeTaslak(t); // sahip ya da karar değiştiyse yürütme alanları yeniden tutarlı olur
-  await ctx.db.update("taslak", { id: tk.id }, { taslak: t });
-  const out = [`✓ Taslak ${tk.kisa_kod} düzeltildi (${t.adimlar.length} adım):`, ...notlar.map((x) => `- ${x}`), ...dongu.map((x) => `Not: ${x}`)];
+  // 0.34.0 (C9): istenen yürütme kurala takıldıysa sessizce değişmez; neden yanıtta söylenir
+  const kuralNot = istenen.filter(([x, y, i]) => (y && x.yurutme !== y) || (i && x.inceleme !== i)).map(([x, y, i]) =>
+    `"${x.ad}": ${y && x.yurutme !== y ? `yürütme ${YURUTME_AD[y as keyof typeof YURUTME_AD] || y} istendi, ${YURUTME_AD[x.yurutme as keyof typeof YURUTME_AD] || x.yurutme} kaldı` : `inceleme ${INCELEME_AD[i as keyof typeof INCELEME_AD] || i} istendi, ${INCELEME_AD[x.inceleme as keyof typeof INCELEME_AD] || "yok"} kaldı`}; ${/agent/.test(String((t.roller || []).find((r: any) => r.kod === x.sahip_rol)?.tip)) ? "dışarıya gönderen, ödeyen ya da karar veren işi AI bitirmez, insan onaylar" : "insan ve dış adımda AI yürütmesi olmaz; sahibi agent yap"}.`);
+  await ctx.db.update("taslak", { id: tk.id }, { taslak: t, ...(cevapNot.length ? { sorular: { ...S0, on_cevap: onCevap } } : {}) });
+  if (cevapNot.length) notlar.push(`cevaplar: ${cevapNot.join("; ")}`);
+  const out = [`✓ Taslak ${tk.kisa_kod} düzeltildi (${t.adimlar.length} adım):`, ...notlar.map((x) => `- ${x}`), ...dongu.map((x) => `Not: ${x}`), ...kuralNot.map((x) => `Not: ${x}`)];
   if (bos.length) out.push(`Not: ${bos.map((k: string) => `[${k}]`).join(", ")} artık hiçbir adımı değiştirmiyor; cevabı kayda geçer ama akışı değiştirmez.`);
   out.push(...taslakAdimlari(t), "", `Kurmak için: devir_akis_olustur({ taslak: "${tk.kisa_kod}", cevaplar }).`);
   return out.join("\n");
@@ -3334,6 +3382,9 @@ export async function otoToplu(ctx: Ctx, kod: string, b: any) {
   const degisen: number[] = [], atlanan: { no: number; ad: string; neden: string }[] = [];
   for (const s of steps) {
     if (s.sahip_tip !== "agent" || DONE(s) || !stepInScope(ctx, s) || altAdimi(akis, s.no)) continue;
+    if (Array.isArray(b.agentlar) && !b.agentlar.some((x: unknown) => norm(String(x)) === norm(s.sahip))) continue;
+    // 0.34.0 (K3 geri al): yalnız verilen adımlar
+    if (Array.isArray(b.nolar) && !b.nolar.map(Number).includes(s.no)) continue;
     if (s.agent_sahibi && norm(s.agent_sahibi) !== ben) { atlanan.push({ no: s.no, ad: s.ad, neden: `${s.agent_sahibi} kişisinin agent'ı` }); continue; }
     if (!ac) { if (s.oto) { await adimGuncelle({ akis: akis.kisa_kod, no: s.no, oto: false, arac: b.arac }, ctx); degisen.push(s.no); } continue; }
     if (s.oto && s.oto_durum !== "hata") continue;
@@ -3372,24 +3423,98 @@ export async function agentlarV(ctx: Ctx) {
   const ev = ids.length ? await ctx.db.many("olay", { akis_id: ids }, "id") : [];
   const kodOf = new Map(flows.map((f: any) => [f.id, f]));
   const benim = st.filter((x: any) => x.sahip_tip === "agent" && norm(x.agent_sahibi || "") === nk);
-  const adlar = [...new Set([...benim.map((x: any) => String(x.sahip)), ...rutinler.filter((t: any) => !(t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD))).map((t: any) => String(t.ad))])];
+  // 0.34.0 (K1): agent kaydı kisi tablosunda (tip agent, destek = desteklediği kişi); renk ve kaldırma orada durur
+  const kayit = ((await ctx.db.many("kisi", { ws_id: ctx.ws.id, tip: "agent" }, "created_at").catch(() => [])) as any[]).filter((k: any) => norm(k.destek || "") === nk);
+  const kayitOf = (ad: string) => kayit.find((k: any) => norm(k.ad) === norm(ad));
+  const adimAdlari = [...new Set(benim.map((x: any) => String(x.sahip)))];
+  const eskiAd = rutinler.filter((t: any) => t.agentlar === undefined && !(t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD))).map((t: any) => String(t.ad));
+  const secili = rutinler.flatMap((t: any) => (Array.isArray(t.agentlar) ? t.agentlar.map(String) : []));
+  const tekil = (L: string[]) => L.filter((x, i) => L.findIndex((y) => norm(y) === norm(x)) === i);
+  const adlar = tekil([...adimAdlari, ...secili, ...eskiAd, ...kayit.filter((k: any) => !k.gizli_at).map((k: any) => String(k.ad))])
+    .filter((ad) => !kayitOf(ad)?.gizli_at || benim.some((x: any) => norm(x.sahip) === norm(ad) && !DONE(x)));
   const isV = (x: any) => ({ akis: kodOf.get(x.akis_id)?.kisa_kod, akis_ad: kodOf.get(x.akis_id) ? akisKisaAdi(kodOf.get(x.akis_id)) : null, no: x.no, ad: x.ad, durum: x.durum, oto_durum: x.oto_durum || null });
+  const rutinV = (t: any) => ({ id: t.id, ad: t.ad, tur: t.url === ZAMANLI ? "zamanli" : "api", son_calisma: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: rutinKapsami(t, adlar) });
   const agentlar = adlar.map((ad) => {
     const isler = benim.filter((x: any) => norm(x.sahip) === norm(ad));
-    const r = rutinler.filter((t: any) => rutinSec(rutinler, ad, adlar)?.id === t.id || norm(t.ad) === norm(ad));
+    const sec = rutinSec(rutinler, ad, adlar);
+    // bu agent'ın işine bakan rutinler: önce işi alacak olan, sonra onu kapsayan öbürleri
+    const r = rutinler.filter((t: any) => { const k = rutinKapsami(t, adlar); return t.id === sec?.id || (k ? k.some((x) => norm(x) === norm(ad)) : false); });
     const sonEv = ev.filter((e: any) => isler.some((x: any) => x.akis_id === e.akis_id && x.no === e.adim_no) && (AI_TUR.has(e.veri?.tur) || e.kim_tip === "agent")).pop();
     const calisiyor = isler.filter((x: any) => x.oto_durum === "tetiklendi" || (x.durum === "suruyor" && x.oto && !x.oto_durum));
     const hata = isler.filter((x: any) => x.oto_durum === "hata" || (r.length && r.every((t: any) => t.son_hata)));
     return {
-      ad, rutinler: r.map((t: any) => ({ id: t.id, ad: t.ad, tur: t.url === ZAMANLI ? "zamanli" : "api", son_calisma: t.son_tetik_at || null, son_hata: t.son_hata || null })),
+      ad, renk: kayitOf(ad)?.renk || null, rutinler: r.map(rutinV), isleyen_rutin: sec ? sec.id : null,
       durum: hata.length ? "hata" : calisiyor.length ? "calisiyor" : "bosta",
       simdi: calisiyor.slice(0, 3).map(isV),
       sirada: isler.filter((x: any) => x.oto && !DONE(x) && !x.oto_durum).length,
+      ai_kapali: isler.filter((x: any) => !x.oto && !DONE(x) && !otoUygunDegil(x, kodOf.get(x.akis_id)?.kurallar || {})).length,
       bakilacak: isler.filter((x: any) => x.oto_durum === "bakilacak" && !DONE(x)).map(isV),
       acik_is: isler.filter((x: any) => !DONE(x)).length,
       son_etkinlik: sonEv ? { zaman: sonEv.created_at, ozet: sonEv.ozet, akis: kodOf.get(sonEv.akis_id)?.kisa_kod, no: sonEv.adim_no } : null,
     };
   });
   const genel = rutinler.find((t: any) => t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD));
-  return { kisi, agentlar, genel_rutin: genel ? { id: genel.id, son_calisma: genel.son_tetik_at || null } : null };
+  return { kisi, agentlar, rutinler: rutinler.map(rutinV), genel_rutin: genel ? { id: genel.id, son_calisma: genel.son_tetik_at || null } : null };
+}
+/**
+ * 0.34.0 (K3): rutin bir agent'a bağlanınca (ya da "tüm agent'larım" kurulunca) o agent'ların açık adımlarında AI yapsın açılır.
+ * agentlar null = kişinin bütün agent'ları. Dönen sayı web'de "N adımda açıldı · geri al" satırına gider.
+ */
+export async function agentOtoAc(ctx: Ctx, agentlar: string[] | null, arac?: string | null) {
+  const flows = await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at").catch(() => []);
+  const acilan: { akis: string; no: number }[] = [];
+  for (const f of flows as any[]) {
+    const r = await otoToplu(ctx, f.kisa_kod, { oto: true, agentlar, arac }).catch(() => null);
+    for (const no of r?.degisen || []) acilan.push({ akis: f.kisa_kod, no });
+  }
+  return acilan;
+}
+/** Kişinin agent kaydı (kisi satırı, tip agent); yoksa açılır. Agent'ın adı akışlardaki sahip adıdır. */
+async function agentKaydi(ctx: Ctx, ad: string) {
+  const kisi = ctx.key.kisi || "", L = (await ctx.db.many("kisi", { ws_id: ctx.ws.id, ad_norm: norm(ad) }, "created_at").catch(() => [])) as any[];
+  const k = L.find((x: any) => x.tip === "agent" && norm(x.destek || "") === norm(kisi)) || L.find((x: any) => x.tip === "agent" && !x.destek);
+  if (k) { if (!k.destek) { await ctx.db.update("kisi", { id: k.id }, { destek: kisi }); k.destek = kisi; } return k; }
+  return (await ctx.db.insert("kisi", [{ ws_id: ctx.ws.id, ad, ad_norm: norm(ad), tip: "agent", destek: kisi }]))[0];
+}
+export const RENKLER_RE = /^#[0-9A-Fa-f]{6}$/;
+/** Kişi, dış katılımcı ya da agent rengi (K5). tip verilmezse ada göre var olan kişi; agent ise kişinin kendi agent'ı. */
+export async function renkYaz(ctx: Ctx, ad: string, renk: string | null, tip?: string | null) {
+  needTeam(ctx, "Renk seçmeyi");
+  const a = String(ad || "").trim();
+  if (!a) throw new Error("ad gerekli.");
+  if (renk != null && !RENKLER_RE.test(renk)) throw new Error("renk #RRGGBB biçiminde olmalı.");
+  let k: any;
+  if (tip === "agent") k = await agentKaydi(ctx, a);
+  else {
+    const L = (await ctx.db.many("kisi", { ws_id: ctx.ws.id, ad_norm: norm(a) }, "created_at").catch(() => [])) as any[];
+    k = L.find((x: any) => x.tip !== "agent") || L[0] || (await ctx.db.insert("kisi", [{ ws_id: ctx.ws.id, ad: a, ad_norm: norm(a), tip: tip === "dis" ? "dis" : "insan" }]))[0];
+  }
+  await ctx.db.update("kisi", { id: k.id }, { renk: renk || null });
+  return { ad: k.ad, tip: k.tip, renk: renk || null };
+}
+/**
+ * 0.34.0 (K4): agent'ı kaldır. Açık işleri varsa devret (kişi ya da başka agent) verilmeli; işler olay kaydıyla devredilir.
+ * Kapanmış akışlardaki geçmiş ad korunur; agent listelerden ve rutin kapsamlarından çıkar.
+ */
+export async function agentKaldir(ctx: Ctx, ad: string, b: any = {}) {
+  needTeam(ctx, "Agent kaldırmayı");
+  const kisi = ctx.key.kisi || "", nk = norm(kisi), na = norm(ad);
+  const flows = (await ctx.db.many("akis", { sahip_id: ctx.ws.id, durum: "aktif" }, "created_at").catch(() => [])) as any[];
+  const acik: { akis: string; no: number }[] = [];
+  for (const f of flows) {
+    const st = (await ctx.db.many("adim", { akis_id: f.id }, "no")).map(fixStep);
+    for (const x of st) if (x.sahip_tip === "agent" && norm(x.sahip) === na && norm(x.agent_sahibi || "") === nk && !DONE(x)) acik.push({ akis: f.kisa_kod, no: x.no });
+  }
+  const hedef = String(b.devret || "").trim();
+  if (acik.length && !hedef) throw new DevirHata(409, `${ad} agent'ının ${acik.length} açık işi var; devret alanına işleri alacak kişiyi ya da agent'ı yaz.`);
+  if (hedef && norm(hedef) === na) throw new Error("İşler aynı agent'a devredilemez.");
+  const hedefTip = b.devret_tip === "agent" || (b.devret_tip == null && AGENT_ADI.test(hedef)) ? "agent" : b.devret_tip === "dis" ? "dis" : "insan";
+  for (const x of acik) await adimGuncelle({ akis: x.akis, no: x.no, sahip: hedef, sahip_tip: hedefTip, oto: hedefTip === "agent" ? undefined : false, not: `${ad} agent'ı kaldırıldı; iş ${hedef} kişisine devredildi.`, arac: b.arac }, ctx);
+  const k = await agentKaydi(ctx, ad);
+  await ctx.db.update("kisi", { id: k.id }, { gizli_at: new Date(ctx.now).toISOString() });
+  for (const t of await kisiRutinleri(ctx, kisi)) if (Array.isArray(t.agentlar) && t.agentlar.some((x: unknown) => norm(String(x)) === na)) {
+    const kalan = t.agentlar.filter((x: unknown) => norm(String(x)) !== na);
+    await ctx.db.update("agent_tetik", { id: t.id }, { agentlar: kalan });
+  }
+  return { kaldirildi: true, devredilen: acik, not: acik.length ? `${ad} kaldırıldı; ${acik.length} açık iş ${hedef} kişisine devredildi.` : `${ad} kaldırıldı.` };
 }

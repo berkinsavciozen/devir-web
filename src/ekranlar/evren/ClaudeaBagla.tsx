@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { API_TABAN, SAHTE } from '../../api/ortam';
@@ -9,9 +10,18 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { Ikon } from '../../bilesen/Svg';
 import { bilgiIkon, kopyaIkon, tikIkon } from '../../cizim/ekran';
 import { planet } from '../../cizim/ortak.js';
-import { git } from '../../yonlendirme';
+import { arama, git } from '../../yonlendirme';
+import { gunAy } from '../../cizim/yol.js';
 
-const CLAUDE_BAGLAYICI = 'https://claude.ai/settings/connectors';
+/**
+ * Uygulamaya göre yol (B12/C22/C23/K9, 0.34.0). Claude bağlayıcıları Ayarlar'dan Customize'a taşıdı;
+ * ChatGPT'de özel bağlayıcı geliştirici kipinde "Oluştur" ile eklenir.
+ */
+export const UYGULAMALAR = {
+  claude: { ad: 'Claude', a: 'Claude’a', da: 'Claude’da', i: 'Claude’u', ac: 'https://claude.ai/customize/connectors', yol: 'Claude › Customize › Connectors › Add custom connector', esle: /claude/i },
+  chatgpt: { ad: 'ChatGPT', a: 'ChatGPT’ye', da: 'ChatGPT’de', i: 'ChatGPT’yi', ac: 'https://chatgpt.com/#settings/Connectors', yol: 'ChatGPT › Ayarlar › Apps & Connectors › Create (Developer mode açık)', esle: /chatgpt|openai/i },
+} as const;
+export type Uygulama = keyof typeof UYGULAMALAR;
 const YOKLAMA = 5000;
 /** MCP adresi anahtarsızdır (S-B1): kişi bağlayıcıyı ekleyince Devir'de e-postasıyla onaylar (OAuth). */
 const MCP_ADRESI = SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN;
@@ -39,14 +49,22 @@ function KopyaAlani({ y, deger, gosterim, etiket, es }: { y: number; deger: stri
   );
 }
 
-/** A3 · Claude'a bağla: anahtarsız adres + OAuth onayı. /ben 5 sn'de bir yoklanır; bu ekran açıldıktan sonra MCP çağrısı gelince yanar. */
+/**
+ * A3 · Claude ya da ChatGPT'ye bağla: uygulama seçimi + anahtarsız adres + OAuth onayı (K9).
+ * Zaten bağlıysa (C12) "bağlı" gösterir; değilse /ben 5 sn'de bir yoklanır, ilk MCP çağrısı gelince yanar.
+ */
 export function ClaudeaBagla({ ben }: { ben: Ben }) {
+  const [uyg, setUyg] = useState<Uygulama>(arama().get('uygulama') === 'chatgpt' ? 'chatgpt' : 'claude');
+  const U = UYGULAMALAR[uyg];
   const [baglandi, setBaglandi] = useState(false);
   const acilis = useRef(Date.now());
   const qc = useQueryClient();
+  const ag = useQuery({ queryKey: ['agentlar'], queryFn: () => api.get<any>('/ben/agentlar'), retry: false });
+  const mevcut = ((ag.data?.agentlar || []) as any[]).filter((a) => U.esle.test(String(a.ad || '')) && !a.kullanilmiyor)
+    .sort((a, b) => Date.parse(b.son_kullanim || b.ilk_kullanim || 0) - Date.parse(a.son_kullanim || a.ilk_kullanim || 0))[0] || null;
 
   useEffect(() => {
-    if (baglandi) return;
+    if (baglandi || mevcut) return;
     const yokla = async () => {
       try {
         const r = await api.get<Ben>('/ben');
@@ -55,46 +73,55 @@ export function ClaudeaBagla({ ben }: { ben: Ben }) {
     };
     const i = window.setInterval(yokla, YOKLAMA);
     return () => clearInterval(i);
-  }, [baglandi]);
+  }, [baglandi, mevcut]);
 
   useEffect(() => {
     if (!baglandi) return;
-    const t = window.setTimeout(() => { void qc.invalidateQueries({ queryKey: ['ozet'] }); git('/', { yerine: true }); }, 1200);
+    const t = window.setTimeout(() => { void qc.invalidateQueries({ queryKey: ['ozet'] }); void qc.invalidateQueries({ queryKey: ['agentlar'] }); git('/', { yerine: true }); }, 1200);
     return () => clearTimeout(t);
   }, [baglandi, qc]);
 
   const adim = (n: number, y: number, metin: string) => (
     <>
       <Kutu x={21} y={y - 13} w={26} h={26} className="adim-no" aria-hidden>{n}</Kutu>
-      <Metin y={y + 5} x={58} fs={14} agirlik={600}><span className="gorunmez">{n}. </span>{metin}</Metin>
+      <Metin y={y + 5} x={58} fs={14} agirlik={600} style={{ right: 16 }}><span className="gorunmez">{n}. </span>{metin}</Metin>
     </>
   );
-
+  const yandi = baglandi || !!mevcut;
   const kartCizim =
-    `<circle cx="64" cy="75" r="46" fill="url(#${baglandi ? 'glowGold' : 'glowLilac'})"/>` +
-    [34, 26].map((r) => `<circle cx="64" cy="75" r="${r}" fill="none" stroke="${baglandi ? '#FFD27A' : '#B9A6F2'}" stroke-width="1.2" stroke-dasharray="2 4" opacity="${r === 34 ? .5 : .85}"/>`).join('') +
-    planet(64, 75, 16, baglandi ? 'lit' : 'dark', { life: false });
+    `<circle cx="64" cy="75" r="46" fill="url(#${yandi ? 'glowGold' : 'glowLilac'})"/>` +
+    [34, 26].map((r) => `<circle cx="64" cy="75" r="${r}" fill="none" stroke="${yandi ? '#FFD27A' : '#B9A6F2'}" stroke-width="1.2" stroke-dasharray="2 4" opacity="${r === 34 ? .5 : .85}"/>`).join('') +
+    planet(64, 75, 16, yandi ? 'lit' : 'dark', { life: false });
+  const son = mevcut?.son_kullanim || mevcut?.ilk_kullanim;
 
   return (
-    <Sahne gok={{ tohum: 11, yildiz: 220 }} etiket="Claude’a bağla">
-      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Claude’a bağla" geri={() => history.length > 1 ? history.back() : git('/')} /></Kutu>
-      <Metin y={112} fs={17} lh={22} serif renk="ink2">Adresi Claude’a ekle, Devir’de onayla;<br />bağlanınca burası yanar.</Metin>
-      {adim(1, 182, 'Claude › Ayarlar › Bağlayıcılar › Ekle')}
-      {adim(2, 236, 'Adresi yapıştır')}
-      <KopyaAlani y={256} deger={MCP_ADRESI || null} gosterim={kisaAdres(MCP_ADRESI)} etiket="MCP adresi" />
-      {adim(3, 340, 'Bağlan’a bas, Devir’de izin ver')}
-      <Kutu x={57} y={367} w={18} h={18} aria-hidden><Ikon svg={bilgiIkon()} w={18} /></Kutu>
-      <Metin y={380} x={80} fs={12} lh={16} renk="ink3">Anahtar gerekmez; izni {ben.eposta || 'e-postan'} ile verirsin.</Metin>
-
-      <Kutu y={470} h={150} className={`kart baglanti-karti ${baglandi ? 'baglandi' : ''}`} role="status" aria-live="polite">
-        <svg aria-hidden className="baglanti-gezegen" width="128" height="150" viewBox="0 0 128 150" dangerouslySetInnerHTML={{ __html: kartCizim }} />
-        <div className="baglanti-metin">
-          {baglandi ? <><b>Bağlandı</b><span>Claude artık bu alana<br />senin adına yazıyor.</span></>
-            : <><b>Bağlantı bekleniyor</b><span>İzin verip Claude’da ilk<br />komutu verince hazır.</span></>}
+    <Sahne gok={{ tohum: 11, yildiz: 220 }} etiket="Claude ya da ChatGPT’ye bağla">
+      <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={`${U.a} bağla`} geri={() => history.length > 1 ? history.back() : git('/')} /></Kutu>
+      <Kutu x={0} y={100} h={44} style={{ right: 0 }}>
+        <div className="segment" role="tablist" aria-label="Uygulama">
+          {(Object.keys(UYGULAMALAR) as Uygulama[]).map((k) => (
+            <button key={k} type="button" role="tab" aria-selected={uyg === k} className={uyg === k ? 'secili' : ''} onClick={() => { setUyg(k); setBaglandi(false); acilis.current = Date.now(); }}>{UYGULAMALAR[k].ad}</button>
+          ))}
         </div>
       </Kutu>
-      <Dugme style={{ top: 660 }} onClick={() => window.open(CLAUDE_BAGLAYICI, '_blank', 'noopener')}>Claude’u aç</Dugme>
-      <Dugme tur="ikincil" ton="lila" yukseklik={48} fs={15} style={{ top: 726 }} onClick={() => git('/', { yerine: true })}>Sonra</Dugme>
+      <Metin y={172} fs={15} lh={20} serif renk="ink2">Adresi {U.a} ekle, Devir’de onayla; bağlanınca burası yanar.</Metin>
+      {adim(1, 222, U.yol)}
+      {adim(2, 270, 'Adresi yapıştır')}
+      <KopyaAlani y={290} deger={MCP_ADRESI || null} gosterim={kisaAdres(MCP_ADRESI)} etiket="MCP adresi" />
+      {adim(3, 372, `Bağlan’a bas, Devir’de izin ver`)}
+      <Kutu x={57} y={399} w={18} h={18} aria-hidden><Ikon svg={bilgiIkon()} w={18} /></Kutu>
+      <Metin y={412} x={80} fs={12} lh={16} renk="ink3" style={{ right: 16 }}>Anahtar gerekmez; izni {ben.eposta || 'e-postan'} ile verirsin.{uyg === 'chatgpt' ? ' AI yapsın rutinleri şimdilik yalnız Claude’da.' : ''}</Metin>
+
+      <Kutu y={470} h={150} className={`kart baglanti-karti ${yandi ? 'baglandi' : ''}`} role="status" aria-live="polite">
+        <svg aria-hidden className="baglanti-gezegen" width="128" height="150" viewBox="0 0 128 150" dangerouslySetInnerHTML={{ __html: kartCizim }} />
+        <div className="baglanti-metin">
+          {baglandi ? <><b>Bağlandı</b><span>{U.ad} artık bu alana<br />senin adına yazıyor.</span></>
+            : mevcut ? <><b>Zaten bağlı</b><span>{U.ad} bu alana yazıyor{son ? ` · son ${gunAy(Date.parse(son))}` : ''}.<br />Yeniden eklemene gerek yok.</span></>
+            : <><b>Bağlantı bekleniyor</b><span>İzin verip {U.da} ilk<br />komutu verince hazır.</span></>}
+        </div>
+      </Kutu>
+      <Dugme style={{ top: 660 }} onClick={() => window.open(U.ac, '_blank', 'noopener')}>{U.i} aç</Dugme>
+      <Dugme tur="ikincil" ton="lila" yukseklik={48} fs={15} style={{ top: 726 }} onClick={() => git('/', { yerine: true })}>{mevcut ? 'Evrene dön' : 'Sonra'}</Dugme>
     </Sahne>
   );
 }

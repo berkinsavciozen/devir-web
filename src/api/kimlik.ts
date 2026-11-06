@@ -45,10 +45,13 @@ const ANAHTAR_YERI = 'devir:anahtar';
 const oku = (k: string) => { try { return sessionStorage.getItem(k); } catch { return null; } };
 const yaz = (k: string, v: string | null) => { try { if (v == null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v); } catch { /* gizli pencere */ } };
 
+let sb: Promise<SupabaseClient> | null = null;
+/** Tek Supabase istemcisi: oturum (Auth) ve değişiklik sinyali (Realtime, K7) aynı bağlantıyı kullanır. */
+export const supabaseAl = () => (sb ||= import('@supabase/supabase-js').then(({ createClient }) =>
+  createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANAHTAR, { auth: { flowType: 'implicit', persistSession: true, detectSessionInUrl: false } })));
+
 function gercekKimlik(): Kimlik {
-  let sb: Promise<SupabaseClient> | null = null;
-  const al = () => (sb ||= import('@supabase/supabase-js').then(({ createClient }) =>
-    createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANAHTAR, { auth: { flowType: 'implicit', persistSession: true, detectSessionInUrl: false } })));
+  const al = supabaseAl;
   return {
     async belirtec() {
       const a = oku(ANAHTAR_YERI); if (a) return a;

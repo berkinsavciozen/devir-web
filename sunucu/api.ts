@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, TOOLS, otoToplu, aiGecmisi, agentlarV, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, TOOLS, otoToplu, aiGecmisi, agentlarV, agentOtoAc, agentKaldir, renkYaz, rutinKapsami, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, otoBekledigi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc, taslakPayi,
 } from "./core.ts";
 import { aiKullanimi, aylikSinir, kullanimYaz } from "./islem.ts";
@@ -26,7 +26,9 @@ const durKisa = (ms: number) => { const h = ms / HOUR; if (h < 1) return `${Math
 const yaz = (p: Parca[]) => p.map((x) => x.metin).join("");
 
 // ---------- görünümler ----------
-const tetikV = (t: any) => ({ id: t.id, ad: t.ad, tur: t.url === "zamanli" ? "zamanli" : "api", url: String(t.url || "").replace(/routines\/([A-Za-z0-9_-]{4})[A-Za-z0-9_-]*\//, "routines/$1…/"), son_tetik_at: t.son_tetik_at || null, son_hata: t.son_hata || null });
+const tetikV = (t: any) => ({ id: t.id, ad: t.ad, tur: t.url === "zamanli" ? "zamanli" : "api", url: String(t.url || "").replace(/routines\/([A-Za-z0-9_-]{4})[A-Za-z0-9_-]*\//, "routines/$1…/"), son_tetik_at: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: Array.isArray(t.agentlar) ? t.agentlar : null });
+/** 0.34.0 (K1): rutinin kapsamı; null = tüm agent'larım, dizi = seçilen agent adları (tekil, en çok 20). */
+const agentListesi = (v: unknown): string[] | null => (v == null || v === "tumu" ? null : Array.isArray(v) ? [...new Map(v.map((x) => String(x || "").trim().slice(0, 80)).filter(Boolean).map((x) => [norm(x), x])).values()].slice(0, 20) : (() => { throw new ApiHata(400, "agentlar bir ad listesi ya da null (tüm agent'larım) olmalı."); })());
 /** Zamanlanmış rutinin istemi (0.29.1, varsayılan yol): jetonsuz; rutin saatte bir kendi işlerini Devir'den çeker. */
 export const ZAMANLI_METNI = "Bu rutin Devir'in AI yapsın rutinidir. Devir bağlayıcısında devir_ai_isler aracını çağır. Hazır iş yoksa hiçbir şey yapma ve bitir. İş dönerse her işin talimatlarını sırayla uygula: adımın ayrıntısını ve talimatları yalnız Devir'den (devir_adim_oku) al, ürettiğini devir_adim_guncelle ile cikti alanına yaz ve durumu tamam yapma; adım sahibine bakılacak olarak gider. Doğrulanamayan bilgi kalırsa dogrulama alanına yaz; Devir onu kişiye iş olarak açar. Dışarıya mesaj gönderme, ödeme yapma, karar verme; gerekiyorsa seçenekleri çıktı olarak yaz.";
 /** K3: rutin istemi agent adını taşır; rutin devir_ai_isler'i bu adla çağırır, Devir işi doğru rutine verir. */
@@ -40,6 +42,7 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   const v: any = {
     no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_kisi_id: s.sahip_kisi_id || null, sahip_tip: s.sahip_tip, arac: s.arac || null, agent_sahibi: s.sahip_tip === "agent" ? s.agent_sahibi || null : null, durum: s.durum, durum_etiket: LBL[s.durum], oto: !!s.oto, oto_durum: s.oto ? s.oto_durum || null : null, oto_tarih_bekle: !!s.oto_tarih_bekle, oto_oturum: opts.dis ? null : s.oto_oturum || null, oto_bekledigi: s.oto && !DONE(s) ? otoBekledigi(s, steps, Date.now()) : null,
     aciklama: s.aciklama || null, kriter: s.kriter, beklenen_cikti: s.beklenen_cikti || null, karar_kriteri: s.karar_kriteri || null,
+    ad_yapisi: akis?.baglam?.ad_yapisi?.[String(s.no)] || null,
     karar_adimi: (akis.kurallar || {}).karar_insanda !== false && kararAdimi(s),
     son_tarih: s.son_tarih || null, sure_tahmin_gun: s.sure_tahmin_gun != null ? Number(s.sure_tahmin_gun) : null,
     en_erken_bitis: DONE(s) ? null : iso(ef), gec_risk: !DONE(s) && !!s.son_tarih && ef != null && ef > eod(s.son_tarih),
@@ -334,6 +337,8 @@ async function taslakV(ctx: Ctx, kod: string) {
     hedef_tarih: tt.hedef_tarih || null, is_turu: t.is_turu_ad || t.is_turu || null, olusturuldu: t.created_at,
     sorular: (t.sorular?.secilen || []).map((q: any) => ({ kod: q.kod, soru: q.soru, neden: q.neden || null, gerekce: q.gerekce || null, tip: q.tip, secenekler: q.secenekler || null, varsayilan: q.varsayilan ?? null })),
     sonra_sorulacak: (t.sorular?.sonra || []).map((q: any) => ({ kod: q.kod, soru: q.soru, tip: q.tip })),
+    // 0.34.0 (C10): sohbette verilmiş cevaplar; web kurulum ekranı bunlarla dolu açılır
+    on_cevaplar: t.sorular?.on_cevap || {},
     varsayimlar: (t.sorular?.varsayim || []).map((q: any) => ({ kod: q.kod, soru: q.soru, cevap: q.cevap ?? q.varsayilan ?? null, kaynak: q.kaynak || null, boyut: q.boyut || null, tip: q.tip || null, secenekler: q.secenekler || null })),
     // 0.10.0: taslağın metin varsayımları (H1 yörünge rozetleri)
     varsayim_metinleri: (Array.isArray(t.varsayimlar) ? t.varsayimlar : tt.varsayimlar || []).map((v: any) => ({ boyut: v.boyut || null, metin: v.metin })),
@@ -507,16 +512,42 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
   if (r0 === "tetikler" && !r1 && method === "POST") {
     oturumMu(ctx);
     if (ctx.key.rol === "dis") throw new ApiHata(403, "Tetik yalnız ekip üyelerine açık.");
-    const ad = String(b.ad || "").trim().slice(0, 60), url = String(b.url || "").trim(), jeton = String(b.jeton || "").trim();
-    if (!ad) throw new ApiHata(400, "ad gerekli: adımlarda sahip olarak yazdığın agent adı (ör. 'Berkin'in Claude'u').");
-    if (!/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]+\/fire$/.test(url)) throw new ApiHata(400, "url, Claude rutininin API tetik adresi olmalı: https://api.anthropic.com/v1/claude_code/routines/<id>/fire");
+    const ad = String(b.ad || "").trim().slice(0, 60), url = String(b.url || "").trim().replace(/\/+$/, ""), jeton = String(b.jeton || "").trim();
+    if (!ad) throw new ApiHata(400, "ad gerekli: rutinin Claude'daki adı (ör. 'Devir AI yapsın').");
+    if (/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]+$/.test(url)) throw new ApiHata(400, "Adresin sonunda /fire eksik. Claude'da rutini aç, Edit'e bas, API tetiğindeki adresi tamamıyla kopyala (…/fire ile biter).");
+    if (!/^https:\/\/api\.anthropic\.com\/v1\/claude_code\/routines\/[A-Za-z0-9_-]+\/fire$/.test(url)) throw new ApiHata(400, "url, Claude rutininin API tetik adresi olmalı: https://api.anthropic.com/v1/claude_code/routines/<id>/fire. Claude'da rutinin Edit penceresindeki API tetiğinden kopyala.");
     if (jeton.length < 20) throw new ApiHata(400, "jeton gerekli: rutinin API tetiğini eklerken bir kez gösterilen jeton.");
     if (!ctx.sifre) throw new ApiHata(503, "Sunucuda şifreleme anahtarı (DEVIR_BAGLANTI_ANAHTARI) yok; jeton düz saklanmaz.");
     const var0 = (await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi), aktif: true }, "created_at")).find((t: any) => norm(t.ad) === norm(ad));
-    const alan = { ad, url, jeton: await ctx.sifre.sifrele(jeton), aktif: true, son_hata: null };
+    // 0.34.0 (K1): kapsam açıkça gelir; gelmezse eski davranış: adı bir agent'ın adıysa o agent, değilse tüm agent'lar
+    const agentlar = "agentlar" in b ? agentListesi(b.agentlar) : (await agentlarV(ctx)).agentlar.some((x: any) => norm(x.ad) === norm(ad)) ? [ad] : null;
+    const alan = { ad, url, jeton: await ctx.sifre.sifrele(jeton), aktif: true, son_hata: null, agentlar };
     if (var0) await ctx.db.update("agent_tetik", { id: var0.id }, alan);
     const [t] = var0 ? [{ ...var0, ...alan }] : await ctx.db.insert("agent_tetik", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id || null, kisi: ctx.key.kisi, kisi_norm: norm(ctx.key.kisi), ...alan }]);
-    return { tetik: tetikV(t), not: var0 ? `${ad} tetiği yenilendi.` : `${ad} tetiği eklendi. AI yapsın işaretli adımlar hazır olunca bu rutin başlatılır.` };
+    const acilan = await agentOtoAc(ctx, agentlar, ARAC);
+    return { tetik: tetikV(t), acilan, not: `${var0 ? `${ad} tetiği yenilendi` : `${ad} tetiği eklendi`}; ${agentlar ? agentlar.join(", ") : "tüm agent'ların"} için çalışır.${acilan.length ? ` ${acilan.length} açık adımda AI yapsın açıldı.` : ""}` };
+  }
+  // 0.34.0 (K1, K3): rutinin hangi agent'lar için çalıştığı; değişince yeni kapsamdaki açık adımlarda AI yapsın açılır
+  if (r0 === "tetikler" && r1 && r2 === "agentlar" && method === "POST") {
+    oturumMu(ctx);
+    const t = await ctx.db.one("agent_tetik", { id: r1, ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi) });
+    if (!t || !t.aktif) throw new ApiHata(404, "Rutin yok.");
+    const agentlar = agentListesi(b.agentlar);
+    if (Array.isArray(agentlar) && !agentlar.length) throw new ApiHata(400, "En az bir agent seç ya da tüm agent'larım (null) de; rutini durdurmak için kaldır.");
+    await ctx.db.update("agent_tetik", { id: t.id }, { agentlar });
+    const acilan = b.ai_ac === false ? [] : await agentOtoAc(ctx, agentlar, ARAC);
+    return { tetik: tetikV({ ...t, agentlar }), acilan, not: `${t.ad} artık ${agentlar ? agentlar.join(", ") : "tüm agent'ların"} için çalışır.${acilan.length ? ` ${acilan.length} açık adımda AI yapsın açıldı.` : ""}` };
+  }
+  // 0.34.0 (K4, K5): agent'ı kaldır (açık işleri devrederek) ve renk
+  if (r0 === "agentlar" && r1 && r2 === "ai" && method === "POST") {
+    oturumMu(ctx);
+    const ad = decodeURIComponent(r1), acilan = await agentOtoAc(ctx, [ad], ARAC);
+    return { acilan, not: acilan.length ? `${ad}: ${acilan.length} açık adımda AI yapsın açıldı.` : `${ad}: açılacak adım yok.` };
+  }
+  if (r0 === "agentlar" && r1 && r2 === "kaldir" && method === "POST") { oturumMu(ctx); return agentKaldir(ctx, decodeURIComponent(r1), { ...b, arac: ARAC }); }
+  if (r0 === "renk" && !r1 && method === "POST") {
+    oturumMu(ctx);
+    return renkYaz(ctx, String(b.ad || ""), b.renk == null || b.renk === "" ? null : String(b.renk), b.tip ? String(b.tip) : null);
   }
   // K3 (0.30.0): rutinin hangi agent'ın işini yaptığı adıyla belirlenir; ad buradan değişir (ör. "Devir AI Yapsın" → "Berkin'in Claude'u")
   if (r0 === "tetikler" && r1 && r2 === "ad" && method === "POST") {
@@ -526,9 +557,11 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     const ad = String(b.ad || "").trim().slice(0, 60);
     if (!ad) throw new ApiHata(400, "ad gerekli: bu rutinin işini yaptığı agent'ın adı (ör. 'Berkin'in Claude'u').");
     const cak = (await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi), aktif: true }, "created_at")).find((x: any) => x.id !== t.id && norm(x.ad) === norm(ad));
-    if (cak) throw new ApiHata(409, `"${ad}" adında başka bir rutinin var; önce onu kaldır ya da başka ad ver.`);
-    await ctx.db.update("agent_tetik", { id: t.id }, { ad });
-    return { tetik: tetikV({ ...t, ad }), not: `Rutin artık ${ad} agent'ının işlerini yapar.` };
+    if (cak) throw new ApiHata(409, `"${ad}" adında başka bir rutinin var; başka ad ver.`);
+    // 0.34.0: ad yalnız etikettir; eski satırın kapsamı (adla belirleniyordu) ad değişmeden önce açıkça yazılır
+    const kapsam = t.agentlar === undefined ? rutinKapsami(t, (await agentlarV(ctx)).agentlar.map((x: any) => x.ad)) : t.agentlar;
+    await ctx.db.update("agent_tetik", { id: t.id }, { ad, ...(t.agentlar === undefined ? { agentlar: kapsam } : {}) });
+    return { tetik: tetikV({ ...t, ad, agentlar: kapsam }), not: `Rutinin adı ${ad} oldu.` };
   }
   if (r0 === "agentlar" && !r1 && method === "GET") { ekipMi(ctx); return agentlarV(ctx); }
   if (r0 === "akis" && r1 && r2 === "ai" && !r3 && method === "POST") { const r = await otoToplu(ctx, r1, { ...b, arac: ARAC }); return { ...r, ...(await akisV(ctx, r1)) }; }
