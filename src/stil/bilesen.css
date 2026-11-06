@@ -1326,3 +1326,23 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-bas.z-ust::before { top: -16px; height: 25px; }
 .gd-bas.z-alt::after { top: 43px; bottom: 0; }
 .lejant-alt-baslik small { text-transform: none; letter-spacing: 0; font-weight: 550; }
+
+/* W8 (6 Kas, B3): etkileşimli tanıtım turu; gerçek öğe ışıkla çevrilir */
+.tur-kok { position: fixed; inset: 0; z-index: 90; }
+.tur-isik { position: fixed; border-radius: 18px; box-shadow: 0 0 0 9999px rgba(1, 7, 9, .74), 0 0 0 2px var(--renk-vurgu-altin), 0 0 28px 6px rgba(255, 214, 160, .35); transition: left .25s ease, top .25s ease, width .25s ease, height .25s ease; pointer-events: none; }
+.tur-isik-yok { inset: 0; border-radius: 0; box-shadow: none; background: rgba(1, 7, 9, .74); }
+.tur-kart { position: fixed; padding: 16px 18px 14px; border-radius: 22px; background: linear-gradient(180deg, #12405A, #0A2736); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila), 0 18px 40px rgba(0, 0, 0, .45); color: var(--renk-metin-ink); outline: none; animation: kutu-gir-tur .2s ease both; }
+@keyframes kutu-gir-tur { from { opacity: 0; transform: translateY(6px); } }
+.tur-kart.ok-ust::before, .tur-kart.ok-alt::after { content: ''; position: absolute; left: calc(var(--ok-x) - 8px); width: 16px; height: 16px; background: #12405A; transform: rotate(45deg); box-shadow: inset 1px 1px 0 var(--renk-vurgu-cizgi-lila); }
+.tur-kart.ok-ust::before { top: -8px; }
+.tur-kart.ok-alt::after { bottom: -8px; background: #0A2736; box-shadow: inset -1px -1px 0 var(--renk-vurgu-cizgi-lila); }
+.tur-sayi { font: 700 11px/14px var(--font-sans); letter-spacing: .08em; color: var(--renk-vurgu-altin); }
+.tur-kart h2 { margin: 4px 0 6px; font: 700 20px/25px var(--font-serif); }
+.tur-kart p { margin: 0; font: 500 14.5px/20px var(--font-sans); color: var(--renk-metin-ink2); }
+.tur-dugmeler { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+.tur-dugmeler button { min-height: 44px; padding: 0 16px; border-radius: 22px; border: 0; cursor: pointer; font: 650 14.5px/1 var(--font-sans); }
+.tur-gec { margin-right: auto; padding: 0 4px !important; background: none; color: var(--renk-metin-ink3); }
+.tur-geri { background: none; color: var(--renk-metin-ink); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.tur-ileri { background: linear-gradient(135deg, #FFE0C2, #FFB08C); color: #2A1D4F; }
+.tur-dugmeler button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .tur-isik, .tur-kart { transition: none; animation: none; } }

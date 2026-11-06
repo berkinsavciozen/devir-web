@@ -1,3 +1,4 @@
+import { IlkTur } from '../../bilesen/Tur';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -78,6 +79,7 @@ export function YeniIs() {
           </ul>
         </>}
       </form>}
+      {!bekliyor && <IlkTur ad="kurma" />}
     </Sahne>
   );
 }

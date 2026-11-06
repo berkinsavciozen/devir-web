@@ -11,6 +11,7 @@ import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
 import { genisDuzen, panelZemini } from './Genis';
 import { GorevDetay } from './GorevDetay';
+import { IlkTur } from '../../bilesen/Tur';
 import { TekPano } from '../pano/TekPano';
 import { HaritaKutusu } from './HaritaKutusu';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
@@ -483,6 +484,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
           <div style={{ position: 'relative', height: B.y + 24 }}>{B.dugum}</div>
         </div>}
         <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
+        <IlkTur ad="harita" />
       </GenisSahne>
     );
   }
@@ -511,6 +513,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         ayrinti={() => ac(kutuNo)} kapat={() => setKutuNo(null)} style={{ left: 16, right: 16, top: bolge.y + bolge.h + 6, transform: 'translateY(-100%)' }} />}
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
+      <IlkTur ad="harita" />
     </Sahne>
   );
 }
