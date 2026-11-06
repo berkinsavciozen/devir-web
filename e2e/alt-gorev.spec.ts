@@ -15,11 +15,10 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
     await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 1/3');
     await expect(bolum.locator('.gd-akordiyon')).toHaveCount(3);
-    await expect(page.locator('.gd-bas small')).toContainText('1/3 alt görev');
-    // K2: üst görevin sayıları alt görevlerden
-    await expect(page.locator('.gd-sayilar')).toContainText('1/3alt görev');
-    await expect(page.locator('.gd-sayilar')).toContainText('en erken bitiş');
-    await expect(page.locator('.gd-sayilar')).toContainText('son tarih');
+    await expect(page.locator('.gd-ozet')).toContainText('1/3');
+    await expect(page.locator('.gd-ozet')).toContainText('alt görev');
+    // K2: üst görevin sayıları alt görevlerden; tarih sayısı da var
+    await expect(page.locator('.gd-ozet')).toContainText(/son tarih|en erken/);
     // plan 28 Eki, B5: alt görev aynı yerde yönetilir
     const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
     await ig.locator('summary').click();
@@ -32,7 +31,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
 test('alt görev · 390: alt görevin adresi üst görevi o akordiyon açık getirir', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/12?senaryo=berkin&hal=alt', 390, 844);
-  await expect(page.locator('.gd-bas h2')).toContainText('Rapor');
+  await expect(page.locator('.gd-bas h2')).toContainText('raporla');
   const ig = page.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
   await expect(ig).toHaveAttribute('open', '');
   await expect(page.locator('.gd-akordiyon[open]')).toHaveCount(1);

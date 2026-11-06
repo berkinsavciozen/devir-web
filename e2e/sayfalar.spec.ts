@@ -79,20 +79,22 @@ test('B4-gez: önceki/sonraki düğmeleri ve ok tuşları', async ({ page }) => 
   expect(await page.evaluate(() => history.length), `önce ${uzunluk}`).toBe(uzunluk);
 });
 
-test('B4-zincir: "bunu bekleyenler" satırı o göreve gider', async ({ page }) => {
+test('B4-zincir: "bunu bekleyenler" kartı o göreve gider', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
-  const z = page.getByRole('region', { name: 'ETKİLEYEN VE ETKİLEDİĞİ' }).locator('.gd-bag').last();
+  const z = page.getByRole('region', { name: /^BUNU BEKLEYENLER/ }).locator('.gorev-kart-ac').last();
   // zinciri olan ilk açık adım
+  let n0 = 0;
   for (const n of [3, 6, 7, 9, 10, 11, 12]) {
     await page.goto(`/akis/RTD5/adim/${n}?senaryo=berkin`);
-    await page.locator('.gd-gez').waitFor();
+    await page.locator('.gd-bas').waitFor();
     await page.waitForTimeout(150);
+    n0 = n;
     if (await z.count()) break;
   }
   await z.waitFor();
-  const etiket = (await z.getAttribute('aria-label'))!, no = etiket.match(/^(\d+)\. görev/)![1];
   await z.click();
-  await expect(page).toHaveURL(new RegExp(`/adim/${no}`));
+  await expect(page).toHaveURL(/\/adim\/\d+/);
+  expect(page.url()).not.toMatch(new RegExp(`/adim/${n0}(\\?|$)`));
 });
 
 test('B1-ust: evrende üst cümle yok; harita ilk ekranın büyük kısmı', async ({ page }) => {

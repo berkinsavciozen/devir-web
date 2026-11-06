@@ -143,6 +143,7 @@ export function BaglantiSatiri({ kod, kisi, kisiId, adimSayisi, kapat }: { kod: 
       : k?.link ? <>
         {D && <p className="gd-satir" role="status"><b>{D.ust}</b> · {D.alt}</p>}
         <textarea className="alan" rows={3} value={m} onChange={(e) => setMetin(e.target.value)} aria-label="WhatsApp mesajı" />
+        {!m.includes(k.link) && <p className="gd-satir">Metinde bağlantı yok; gönderirken sonuna eklenir.</p>}
         <div className="gd-paylas-dugmeler">
           <button type="button" className="gd-alt-ekle-dugme" onClick={() => window.open(whatsappAdresi(tamMetin(), k.iletisim), '_blank', 'noopener')}>WhatsApp’ta gönder</button>
           <button type="button" className="gd-alt-ekle-dugme ikincil" onClick={() => { void navigator.clipboard?.writeText(k.link).then(() => { setKopya(true); setTimeout(() => setKopya(false), 1600); }).catch(() => {}); }}>{kopya ? 'Kopyalandı' : 'Bağlantıyı kopyala'}</button>

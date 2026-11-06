@@ -80,7 +80,7 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   return (
     <div className="tek-pano">
       <div className="tek-pano-ust">
-        <h2>{akis ? akisAdi || 'Akış' : 'Pano'}</h2>
+        <h2>{akis && akisAdi ? akisAdi : 'Pano'}</h2>
         <div className="tek-pano-gorunum" role="group" aria-label="Görünüm">
           <button type="button" aria-pressed="true">Liste</button>
           <button type="button" aria-pressed="false" onClick={() => git(akis ? `/gorevler?akis=${enc(akis)}&kisi=hepsi` : '/gorevler')}>Zaman</button>

@@ -141,7 +141,7 @@ test.describe('evren', () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto('/?senaryo=berkin');
-    await page.getByText('tutuyor', { exact: false }).first().waitFor();
+    await page.locator('.gorev-kart').first().waitFor();
     const g = page.getByRole('listitem', { name: /^Hasat postu/ });
     const b = (await g.boundingBox())!;
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);

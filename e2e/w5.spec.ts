@@ -16,9 +16,10 @@ test('W5 · dokun: yakınlaşır, kutu açılır; ana eylem kutuda; ikinci dokun
   await g.click();
   const k = page.getByRole('dialog', { name: /^6\. Post görseli/ });
   await expect(k).toBeVisible();
-  await expect(k).toContainText('AI yazdı, onayını bekliyor');
+  // W4 (6 Kas): kutunun başı görev bileşeni; cümle kim yazdı, kimin onayını bekliyor
   await expect(k.getByRole('button', { name: 'Onayla, bitir' })).toBeVisible();
-  await expect(k.getByRole('button', { name: 'Ayrıntılar ›' })).toBeVisible();
+  await expect(k).toContainText('yazdı, onayını bekliyor');
+  await expect(k.getByRole('button', { name: 'Ayrıntılar ›' })).toHaveCount(0);
   // kutu haritadaki gezegeni örtmez
   const kb = (await k.boundingBox())!, gb = (await g.boundingBox())!;
   expect(gb.y + gb.height / 2).toBeLessThan(kb.y);
@@ -27,7 +28,7 @@ test('W5 · dokun: yakınlaşır, kutu açılır; ana eylem kutuda; ikinci dokun
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
 });
 
-test('W5 · kutu kapanır; Ayrıntılar görevi açar; masaüstünde kutu yok', async ({ page }) => {
+test('W5 · kutu kapanır; kutudaki görev kartı görevi açar; masaüstünde kutu yok', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('listitem', { name: /^4\. adım/ }).click();
   const k = page.getByRole('dialog', { name: /^4\. / });
@@ -35,7 +36,7 @@ test('W5 · kutu kapanır; Ayrıntılar görevi açar; masaüstünde kutu yok', 
   await k.getByRole('button', { name: 'Kutuyu kapat' }).click();
   await expect(k).toHaveCount(0);
   await page.getByRole('listitem', { name: /^4\. adım/ }).click();
-  await page.getByRole('dialog', { name: /^4\. / }).getByRole('button', { name: 'Ayrıntılar ›' }).click();
+  await page.getByRole('dialog', { name: /^4\. / }).locator('.gorev-kart-ac').click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/4/);
   await ac(page, '/akis/RTD5?senaryo=berkin', 1440, 900);
   await page.getByRole('listitem', { name: /^4\. adım/ }).click();

@@ -25,9 +25,9 @@ test('B1-gezinme: üç sekme (Evren · Akışlar · Görevler); yeni iş, zil ve
   const nav = page.getByRole('navigation', { name: 'Ana gezinme' });
   await expect(nav.getByRole('button')).toHaveCount(3);
   await hedefler(page, '.alt-gezinme');
-  // plan 27 Eki, 2.8: +, zil ve ayarlar sağ üstte
+  // plan 27 Eki, 2.8: +, Pano (W6: zilin yerinde) ve ayarlar sağ üstte
   const ust = page.locator('.ust-dugmeler');
-  for (const ad of ['Yeni iş', /^Bildirimler/, 'Ayarlar']) await expect(ust.getByRole('button', { name: ad })).toBeVisible();
+  for (const ad of ['Yeni iş', /^Pano/, 'Ayarlar']) await expect(ust.getByRole('button', { name: ad })).toBeVisible();
   await hedefler(page, '.ust-dugmeler');
   await ust.getByRole('button', { name: 'Ayarlar' }).click();
   await expect(page).toHaveURL(/\/ayarlar/);

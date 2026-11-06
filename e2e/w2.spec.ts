@@ -28,6 +28,8 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
 test('W2 · 1440: listede AI durumu yazar; agent adı kısalmaz', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai', 1440, 900);
+  // W6: panel önce akışa süzülmüş Pano; süzgeç kalkınca adım listesi
+  await page.getByRole('button', { name: 'Akış süzgecini kaldır' }).click();
   await expect(page.getByText('Berkin’in Claude’u · AI yazdı, onayını bekliyor')).toBeVisible();
   await expect(page.getByText('Berkin’in Claude’u · AI yapsın açık')).toBeVisible();
 });

@@ -50,8 +50,8 @@ test('galaksi: "Bu tarih neden?" varsayımları ve üst ucu belirleyen adımlar�
 
 test('galaksi · 1440: kritik yol parçası adımı seçer', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin', 1440, 900);
-  // seçim yokken panelde adım listesi (N16); kritik yolun ilk açık adımı seçilince görev detayı açılır
-  await expect(page.getByRole('list', { name: 'Adımlar' }).getByRole('button').first()).toBeVisible();
+  // seçim yokken panelde akışa süzülmüş Pano (W6, K8); kritik yolun ilk açık adımı seçilince görev detayı açılır
+  await expect(page.locator('.tek-pano .gorev-kart').first()).toBeVisible();
   await page.locator('.karar-seridi .ks-kritik').click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/\d+/);
   // 0.28.6: zincir bağımlılıktan (kişi sırası değil); uzun bekleyen App Store incelemesi kritik yolun ilk açık adımı

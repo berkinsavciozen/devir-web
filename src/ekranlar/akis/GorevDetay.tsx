@@ -175,7 +175,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const gCumle = kc.startsWith(adBas) ? kc.slice(adBas.length).replace(/^./, (c) => c.toLocaleUpperCase('tr')) : kc;
   const ozet: { b: string; k: string; ihlal?: boolean; uyari?: boolean }[] = [];
   if (BITTI(A.durum)) ozet.push({ b: A.durum_at ? gunAy(Date.parse(A.durum_at)) : '–', k: A.durum === 'tamam' ? 'bitti' : A.durum_etiket || A.durum });
-  else ozet.push(A.son_tarih ? { b: gunAy(tarihMs(A.son_tarih)), k: 'son tarih', ihlal } : A.en_erken_bitis ? { b: gunAy(Date.parse(A.en_erken_bitis)), k: 'en erken' } : { b: '–', k: 'tarih yok' });
+  else ozet.push(A.son_tarih ? { b: gunAy(tarihMs(A.son_tarih)), k: ihlal ? `en erken ${gunAy(Date.parse(A.en_erken_bitis))}` : 'son tarih', ihlal } : A.en_erken_bitis ? { b: gunAy(Date.parse(A.en_erken_bitis)), k: 'en erken' } : { b: '–', k: 'tarih yok' });
   if (A.durum === 'engelli') ozet.push({ b: sureKisa(A.bekleme_saat), k: 'engelli', uyari: true });
   else if (A.durum === 'hazir' || A.durum === 'suruyor') ozet.push({ b: sureKisa(A.bekleme_saat), k: A.durum === 'hazir' ? 'bekliyor' : 'sürüyor' });
   if (altGorevler.length) ozet.push({ b: altKN, k: 'alt görev' });
@@ -200,7 +200,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const zx = (ms: number) => (nokta.length < 2 ? 50 : 4 + 92 * ((ms - z0) / zw));
   const yukari = nokta.map(() => false);
   for (let j = 1; j < nokta.length; j++) if (!yukari[j - 1] && zx(nokta[j].ms) - zx(nokta[j - 1].ms) < 16) yukari[j] = true;
-  const sahipAd = sahipAjan ? A.sahip : kisaAd(A.sahip);
+  const sahipAd = A.sahip === ben ? 'Sen' : sahipAjan ? A.sahip : kisaAd(A.sahip);
   const gemiKucuk = ship(0, 0, 0, sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahipDis ? '' : kisaAd(A.sahip)[0], sahipAjan ? C.lilac : C.peach, .5, { flame: false });
   const kartlar = (l: any[], not: (z: any) => string | null) => <ul className="gd-kartlar">{l.map((z) => { const n = not(z); return (
     <li key={z.no}><GorevKart a={z} d={d} ben={ben} now={simdiMs} ac={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />{n && <small className="gd-kart-not">{n}</small>}</li>); })}</ul>;
@@ -235,7 +235,8 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         </div>
         <div className="gd-bas-metin">
           {ust && <span className="gd-tur">ALT GÖREV</span>}
-          <h2>{adimAdi(A)}</h2>
+          {/* detayda tam ad (P1-F; satırlarda kısa ad) */}
+          <h2>{A.ad}</h2>
           <p className={`gd-gorev-cumle ton-${G.ton}`}>{gCumle}{krt ? ' · kritik yolda' : ''}</p>
         </div>
         <dl className="gd-ozet">

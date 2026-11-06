@@ -9,20 +9,22 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('N2-zil: Evren’deki zil okunmamışı sayar, Bildirimler açılınca söner', async ({ page }) => {
+test('N2-zil → W6 Pano: Evren’deki Pano düğmesi yeni değişiklikleri sayar, Pano açılınca söner', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
-  const zil = page.getByRole('button', { name: /^Bildirimler: \d+ okunmamış/ });
+  const zil = page.getByRole('button', { name: /^Pano: \d+ yeni değişiklik/ });
   await expect(zil).toBeVisible();
   const r = await zil.boundingBox();
   expect(Math.min(r!.width, r!.height)).toBeGreaterThanOrEqual(44);
   await zil.click();
-  await expect(page).toHaveURL(/\/bildirimler/);
-  await expect(page.getByRole('tab', { name: 'Senin için' })).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByText(/yeni hareket/)).toBeVisible();
+  await expect(page).toHaveURL(/\/pano/);
+  for (const b of ['SENDEN BEKLENEN', 'RİSKTE', 'SON DEĞİŞİKLİKLER', 'YAKINDA']) await expect(page.getByRole('region', { name: b })).toBeVisible();
+  // bu açılışın yenileri işaretli kalır
+  await expect(page.getByRole('region', { name: 'SON DEĞİŞİKLİKLER' }).getByLabel('Yeni').first()).toBeVisible();
+  await expect(page.getByRole('region', { name: 'SON DEĞİŞİKLİKLER' })).toContainText('Selin çıktı ekledi');
   await page.waitForTimeout(300);
-  await cek(page, 'N2-bildirimler');
+  await cek(page, 'W6-pano');
   await page.goBack();
-  await expect(page.getByRole('button', { name: 'Bildirimler', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Pano', exact: true })).toBeVisible();
 });
 
 test('N2-tum: Tüm etkinlik güne göre; art arda olaylar tek satır, satır adıma gider', async ({ page }) => {

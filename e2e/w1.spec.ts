@@ -22,18 +22,18 @@ test('W1 · çıktı beklenen iş: ana düğme Çıktı ekle; engel bildirilir v
   await page.getByRole('menuitem', { name: 'Engel bildir' }).click();
   await cubuk(page).getByRole('textbox', { name: 'Neye takıldın' }).fill('Apple geliştirici hesabı onayı');
   await cubuk(page).getByRole('button', { name: 'Kaydet' }).click();
-  await expect(page.locator('.gd-bas small')).toContainText('engelli');
+  await expect(page.locator('.gd-bas')).toContainText('engelli');
   await cubuk(page).getByRole('button', { name: 'Engeli kaldır' }).click();
-  await expect(page.locator('.gd-bas small')).not.toContainText('engelli');
+  await expect(page.locator('.gd-bas')).not.toContainText('engelli');
   await expect(cubuk(page).getByRole('button', { name: 'Çıktı ekle' })).toBeVisible();
 });
 
 test('W1 · çıktı beklenen iş ⋯ Çıktısız bitir görevi tamamlar; bitmiş görev yeniden açılır', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin&hal=w1');
   await menu(page, 'Çıktısız bitir');
-  await expect(page.locator('.gd-bas small')).toContainText('tamam');
+  await expect(page.locator('.gd-bas')).toContainText('bitti');
   await menu(page, 'Yeniden aç');
-  await expect(page.locator('.gd-bas small')).not.toContainText('tamam');
+  await expect(page.locator('.gd-bas')).not.toContainText('bitti');
   await expect(cubuk(page).getByRole('button', { name: 'Çıktı ekle' })).toBeVisible();
 });
 
@@ -51,7 +51,7 @@ test('W1 · AI yapamadı: cümle nedenini söyler; Yeniden dene engeli kaldırı
   await expect(page.locator('.gd-cumle')).toHaveText(/yapamadı: Rutin işi aldı ama bitiremedi\. Yeniden dene/);
   await cek(page, 'W1-ai-hata-390');
   await cubuk(page).getByRole('button', { name: 'Yeniden dene' }).click();
-  await expect(page.locator('.gd-bas small')).not.toContainText('engelli');
+  await expect(page.locator('.gd-bas')).not.toContainText('engelli');
   await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlar.');
 });
 
@@ -60,8 +60,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await ac(page, '/akis/RTD5/adim/4?senaryo=berkin', w, h);
     await expect(page.getByRole('button', { name: 'Seçenekleri gör' })).toHaveCount(0);
     await expect(cubuk(page).getByRole('button', { name: 'Claude’la düşün' })).toBeVisible();
-    const sira = await page.locator('.gd > .gd-eylem, .gd > section, .gd > .gd-ikili, .gd > div.gd-bolum').evaluateAll((L) => L.map((e) => e.getAttribute('aria-label') || e.className));
-    expect(sira.slice(0, 2)).toEqual(['Eylemler', 'KARAR']);
+    // W5 (6 Kas, B18): eylemler · ne yapılacak · zaman · karar (Berkin'in 8 satırı)
+    const sira = await page.locator('.gd > .gd-eylem, .gd > section, .gd > div.gd-bolum').evaluateAll((L) => L.map((e) => e.getAttribute('aria-label') || e.className));
+    expect(sira.filter((x) => ['Eylemler', 'Ne yapılacak', 'Zaman', 'KARAR'].includes(x))).toEqual(['Eylemler', 'Ne yapılacak', 'Zaman', 'KARAR']);
     await cek(page, `W1-karar-${w}`);
   });
   test(`W1 · ${w}: onay bekleyen AI işi`, async ({ page }) => {
