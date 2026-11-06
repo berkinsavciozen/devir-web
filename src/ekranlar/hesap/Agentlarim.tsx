@@ -82,6 +82,8 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
     },
     onSuccess: () => { kapsam.reset(); tazele(); },
   });
+  const renk = useMutation({ mutationFn: (r: string) => api.post<any>('/renk', { ad: a.ad, renk: r, tip: 'agent' }), onSuccess: () => tazele() });
+  const [kaldirAc, setKaldirAc] = useState(false);
   const otoAc = useMutation({ mutationFn: () => api.post<any>(`/agentlar/${encodeURIComponent(a.ad)}/ai`, {}), onSuccess: () => tazele() });
   const k = (x: string) => x.toLocaleLowerCase('tr');
   const tum: AgentRutin[] = (veri.rutinler || []).filter((t, i, L) => L.findIndex((u) => u.id === t.id) === i);
@@ -140,10 +142,107 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
           {otoAc.data?.not && <p className="gd-satir" role="status">{otoAc.data.not}{otoAc.data.acilan?.length ? <> <button type="button" className="metin-baglanti" disabled={geriAl.isPending} onClick={() => geriAl.mutate(otoAc.data.acilan)}>Geri al</button></> : null}</p>}
         </section>
 
+        {kip === 'yonetim' && <section className="ai-grup" aria-label="Renk">
+          <h3 className="gd-bolum-baslik">RENK</h3>
+          <div className="ag-renkler" role="radiogroup" aria-label={`${a.ad} rengi`}>
+            {PALET.map((r) => <button key={r} type="button" role="radio" aria-checked={(renk.variables ?? a.renk) === r} aria-label={r} className="ag-renk" style={{ background: r }} onClick={() => renk.mutate(r)} />)}
+          </div>
+          <p className="gd-satir">Haritada spiral, gemi ve görev düğmeleri bu renkte görünür.</p>
+          {renk.isError && <p className="canli-hata-satir" role="alert">{(renk.error as Error).message}</p>}
+        </section>}
+
         <section className="ai-grup" aria-label="Özet">
           <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık iş${a.sirada ? `; ${a.sirada} tanesi AI yapsın, sırası gelince başlar` : ''}.` : 'Açık işi yok.'}{a.son_etkinlik ? ` Son etkinlik ${zaman(a.son_etkinlik.zaman)}.` : ''}</p>
         </section>
         <AgentIsleri agent={a.ad} kapat={kapat} />
+        {kip === 'yonetim' && <button type="button" className="metin-baglanti mercan" onClick={() => setKaldirAc(true)}>Agent’ı kaldır</button>}
+        {kaldirAc && <AgentKaldirSayfa a={a} adaylar={veri.agentlar.map((x) => x.ad)} ben={veri.kisi} kapat={() => setKaldirAc(false)} bitti={() => { setKaldirAc(false); kapat(); }} />}
+      </div>
+    </AltSayfa>
+  );
+}
+
+/** Rutin satırının alt metni: tür · kimin için · son çalışma (K1) */
+export const rutinAlt = (t: AgentRutin, kisa = false) => {
+  const kim = t.agentlar == null ? 'tüm agent’lar' : t.agentlar.length === 1 || !kisa ? t.agentlar.join(', ') : `${t.agentlar.length} agent`;
+  const son = t.son_hata ? (kisa ? 'son deneme başarısız' : `son deneme başarısız: ${t.son_hata}`) : t.son_calisma ? (kisa ? `son ${gunAy(Date.parse(t.son_calisma))}` : `son çalışma ${zaman(t.son_calisma)}`) : 'henüz çalışmadı';
+  return `${rutinTuru(t)} · ${kim} · ${son}`;
+};
+
+/**
+ * Rutin detayı (W2, K1): rutin hangi agent'larla çalışır, sonradan değişir; adı yalnız etiket. Kapsam genişleyince
+ * yeni agent'ların açık adımlarında AI yapsın açılır (K3), "Geri al" yalnız açılanları kapatır.
+ */
+export function RutinDetay({ t, agentlar, kapat, kaldir }: { t: AgentRutin; agentlar: string[]; kapat: () => void; kaldir: () => void }) {
+  const k = (x: string) => x.toLocaleLowerCase('tr');
+  const adlar = [...new Set([...agentlar, ...(t.agentlar || [])])];
+  const [secili, setSecili] = useState<string[] | null>(t.agentlar ?? null);
+  const [ad, setAd] = useState(t.ad);
+  const degistir = (a: string) => setSecili((v) => { const L = v ?? adlar; const y = L.some((x) => k(x) === k(a)) ? L.filter((x) => k(x) !== k(a)) : [...L, a]; return y; });
+  const ayni = JSON.stringify(secili) === JSON.stringify(t.agentlar ?? null) && ad.trim() === t.ad;
+  const kaydet = useMutation({
+    mutationFn: async () => {
+      let r: any = null;
+      if (ad.trim() && ad.trim() !== t.ad) await api.post<any>(`/tetikler/${t.id}/ad`, { ad: ad.trim() });
+      if (JSON.stringify(secili) !== JSON.stringify(t.agentlar ?? null)) r = await api.post<any>(`/tetikler/${t.id}/agentlar`, { agentlar: secili });
+      return r;
+    },
+    onSuccess: () => tazele(),
+  });
+  const geriAl = useMutation({
+    mutationFn: async (acilan: { akis: string; no: number }[]) => {
+      const by = new Map<string, number[]>();
+      for (const x of acilan) by.set(x.akis, [...(by.get(x.akis) || []), x.no]);
+      for (const [kod, nolar] of by) await api.post<any>(`/akis/${encodeURIComponent(kod)}/ai`, { oto: false, nolar });
+    },
+    onSuccess: () => { kaydet.reset(); tazele(); },
+  });
+  const bos = Array.isArray(secili) && !secili.length;
+  return (
+    <AltSayfa acik kapat={kapat} baslik={t.ad} yukseklik="yuksek">
+      <div className="ai-etkinlik agent-detay rutin-detay">
+        <h2 className="ai-etkinlik-baslik">{t.ad}</h2>
+        <p className="gd-satir">{rutinAlt(t)}.</p>
+        <section className="ai-grup" aria-label="Hangi agent'lar için">
+          <h3 className="gd-bolum-baslik">HANGİ AGENT’LAR İÇİN</h3>
+          <div className="rk-api">
+            <label className="rk-agent"><input type="checkbox" checked={secili === null} onChange={() => setSecili(secili === null ? [...adlar] : null)} /> Tüm agent’larım <small>(yenileri de)</small></label>
+            {adlar.map((a) => <label key={a} className="rk-agent"><input type="checkbox" checked={secili === null || secili.some((x) => k(x) === k(a))} disabled={secili === null} onChange={() => degistir(a)} /> {a}</label>)}
+          </div>
+          {bos && <p className="rk-hata" role="alert">En az bir agent seç; rutini durdurmak için kaldır.</p>}
+        </section>
+        <section className="ai-grup" aria-label="Ad">
+          <h3 className="gd-bolum-baslik">AD</h3>
+          <input className="alan" value={ad} onChange={(e) => setAd(e.target.value)} aria-label="Rutinin adı" maxLength={60} />
+          <p className="gd-satir">Claude’daki rutin adı; yalnız sen görürsün, işleri değiştirmez.</p>
+        </section>
+        <Dugme type="button" fs={16} disabled={ayni || bos || !ad.trim()} mesgul={kaydet.isPending} onClick={() => kaydet.mutate()}>Kaydet</Dugme>
+        {kaydet.isError && <p className="canli-hata-satir" role="alert">{(kaydet.error as Error).message}</p>}
+        {kaydet.isSuccess && <p className="gd-satir" role="status">{kaydet.data?.not || 'Kaydedildi.'}{kaydet.data?.acilan?.length ? <> <button type="button" className="metin-baglanti" disabled={geriAl.isPending} onClick={() => geriAl.mutate(kaydet.data.acilan)}>Geri al</button></> : null}</p>}
+        <button type="button" className="metin-baglanti mercan" onClick={kaldir}>Rutini kaldır</button>
+      </div>
+    </AltSayfa>
+  );
+}
+
+/** Kişi ve agent paleti (K5, lejant "Kimin Hamlesi": renk yalnız kişiyi gösterir, palet serbest). */
+export const PALET = ['#FFC9A3', '#E86FA0', '#F2D16B', '#9EE6CF', '#7FC8F8', '#B9A6F2', '#F28C6B', '#C7E07A'];
+
+/** Agent'ı kaldır (K4): açık işleri sahibine ya da başka bir agent'a devreder. */
+export function AgentKaldirSayfa({ a, adaylar, ben, kapat, bitti }: { a: Agent; adaylar: string[]; ben: string; kapat: () => void; bitti: () => void }) {
+  const [hedef, setHedef] = useState(ben);
+  const m = useMutation({ mutationFn: () => api.post<any>(`/agentlar/${encodeURIComponent(a.ad)}/kaldir`, a.acik_is ? { devret: hedef, devret_tip: hedef === ben ? 'insan' : 'agent' } : {}), onSuccess: () => { tazele(); bitti(); } });
+  return (
+    <AltSayfa acik kapat={kapat} baslik={`${a.ad} kaldırılsın mı?`} yukseklik="orta" guclu>
+      <div className="ai-etkinlik agent-detay">
+        <h2 className="ai-etkinlik-baslik">{a.ad} kaldırılsın mı?</h2>
+        <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık işi var. İşleri kim alsın?` : 'Açık işi yok. Kapanmış akışlardaki geçmişi korunur.'}</p>
+        {a.acik_is > 0 && <div className="rk-api" role="radiogroup" aria-label="İşleri alacak">
+          {[ben, ...adaylar.filter((x) => x !== a.ad)].map((x) => <label key={x} className="rk-agent"><input type="radio" name="devret" checked={hedef === x} onChange={() => setHedef(x)} /> {x === ben ? `${ben} (sen)` : x}</label>)}
+        </div>}
+        <Dugme type="button" tur="tehlike" mesgul={m.isPending} onClick={() => m.mutate()}>Kaldır</Dugme>
+        {m.isError && <p className="canli-hata-satir" role="alert">{(m.error as Error).message}</p>}
+        <Dugme type="button" tur="ikincil" ton="lila" yukseklik={48} fs={15} onClick={kapat}>Vazgeç</Dugme>
       </div>
     </AltSayfa>
   );

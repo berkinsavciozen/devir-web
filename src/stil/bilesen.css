@@ -1159,3 +1159,11 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .taslak-rozet.dis { box-shadow: inset 0 0 0 1.5px #5FE3F0; }
 .taslak-rozet.karar { color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1.5px currentColor; }
 .taslak-rozet.inceleme { opacity: .9; }
+/* W2 (0.34.1): agent rengi, rutin detayı */
+.ag-renkler { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 8px; }
+.ag-renk { width: 32px; height: 32px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); position: relative; }
+.ag-renk::after { content: ""; position: absolute; inset: -6px; }
+.ag-renk[aria-checked="true"] { box-shadow: 0 0 0 2px var(--renk-zemin-kart), 0 0 0 4px var(--renk-metin-ink); }
+.rutin-detay .alan { width: 100%; }
+.agent-detay > .dugme { margin-top: 14px; }
+.agent-detay > .metin-baglanti.mercan { display: block; margin-top: 18px; }
