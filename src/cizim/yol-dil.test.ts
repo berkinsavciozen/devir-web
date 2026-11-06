@@ -1,44 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { uyeRenkleri, ajanSahipleri, tac, elmas, belge, TAKIM_RENGI } from './yol.js';
+import { uyeRenkleri, ajanSahipleri } from './yol.js';
+import { acik, kisiRengi } from './hamle';
 import { galaksiSayilari } from '../ekranlar/akis/Lejant';
 
 // Plan 27 Eki, Epic 3: gezegen dili (P4)
-const YESIL = /#(9EE6CF|7BE0A8|5FD39A)/i;
 const uye = (ad: string, tip = 'insan') => ({ ad, tip });
 
-describe('kişi renkleri', () => {
-  it('yeşil yok; 6 kişiye kadar herkes ayrı renk', () => {
-    const G: any = { uyeler: [uye('Berkin'), uye('Claude', 'agent'), uye('Ayşe'), uye('Mehmet'), uye('Bot', 'agent'), uye('Usta', 'dis')] };
-    const r = uyeRenkleri(G, 'Berkin');
-    expect(Object.values(r).some((c) => YESIL.test(c))).toBe(false);
-    expect(new Set(Object.values(r)).size).toBe(6);
+describe('kişi renkleri (W7, Kimin Hamlesi)', () => {
+  it('renk yalnız kişiyi söyler: kayıtlı renk önce, yoksa addan sabit renk; aynı ad her yerde aynı renk', () => {
+    const G: any = { uyeler: [uye('Berkin'), uye('Ayşe'), uye('Usta', 'dis')] };
+    const r = uyeRenkleri(G, 'Berkin', {}, { Ayşe: '#123456' });
+    expect(r.Ayşe).toBe('#123456');
+    expect(r.Berkin).toBe(kisiRengi('Berkin'));
+    expect(uyeRenkleri(G, 'Ayşe').Berkin).toBe(r.Berkin);
   });
-  it('6 kişiyi aşınca ötekiler takım rengine düşer, sahip ve Claude kendi renginde', () => {
-    const G: any = { uyeler: ['Berkin', 'A', 'B', 'C', 'D', 'E', 'F'].map((a) => uye(a)).concat([uye('Claude', 'agent')]) };
-    const r = uyeRenkleri(G, 'Berkin');
-    expect(r.A).toBe(TAKIM_RENGI);
-    expect(r.Berkin).not.toBe(TAKIM_RENGI);
-    expect(r.Claude).toBe('#B9A6F2');
-  });
-  it('agent sahibinin renginde (agent_sahibi); sahibi olmayan Claude lila kalır', () => {
-    const G: any = { uyeler: [uye('Berkin'), uye('Selin'), uye('Claude', 'agent'), uye('Selin’in Claude’u', 'agent'), uye('Bot', 'agent')] };
-    const r = uyeRenkleri(G, 'Berkin', ajanSahipleri([{ sahip: 'Claude', tip: 'agent', agentSahibi: 'Berkin' }, { sahip: 'Selin’in Claude’u', tip: 'agent', agentSahibi: 'Selin' }]));
-    expect(r.Claude).toBe(r.Berkin);
-    expect(r['Selin’in Claude’u']).toBe(r.Selin);
-    expect(r.Bot).not.toBe(r.Selin);
-    expect(uyeRenkleri(G, 'Berkin').Claude).toBe('#B9A6F2');
+  it('agent sahibinin açık tonunda; sahibi kayıtlı renk seçtiyse ondan', () => {
+    const G: any = { uyeler: [uye('Berkin'), uye('Claude', 'agent')] };
+    const r = uyeRenkleri(G, 'Berkin', ajanSahipleri([{ sahip: 'Claude', tip: 'agent', agentSahibi: 'Berkin' }]), { Berkin: '#7FC8F8' });
+    expect(r.Claude).toBe(acik('#7FC8F8'));
   });
 });
 
-describe('işaretler', () => {
-  it('taç: 0 boş, 1 ışıklı, 2 nabız', () => {
-    expect(tac(0, 0, 8, 0)).toBe('');
-    expect(tac(0, 0, 8, 1)).not.toContain('dongu-tac');
-    expect(tac(0, 0, 8, 2)).toContain('dongu-tac');
+describe('gezegen ışığı (W7)', async () => {
+  const { planet } = await import('./ortak.js');
+  it('durum renksiz: bitti krem ve beyaz ışık; yeşil, mavi, kehribar yok; kırmızı yalnız engel', () => {
+    const L = ['lit', 'run', 'wait', 'dark', 'ertele', 'ghost'].map((k) => planet(0, 0, 9, k, { halka: '#7FC8F8' }));
+    for (const g of L) expect(g).not.toMatch(/pGreen|pRun|pAmber|glowMint|glowBlue|#FFB547|#FF5A5A/);
+    expect(planet(0, 0, 9, 'lit')).toContain('pKrem');
+    expect(planet(0, 0, 9, 'block')).toContain('#FF5A5A');
   });
-  it('elmas altın, belge çizilir', () => {
-    expect(elmas(0, 0)).toContain('#FFD27A');
-    expect(belge(0, 0)).toContain('<path');
+  it('halka kişinin renginde; ortakta bölünür; bayrak ve AI rozeti çizilmez', () => {
+    expect(planet(0, 0, 9, 'dark', { halka: '#7FC8F8' })).toContain('stroke="#7FC8F8"');
+    expect((planet(0, 0, 9, 'dark', { halka: ['#7FC8F8', '#F2D16B'] }).match(/<path d="M[^"]*A/g) || []).length).toBe(2);
+    const g = planet(0, 0, 9, 'wait', { karar: true, oto: 'bakilacak' });
+    expect(g).not.toContain('#5FE3F0'); expect(g).not.toContain('#FFD27A');
+  });
+  it('sonuç rozeti: tik, belge, terazi', () => {
+    expect(planet(0, 0, 9, 'lit', { sonuc: 'belge' })).toContain('H');
+    expect(planet(0, 0, 9, 'lit', { sonuc: 'tik' })).not.toBe(planet(0, 0, 9, 'lit', { sonuc: 'terazi' }));
   });
 });
 
@@ -59,7 +58,7 @@ describe('P4b işaretleri', async () => {
   const { planet, ship, kapi, yildiz } = await import('./ortak.js');
   const { lejantGezegenleri } = await import('../ekranlar/akis/Lejant');
   it('atlandı üstü çizik; gemiler (Q6 · C): insan kapsül, agent robot, dış balon', () => {
-    expect(planet(0, 0, 8, 'ghost')).toMatch(/M-6\.24,6\.24 L6\.24,-6\.24/);
+    expect(planet(0, 0, 8, 'ghost')).toMatch(/M-4\.59,4\.59 L4\.59,-4\.59/);
     const insan = ship(0, 0, 0, 'insan', 'A', '#8EC5FF'), agent = ship(0, 0, 0, 'agent', 'C', '#B9A6F2'), dis = ship(0, 0, 0, 'dis', '', '#F2B8D8');
     expect(new Set([insan, agent, dis]).size).toBe(3);
     expect(insan).toContain('rx="7.5"'); expect(agent).toContain('<circle cx="0" cy="0" r="9"'); expect(agent).toContain('V-14');

@@ -11,7 +11,7 @@ export function saat(ms: number): string;
 export function sans(x: number, y: number, t: string, o?: O): string;
 export function kart(x: number, y: number, w: number, h: number, o?: O): string;
 export function akisModeli(detay: any, o?: { sahip?: string; haric?: number[] }): Model;
-export function uyeRenkleri(G: Galaksi, sahip?: string, ajanSahibi?: Record<string, string>): Record<string, string>;
+export function uyeRenkleri(G: Galaksi, sahip?: string, ajanSahibi?: Record<string, string>, renkler?: Record<string, string>): Record<string, string>;
 export function ajanSahipleri(steps: { sahip: string; tip?: string; agentSahibi?: string | null }[]): Record<string, string>;
 export function kisaAd(ad: string): string;
 export function tac(x: number, y: number, r: number, k: number, sekilVar?: boolean): string;
