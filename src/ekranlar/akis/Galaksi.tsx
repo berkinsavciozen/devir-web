@@ -11,6 +11,7 @@ import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
 import { genisDuzen, panelZemini } from './Genis';
 import { GorevDetay } from './GorevDetay';
+import { TekPano } from '../pano/TekPano';
 import { HaritaKutusu } from './HaritaKutusu';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
@@ -128,6 +129,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const GD = useMemo(() => genisDuzen(boy.w, boy.h), [boy.w, boy.h]);
   const [gelis] = useState(haritaGelisi);
   const ben = useBen();
+  const [panoAcik, setPanoAcik] = useState(true);
   const ai = useAiAcik();
   const NOW = simdi();
   // ?an=2026-10-17T12:00 → sürgü o anda açılır (paylaşılan bağlantı, ekran testleri)
@@ -466,6 +468,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         {ai ? <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y - 40, width: GD.kart.w, height: GD.H - GD.kart.y + 24 }}><DevirAiPanel /></div>
         : a ? <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y, width: GD.kart.w, height: GD.H - GD.kart.y - 16 }}>
           <GorevDetay key={a.no} kod={kod} no={a.no} ben={sahip} />
+        </div> : panoAcik ? <div className="gd-kaydir genis-liste genis-pano" style={{ left: GD.kart.x, top: GD.kart.y - 12, width: GD.kart.w, height: GD.H - GD.kart.y }}>
+          {/* W6 (K8): seçim yokken akışa süzülmüş Pano; "Yalnız bu akış ×" adım listesine döner */}
+          <TekPano ben={sahip} akis={kod} akisAdi={ad} kapat={() => setPanoAcik(false)} />
         </div> : <div className="gd-kaydir genis-liste" style={{ left: GD.kart.x - 20, top: GD.kart.y - 12, width: GD.kart.w + 40, height: GD.H - GD.kart.y }}>
           <div style={{ position: 'relative', height: B.y + 24 }}>{B.dugum}</div>
         </div>}

@@ -31,6 +31,7 @@ import { Baglanti } from './ekranlar/dis/Baglanti';
 import { TaslakSorulari, YeniIs } from './ekranlar/yeni/Taslak';
 import { TaslakHaritasi, TaslakSol } from './ekranlar/yeni/TaslakHaritasi';
 import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
+import { PanoSayfasi } from './ekranlar/pano/TekPano';
 import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
 import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
@@ -115,6 +116,7 @@ function Uygulama({ yol }: { yol: string }) {
   if (ak) return <Galaksi key={ak.kod} kod={ak.kod} sahip={b.kisi || ''} />;
   if (yol === '/akislar') return panel(<Akislar ben={b} />, 'Akışlar', { aktif: 'akislar', serbest: true });
   if (yol === '/gorevler') return genis ? <Kabuk sol={<GorevlerSol ben={b} />} aktif="gorevler" konum="Görevler" etiket="Görevler"><Gorevler ben={b} /></Kabuk> : <Gorevler ben={b} />;
+  if (yol === '/pano') return panel(<PanoSayfasi ben={b.kisi || ''} />, 'Pano', { geri: '/' });
   if (yol === '/bildirimler') return panel(<Bildirimler ben={b} />, 'Bildirimler', { geri: '/' });
   if (yol === '/bana') return <Yonlen yol={'/gorevler' + (arama().toString() ? '?' + arama().toString() : '')} />;
   if (yol === '/akislar/arsiv') return panel(<Arsiv ben={b} />, 'Akışlar › Arşiv', { aktif: 'akislar' });

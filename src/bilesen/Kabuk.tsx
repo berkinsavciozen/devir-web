@@ -47,7 +47,7 @@ export function PanelUst({ geri, konum, sag = true }: { geri?: () => void; konum
       {konum && <span className="panel-konum">{konum}</span>}
       {sag && <span className="panel-ust-sag">
         <DevirAiDugme />
-        <Zil y={0} kabukta stil={{ position: 'relative', right: 'auto', left: 'auto' }} />
+        <Zil y={0} kabukta aktif={/^\/(pano|bildirimler)/.test(location.pathname)} stil={{ position: 'relative', right: 'auto', left: 'auto' }} />
         <button type="button" className="genis-geri genis-ayarlar panel-ayarlar" aria-label="Ayarlar" onClick={() => git('/ayarlar')}><AyarlarIkon /></button>
         <button type="button" className="panel-arti" aria-label="Yeni iş" onClick={() => git('/yeni')}><ArtiIkon /></button>
       </span>}
