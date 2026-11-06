@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
+import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, soruKarti, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, suzgecAdresi, suzgecOku } from './model';
 
 const NOW = Date.parse('2026-10-14T10:00:00+03:00');
 const g = (o: any) => ({ akis: 'A', akis_baslik: 'Hasat', sahip: 'Berkin', sahip_tip: 'insan', durum: 'hazir', onceki: [], sonraki: [], ...o });
@@ -76,4 +76,10 @@ describe('P5 karar kuyruğu', () => {
   it('önerisiz seçim: seçenekler görünür, detayda verilir', () => expect(kararKarti({ karar_adimi: true, karar_tur: 'secim', karar: { secenekler: [{ ad: 'A' }, { ad: 'B' }, { ad: 'C' }, { ad: 'D' }] } })).toEqual({ alt: 'seçim: A / B / C …', hizli: null }));
   it('onay/red kararı', () => expect(kararKarti({ karar_adimi: true, karar_tur: 'onay_red' }).alt).toBe('onay/red'));
   it('boş kuyruk cümlesi', () => { expect(bosKuyruk(3, 0)).toBe('Şu an kararın yok; AI 3 iş üzerinde çalışıyor.'); expect(bosKuyruk(0, 0)).toBe('Şu an kararın yok.'); });
+});
+
+describe('K6 sonradan belli olan cevap', () => {
+  it('dalların etkisi', () => expect(soruKarti({ secenekler: [{ deger: 'kazanildi', etiket: 'Kazanıldı' }, { deger: 'kaybedildi', etiket: 'Kaybedildi' }], etki: { kazanildi: 2, kaybedildi: 1 }, adim_no: 1 })).toBe('cevap bekliyor: Kazanıldı → 2 iş açılır · Kaybedildi → 1 iş açılır'));
+  it('tarih sorusu', () => expect(soruKarti({ tip: 'tarih', etki: {}, tarihli: 3, adim_no: 2 })).toBe('cevap bekliyor: 3 iş bu tarihi bekliyor'));
+  it('etkisiz soru', () => expect(soruKarti({ etki: {}, tarihli: 0, adim_no: 4 })).toBe('cevap bekliyor: 4. görev bitti'));
 });

@@ -374,7 +374,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
   const durum = q.get("durum") || "acik";
   const A = await gorunenAkislar(ctx, q.get("kapali") === "1" ? ["aktif", "kapandi"] : ["aktif"]);
   const kisiler = new Map<string, { ad: string; tip: string; acik: number }>();
-  const gorevler: any[] = [];
+  const gorevler: any[] = [], sorular: any[] = [];
   for (const { akis, steps, events } of A) {
     const m = metrics(akis, steps, events.filter((e: any) => e.tip !== "okuma"), ctx.now);
     for (const s of steps) {
@@ -398,7 +398,22 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
         onceki: acikOnculler(s, new Map(steps.map((x: any) => [x.no, x]))).map((n) => steps.find((x: any) => x.no === n)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
         sonraki: DONE(s) ? [] : steps.filter((x: any) => x.bagimli.includes(s.no) && !DONE(x)).map((x: any) => ({ no: x.no, sahip: x.sahip, sahip_tip: x.sahip_tip, durum: x.durum })),
         son_tarih: s.son_tarih || null, en_erken_bitis: iso(ef), gec_risk: ef != null && !!s.son_tarih && ef > eod(s.son_tarih), bekleme_saat: t ? saat(t.simdi) : null, durum_at: s.durum_at || null,
+        // P5 (karar kuyruğu): inceleme biçimi ve geçmişi, karar biçimi ve seçenekleri (öneri tek dokunuşla seçilir)
+        inceleme: s.inceleme || null, inceleme_gecmisi: (akis.baglam?.inceleme?.[String(s.no)] || []).map((k: any) => ({ tur: k.tur })), karar_tur: s.karar_tur || null,
+        karar: DONE(s) ? null : akis.baglam?.kararlar?.[String(s.no)] || null,
       });
+    }
+    // K6: cevaplayan adımı bitmiş ama cevabı yazılmamış açık sorular; cevabı o adımın sahibi (ya da agent'ın desteklediği kişi) verir
+    for (const [kod, b] of Object.entries<any>(akis.baglam?.bekleyen || {})) {
+      const st = b?.adim_no != null ? steps.find((x: any) => x.no === b.adim_no) : null;
+      if (!st || !DONE(st) || st.durum === "atlandi" || !stepInScope(ctx, st)) continue;
+      const kim = st.sahip_tip === "agent" && st.agent_sahibi ? st.agent_sahibi : st.sahip;
+      if (kisi !== "hepsi" && !norm(kim).includes(norm(kisi))) continue;
+      if (kodlar.length && !kodlar.includes(String(akis.kisa_kod).toUpperCase())) continue;
+      const etki: Record<string, number> = {};
+      for (const x of steps) if (!DONE(x) && x.kosul?.soru === kod) etki[String(x.kosul.deger)] = (etki[String(x.kosul.deger)] || 0) + 1;
+      const tarihli = steps.filter((x: any) => !DONE(x) && x.capa_soru === kod).length;
+      sorular.push({ akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akisKisaAdi(akis), kod, soru: b.soru, kisa: b.kisa || null, tip: b.tip, secenekler: b.secenekler || null, adim_no: st.no, adim_ad: st.ad, kim, etki, tarihli, durum_at: st.durum_at || null });
     }
   }
   // önce engelli ve karar, sonra en çok tutan, sonra son tarih
@@ -407,7 +422,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
   gorevler.sort((a, b) => agirlik(a) - agirlik(b) || b.tuttugu - a.tuttugu || (a.son_tarih || "9999").localeCompare(b.son_tarih || "9999") || a.no - b.no);
   return {
     suzgec: { kisi, akis: kodlar, durum },
-    gorevler,
+    gorevler, sorular,
     kisiler: [...kisiler.values()].sort((a, b) => b.acik - a.acik || a.ad.localeCompare(b.ad, "tr")),
     akislar: A.map(({ akis, steps }) => ({ kod: akis.kisa_kod, baslik: akis.baslik, kisa_ad: akisKisaAdi(akis), acik: steps.filter(ACIK).length })),
   };

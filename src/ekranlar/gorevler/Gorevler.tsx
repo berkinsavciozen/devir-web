@@ -20,7 +20,7 @@ import { durumGor, Liste, type Oge } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { alanAdi, SatirKart } from '../hesap/Hesap';
-import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
+import { bagIsareti, beklenenler, benCumlesi, bosKuyruk, kararKarti, soruKarti, DURUM_AD, gorevCumlesi, gorevHaritasi, gruplar, haftaCizgileri, ozettenGorevler, suzgecAdresi, suzgecOku, type Durum, type Suzgec } from './model';
 import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
 import { useMutation } from '@tanstack/react-query';
 import { sorguIstemcisi } from '../../api/sorgular';
@@ -35,6 +35,7 @@ const enc = encodeURIComponent;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const taslakIkon = `<g transform="translate(28,29)"><circle r="12" fill="#B9A6F2" fill-opacity=".12" stroke="#D9CCFF" stroke-dasharray="1.5 3"/>${sparkle(0, 0, 5, '#FFF1D6', .95)}</g>`;
 const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22" height="16" rx="3" fill="#08222E" stroke="#F2B8D8" stroke-width="1.3"/><path d="M-10,-7 L0,1 L10,-7" fill="none" stroke="#F2B8D8" stroke-width="1.3"/></g>`;
+const soruIkon = `<g transform="translate(28,29)"><circle r="12" fill="#FFC9A3" fill-opacity=".14" stroke="#FFC9A3" stroke-width="1.3"/><text y="5" text-anchor="middle" font-family="Caladea, serif" font-size="15" font-weight="700" fill="#FFF1E2">?</text></g>`;
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean, destek = false) => destek
   ? destekGemisi(x, y, 1, -.35, '#FFC9A3', k * 1.6)
   : tip === 'dis'
@@ -104,7 +105,10 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const ustListeY = 196 + kayma + (G.data && benKip && L.length ? 22 : 0);
   // P5: üstte karar kuyruğu (AI çıktısı + kararlar), altında sırası gelen işlerin
   const KK = [...B.onay, ...B.karar];
-  const ustListeBoyu = benKip ? 32 + (KK.length ? KK.length * 66 : 36) + (B.is.length ? 32 + B.is.length * 66 : 0) + (AA.length ? 32 + AA.length * 66 : 0) : 0;
+  // K6: cevabı belli olmuş ama yazılmamış açık sorular (sunucu 0.33.2+)
+  const SQ: any[] = benKip ? G.data?.sorular || [] : [];
+  const kuyrukBoyu = KK.length + SQ.length;
+  const ustListeBoyu = benKip ? 32 + (kuyrukBoyu ? kuyrukBoyu * 66 : 36) + (B.is.length ? 32 + B.is.length * 66 : 0) + (AA.length ? 32 + AA.length * 66 : 0) : 0;
   const HY = benKip && !panelde ? ustListeY + ustListeBoyu + 52 : HARITA_Y + kayma;
   const kisiBasina = S.kisi === 'hepsi' || benKip;
   const H = useMemo(() => gorevHaritasi(L, { kisiBasina, now: NOW, y0: HY + 8, ...(benKip ? { satir: 64, yakin: 22, adim: 14 } : {}) }), [L, kisiBasina, NOW, HY, benKip]);
@@ -155,8 +159,11 @@ export function Gorevler({ ben }: { ben: Ben }) {
   // W6: üst liste (senden beklenenler, agent'ların); alttakinde beklenenler tekrar etmez
   const ustOgeler: Oge[] = [];
   if (benKip) {
-    ustOgeler.push({ tur: 'baslik', metin: `KARARLARIN · ${KK.length}` });
-    if (!KK.length) ustOgeler.push({ tur: 'not', metin: bosKuyruk(AA.reduce((t: number, g: any) => t + (g.simdi?.length || 0), 0), AA.reduce((t: number, g: any) => t + (g.sirada || 0), 0)) });
+    ustOgeler.push({ tur: 'baslik', metin: `KARARLARIN · ${kuyrukBoyu}` });
+    for (const q of SQ) ustOgeler.push({ tur: 'satir', key: `s:${q.akis}:${q.kod}`, ikon: soruIkon, ust: q.kisa || q.soru, baslik: q.soru,
+      alt: `${soruKarti(q)} · ${q.akis_kisa_ad || q.akis_baslik}`, etiket: `Açık soru: ${q.soru}. ${soruKarti(q)}. ${q.akis_kisa_ad || q.akis_baslik}.`,
+      git: () => git(`/akis/${enc(q.akis)}/soru/${enc(q.kod)}`) });
+    if (!kuyrukBoyu) ustOgeler.push({ tur: 'not', metin: bosKuyruk(AA.reduce((t: number, g: any) => t + (g.simdi?.length || 0), 0), AA.reduce((t: number, g: any) => t + (g.sirada || 0), 0)) });
     for (const a of KK) {
       const o = satir(a) as Extract<Oge, { tur: 'satir' }>, k = kararKarti(a);
       ustOgeler.push({ ...o, alt: `${k.alt} · ${akisAdi(a)}`,

@@ -151,6 +151,17 @@ export function kararKarti(a: any): { alt: string; hizli: HizliEylem } {
   return { alt: sec.length ? `${bicim}: ${sec.map((x) => x.ad).slice(0, 3).join(' / ')}${sec.length > 3 ? ' …' : ''}` : bicim, hizli: null };
 }
 
+/**
+ * K6 (6 Kas): sonradan belli olan cevap. Cevaplayan adım bitti, cevap yazılmadı; kart dalların etkisini söyler
+ * ("Kazanıldı → 2 iş açılır · Kaybedildi → 1 iş"). Cevap soru ekranında verilir.
+ */
+export function soruKarti(q: any): string {
+  const ad = (d: string) => q.secenekler?.find((o: any) => String(o.deger) === d)?.etiket || d;
+  const dallar = Object.entries<number>(q.etki || {}).map(([d, n]) => `${ad(d)} → ${n} iş${n ? ' açılır' : ''}`);
+  const ne = dallar.length ? dallar.join(' · ') : q.tarihli ? `${q.tarihli} iş bu tarihi bekliyor` : `${q.adim_no}. görev bitti`;
+  return `cevap bekliyor: ${ne}`;
+}
+
 /** Kuyruk boşken tek satır: "Şu an kararın yok; AI 3 iş üzerinde çalışıyor." */
 export function bosKuyruk(calisan: number, sirada: number): string {
   return `Şu an kararın yok${calisan ? `; AI ${calisan} iş üzerinde çalışıyor` : sirada ? `; AI’ın ${sirada} işi sırada` : ''}.`;
