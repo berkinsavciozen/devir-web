@@ -51,13 +51,8 @@ export interface GorevKartOz {
 const ciktiSimgesi = (a: any) => (a.karar_adimi ? SIMGE.terazi(1.6, '#F4EEFF') : (a.cikti_sayisi || a.ciktilar?.length) ? SIMGE.belge(1.6, '#F4EEFF') : SIMGE.tik(1.6, '#F4EEFF'));
 
 export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, hamleGizli, style, className = '' }: GorevKartOz) {
-  const bitis = BITTI(a.durum) ? null : a.son_tarih || a.en_erken_bitis || null;
-  const G = gorevCumlesi({ ...a, bitis }, { gun: (x) => gunAy(tarihMs(x)), kisa: (x) => (x === ben ? 'Sen' : kisaAd(x)) });
-  // "Sen" ile çekim: 2. tekil kişi eki ("netleştirmelisin", "netleştiriyorsun", "netleştirdin")
-  const c0 = G.cumle.replace(', Sen onaylayacak', ', sen onaylayacaksın').replace('Sen’in onayını bekliyor', 'onayını bekliyor').replace('Sen’in onayını', 'onayını');
-  const c1 = c0.startsWith('Sen ') ? senEki(c0) : c0.replace(/: Sen(,|$| ·)/, ': sende$1').replace(/: Sen bitirdi$/, ': bitirdin');
-  // Berkin 16:55: satır sonu tarih ortasından bölünmesin ("2 Kas’a kadar" bir arada)
-  const cumle = c1.replace(/(\d{1,2}) ([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2}(?:’[a-zçğıöşü]+)?)( kadar)?/g, (_m, g, a, k) => `${g}\u00A0${a}${k ? '\u00A0kadar' : ''}`);
+  const cumle = kartCumlesi(a, ben);
+  const G = { ton: kartTonu(a, ben) };
   const h = hamle(a, { renkler });
   const M = d ? miniHarita(d, ben, now) : null;
   const odak = a.ust_adim != null ? a.ust_adim : a.no;
@@ -84,6 +79,19 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
     </div>
   );
 }
+
+
+/** Kartın cümlesi: KİM + NE + NE ZAMAN, "Sen" 2. tekil kişiyle çekimli, tarih satır sonunda bölünmez (detayda da kullanılır). */
+export function kartCumlesi(a: any, ben: string): string {
+  const bitis = BITTI(a.durum) ? null : a.son_tarih || a.en_erken_bitis || null;
+  const G = gorevCumlesi({ ...a, bitis }, { gun: (x) => gunAy(tarihMs(x)), kisa: (x) => (x === ben ? 'Sen' : kisaAd(x)) });
+  // "Sen" ile çekim: 2. tekil kişi eki ("netleştirmelisin", "netleştiriyorsun", "netleştirdin")
+  const c0 = G.cumle.replace(', Sen onaylayacak', ', sen onaylayacaksın').replace('Sen’in onayını bekliyor', 'onayını bekliyor').replace('Sen’in onayını', 'onayını');
+  const c1 = c0.startsWith('Sen ') ? senEki(c0) : c0.replace(/: Sen(,|$| ·)/, ': sende$1').replace(/: Sen bitirdi$/, ': bitirdin');
+  // Berkin 16:55: satır sonu tarih ortasından bölünmesin ("2 Kas’a kadar" bir arada)
+  return c1.replace(/(\d{1,2}) ([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2}(?:’[a-zçğıöşü]+)?)( kadar)?/g, (_m, g, a, k) => `${g}\u00A0${a}${k ? '\u00A0kadar' : ''}`);
+}
+export const kartTonu = (a: any, ben: string) => gorevCumlesi({ ...a, bitis: BITTI(a.durum) ? null : a.son_tarih || a.en_erken_bitis || null }, { gun: (x) => x, kisa: (x) => (x === ben ? 'Sen' : x) }).ton;
 
 /** "Sen kapsamı netleştirmeli" → "Kapsamı netleştirmelisin". */
 export function senEki(c: string): string {
