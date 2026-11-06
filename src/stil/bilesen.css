@@ -523,6 +523,11 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .dongu-gemi { transform-box: fill-box; transform-origin: center; animation: gemi 4s ease-in-out infinite alternate; }
 @keyframes gemi { from { transform: translate(0, -1.5px) rotate(-3deg); } to { transform: translate(0, 1.5px) rotate(3deg); } }
 /* lejant satırından vurgu: dört kez yanıp söner; azaltılmış harekette sabit halka */
+.dongu-don { transform-box: view-box; transform-origin: 0 0; animation: halka-don 9s linear infinite; }
+.dongu-nabiz { transform-box: fill-box; transform-origin: center; animation: beyaz-nabiz 1.6s ease-in-out infinite alternate; }
+@keyframes beyaz-nabiz { from { opacity: .35; transform: scale(.94); } to { opacity: .95; transform: scale(1.04); } }
+.dongu-zipla { animation: zipla 1.1s ease-in-out infinite alternate; }
+@keyframes zipla { from { transform: translateY(0); } to { transform: translateY(-3px); } }
 .dongu-parla { animation: parla .6s ease-in-out 4 alternate both; }
 @keyframes parla { from { opacity: .15; } to { opacity: 1; } }
 .lejant-cift { display: flex; align-items: center; gap: 4px; }
@@ -534,7 +539,7 @@ button.genis-baslik { border: 0; background: none; padding: 0; text-align: left;
 .dongu-tac { animation: tac-nabiz 1.8s ease-in-out infinite alternate; }
 @keyframes tac-nabiz { from { opacity: .6; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) {
-  .dongu-parla, .dongu-tac, .dongu-halka, .dongu-halka.ic, .dongu-fener, .dongu-firtina, .dongu-simsek, .dongu-gemi,   .gezegen-hedef { transition: none; }
+  .dongu-parla, .dongu-tac, .dongu-don, .dongu-nabiz, .dongu-zipla, .dongu-halka, .dongu-halka.ic, .dongu-fener, .dongu-firtina, .dongu-simsek, .dongu-gemi,   .gezegen-hedef { transition: none; }
 }
 /* evren yakınlaşınca: çizgiler ölçekle kalınlaşmaz; yakında halka yazıları (ay adları) çekilir */
 .evren-olcekli * { vector-effect: non-scaling-stroke; }
@@ -1320,3 +1325,4 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gd-bas-kart .gd-bas.z-ust { margin-top: 16px; }
 .gd-bas.z-ust::before { top: -16px; height: 25px; }
 .gd-bas.z-alt::after { top: 43px; bottom: 0; }
+.lejant-alt-baslik small { text-transform: none; letter-spacing: 0; font-weight: 550; }

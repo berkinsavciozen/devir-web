@@ -54,6 +54,9 @@ function defs() {
   <radialGradient id="pAmber" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFF0CF"/><stop offset=".38" stop-color="#FFC56B"/><stop offset=".8" stop-color="#C9792F"/><stop offset="1" stop-color="#6E3F27"/></radialGradient>
   <radialGradient id="glowBlue"><stop offset="0" stop-color="#D6E6FF" stop-opacity=".85"/><stop offset=".4" stop-color="#8FB4FF" stop-opacity=".3"/><stop offset="1" stop-color="#8FB4FF" stop-opacity="0"/></radialGradient>
   <radialGradient id="glowMint"><stop offset="0" stop-color="#D4FFE2" stop-opacity=".95"/><stop offset=".4" stop-color="#7BF0A0" stop-opacity=".4"/><stop offset="1" stop-color="#7BF0A0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowBeyaz"><stop offset="0" stop-color="#FFF6E0" stop-opacity=".9"/><stop offset=".4" stop-color="#FFF6E0" stop-opacity=".28"/><stop offset="1" stop-color="#FFF6E0" stop-opacity="0"/></radialGradient>
+  <radialGradient id="glowAlarm"><stop offset="0" stop-color="#FF5A5A" stop-opacity=".7"/><stop offset=".45" stop-color="#FF5A5A" stop-opacity=".22"/><stop offset="1" stop-color="#FF5A5A" stop-opacity="0"/></radialGradient>
+  <radialGradient id="pKrem" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#FFF6E0"/><stop offset=".85" stop-color="#E8DCC6"/><stop offset="1" stop-color="#B9AE9E"/></radialGradient>
   <radialGradient id="pBlock" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFB7A3"/><stop offset=".45" stop-color="#E26F72"/><stop offset="1" stop-color="#6A2754"/></radialGradient>
   <radialGradient id="shade" cx=".78" cy=".8" r=".75"><stop offset="0" stop-color="#1A0F3A" stop-opacity=".55"/><stop offset=".6" stop-color="#1A0F3A" stop-opacity=".12"/><stop offset="1" stop-color="#1A0F3A" stop-opacity="0"/></radialGradient>
   <linearGradient id="flame" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFE6A0"/><stop offset=".5" stop-color="#FF9F7A" stop-opacity=".8"/><stop offset="1" stop-color="#FF7A8A" stop-opacity="0"/></linearGradient>
@@ -155,98 +158,92 @@ function flag(r, ang, col = '#FFD27A') {
 // Durum kanalları (2 Kas, plan 27 Eki 3.A'yı günceller): bitti parlak yeşil gövde + tik, sürüyor mavi gövde + dönen yay, sırası geldi kehribar gövde + halka, sırada karanlık,
 // engelli fırtına, atlandı kesik çizgi ve üstü çizili, ertelendi soluk ve saatli.
 /** Bitti rozeti: sağ altta koyu daire içinde yeşil tik (gri tonlamada da okunur). */
-function tik(r, mini) {
-  const k = mini ? Math.max(2.2, r * .55) : Math.max(3.4, r * .42), cx = r * .72, cy = r * .72;
-  return `<g transform="translate(${f(cx)},${f(cy)})"><circle r="${f(k)}" fill="#08222E" stroke="#7BF0A0" stroke-width="${mini ? .7 : 1}"/><path d="M${f(-k * .5)},${f(0)} L${f(-k * .1)},${f(k * .4)} L${f(k * .52)},${f(-k * .38)}" fill="none" stroke="#7BF0A0" stroke-width="${f(Math.max(.9, k * .32))}" stroke-linecap="round" stroke-linejoin="round"/></g>`;
+/**
+ * W7 (6 Kas, lejant "Kimin Hamlesi"): gövde renksizdir, durumu ışık söyler. Bitti tam yanık beyaz, sürüyor yarım yanık
+ * ve döner, sırası geldi nabız atan beyaz halka, sırada karanlık, ertelendi küçük gri saatli, atlandı silik ve üstü çizik.
+ * Kırmızı tek istisna: engel (çatlak ve kırmızı ışık). Renk yalnız kişiyi söyler: o.halka (tek renk ya da renk dizisi)
+ * gövdenin çevresinde kişinin halkasıdır. Hamle damlası ve sonuç rozeti çağıran tarafta (yol.js, hamle.ts).
+ * Eski işaretler (bayrak, kıvılcım, flama, kehribar halka) kalktı; o.karar, o.oto yok sayılır.
+ */
+const ALARM_R = '#FF5A5A', KREM = '#FFF6E0';
+function kisiHalkasi(r, h, o = {}) {
+  if (!h) return '';
+  const R = r + (o.mini ? 2.2 : 3.2), w = o.mini ? 1.4 : 2.2, L = Array.isArray(h) ? h : [h];
+  if (L.length === 1) return `<circle r="${f(R)}" fill="none" stroke="${L[0]}" stroke-width="${w}" opacity="${o.sonuk ? .5 : 1}"/>`;
+  const n = L.length, bos = .28;
+  return L.map((c, i) => {
+    const a0 = -Math.PI / 2 + i * 2 * Math.PI / n + bos / 2, a1 = a0 + 2 * Math.PI / n - bos;
+    return `<path d="M${f(Math.cos(a0) * R)},${f(Math.sin(a0) * R)} A${f(R)},${f(R)} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${f(Math.cos(a1) * R)},${f(Math.sin(a1) * R)}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linecap="round"/>`;
+  }).join('');
 }
+/** Sonuç rozeti (bitende, sağ altta): tik, belge ya da terazi; krem disk, koyu simge. */
+function sonucRozeti(r, tur = 'tik', mini) {
+  const k = mini ? Math.max(2.2, r * .55) : Math.max(3.6, r * .42), s = k / 4.2;
+  const ic = tur === 'belge'
+    ? `<path d="M${f(-2 * s)},${f(-2.8 * s)} H${f(1 * s)} L${f(2.2 * s)},${f(-1.6 * s)} V${f(2.8 * s)} H${f(-2 * s)}Z" fill="none" stroke="#08222E" stroke-width="${f(.9 * s)}" stroke-linejoin="round"/>`
+    : tur === 'terazi'
+      ? `<path d="M0,${f(-3 * s)} V${f(2.6 * s)} M${f(-2.4 * s)},${f(2.6 * s)} H${f(2.4 * s)} M${f(-3 * s)},${f(-1.6 * s)} H${f(3 * s)}" stroke="#08222E" stroke-width="${f(.9 * s)}" stroke-linecap="round"/>`
+      : `<path d="M${f(-2.2 * s)},0 L${f(-.5 * s)},${f(1.8 * s)} L${f(2.4 * s)},${f(-1.8 * s)}" fill="none" stroke="#08222E" stroke-width="${f(1.3 * s)}" stroke-linecap="round" stroke-linejoin="round"/>`;
+  return `<g transform="translate(${f(r * .74)},${f(r * .74)})"><circle r="${f(k)}" fill="${KREM}" stroke="#08222E" stroke-width="${mini ? .6 : .9}"/>${ic}</g>`;
+}
+function tik(r, mini) { return sonucRozeti(r, 'tik', mini); }
+function krater(r) { return `<ellipse cx="${f(r * .25)}" cy="${f(r * .3)}" rx="${f(r * .2)}" ry="${f(r * .13)}" fill="#1E1946" opacity=".7"/><ellipse cx="${f(-r * .35)}" cy="${f(r * .05)}" rx="${f(r * .12)}" ry="${f(r * .08)}" fill="#1E1946" opacity=".7"/>`; }
 function planetGovde(x, y, r, state, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})">`;
+  const hk = (sonuk) => kisiHalkasi(r, o.halka, { mini: o.mini, sonuk });
   if (state === 'ertele') {
-    s += `<g opacity=".45"><circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-width="1"/></g>`;
-    const k = Math.max(3.2, r * .62);
-    s += `<g transform="translate(${f(r * .78)},${f(-r * .78)})"><circle r="${f(k)}" fill="#08222E" stroke="#BFB0E0" stroke-width="1"/><path d="M0,${f(-k * .55)} V0 L${f(k * .45)},${f(k * .2)}" fill="none" stroke="#BFB0E0" stroke-width="1" stroke-linecap="round"/></g>`;
-    return s + '</g>';
-  }
-  if (state === 'run') {
-    // sürüyor (2 Kas): mavi gövde ve dönen çeyrek yay (yeşil yalnız tamam)
-    const rr = r + (o.mini ? 2.4 : 4.5), c = 2 * Math.PI * rr;
-    s += `<circle r="${f(r * 2)}" fill="url(#glowBlue)" opacity=".45"/>`;
-    s += `<circle r="${f(rr)}" fill="none" stroke="#8FB4FF" stroke-width="${o.mini ? .8 : 1}" opacity=".4"/>`;
-    s += `<g class="dongu-halka"><circle r="${f(rr)}" fill="none" stroke="#DCE8FF" stroke-width="${o.mini ? 1.4 : 2.2}" stroke-linecap="round" stroke-dasharray="${f(c * .28)} ${f(c * .72)}"/></g>`;
-    s += `<circle r="${f(r)}" fill="url(#pRun)" stroke="#E6EEFF" stroke-opacity=".7" stroke-width="1"/>`;
-    if (o.mini) return s + '</g>';
-    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".7"/>`;
-    if (o.life !== false) s += house(r, -15, true) + tree(r, 24, false);
-    if (o.karar) s += flag(r, 40);
-    return s + '</g>';
+    const rr = r * .78;
+    s += `<circle r="${f(rr)}" fill="#3B4258" stroke="#9AA3B5" stroke-width="1" opacity=".8"/>`;
+    s += `<path d="M0,${f(-rr * .55)} V0 L${f(rr * .42)},${f(rr * .25)}" fill="none" stroke="#D6DCE8" stroke-width="${o.mini ? .9 : 1.2}" stroke-linecap="round"/>`;
+    return s + kisiHalkasi(rr, o.halka, { mini: o.mini, sonuk: true }) + '</g>';
   }
   if (state === 'ghost') {
-    s += `<circle r="${f(r)}" fill="#2A2452" fill-opacity=".35" stroke="#A99BDB" stroke-width="1.2" stroke-dasharray="2 3" opacity=".8"/>`;
-    // atlandı (plan 27 Eki, 3.10): kesik çizgi + gezegenin üstünü çizen çapraz çizik
-    s += `<path d="M${f(-r * .78)},${f(r * .78)} L${f(r * .78)},${f(-r * .78)}" stroke="#A99BDB" stroke-width="1.3" stroke-linecap="round" opacity=".85"/>`;
+    const rr = r * .82;
+    s += `<circle r="${f(rr)}" fill="none" stroke="#9AA3B5" stroke-width="1.1" stroke-dasharray="2 2.5" opacity=".75"/>`;
+    s += `<path d="M${f(-rr * .7)},${f(rr * .7)} L${f(rr * .7)},${f(-rr * .7)}" stroke="#9AA3B5" stroke-width="1.2" stroke-linecap="round" opacity=".8"/>`;
     return s + '</g>';
   }
   if (state === 'lit') {
-    // bitti (2 Kas, Berkin: parlak yeşil + yeşil tik): koyu zeminden ayrılan parlak yeşil gövde, nane ışığı ve sağ altta tik rozeti
-    s += `<circle r="${f(r * 2.6)}" fill="url(#glowMint)" opacity=".85"/>`;
-    if (o.ring) s += `<ellipse rx="${f(r * 1.6)}" ry="${f(r * .38)}" fill="none" stroke="#FFD9B8" stroke-width="1.4" opacity=".55" transform="rotate(-14)"/>`;
-    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pGreen'})"/>`;
-    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".6"/>`;
-    s += `<path d="M${f(-r * .62)},${f(-r * .38)} A${f(r * .78)},${f(r * .78)} 0 0 1 ${f(-r * .05)},${f(-r * .78)}" stroke="#FFFFFF" stroke-opacity=".6" stroke-width="${f(Math.max(1, r * .09))}" fill="none" stroke-linecap="round"/>`;
-    if (!o.mini) {
-      const rr = rng(Math.round(x * 7 + y * 3));
-      for (let i = 0; i < Math.max(3, Math.round(r / 5)); i++) {
-        const a = rr() * Math.PI * 2, d = r * (.25 + rr() * .55);
-        s += `<circle cx="${f(Math.cos(a) * d)}" cy="${f(Math.sin(a) * d)}" r="${f(Math.max(.7, r * .05))}" fill="#F2FFF6"/>`;
-      }
-      if (o.life !== false) {
-        s += house(r, -18, true) + tree(r, 16, true) + lamp(r, 38, true);
-        if (r > 18) s += house(r, -48, true, .8);
-      }
-    }
-    s += tik(r, o.mini);
-    if (o.karar) s += flag(r, 5);
-    if (o.moon) s += `<circle cx="${f(r * 1.45)}" cy="${f(-r * .9)}" r="${f(r * .18)}" fill="#FFF1E0"/><circle cx="${f(r * 1.45)}" cy="${f(-r * .9)}" r="${f(r * .6)}" fill="url(#glowPeach)" opacity=".6"/>`;
+    // bitti: tam yanık beyaz ışık; sağ altta sonuç rozeti
+    s += `<circle r="${f(r * 2.5)}" fill="url(#glowBeyaz)" opacity=".85"/>`;
+    s += hk();
+    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pKrem'})"/>`;
+    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".35"/>`;
+    if (!o.mini && o.life !== false) { s += house(r, -18, true) + tree(r, 16, true) + lamp(r, 38, true); if (r > 18) s += house(r, -48, true, .8); }
+    if (o.sonuc !== false) s += sonucRozeti(r, o.sonuc || 'tik', o.mini);
     return s + '</g>';
   }
-  if (state === 'dark') {
-    s += `<circle r="${f(r * 1.7)}" fill="url(#glowLilac)" opacity=".5"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-opacity="${o.kenar ? 1 : .7}" stroke-width="${o.kenar ? 1.4 : 1}"/>`;
-    s += `<ellipse cx="${f(r * .25)}" cy="${f(r * .3)}" rx="${f(r * .2)}" ry="${f(r * .13)}" fill="#1E1946" opacity=".7"/>`;
-    s += `<ellipse cx="${f(-r * .35)}" cy="${f(r * .05)}" rx="${f(r * .12)}" ry="${f(r * .08)}" fill="#1E1946" opacity=".7"/>`;
-    if (o.life !== false) s += house(r, -15, false) + tree(r, 22, false);
-    if (o.karar) s += flag(r, 5, '#8E80D6');
+  if (state === 'run') {
+    // sürüyor: yarısı yanık, ışık döner
+    s += `<circle r="${f(r * 1.9)}" fill="url(#glowBeyaz)" opacity=".4"/>`;
+    s += hk();
+    s += `<circle r="${f(r)}" fill="url(#pDark)"/>`;
+    s += `<g class="dongu-don"><path d="M0,${f(-r)} A${f(r)},${f(r)} 0 0 1 0,${f(r)} A${f(r * .45)},${f(r)} 0 0 0 0,${f(-r)}Z" fill="${KREM}"/></g>`;
+    if (!o.mini && o.life !== false) s += house(r, -15, true);
     return s + '</g>';
   }
   if (state === 'wait') {
-    // sırası geldi, sahibini bekliyor (2 Kas): kehribar gövde ve durgun kehribar halka; sürüyorla gövdesi de ayrı
-    const n = o.waitRings ?? 1;
-    for (let i = n; i >= 1; i--) {
-      s += `<circle r="${f(r + (o.mini ? 2.4 : 4.5) * i)}" fill="none" stroke="#FFB547" stroke-width="${f((o.mini ? 1.2 : 2) - (i - 1) * .4)}" opacity="${f(.95 - (i - 1) * .25)}"/>`;
-    }
-    if (o.mini) return s + `<circle r="${f(r)}" fill="url(#pAmber)"/></g>`;
-    s += `<circle r="${f(r * 2)}" fill="url(#glowGold)" opacity=".28"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pAmber)" stroke="#FFE3B0" stroke-opacity=".7" stroke-width="1"/>`;
-    s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".7"/>`;
-    s += house(r, -15, true) + tree(r, 24, false);
-    if (o.karar) s += flag(r, 40);
+    // sırası geldi: karanlık gövde, nabız atan beyaz halka, içte küçük ışık
+    s += `<circle r="${f(r + (o.mini ? 4 : 6.5))}" fill="none" stroke="${KREM}" stroke-width="${o.mini ? .9 : 1.3}" class="dongu-nabiz" opacity=".85"/>`;
+    s += hk();
+    s += `<circle r="${f(r)}" fill="url(#pDark)"/>`;
+    s += `<circle r="${f(r * .42)}" fill="${KREM}" opacity=".9"/>`;
+    if (!o.mini && o.life !== false) s += house(r, -15, false) + tree(r, 24, false);
+    return s + '</g>';
+  }
+  if (state === 'dark') {
+    s += hk();
+    s += `<circle r="${f(r)}" fill="url(#pDark)" stroke="#8E80D6" stroke-opacity="${o.kenar ? .8 : .45}" stroke-width="1"/>`;
+    if (!o.mini) s += krater(r);
+    if (!o.mini && o.life !== false) s += house(r, -15, false) + tree(r, 22, false);
     return s + '</g>';
   }
   if (state === 'block') {
-    s += `<circle r="${f(r * 2.5)}" fill="url(#glowCoral)"/>`;
-    s += `<circle r="${f(r)}" fill="url(#pBlock)"/>`;
-    // tutulma: önüne geçen karanlık ay
-    s += `<circle cx="${f(r * .42)}" cy="${f(r * .18)}" r="${f(r * .82)}" fill="#08222E" opacity=".92"/>`;
-    s += `<circle r="${f(r + 1.5)}" fill="none" stroke="#FF8A78" stroke-width="${o.mini ? 1 : 1.6}" opacity=".9"/>`;
-    if (o.mini) return s + '</g>';
-    s += house(r, -40, false, .9);
-    // fırtına bulutu + şimşek
-    const cy = -r - (o.cloudGap ?? 10), cs = Math.max(.7, r / 20);
-    s += `<g transform="translate(${f(r * .15)},${f(cy)}) scale(${f(cs)})"><g class="dongu-firtina">
-      <path d="M-15,4 Q-19,4 -19,-1 Q-19,-6 -13,-6 Q-12,-13 -4,-13 Q2,-17 8,-11 Q16,-12 16,-4 Q20,-3 19,2 Q18,5 14,5 Z" fill="#6A5A9C" stroke="#C9BAF2" stroke-width="1"/>
-      <path d="M-13,4 Q0,8 16,4" fill="none" stroke="#3E336E" stroke-width="2" opacity=".6"/>
-      <path class="dongu-simsek" d="M1,4 L-4,13 L1,13 L-3,22 L7,10 L2,10 L6,4Z" fill="#FFD27A" stroke="#FF8A78" stroke-width=".8"/>
-    </g></g>`;
+    // engel: tek renkli istisna; kırmızı ışık ve çatlak
+    s += `<circle r="${f(r * 2.5)}" fill="url(#glowAlarm)"/>`;
+    s += hk();
+    s += `<circle r="${f(r)}" fill="url(#pDark)"/>`;
+    s += `<path d="M${f(-r * .2)},${f(-r * .95)} L${f(r * .15)},${f(-r * .1)} L${f(-r * .25)},${f(r * .2)} L${f(r * .2)},${f(r * .95)}" fill="none" stroke="${ALARM_R}" stroke-width="${o.mini ? 1.2 : f(Math.max(1.6, r * .16))}" stroke-linejoin="round" stroke-linecap="round"/>`;
     return s + '</g>';
   }
   return s + '</g>';
@@ -515,8 +512,6 @@ function onayFlamasi(r, mini) {
   return `<g class="onay-flama" transform="rotate(-28)"><g transform="translate(0,${f(-r + 1)})"><rect x="-.8" y="${f(-h)}" width="1.6" height="${f(h)}" fill="#FFF1E2"/><path d="M.8,${f(-h)} H${f(h * .9)} L${f(h * .62)},${f(-h + h * .22)} L${f(h * .9)},${f(-h + h * .44)} H.8Z" fill="${ONAY_RENK}" stroke="#08222E" stroke-width="${mini ? .7 : 1}"/><g transform="translate(${f(h * .4)},${f(-h + h * .22)})"><path d="M${f(-h * .19)},0 Q0,${f(-h * .16)} ${f(h * .19)},0 Q0,${f(h * .16)} ${f(-h * .19)},0Z" fill="#08222E"/><circle r="${f(Math.max(.6, h * .065))}" fill="#FFF1E2"/></g></g></g>`;
 }
 function planet(x, y, r, state, o = {}) {
-  const s = planetGovde(x, y, r, state, o);
-  if (!o.oto) return s;
-  return s.replace(/<\/g>$/, (o.oto === 'bakilacak' ? onayFlamasi(r, o.mini) : aiRozet(r, o.oto, o.mini)) + '</g>');
+  return planetGovde(x, y, r, state, o);
 }
-export { onayFlamasi, ONAY_RENK, destekGemisi, kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
+export { sonucRozeti, kisiHalkasi, onayFlamasi, ONAY_RENK, destekGemisi, kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
