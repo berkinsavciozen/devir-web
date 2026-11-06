@@ -490,7 +490,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <button type="button" className="bolum-ipucu" style={{ top: TD.ipucuY }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: TD.bolumY }}>{ad}</h2>
       {B.dugum}
-      {kutuNo != null && byNo.get(kutuNo) && <HaritaKutusu key={kutuNo} a={byNo.get(kutuNo)} kod={kod} ben={sahip}
+      {kutuNo != null && byNo.get(kutuNo) && <HaritaKutusu key={kutuNo} a={byNo.get(kutuNo)} d={d} kod={kod} ben={sahip}
         acikAlt={(d.adimlar as any[]).filter((z) => z.ust_adim === kutuNo && !['tamam', 'atlandi', 'ertelendi'].includes(z.durum)).length}
         ayrinti={() => ac(kutuNo)} kapat={() => setKutuNo(null)} style={{ left: 16, right: 16, top: bolge.y + bolge.h + 6, transform: 'translateY(-100%)' }} />}
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />

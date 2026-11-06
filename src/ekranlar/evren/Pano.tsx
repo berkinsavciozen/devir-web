@@ -19,8 +19,12 @@ import { kucukGalaksi } from './Evren';
 import { aralikMetni, hedefEtiketi, KararSeridi, oncelikliAkis, seritYuksekligi, sutunEni } from '../../bilesen/KararSeridi';
 import { DurumNotu, type VeriDurumu } from '../../bilesen/VeriDurumu';
 import { GorevAdi, ustAdi } from '../../bilesen/Kirinti';
+import { GorevKart } from '../../bilesen/GorevKart';
+import { simdi } from '../../api/ortam';
 
 const SATIR = 60, ARA = 8, EN = 6;
+/** W4: görev satırı (GorevKart) iki satırlık cümleye göre */
+const GSATIR = 84;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
 /** Bölüm sayıları: akış ve katılımcı satırları en çok bu kadar (ötesi "Bütün akışlar"ta). */
@@ -33,7 +37,7 @@ export function panoYerlesimi(P: PanoV, n: number, y0: number, hareket = 0, seri
   const cumle = doluSatir(P.cumle, 350, '17.5px Caladea', 4);
   // karar şeridi cümlenin altında (yüksekliği ölçülür; ölçülmeden önce tahmin)
   const cY = y0 + 66, kY = cY - 9 + cumle.length * 23, sY = cY + (cumle.length - 1) * 23 + 22 + (seritH ? seritH + 10 : 0), lY = sY + (P.suzgecler.length ? 56 : 0);
-  const satir = Math.min(n, EN), aY = lY + (satir ? satir * (SATIR + ARA) : 40) + 8;
+  const satir = Math.min(n, EN), aY = lY + (satir ? satir * (GSATIR + ARA) : 40) + 8;
   let alt = aY + 44 - 24;
   const bolum = (k: number) => { if (!k) return 0; const y = alt + 48; alt = y + 30 + k * (SATIR + ARA) - ARA; return y; };
   const akY = bolum(Math.min(akis, AKIS_EN)), dY = bolum(Math.min(katilimci, KATILIMCI_EN));
@@ -98,16 +102,14 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
           </div>
         )}
         {liste.length ? <div role="list" aria-label="Bekleyen işler">{liste.slice(0, EN).map((a, i) => {
-          const y = Y.lY + i * (SATIR + ARA), son = a.son ? gunAy(tarihMs(a.son)) : null;
-          const kim = a.sahip === ben ? 'Sende' : a.sahip.replace(/\s*\(.*\)$/, '');
-          const alt = [ad(a.kod), kim, a.tuttugu ? `${a.tuttugu} adımı tutuyor` : null, son].filter(Boolean).join(' · ');
-          const durumIkon = planet(0, 0, 4.5, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 0, life: false, karar: a.karar });
-          const ikon = miniHarita[a.kod] ? `${miniHarita[a.kod]}<g transform="translate(11,11)"><circle r="6.5" fill="#061A24"/>${durumIkon}</g>` : planet(0, 0, 9, a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 1, life: false, karar: a.karar });
+          const y = Y.lY + i * (GSATIR + ARA);
+          // W4: tek görev bileşeni; adımın tam kaydı akış detayından (AI durumu, karar, tarih)
+          const tam = (detay[a.kod]?.adimlar || []).find((x: any) => x.no === a.no) || a;
           return (
-            <div role="listitem" key={a.kod + a.no} style={{ display: 'contents' }}><button type="button" className="kart satir-kart pano-satir" style={{ left: 20, right: 20, top: y, height: SATIR }} title={a.ad} onClick={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)} {...vurguOlay(a.kod)}>
-              <svg aria-hidden className="pano-ikon" width="36" height="36" viewBox="-18 -18 36 36" dangerouslySetInnerHTML={{ __html: ikon }} />
-              <span className="satir-metin" style={{ left: 52, right: 16 }}><b><GorevAdi ad={adimEkranAdi(a)} ust={ustAdi(a, detay[a.kod]?.adimlar)} /></b><small>{alt}</small></span>
-            </button></div>
+            <div role="listitem" key={a.kod + a.no} style={{ display: 'contents' }} {...vurguOlay(a.kod)}>
+              <GorevKart a={{ ...tam, sahip: tam.sahip || a.sahip }} d={detay[a.kod]} ben={ben} now={simdi()} akisAdi={ad(a.kod)} style={{ position: 'absolute', left: 20, right: 20, top: y, height: GSATIR }}
+                ac={() => git(`/akis/${encodeURIComponent(a.kod)}/adim/${a.no}`)} />
+            </div>
           );
         })}</div> : durum === 'kismi' || durum === 'hata' || durum === 'yukleniyor'
           ? <DurumNotu durum={durum} y={Y.lY + 6} yeniden={yeniden} />
