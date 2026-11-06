@@ -15,6 +15,8 @@ import { useAkis } from './Galaksi';
 import { ilerleme } from '../../api/ilerleme';
 import { GorevAdi } from '../../bilesen/Kirinti';
 import { AkisYonetSatiri, yonetY } from './AkisYonet';
+import { GorevKart } from '../../bilesen/GorevKart';
+import { simdi } from '../../api/ortam';
 
 // Akış bilgisi (denetim bulgusu: haritada olmayan liste görünümü) ve kişi sayfası. Tasarımda ayrı ekranları yok;
 // K satır kartlarıyla, B4'teki gezegen dilinde (CELISKILER 56).
@@ -29,6 +31,8 @@ export type AkisSuzgec = (typeof FILTRE_KOD)[number];
 /** Eski sekme adresleri (?sekme=kararlar) süzgece düşer; kişiler şeritlerde ve menüde. */
 const ESKI_SEKME: Record<string, AkisSuzgec> = { adimlar: 'hepsi', kararlar: 'karar', ciktilar: 'cikti', kisiler: 'hepsi' };
 const SATIR = 66;
+/** görev kartlı satır (iki satırlık cümle) */
+const SATIR_KART = 74;
 
 export const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
 /** Satırda karar ve çıktı işaretleri (N17): bayrak = karar adımı, sayfa = çıktısı var (sayısıyla). */
@@ -63,7 +67,7 @@ const dosyaIkon = (h = 58) => `<g transform="translate(28,${h / 2})"><path d="M-
 
 /** Bir sütun satır kartı ve bölüm başlıkları; dönen y sonraki boş yer. */
 /** girinti: alt görev satırı; grup: daraltılabilir üst görev (1.2) */
-export type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; baslik?: string; sag?: ReactNode; girinti?: boolean; grup?: { acik: boolean; degis: () => void; ad: string } } | { tur: 'not'; metin: string };
+export type Oge = { tur: 'baslik'; metin: string } | { tur: 'satir'; key: string; ikon: string; ust: ReactNode; alt?: ReactNode; git?: () => void; etiket?: string; baslik?: string; sag?: ReactNode; girinti?: boolean; grup?: { acik: boolean; degis: () => void; ad: string }; kart?: { a: any; d: any; ben: string } } | { tur: 'not'; metin: string };
 export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etiket: string }) {
   let y = y0;
   const out: ReactNode[] = [];
@@ -71,13 +75,15 @@ export function Liste({ y0, ogeler, etiket }: { y0: number; ogeler: Oge[]; etike
     if (o.tur === 'baslik') { out.push(<h3 key={'b' + i} className="bolum-baslik" style={{ top: y + 6 }}>{o.metin}</h3>); y += 32; }
     else if (o.tur === 'not') { out.push(<Metin key={'n' + i} y={y + 18} fs={13.5} renk="ink3">{o.metin}</Metin>); y += 36; }
     else {
+      // W4/W6 (6 Kas): adım satırı görev bileşeniyle (her yerde aynı kart); numara yalnız ekran okuyucu etiketinde
       out.push(<div role="listitem" key={o.key} style={{ display: 'contents' }}>
-        <SatirKart y={y} x={o.girinti ? 34 : 20} sagPay={o.grup ? 72 : 20} ikon={o.ikon} ust={o.ust} alt={o.alt} onClick={o.git} etiket={o.etiket} baslik={o.baslik} sag={o.sag} />
+        {o.kart ? <GorevKart a={o.kart.a} d={o.kart.d} ben={o.kart.ben} now={simdi()} ac={() => o.git?.()} etiket={o.etiket} style={{ position: 'absolute', top: y, left: o.girinti ? 34 : 20, right: o.grup ? 72 : 20 }} />
+        : <SatirKart y={y} x={o.girinti ? 34 : 20} sagPay={o.grup ? 72 : 20} ikon={o.ikon} ust={o.ust} alt={o.alt} onClick={o.git} etiket={o.etiket} baslik={o.baslik} sag={o.sag} />}
         {o.grup && <button type="button" className="grup-ac" style={{ top: y + 7 }} aria-expanded={o.grup.acik} aria-label={`${o.grup.ad}: alt görevleri ${o.grup.acik ? 'daralt' : 'aç'}`} onClick={o.grup.degis}>
           <svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16"><path d={o.grup.acik ? 'M-5,-2 L0,3 L5,-2' : 'M-2,-5 L3,0 L-2,5'} fill="none" stroke="#D9CCFF" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>}
       </div>);
-      y += SATIR;
+      y += o.kart ? SATIR_KART : SATIR;
     }
   });
   return { dugum: <div role="list" aria-label={etiket}>{out}</div>, y };
@@ -151,7 +157,7 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
     zincir = L.length > 1;
     const degis = (no: number) => setDar((s) => { const y = new Set(s); if (y.has(no)) y.delete(no); else y.add(no); return y; });
     ogeler = L.length ? L.map((a): Oge => {
-      const o = adimSatir(a) as Extract<Oge, { tur: 'satir' }>;
+      const o = { ...(adimSatir(a) as Extract<Oge, { tur: 'satir' }>), kart: { a, d, ben } };
       // alt görev üstünün altında girintili; üstü süzgeçte yoksa kırıntıyla kendi yerinde
       if (a.ust_adim != null) return var0.has(a.ust_adim) ? { ...o, girinti: true } : { ...o, ust: <GorevAdi ad={`${a.no}. ${adimAdi(a)}`} ust={adimAdi(ustOf(a))} /> };
       return L0.some((x) => x.ust_adim === a.no) ? { ...o, grup: { acik: !dar.has(a.no), degis: () => degis(a.no), ad: adimAdi(a) } } : o;
@@ -160,7 +166,8 @@ export function useAkisBolumu({ d, kod, ben, y0, adres, en }: { d: any; kod: str
   const L = Liste({ y0: ly, ogeler, etiket: 'Adımlar' });
   // zincir rayı: ardışık satırların gezegenlerini bağlar (kartların arasından görünür)
   const satirSayisi = ogeler.filter((o) => o.tur === 'satir').length;
-  const ray = zincir ? <svg aria-hidden className="zincir-ray" style={{ top: ly + 29, height: (satirSayisi - 1) * 66 }} width="4" viewBox={`0 0 4 ${(satirSayisi - 1) * 66}`} preserveAspectRatio="none" dangerouslySetInnerHTML={{ __html: (ogeler as any[]).slice(0, -1).map((o, i) => `<rect x="1" y="${i * 66}" width="2" height="66" fill="${zincirRenk(o)}"/>`).join('') }} /> : null;
+  const RA = ogeler.some((o) => o.tur === 'satir' && o.kart) ? SATIR_KART : SATIR;
+  const ray = zincir ? <svg aria-hidden className="zincir-ray" style={{ top: ly + RA / 2 - 4, height: (satirSayisi - 1) * RA }} width="4" viewBox={`0 0 4 ${(satirSayisi - 1) * RA}`} preserveAspectRatio="none" dangerouslySetInnerHTML={{ __html: (ogeler as any[]).slice(0, -1).map((o, i) => `<rect x="1" y="${i * RA}" width="2" height="${RA}" fill="${zincirRenk(o)}"/>`).join('') }} /> : null;
   return {
     sec, ad: 'Adımlar', y: L.y + 12 + yonetY(d),
     dugum: (

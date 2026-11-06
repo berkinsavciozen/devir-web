@@ -9,7 +9,7 @@ import { C, planet, ship } from '../../cizim/ortak.js';
 import { gunAy, gunAyHafta, kisaAd, otoRozet, saat } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, tarihEk } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
-import { adimCumlesi, AdimGecmis, Ciktilar, IHLAL_IPUCU, isPayi, sureKisa, takvimIhlali, tuttuklari } from './Adim';
+import { AdimGecmis, Ciktilar, isPayi, sureKisa, takvimIhlali, tuttuklari } from './Adim';
 import { BaglantiSatiri } from './BaglantiGonder';
 import { EylemCubugu } from './EylemCubugu';
 import { ajanMi, BITTI, ciktiCumlesi, eylemPlani, otoDurumCumlesi, otoUygun } from './eylemler';
@@ -45,8 +45,16 @@ export function kaydirmaPayi(a: any, ardil: any, by: Map<number, any>): number |
   return oteki.length ? Math.max(0, Math.floor((Math.max(...oteki) - bu) / GUN)) : 0;
 }
 
-function Bolum({ baslik, children, id }: { baslik: string; children: ReactNode; id?: string }) {
-  return <section className="gd-bolum" aria-label={baslik} id={id}><h3 className="gd-bolum-baslik">{baslik}</h3>{children}</section>;
+// bölüm simgeleri (NE · NEDEN · NE ZAMAN): aynı çizgi dili, lila
+const BOLUM_IKON: Record<string, string> = {
+  ne: '<circle r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><circle r="2.4" fill="currentColor"/>',
+  neden: '<path d="M-6,4 L0,-5 L6,4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cy="-5" r="1.8" fill="currentColor"/>',
+  zaman: '<circle r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M0,-4 V0 L3,2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+};
+/** Tek bölüm bileşeni (W5 ikinci tur): her bölüm aynı kart, aynı başlık. */
+function Bolum({ baslik, children, id, ikon }: { baslik: string; children: ReactNode; id?: string; ikon?: keyof typeof BOLUM_IKON }) {
+  return <section className={`gd-bolum gd-kart${ikon ? ` gd-kart-${ikon}` : ''}`} aria-label={baslik} id={id}>
+    <h3 className="gd-bolum-baslik">{ikon && <svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16" dangerouslySetInnerHTML={{ __html: BOLUM_IKON[ikon] }} />}{baslik}</h3>{children}</section>;
 }
 
 /**
@@ -135,8 +143,6 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const tetikYok = !!tetikler.data && !(tetikler.data.tetikler || []).length;
   const ihlal = takvimIhlali(A);
   const otoC = otoDurumCumlesi(A, { ben, tetikYok, sorular: d.acik_sorular, by, zaman: (ms) => (new Date(ms).toDateString() === new Date().toDateString() ? saat(ms) : `${gunAy(ms)} ${saat(ms)}`), ek: (t) => tarihEk(t, 'de'), kisa: (x) => (ajanMi(x) ? x : kisaAd(x)) });
-  const cumle = otoC || [adimCumlesi(A, ben), ciktiCumlesi(A, ben)].filter(Boolean).join(' ');
-  const bekledigi: number[] = (A.bekledigi || []).filter((b: any) => !BITTI(b.durum)).map((b: any) => b.no);
   // kim: sahip + iş payı (kim ne kadar yazdı)
   const pay = isPayi(A.olaylar).filter((p) => p.ad !== A.sahip);
   const tip = A.sahip === ben ? 'sen' : sahipAjan ? 'AI agent' : A.sahip_tip === 'dis' ? 'dış katılımcı' : 'ekip';
@@ -162,31 +168,42 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   // alt görevler aynı sayfada akordiyon (plan 28 Eki, B5): bütün yönetimi içinde; ayrı sayfa yok
   const altAkordiyon = (z: any) => <AltGorev key={z.no} kod={kod} z={z} d={d} ben={ben} ustNo={A.no} acik={secAlt === z.no} />;
 
-  const ciktiBolumu = <div id="gd-ciktilar" className="gd-bolum gd-ciktilar"><Ciktilar a={A} kod={kod} claudeGizle /></div>;
+  const ciktiBolumu = <div id="gd-ciktilar" className="gd-bolum gd-kart gd-ciktilar"><Ciktilar a={A} kod={kod} claudeGizle /></div>;
   const plan = eylemPlani({ a: A, ben, acikAlt: acikAlt.length, tetikYok });
 
-  // W5 (6 Kas, B18): Berkin'in 8 satırı. 1 başlık · 2 gezegen + görev cümlesi + sayılar, eylem · 3 tek mesaj (amaç, beklenen
-  // çıktı, kabul, koşul) · 4 doğrusal zaman çizgisi (tarih nedeni satır içinde) · 5 çıktı / karar (+ AI yapsın, alt görevler,
-  // kalemler) · 6 öncesi · 7 bekleyenler · 8 geçmiş (iş payı başında). Alt sayfa yok: tarih nedeni ve bağlantı satır içinde.
+  // W5 ikinci tur (Berkin 20:26): bölüm bölüm, hepsi aynı kart bileşeni; ilk bakışta NE yapılacak, NEDEN ve NE ZAMAN.
+  // Başlık kartı (kim, durum) · eylem · NE YAPILACAK · NEDEN (bunu bekleyenler) · NE ZAMAN (zaman çizgisi, önce bitmesi
+  // gerekenler) · karar / çıktı / AI yapsın / alt görevler / kalemler · geçmiş. Alt sayfa yok: tarih nedeni ve bağlantı satır içinde.
+  // tek ipucu cümlesi: AI durumu ya da beklenen çıktı ("…bekleniyor. Ekleyince bitirebilirsin.")
+  const ipucu = otoC || ciktiCumlesi(A, ben);
   const h = hamle(A);
   const simdiMs = simdi();
   const kc = kartCumlesi(A, ben), G = { ton: kartTonu(A, ben) };
   const adBas = adimAdi(A) + ': ';
   const gCumle = kc.startsWith(adBas) ? kc.slice(adBas.length).replace(/^./, (c) => c.toLocaleUpperCase('tr')) : kc;
-  const ozet: { b: string; k: string; ihlal?: boolean; uyari?: boolean }[] = [];
-  if (BITTI(A.durum)) ozet.push({ b: A.durum_at ? gunAy(Date.parse(A.durum_at)) : '–', k: A.durum === 'tamam' ? 'bitti' : A.durum_etiket || A.durum });
-  else ozet.push(A.son_tarih ? { b: gunAy(tarihMs(A.son_tarih)), k: ihlal ? `en erken ${gunAy(Date.parse(A.en_erken_bitis))}` : 'son tarih', ihlal } : A.en_erken_bitis ? { b: gunAy(Date.parse(A.en_erken_bitis)), k: 'en erken' } : { b: '–', k: 'tarih yok' });
-  if (A.durum === 'engelli') ozet.push({ b: sureKisa(A.bekleme_saat), k: 'engelli', uyari: true });
-  else if (A.durum === 'hazir' || A.durum === 'suruyor') ozet.push({ b: sureKisa(A.bekleme_saat), k: A.durum === 'hazir' ? 'bekliyor' : 'sürüyor' });
-  if (altGorevler.length) ozet.push({ b: altKN, k: 'alt görev' });
-  if (tut.length && !BITTI(A.durum)) ozet.push({ b: `${tut.length}`, k: tut.length === 1 ? 'görevi tutuyor' : 'görevi tutuyor' });
+  // durum hapları: tek satır, renk yalnız uyarıda
+  const haplar: { t: string; ton?: 'uyari' | 'vurgu' }[] = [];
+  if (BITTI(A.durum)) haplar.push({ t: `${A.durum === 'tamam' ? 'Bitti' : A.durum_etiket || A.durum}${A.durum_at ? ` · ${gunAy(Date.parse(A.durum_at))}` : ''}` });
+  else if (A.durum === 'engelli') haplar.push({ t: `Engelli · ${sureKisa(A.bekleme_saat)}`, ton: 'uyari' });
+  else if (A.durum === 'hazir') haplar.push({ t: `Sırası geldi · ${sureKisa(A.bekleme_saat)}`, ton: 'vurgu' });
+  else if (A.durum === 'suruyor') haplar.push({ t: `Sürüyor · ${sureKisa(A.bekleme_saat)}`, ton: 'vurgu' });
+  else haplar.push({ t: (A.durum_etiket || 'sırada').replace(/^./, (c: string) => c.toLocaleUpperCase('tr')) });
+  if (ihlal) haplar.push({ t: 'Son tarih riskte', ton: 'uyari' });
+  if (krt) haplar.push({ t: 'Kritik yol' });
+  if (A.karar_adimi) haplar.push({ t: 'Karar' });
+  if (altGorevler.length) haplar.push({ t: `${altKN} alt görev` });
   const soruOf = (k: string) => [...(d.acik_sorular || []), ...(d.sorular || [])].find((q: any) => q.kod === k);
-  const mesaj: [string, string][] = [];
-  if (A.aciklama) mesaj.push(['', A.aciklama]);
-  if (A.beklenen_cikti) mesaj.push(['Beklenen çıktı', A.beklenen_cikti]);
-  if (A.kriter) mesaj.push(['Kabul', A.kriter]);
-  if (A.kosul?.soru) mesaj.push(['Koşul', `“${soruOf(A.kosul.soru)?.soru || A.kosul.soru}” cevabı ${String(A.kosul.deger).split('|').map((x) => `“${x}”`).join(' ya da ')} olursa yapılır.`]);
-  if (A.durum === 'atlandi' || A.durum === 'ertelendi') { const n = (A.olaylar || []).find((e: any) => e.tip === 'durum' && e.durum === A.durum); mesaj.push([A.durum === 'atlandi' ? 'Atlandı' : 'Ertelendi', n?.ozet || A.durum_etiket || '']); }
+  const ne: [string, string][] = [];
+  if (A.aciklama) ne.push(['Amaç', A.aciklama]);
+  if (A.beklenen_cikti) ne.push(['Çıktı', A.beklenen_cikti]);
+  if (A.kriter) ne.push(['Bitti sayılır', A.kriter]);
+  if (A.kosul?.soru) ne.push(['Koşul', `“${soruOf(A.kosul.soru)?.soru || A.kosul.soru}” cevabı ${String(A.kosul.deger).split('|').map((x) => `“${x}”`).join(' ya da ')} olursa yapılır.`]);
+  if (A.durum === 'atlandi' || A.durum === 'ertelendi') { const n = (A.olaylar || []).find((e: any) => e.tip === 'durum' && e.durum === A.durum); ne.push([A.durum === 'atlandi' ? 'Atlandı' : 'Ertelendi', n?.ozet || A.durum_etiket || '']); }
+  // NEDEN: bu görev kimi tutuyor
+  const acikSonra = sonra.filter((z) => !BITTI(z.durum));
+  const neden0 = BITTI(A.durum) ? (sonra.length ? 'Bitti; bekleyenlerin önü açıldı.' : 'Bitti.')
+    : tut.length ? `${tut.length} görev bunun bitmesini bekliyor${krt ? '; kritik yolda, her gün gecikmesi akışın bitişini bir gün kaydırır' : ''}.`
+    : ust ? `${adimAdi(ust)} görevinin parçası; o, alt görevleri bitince tamamlanır.` : 'Bunu bekleyen başka görev yok.';
   // zaman çizgisi: başlangıç · bugün · bitiş · son tarih (yalnız bilinenler)
   const nokta: { k: string; ms: number; t: 'bas' | 'bugun' | 'bitis' | 'son' }[] = [];
   if (bas.ms) nokta.push({ k: bas.etiket === 'başladı' ? 'başladı' : bas.etiket === 'sırası geldi' ? 'sırası geldi' : 'en erken başlar', ms: bas.ms, t: 'bas' });
@@ -200,6 +217,12 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const zx = (ms: number) => (nokta.length < 2 ? 50 : 4 + 92 * ((ms - z0) / zw));
   const yukari = nokta.map(() => false);
   for (let j = 1; j < nokta.length; j++) if (!yukari[j - 1] && zx(nokta[j].ms) - zx(nokta[j - 1].ms) < 16) yukari[j] = true;
+  const ne_zaman: [string, string, boolean?][] = [];
+  if (A.son_tarih) ne_zaman.push(['Son tarih', gunAyHafta(tarihMs(A.son_tarih)) + (ihlal ? ' · en erken bitiş bunu aşıyor' : ''), ihlal]);
+  if (bitis) ne_zaman.push([BITTI(A.durum) ? 'Bitti' : 'En erken bitiş', gunAyHafta(bitis.ms)]);
+  if (A.sure_tahmin_gun && !BITTI(A.durum)) ne_zaman.push(['Süre', `${String(A.sure_tahmin_gun).replace('.', ',')} gün`]);
+  if (hp) ne_zaman.push(['Akış', hp]);
+  const acikOnce = onde.filter((z) => !BITTI(z.durum));
   const sahipAd = A.sahip === ben ? 'Sen' : sahipAjan ? A.sahip : kisaAd(A.sahip);
   const gemiKucuk = ship(0, 0, 0, sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahipDis ? '' : kisaAd(A.sahip)[0], sahipAjan ? C.lilac : C.peach, .5, { flame: false });
   const kartlar = (l: any[], not: (z: any) => string | null) => <ul className="gd-kartlar">{l.map((z) => { const n = not(z); return (
@@ -209,70 +232,77 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
     const g = kaydirmaPayi(A, z, by);
     return g == null ? null : g === 0 ? 'Bu görevin her gün gecikmesi onu bir gün kaydırır.' : `Bu görev ${g} güne kadar gecikirse onu kaydırmaz.`;
   };
+  const satirlar = (L: [string, string, boolean?][]) => <dl className="gd-satirlar">{L.map(([k, v, uy]) => <div key={k} className={uy ? 'ihlal' : undefined}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>;
 
   return (
     <div className="gd" ref={kok}>
-      {/* 1 · başlık: akış, (üst görev), sahip */}
-      <div className="gd-r1">
-        <nav className="gd-yol" aria-label="Konum">
-          <button type="button" onClick={() => git(`/akis/${encodeURIComponent(kod)}`)} aria-label={`Akış: ${d.akis.baslik || akisAdi(d.akis)}`}><i className="gd-maske" aria-hidden>{(akisAdi(d.akis) || '?')[0]}</i>{akisAdi(d.akis)}</button>
-          {ust && <><i aria-hidden>›</i><button type="button" className="gd-ust" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${ust.no}`)} aria-label={`Üst görev: ${ust.no}. ${ust.ad}`}>{adimAdi(ust)}</button></>}
-        </nav>
-        <span className="gd-r1-kim" title={`${A.sahip} · ${tip}${A.arac ? ` · ${A.arac}` : ''}`}>
-          <svg aria-hidden width="26" height="22" viewBox="-13 -11 26 22" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gemiKucuk }} />
-          <span>{sahipAd}{sahipAjan && A.agent_sahibi ? <small> · {kisaAd(A.agent_sahibi)} adına</small> : null}</span>
-        </span>
-      </div>
-
-      {/* 2 · gezegen ve gezinme, görev cümlesi, sayılar; altında eylem */}
-      <header className={`gd-bas${ust ? ' gd-bas-alt' : ''}`}>
-        <div className="gd-bas-sol">
-          <svg aria-hidden className="gd-gezegen" width="56" height="56" viewBox="-28 -28 56 56" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 12 : 19) + (altGorevler.length ? `<ellipse rx="27" ry="7" fill="none" stroke="#B9A6F2" stroke-width="1.5" stroke-opacity=".8" transform="rotate(-16)"/>` : '') + (h ? damla(h, 0, ust ? -20 : -27, .9) : '') }} />
-          <nav className="gd-gez" aria-label="Görevler arasında">
-            <button type="button" aria-label={onceki != null ? `Önceki görev: ${onceki}` : 'Önceki görev yok'} disabled={onceki == null} onClick={() => adimaGit(onceki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M3,-6 L-3,0 L3,6" /></svg></button>
-            <button type="button" aria-label={sonraki != null ? `Sonraki görev: ${sonraki}` : 'Sonraki görev yok'} disabled={sonraki == null} onClick={() => adimaGit(sonraki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-3,-6 L3,0 L-3,6" /></svg></button>
+      {/* başlık kartı: akış ve sahip; gezegen, ad, görev cümlesi; durum hapları; engel */}
+      <header className={`gd-kart gd-bas-kart${ust ? ' gd-bas-alt' : ''}`}>
+        <div className="gd-r1">
+          <nav className="gd-yol" aria-label="Konum">
+            <button type="button" onClick={() => git(`/akis/${encodeURIComponent(kod)}`)} aria-label={`Akış: ${d.akis.baslik || akisAdi(d.akis)}`}><i className="gd-maske" aria-hidden>{(akisAdi(d.akis) || '?')[0]}</i>{akisAdi(d.akis)}</button>
+            {ust && <><i aria-hidden>›</i><button type="button" className="gd-ust" onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${ust.no}`)} aria-label={`Üst görev: ${ust.no}. ${ust.ad}`}>{adimAdi(ust)}</button></>}
           </nav>
+          <span className="gd-r1-kim" title={`${A.sahip} · ${tip}${A.arac ? ` · ${A.arac}` : ''}`}>
+            <svg aria-hidden width="26" height="22" viewBox="-13 -11 26 22" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gemiKucuk }} />
+            <span>{sahipAd}</span>
+          </span>
+          <nav className="gd-gez" aria-label="Görevler arasında">
+          <button type="button" aria-label={onceki != null ? `Önceki görev: ${onceki}` : 'Önceki görev yok'} disabled={onceki == null} onClick={() => adimaGit(onceki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M3,-6 L-3,0 L3,6" /></svg></button>
+          <button type="button" aria-label={sonraki != null ? `Sonraki görev: ${sonraki}` : 'Sonraki görev yok'} disabled={sonraki == null} onClick={() => adimaGit(sonraki)}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-3,-6 L3,0 L-3,6" /></svg></button>
+          {kapat && <button type="button" aria-label="Kapat" onClick={kapat}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,-5 L5,5 M5,-5 L-5,5" /></svg></button>}
+        </nav>
         </div>
-        <div className="gd-bas-metin">
-          {ust && <span className="gd-tur">ALT GÖREV</span>}
-          {/* detayda tam ad (P1-F; satırlarda kısa ad) */}
-          <h2>{A.ad}</h2>
-          <p className={`gd-gorev-cumle ton-${G.ton}`}>{gCumle}{krt ? ' · kritik yolda' : ''}</p>
+        <div className="gd-bas">
+          <svg aria-hidden className="gd-gezegen" width="52" height="52" viewBox="-26 -26 52 52" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: gezegen(A, ust ? 12 : 17) + (altGorevler.length ? `<ellipse rx="25" ry="6.5" fill="none" stroke="#B9A6F2" stroke-width="1.5" stroke-opacity=".8" transform="rotate(-16)"/>` : '') + (h ? damla(h, 0, ust ? -20 : -25, .85) : '') }} />
+          <div className="gd-bas-metin">
+            {ust && <span className="gd-tur">ALT GÖREV</span>}
+            {/* detayda tam ad (P1-F; satırlarda kısa ad) */}
+            <h2>{A.ad}</h2>
+            <p className={`gd-gorev-cumle ton-${G.ton}`}>{gCumle}{sahipAjan && A.agent_sahibi ? ` · ${kisaAd(A.agent_sahibi)} adına` : ''}</p>
+          </div>
         </div>
-        <dl className="gd-ozet">
-          {ozet.map((o) => <div key={o.k} className={`${o.ihlal ? 'ihlal' : ''}${o.uyari ? ' uyari' : ''}`} title={o.ihlal ? IHLAL_IPUCU : undefined}><dt>{o.k}</dt><dd>{o.b}</dd></div>)}
-        </dl>
-        {kapat && <button type="button" className="gd-kapat" aria-label="Kapat" onClick={kapat}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,-5 L5,5 M5,-5 L-5,5" /></svg></button>}
+        <ul className="gd-haplar" aria-label="Durum">{haplar.map((x) => <li key={x.t} className={x.ton ? `h-${x.ton}` : undefined}>{x.t}</li>)}</ul>
+        {A.durum === 'engelli' && A.engel ? <p className="gd-engel" role="status"><b>Engel</b> {A.engel}</p>
+          : ipucu ? <p className="gd-cumle">{ipucu}</p> : null}
       </header>
-      {A.durum === 'engelli' && A.engel && <p className="gd-engel" role="status"><b>Engel</b> {A.engel}</p>}
-      {!otoC && (BITTI(A.durum) || (A.durum === 'engelli' && A.engel)) ? null : <p className="gd-cumle">{!otoC && bekledigi.length && /adım bitince başlar\.$/.test(cumle)
-        ? <>{bekledigi.map((n, j) => <span key={n}>{j ? ', ' : ''}<button type="button" className="metin-baglanti" aria-label={`${n}. görev: ${by.get(n)?.ad ?? ''}`} onClick={() => git(`/akis/${encodeURIComponent(kod)}/adim/${n}`)}>{n}</button></span>)}. görev bitince başlar.</>
-        : cumle.replace(/\badım\b/g, 'görev')}</p>}
+
       <EylemCubugu a={A} kod={kod} plan={plan} hamle={h} ciktiEkle={ciktiGirdisi} baglantiAc={() => setPaylas((x) => !x)}>
         {A.sahip === ben && acikAlt.length > 0 && <p className="gd-satir">Alt görevlerin hepsi bitince {A.karar_adimi || A.cikti_bekleniyor ? 'bu görevi sen tamamlarsın' : 'bu görev kendiliğinden tamamlanır'}.</p>}
       </EylemCubugu>
       {paylas && <BaglantiSatiri kod={kod} kisi={A.sahip} kisiId={A.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === A.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === A.sahip).length} kapat={() => setPaylas(false)} />}
 
-      {/* 3 · tek mesaj: amaç, beklenen çıktı, kabul, koşul */}
-      {mesaj.length > 0 && <section className="gd-mesaj" aria-label="Ne yapılacak">
-        {mesaj.map(([k, v]) => <p key={k || 'amac'}>{k && <b>{k}: </b>}{v}</p>)}
-      </section>}
+      {/* karar görevinde karar formu eylemin kendisi: eylemlerin hemen altında (W1) */}
+      {A.karar_adimi && <Bolum baslik="KARAR" id="gd-karar"><KararBolumu a={A} kod={kod} ben={ben} /></Bolum>}
 
-      {/* 4 · doğrusal zaman çizgisi */}
-      {nokta.length > 0 && <section className="gd-bolum gd-zaman" aria-label="Zaman">
-        <div className="gd-zaman-cizgi">
+      {/* NE · NEDEN · NE ZAMAN */}
+      <Bolum baslik="NE YAPILACAK" ikon="ne">
+        {ne.length ? satirlar(ne) : <p className="gd-satir">{adimAdi(A)}. Ayrıntı yazılmamış.</p>}
+      </Bolum>
+
+      <Bolum baslik="NEDEN" ikon="neden">
+        <p className="gd-lead">{neden0}</p>
+        {acikSonra.length > 0 && kartlar(acikSonra.slice(0, 3), ardilKisa)}
+        {acikSonra.length > 3 && <p className="gd-satir">+{acikSonra.length - 3} görev daha{dolayli > 0 ? `, ${dolayli} dolaylı` : ''}</p>}
+        {acikSonra.length <= 3 && dolayli > 0 && <p className="gd-satir">Onların ardından {dolayli} görev daha dolaylı bekliyor.</p>}
+      </Bolum>
+
+      <Bolum baslik="NE ZAMAN" ikon="zaman">
+        {nokta.length > 1 && <div className="gd-zaman-cizgi" aria-hidden>
           <span className="gd-zaman-yol" style={{ left: `${zx(nokta[0].ms)}%`, right: `${100 - zx(nokta[nokta.length - 1].ms)}%` }} />
           {nokta.map((n, j) => <span key={n.t} className={`gd-zaman-nokta z-${n.t}${n.t === 'son' && ihlal ? ' ihlal' : ''}${yukari[j] ? ' alt' : ''}`} style={{ left: `${zx(n.ms)}%` }}>
-            <i aria-hidden /><b>{n.t === 'bugun' ? 'Bugün' : gunAy(n.ms)}</b><small>{n.t === 'bugun' ? '' : n.k}</small>
+            <i /><b>{n.t === 'bugun' ? 'Bugün' : gunAy(n.ms)}</b><small>{n.t === 'bugun' ? '' : n.k}</small>
           </span>)}
-        </div>
-        <p className="gd-satir">{[A.sure_tahmin_gun ? `Süre ${String(A.sure_tahmin_gun).replace('.', ',')} gün` : null, hp ? `Akış: ${hp}` : null, ihlal ? 'En erken bitiş son tarihi aşıyor' : null].filter(Boolean).join(' · ')}
-          {d.bitis && !BITTI(A.durum) && <> <button type="button" className="metin-baglanti gd-neden" aria-expanded={neden} onClick={() => setNeden(!neden)}>{neden ? 'Gizle' : 'Bu tarih neden?'}</button></>}</p>
+        </div>}
+        {ne_zaman.length > 0 ? satirlar(ne_zaman) : <p className="gd-satir">{BITTI(A.durum) ? '–' : 'Önündeki görevler bitince tarih belli olur.'}</p>}
+        {d.bitis && !BITTI(A.durum) && <button type="button" className="metin-baglanti gd-neden" aria-expanded={neden} onClick={() => setNeden(!neden)}>{neden ? 'Gizle' : 'Bu tarih neden?'}</button>}
         {neden && d.bitis && <div className="gd-satir-ici"><TarihNedenIcerik b={d.bitis} oz={d.akis?.karar_ozeti} adimlar={d.adimlar} adimaGit={(n) => { setNeden(false); adimaGit(n); }} /></div>}
-      </section>}
+        {onde.length > 0 && <>
+          <h4 className="gd-alt-baslik">{acikOnce.length ? `Önce bunlar bitmeli · ${onde.length - acikOnce.length}/${onde.length} bitti` : `Önündeki ${onde.length} görev bitti`}</h4>
+          {acikOnce.length > 0 && kartlar(acikOnce, () => null)}
+        </>}
+      </Bolum>
 
-      {/* 5 · çıktı / karar */}
-      {A.karar_adimi && <Bolum baslik="KARAR" id="gd-karar"><KararBolumu a={A} kod={kod} ben={ben} /></Bolum>}
       {ciktiVar && ciktiBolumu}
 
       {otoGoster && <Bolum baslik="AI YAPSIN" id="gd-oto">
@@ -295,12 +325,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         <ul className="gd-baglar">{altlar.map((k) => <li key={k.ad}><button type="button" className="gd-bag" onClick={() => (k.akis ? git(`/akis/${encodeURIComponent(k.akis)}`) : git(`/akis/${encodeURIComponent(kod)}/tekrar/${A.no}`))}><span><b>{k.ad}</b><small>{A.tekrar.kalem_turu || 'kalem'}</small></span></button></li>)}</ul>
       </Bolum>}
 
-      {/* 6 · öncesi, 7 · bekleyenler */}
-      {onde.length > 0 && <Bolum baslik={`ÖNCE BİTMESİ GEREKENLER · ${onde.filter((z) => BITTI(z.durum)).length}/${onde.length} bitti`}>{kartlar(onde, () => null)}</Bolum>}
-      {sonra.length > 0 && <Bolum baslik={`BUNU BEKLEYENLER${dolayli > 0 ? ` · +${dolayli} dolaylı` : ''}`}>{kartlar(sonra, ardilKisa)}</Bolum>}
-
-      {/* 8 · geçmiş (iş payı başında) */}
-      <details id="gd-gecmis" className="gd-bolum gd-gecmis" open={gecmisAcik} onToggle={(e) => setGecmisAcik((e.target as HTMLDetailsElement).open)}>
+      <details id="gd-gecmis" className="gd-bolum gd-kart gd-gecmis" open={gecmisAcik} onToggle={(e) => setGecmisAcik((e.target as HTMLDetailsElement).open)}>
         <summary className="gd-bolum-baslik">GEÇMİŞ{(A.olaylar || []).length ? ` · ${(A.olaylar || []).filter((e: any) => e.tip !== 'okuma').length}` : ''}</summary>
         {gecmisAcik && <>
           <p className="gd-satir">{A.sahip} · {tip}{A.arac ? ` · ${A.arac}` : ''}{pay.length > 0 ? ` · katkı: ${pay.map((p) => `${kisaAd(p.ad)} ${p.n} kayıt`).join(', ')}` : ''}</p>

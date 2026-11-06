@@ -79,9 +79,9 @@ test('B4-gez: önceki/sonraki düğmeleri ve ok tuşları', async ({ page }) => 
   expect(await page.evaluate(() => history.length), `önce ${uzunluk}`).toBe(uzunluk);
 });
 
-test('B4-zincir: "bunu bekleyenler" kartı o göreve gider', async ({ page }) => {
+test('B4-zincir: NEDEN\'deki bekleyen görev kartı o göreve gider', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
-  const z = page.getByRole('region', { name: /^BUNU BEKLEYENLER/ }).locator('.gorev-kart-ac').last();
+  const z = page.getByRole('region', { name: 'NEDEN' }).locator('.gorev-kart-ac').last();
   // zinciri olan ilk açık adım
   let n0 = 0;
   for (const n of [3, 6, 7, 9, 10, 11, 12]) {

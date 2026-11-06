@@ -183,7 +183,7 @@ export function Ciktilar({ a, kod, claudeGizle }: { a: any; kod: string; claudeG
       {hata && <p className="canli-hata-satir" role="alert">{hata}</p>}
       <p className="bilgi-satiri"><svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16"><circle r="7" fill="none" stroke="currentColor" strokeWidth="1.4" /><rect x="-.8" y="-1" width="1.6" height="4.6" fill="currentColor" /><circle cy="-3.4" r=".9" fill="currentColor" /></svg>En çok 20 MB: PDF, görsel, Office, CSV, metin.</p>
       <input ref={girdi} type="file" multiple accept={KABUL_UZANTI} hidden onChange={(e) => { sec(e.target.files); e.target.value = ''; }} aria-label="Dosya seç" />
-      <Dugme className="statik" {...(claudeGizle ? { tur: "ikincil" as const, ton: "lila" as const, yukseklik: 48, fs: 15 } : {})} ikon={<YukleIkon />} ikonX={130} kayma={12} onClick={() => girdi.current?.click()}>Dosya ekle</Dugme>
+      <Dugme className="statik" {...(claudeGizle ? { tur: "ikincil" as const, ton: "lila" as const, yukseklik: 48, fs: 15 } : {})} ikon={<YukleIkon />} onClick={() => girdi.current?.click()}>Dosya ekle</Dugme>
       {claude && !claudeGizle && <Dugme className="statik" tur="ikincil" ton="lila" yukseklik={48} fs={15} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
       <DosyaSilOnay dosya={silinecek} kapat={() => setSilinecek(null)} bitti={() => { setSilinecek(null); tazele(); }} />
     </section>

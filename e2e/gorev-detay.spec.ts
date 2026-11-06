@@ -7,8 +7,8 @@ const ac = async (p: Page, yol: string, w: number, h: number) => {
   await p.goto(yol);
   await p.locator('.gd-bas').waitFor();
 };
-// W5 (6 Kas, B18): 8 satır: başlık · gezegen + cümle + sayılar · ne yapılacak · zaman · karar/çıktı · öncesi · bekleyenler · geçmiş
-const SIRA = ['Ne yapılacak', 'Zaman', 'KARAR'];
+// W5 ikinci tur (Berkin 20:26): başlık kartı · eylem · (karar) · NE YAPILACAK · NEDEN · NE ZAMAN · çıktı … · geçmiş
+const SIRA = ['KARAR', 'NE YAPILACAK', 'NEDEN', 'NE ZAMAN'];
 const bolumler = (p: Page) => p.locator('.gd > section, .gd > details').evaluateAll((L) => L.map((e) => (e.getAttribute('aria-label') || e.querySelector('summary')?.textContent || '').replace(/ · .*$/, '')));
 
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {
@@ -16,8 +16,6 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await ac(page, '/akis/XPVZ/adim/9?senaryo=berkin&hal=karar', w, h);
     const b = await bolumler(page);
     expect(b.filter((x) => SIRA.includes(x))).toEqual(SIRA);
-    const once = b.findIndex((x) => x.startsWith('ÖNCE BİTMESİ')), bek = b.findIndex((x) => x.startsWith('BUNU BEKLEYENLER'));
-    if (once >= 0 && bek >= 0) expect(once).toBeLessThan(bek);
     expect(b[b.length - 1]).toBe('GEÇMİŞ');
     await expect(page.getByRole('region', { name: 'KARAR' }).getByRole('button', { name: 'Kararı ver' })).toBeAttached();
     // geçmiş katlı açılır
@@ -25,13 +23,13 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
   });
 }
 
-test('görev detayı · 390: alt sayfa 3. satıra kadar açılır; tutamaçla büyür (W5)', async ({ page }) => {
+test('görev detayı · 390: alt sayfa ilk açılışta NE YAPILACAK\'a kadar görünür; tutamaçla büyür (W5)', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/6?senaryo=berkin', 390, 844);
   const s = page.locator('.alt-sayfa');
   const once = (await s.boundingBox())!;
   expect(once.height).toBeLessThanOrEqual(844 - 290 + 1);
   // ne yapılacak mesajı ilk görünümde başlıyor
-  const m = (await page.locator('.gd-mesaj').boundingBox())!;
+  const m = (await page.getByRole('region', { name: 'NE YAPILACAK' }).boundingBox())!;
   expect(m.y).toBeLessThan(844);
   const t = (await page.locator('.alt-sayfa-tutamac').boundingBox())!;
   await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2);
@@ -54,15 +52,15 @@ test('görev detayı · 1440: akış panelinde açılır; eski ?tam=1 ve /karar/
 
 test('görev detayı: zaman çizgisi başlangıç ve bitişi, bekleyenler kaç gün kaydırdığını yazar (N22)', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/6?senaryo=berkin', 390, 844);
-  const z = page.getByRole('region', { name: 'Zaman' });
+  const z = page.getByRole('region', { name: 'NE ZAMAN' });
   await expect(z).toContainText('başladı');
-  await expect(z).toContainText(/en erken biter|son tarih/);
-  await expect(page.getByRole('region', { name: /^BUNU BEKLEYENLER/ })).toContainText(/(her gün gecikmesi onu bir gün kaydırır|\d+ güne kadar gecikirse onu kaydırmaz)/);
+  await expect(z).toContainText(/En erken bitiş|Son tarih/);
+  await expect(page.getByRole('region', { name: 'NEDEN' })).toContainText(/(her gün gecikmesi onu bir gün kaydırır|\d+ güne kadar gecikirse onu kaydırmaz)/);
 });
 
 test('pay tek kaynaktan: galaksi cümlesi ile görev detayı aynı payı söyler (K4)', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/6?senaryo=berkin', 390, 844);
-  const satir = (await page.getByRole('region', { name: 'Zaman' }).locator('.gd-satir').first().textContent())!;
+  const satir = (await page.getByRole('region', { name: 'NE ZAMAN' }).locator('.gd-satirlar').textContent())!;
   const akis = satir.match(/hedefe \d+ gün pay/)![0];
   await page.goto('/akis/RTD5?senaryo=berkin');
   await expect(page.locator('body')).toContainText(akis.replace('hedefe ', ''));

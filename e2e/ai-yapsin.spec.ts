@@ -18,7 +18,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await expect(e.getByRole('button', { name: 'Yorumla geri gönder' })).toBeVisible();
     await e.getByRole('button', { name: 'Onayla, bitir' }).click();
     await expect(page.getByRole('button', { name: 'Onayla, bitir' })).toHaveCount(0);
-    await expect(page.locator('.gd-bas')).toContainText(/bitti/i);
+    await expect(page.locator('.gd-bas')).toContainText(/bitti|bitirdi/i);
   });
 }
 

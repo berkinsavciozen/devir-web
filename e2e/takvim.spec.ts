@@ -18,11 +18,13 @@ for (const [w, h] of [[1280, 800], [390, 844]] as const) test(`takvim ihlali ${w
   });
   expect(yol, 'senaryoda bağımlı, bitmemiş adım var').not.toBeNull();
   await page.evaluate((y) => { history.pushState(null, '', y); dispatchEvent(new Event('devir:yol')); }, yol!);
-  // W5: sağdaki sayılarda son tarih mercan, altında en erken bitiş
-  const kutu = page.locator('.gd-ozet .ihlal');
+  // W5 ikinci tur: NE ZAMAN satırında son tarih mercan ve en erken bitişin aştığını söyler; üstte "Son tarih riskte" hapı
+  const kutu = page.locator('.gd-satirlar .ihlal');
   await expect(kutu).toBeVisible({ timeout: 10000 });
-  await expect(kutu.locator('dt')).toContainText('en erken');
+  await expect(page.locator('.gd-haplar')).toContainText('Son tarih riskte');
+  await expect(kutu.locator('dt')).toContainText('Son tarih');
   await expect(kutu.locator('dd')).toContainText('2 Oca');
+  await expect(kutu.locator('dd')).toContainText('en erken bitiş bunu aşıyor');
   expect(await kutu.locator('dd').evaluate((e) => getComputedStyle(e).color)).toBe('rgb(255, 138, 120)');
   await page.screenshot({ path: `test-results/takvim-ihlal-${w}.png` });
 });

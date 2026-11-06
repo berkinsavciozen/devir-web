@@ -42,7 +42,7 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'B1-evren', yol: '/?senaryo=berkin', hazirla: async (p) => { await p.locator('.gorev-kart').first().waitFor(); await p.waitForTimeout(600); } },
   { ad: 'B2-akislar', yol: '/akislar?senaryo=berkin', hazirla: async (p) => { await p.getByText('akış sürüyor', { exact: false }).waitFor(); await p.waitForTimeout(800); } },
   { ad: 'B3-galaksi', yol: '/akis/RTD5?senaryo=berkin' },
-  { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.getByText('tutuyor').waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.locator('.gd-engel').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'B5-adim-gecmis', yol: '/akis/RTD5/adim/6?senaryo=berkin&sekme=gecmis', hazirla: async (p) => { await p.getByRole('heading', { name: 'GEÇMİŞ' }).waitFor(); await p.waitForTimeout(400); } },
   {
     ad: 'B8-adim-dosya', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',

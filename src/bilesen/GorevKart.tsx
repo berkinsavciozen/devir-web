@@ -45,12 +45,14 @@ export interface GorevKartOz {
   hamleGizli?: boolean;
   style?: CSSProperties;
   className?: string;
+  /** ekran okuyucu etiketi (yoksa cümle) */
+  etiket?: string;
 }
 
 /** Bitende çıktının simgesi: karar terazi, dosya/metin belge, yoksa tik. */
 const ciktiSimgesi = (a: any) => (a.karar_adimi ? SIMGE.terazi(1.6, '#F4EEFF') : (a.cikti_sayisi || a.ciktilar?.length) ? SIMGE.belge(1.6, '#F4EEFF') : SIMGE.tik(1.6, '#F4EEFF'));
 
-export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, hamleGizli, style, className = '' }: GorevKartOz) {
+export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, hamleGizli, style, className = '', etiket }: GorevKartOz) {
   const cumle = kartCumlesi(a, ben);
   const G = { ton: kartTonu(a, ben) };
   const h = hamle(a, { renkler });
@@ -62,7 +64,7 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
   const alt = [akisAdi, BITTI(a.durum) && a.durum_at ? gunAy(Date.parse(a.durum_at)) : null].filter(Boolean).join(' · ');
   return (
     <div className={`gorev-kart ton-${G.ton} ${className}`} style={style}>
-      <button type="button" className="gorev-kart-ac" onClick={ac} aria-label={`${cumle}${akisAdi ? `. ${akisAdi}` : ''}`}>
+      <button type="button" className="gorev-kart-ac" onClick={ac} aria-label={etiket || `${cumle}${akisAdi ? `. ${akisAdi}` : ''}`}>
         <span className="gorev-kart-harita" aria-hidden>
           <svg width="40" height="40" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="#FFF3E8" stroke-width="1.6"/>` : '') }} />
           {a.ust_adim != null && <i className="gorev-kart-alt">alt</i>}
