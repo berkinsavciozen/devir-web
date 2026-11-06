@@ -384,7 +384,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const a = byNo.get(ik.no); if (!a) continue;
     // W7: hamle damlası (yakınlaşınca kendi dokunma hedefi): dokununca görev açılır
     const temel: Omit<Hedef, 'x' | 'y' | 'r'> = { key: 'damla' + ik.no, etiket: `${ik.etiket}: ${a.ad}${a.durum === 'engelli' && a.engel ? '. Engel: ' + a.engel.replace(/[.\s]+$/, '') : ''}.`, olay: { onClick: () => ac(ik.no) } };
-    const yer = [[0, 0], [0, -10], [10, -6], [-10, -6], [12, 6], [-12, 6], [0, -18], [18, -8], [-18, -8], [20, 8], [-20, 8]].map(([dx, dy]) => ({ x: ik.x + dx, y: ik.y + dy, r: 22 })).find((c) => gor(c.x, c.y) && bos(c, hedefler));
+    const yer = [[0, 0], [0, -10], [10, -6], [-10, -6], [12, 6], [-12, 6], [0, -18], [18, -8], [-18, -8], [20, 8], [-20, 8], [0, -28], [26, -14], [-26, -14], [28, 8], [-28, 8], [0, -38], [40, 0], [-40, 0], [36, -20], [-36, -20], [36, 20], [-36, 20]].map(([dx, dy]) => ({ x: ik.x + dx, y: ik.y + dy, r: 22 })).find((c) => gor(c.x, c.y) && bos(c, hedefler));
     if (yer) hedefler.push({ ...temel, ...yer } as Hedef);
   }
   for (const sh of (Y.gemiler || []) as any[]) {

@@ -202,7 +202,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
       <Sahne gok={GOK} etiket="Görevler" cizim={svg} yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Görevler</Metin>
         <UstDugmeler y={36} />
-        <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
+        <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{c}</span>)}</Metin>
         {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdiK(ak)} ac={() => git(`/akis/${enc(ak.kod)}`)} style={{ left: 20, right: 20, top: 98 + cumle.length * 22 }} />}
         {!eski ? (
           <div className="pano-cipler gorev-suzgec" role="group" aria-label="Süzgeçler" style={{ top: (cumle.length > 2 ? 168 : cumle.length > 1 ? 146 : 128) + kayma }}>
@@ -216,7 +216,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
           {H.seritler.map((r) => {
             // şerit adı kesilmez (P1-F): sütuna sığan en çok üç satır, şeridin ortasında
             const ad = r.tip === 'kisi' && r.sahipTip !== 'agent' ? kisaAd(r.ad) : r.ad, L = sarSatir(ad, 62, '650 10.5px Bricolage').slice(0, 3);
-            return <Metin key={r.ad} y={r.y + 4 - (L.length - 1) * 5.75} x={48} fs={L.length > 1 ? 10.5 : 11.5} lh={11.5} agirlik={650} renk="ink2" style={{ right: 'auto', width: 62, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</Metin>;
+            return <Metin key={r.ad} y={r.y + 4 - (L.length - 1) * 5.75} x={48} fs={L.length > 1 ? 10.5 : 11.5} lh={11.5} agirlik={650} renk="ink2" style={{ right: 'auto', width: 62, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{l}</span>)}</Metin>;
           })}
           {/* eksen (K6): haftalık tarihler, birbirine ve "bugün"e binmeyenler; altında bugün */}
           {eksenTarihleri(H, 34).map(({ t, x }) => <Metin key={t} y={HY + H.h + 24} x={x - 22} fs={10} lh={12} agirlik={600} renk="ink3" className="tek-satir" style={{ right: 'auto', width: 44, textAlign: 'center', pointerEvents: 'none' }}>{gunAy(t)}</Metin>)}

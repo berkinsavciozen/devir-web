@@ -59,7 +59,7 @@ export function Cevapla({ kod, soru, ben }: { kod: string; soru: string; ben: st
       <AltSayfa acik kapat={geri} baslik="Açık soru" yukseklik={352} duraklar={['orta', 'yuksek']} perdesiz>
         <form className="karar-panel" style={{ height: butonY + 64 + 46 + 40 }} onSubmit={(e) => { e.preventDefault(); if (hazir) cevap.mutate(); }}>
           <Metin y={P(352 + 44)} fs={12} lh={16} agirlik={700} renk="ink3" style={{ letterSpacing: '.6px' }}>AÇIK SORU</Metin>
-          <Metin y={P(352 + 74)} fs={21} lh={26} serif as="h2" style={{ whiteSpace: 'nowrap' }}>{satirlar.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+          <Metin y={P(352 + 74)} fs={21} lh={26} serif as="h2" style={{ whiteSpace: 'nowrap' }}>{satirlar.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}</Metin>
           <Metin y={P(352 + 134)} fs={12.5} lh={16} renk="ink3" className="tek-satir">{alt}</Metin>
           {dal ? (
             <div role="radiogroup" aria-label={S.soru}>

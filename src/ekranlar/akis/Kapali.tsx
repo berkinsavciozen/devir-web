@@ -65,7 +65,7 @@ export function KapaliGalaksi({ d, kod, sahipMi, sahip }: { d: any; kod: string;
       <Sahne gok={{ tohum: 71, yildiz: 300, parilti: 8 }} cizim={cizim.svg + (K ? `<rect x="16" y="600" width="358" height="154" rx="22" fill="#061A24" fill-opacity=".72" stroke="#FFD27A" stroke-opacity=".35"/>` : '')} etiket={ad}>
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={ad} geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
         {sahipMi && <Kutu as="button" x={326} y={40} w={44} h={44} className="akis-menu" aria-label="Akış menüsü" onClick={() => setMenu(true)}><i /><i /><i /></Kutu>}
-        <Metin y={110} fs={17} lh={22} serif renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+        <Metin y={110} fs={17} lh={22} serif renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}</Metin>
         <button className="surgu-oynat" style={{ left: SURGU.x, top: SURGU.y - 22 }} aria-label={oynuyor ? 'Durdur' : 'Baştan oynat'} onClick={() => { if (!oynuyor) setX(Z.t0); setOynuyor(!oynuyor); }} />
         <div className="surgu-ray" role="slider" tabIndex={0} aria-label="Zaman" aria-valuemin={Z.t0} aria-valuemax={Z.t1} aria-valuenow={Math.round(X)} aria-valuetext={`${gunAy(X)} ${saat(X)}`}
           style={{ left: Z.x0 - 22, top: SURGU.y - 22, width: Z.x1 - Z.x0 + 44 }}
@@ -73,7 +73,7 @@ export function KapaliGalaksi({ d, kod, sahipMi, sahip }: { d: any; kod: string;
           onPointerMove={(e) => { if (!e.buttons) return; const r = e.currentTarget.getBoundingClientRect(); setX(Z.tOf(Math.max(Z.x0, Math.min(Z.x1, Z.x0 - 22 + e.clientX - r.left)))); }} />
         {K && <>
           <Metin y={628} x={34} fs={12} lh={16} agirlik={700} renk="ink3" style={{ letterSpacing: '.6px' }}>DEĞERLENDİRME</Metin>
-          {deg && <Metin y={656} x={34} fs={16} lh={21} serif as="blockquote" style={{ whiteSpace: 'nowrap', margin: 0 }}>{degSatir.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>}
+          {deg && <Metin y={656} x={34} fs={16} lh={21} serif as="blockquote" style={{ whiteSpace: 'nowrap', margin: 0 }}>{degSatir.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}</Metin>}
           <Metin y={736} x={34} fs={12} lh={16} agirlik={600} renk="ink3" className="tek-satir">{devir}</Metin>
         </>}
         <Dugme tur="ikincil" ton="altin" yukseklik={46} fs={14.5} style={{ top: K ? 770 : 620 }} onClick={() => setDers(true)}>Dersleri gör</Dugme>

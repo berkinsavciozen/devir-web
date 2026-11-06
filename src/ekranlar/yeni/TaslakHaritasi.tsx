@@ -111,15 +111,15 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
   return (
     <Sahne gok={GOK} cizim={svg} etiket="Taslak haritası" yukseklik={Math.max(844, Lst.y + 130)}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Taslak" geri={geri} /></Kutu>
-      <Metin y={122} fs={21} lh={26} serif agirlik={700} as="h1">{baslikSatir.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
-      <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+      <Metin y={122} fs={21} lh={26} serif agirlik={700} as="h1">{baslikSatir.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
+      <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
       <h2 className="bolum-baslik" style={{ top: HY - 26 }}>TASLAK HARİTASI</h2>
       {H.seritler.map((r) => {
         // C15 (0.34.0): gemi ve ad aynı HTML satırında; panelde çizim ile metin kaysa da simge adın üstüne binmez
         const L = sarSatir(rolAdi(r.rol), 74, '650 10.5px Bricolage').slice(0, 2);
         return <Metin key={r.rol.kod} y={r.y + 4 - (L.length - 1) * 5.75} x={20} fs={10.5} lh={11.5} agirlik={650} renk={r.eksik ? 'mercan' : 'ink2'} style={{ right: 'auto', width: 108, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26" style={{ flex: 'none', overflow: 'visible', marginTop: (L.length - 1) * 5.75 - 8 }} dangerouslySetInnerHTML={{ __html: rolGemisi(r.rol, 0, 0, r.eksik) }} />
-          <span>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</span>
+          <span>{L.map((l, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{l}</span>)}</span>
         </Metin>;
       })}
       <Metin y={HY + H.h + 26} x={Math.max(20, H.bugunX - 20)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>bugün</Metin>

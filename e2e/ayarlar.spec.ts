@@ -212,8 +212,8 @@ test('P7-harita-dili: "Tüm harita dili" evren ve akış işaretlerinin hepsini 
   await page.getByRole('button', { name: /Tüm harita dili/ }).click();
   const d = page.getByRole('dialog', { name: 'Tüm harita dili' });
   await expect(d.getByRole('list', { name: 'Evren işaretleri' }).getByRole('listitem')).toHaveCount(8);
-  // W7 Kimin Hamlesi: dört öbek, toplam 19 işaret
+  // W7 Kimin Hamlesi: dört öbek, toplam 21 işaret
   const L = d.getByRole('list', { name: /^(Hamle|Işık|Kim|Yol) işaretleri$/ });
   await expect(L).toHaveCount(4);
-  await expect(L.getByRole('listitem')).toHaveCount(19);
+  await expect(L.getByRole('listitem')).toHaveCount(21);
 });

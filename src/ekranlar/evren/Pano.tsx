@@ -89,7 +89,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
       <>
         <h2 ref={ref} className="bolum-durak" style={{ top: y0 }}>Pano</h2>
         <Metin y={Y.cY} x={20} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: Y.cumle.length > 1 ? 'nowrap' : undefined }}>
-          {Y.cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
+          {Y.cumle.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}
         </Metin>
         {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdi(ak)} ac={() => git(`/akis/${encodeURIComponent(ak.kod)}`)} style={{ left: 20, right: 20, top: Y.kY }} />}
         {P.suzgecler.length > 0 && (

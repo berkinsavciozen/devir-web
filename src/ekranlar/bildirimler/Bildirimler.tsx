@@ -102,7 +102,7 @@ export function Bildirimler({ ben }: { ben: Ben }) {
     <>
       <Sahne gok={GOK} etiket="Bildirimler" yukseklik={Math.max(844, Lst.y + 130)}>
         <Metin y={70} fs={26} serif agirlik={700} as="h1">Bildirimler</Metin>
-        <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
+        <Metin y={106} fs={17} lh={22} serif renk="ink2" as="p" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{c}</span>)}</Metin>
         {<>
           <div style={{ position: 'absolute', left: 20, right: 20, top: 128 }}>
             <Segment secenekler={['Senin için', 'Tüm etkinlik']} aktif={S.sekme === 'tum' ? 1 : 0} sec={(i) => uygula({ sekme: i ? 'tum' : 'sen' })} />
