@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-/** Ekran başlığı: geri düğmesi (36 px daire, merkez x 34 y 62) + Caladea 24 başlık (x 64, taban y 70). */
+/** Ekran başlığı: geri düğmesi (36 px daire, merkez x 34 y 62) + Bricolage 24 başlık (x 64, taban y 70). */
 export function Baslik({ baslik, geri, sag, sagBos = 0 }: { baslik: ReactNode; geri?: () => void; sag?: ReactNode; sagBos?: number }) {
   // P1-F: uzun ad kesilmez; başlık satıra sığana dek küçülür (--n karakter, --bos geri düğmesi, kenarlar ve sağdaki ayrılmış yer)
   const st = typeof baslik === 'string' ? ({ '--n': baslik.length, '--bos': `${(geri ? 62 : 20) + 20 + sagBos + (sag ? 50 : 0)}px` } as CSSProperties) : undefined;
@@ -21,7 +21,7 @@ export function Baslik({ baslik, geri, sag, sagBos = 0 }: { baslik: ReactNode; g
   );
 }
 
-/** Akıllı cümle: ekranda en fazla 2 tane; Caladea 17/22, ink2. */
+/** Akıllı cümle: ekranda en fazla 2 tane; Bricolage 17/22, ink2. */
 export function AkilliCumle({ children, buyuk }: { children: ReactNode; buyuk?: boolean }) {
   return <p className={`akilli-cumle ${buyuk ? 't-akilli-cumle-buyuk' : 't-akilli-cumle'}`}>{children}</p>;
 }

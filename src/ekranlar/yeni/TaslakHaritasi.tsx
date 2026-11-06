@@ -27,7 +27,7 @@ const MERCAN = '#FF9A8A', ALTIN = '#FFD27A';
 const enc = encodeURIComponent;
 
 const rolGemisi = (r: TRol, x: number, y: number, eksik: boolean) => eksik
-  ? `<g transform="translate(${x},${y})"><circle r="11" fill="#08222E" stroke="${MERCAN}" stroke-dasharray="2 3" stroke-width="1.3"/><text y="4.5" text-anchor="middle" font-family="Inter" font-size="12" font-weight="700" fill="${MERCAN}">?</text></g>`
+  ? `<g transform="translate(${x},${y})"><circle r="11" fill="#08222E" stroke="${MERCAN}" stroke-dasharray="2 3" stroke-width="1.3"/><text y="4.5" text-anchor="middle" font-family="Bricolage" font-size="12" font-weight="700" fill="${MERCAN}">?</text></g>`
   : r.tip === 'dis' ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', .5)
     : ship(x, y, -12, r.tip === 'agent' ? 'agent' : 'insan', (rolAdi(r)[0] || '?').toLocaleUpperCase('tr'), r.tip === 'agent' ? '#B9A6F2' : '#FFC9A3', .5, { flame: false });
 
@@ -35,7 +35,7 @@ function taslakGezegeni(n: TNokta, r: number, sec: boolean) {
   // W3 (B8): cevabı beklenen soruya bağlı adım henüz yok: gövdesiz, yalnız kesik halka ve "?"
   let s = n.soru ? `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="#B9A6F2" fill-opacity=".05"/>` : `<g opacity=".85">${planet(n.x, n.y, r, 'dark', { life: false })}</g>`;
   s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 3}" fill="none" stroke="${n.gec ? MERCAN : '#D9CCFF'}" stroke-width="${n.gec ? 1.6 : 1.1}" stroke-dasharray="2 3"/>`;
-  if (n.soru) s += `<g transform="translate(${(n.x + r * .8).toFixed(1)},${(n.y - r * .8).toFixed(1)})"><circle r="6" fill="${ALTIN}" stroke="#2A1D4F" stroke-width=".8"/><text y="3.4" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#2A1D4F">?</text></g>`;
+  if (n.soru) s += `<g transform="translate(${(n.x + r * .8).toFixed(1)},${(n.y - r * .8).toFixed(1)})"><circle r="6" fill="${ALTIN}" stroke="#2A1D4F" stroke-width=".8"/><text y="3.4" text-anchor="middle" font-family="Bricolage" font-size="9" font-weight="800" fill="#2A1D4F">?</text></g>`;
   if (sec) s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 8}" fill="none" stroke="#FFF3E8" stroke-width="1.5" opacity=".7"/>`;
   return s;
 }
@@ -46,10 +46,10 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
   const t = q.data;
   const [sec, setSec] = useState<number | null>(null);
   const geri = () => (history.length > 1 ? history.back() : git('/akislar'));
-  const baslikSatir = t ? sarSatir(String(t.baslik || t.cumle || '').replace(/'/g, '’'), 330, '700 21px Caladea').slice(0, 3) : [];
+  const baslikSatir = t ? sarSatir(String(t.baslik || t.cumle || '').replace(/'/g, '’'), 330, '700 21px Bricolage').slice(0, 3) : [];
   // cümle haritanın yerinden bağımsız (zaman ve sayılar); önce bir kez hesaplanır, harita onun altına iner
   const H0 = useMemo(() => (t ? taslakHaritasi(t, { now: NOW }) : null), [t, NOW]);
-  const cumle = H0 && t ? sarSatir(taslakCumlesi(H0, (t.sorular || []).length, gunAy), 300, '15px Inter') : [];
+  const cumle = H0 && t ? sarSatir(taslakCumlesi(H0, (t.sorular || []).length, gunAy), 300, '15px Bricolage') : [];
   const HY = 122 + baslikSatir.length * 26 + 6 + cumle.length * 20 + 40;
   const H = useMemo(() => (t ? taslakHaritasi(t, { now: NOW, y0: HY + 8, x0: 132, x1: 356, satir: 62 }) : null), [t, NOW, HY]);
 
@@ -85,7 +85,7 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
     ogeler.push({ tur: 'baslik', metin: `KURMADAN ÖNCE · ${eksik}` });
     for (const s of S) {
       const bagli = H.noktalar.filter((n) => n.a.kosul?.soru === s.kod);
-      ogeler.push({ tur: 'satir', key: 'q' + s.kod, ikon: ikonX(`<circle r="11" fill="${ALTIN}" fill-opacity=".18" stroke="${ALTIN}"/><text y="4.5" text-anchor="middle" font-family="Inter" font-size="12" font-weight="800" fill="${ALTIN}">?</text>`),
+      ogeler.push({ tur: 'satir', key: 'q' + s.kod, ikon: ikonX(`<circle r="11" fill="${ALTIN}" fill-opacity=".18" stroke="${ALTIN}"/><text y="4.5" text-anchor="middle" font-family="Bricolage" font-size="12" font-weight="800" fill="${ALTIN}">?</text>`),
         ust: s.soru, alt: bagli.length ? `cevabına bağlı: ${bagli.map((n) => `${n.no}. adım`).join(', ')}` : 'soru', git: () => git(`/yeni/${enc(kod)}`) });
     }
     for (const r of H.eksikRol) ogeler.push({ tur: 'satir', key: 'r' + r.kod, ikon: rolGemisi(r, 28, 29, true), ust: `${r.ad}: kim yapacak belli değil`,
@@ -111,15 +111,15 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
   return (
     <Sahne gok={GOK} cizim={svg} etiket="Taslak haritası" yukseklik={Math.max(844, Lst.y + 130)}>
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Taslak" geri={geri} /></Kutu>
-      <Metin y={122} fs={21} lh={26} serif agirlik={700} as="h1">{baslikSatir.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
-      <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+      <Metin y={122} fs={21} lh={26} serif agirlik={700} as="h1">{baslikSatir.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
+      <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
       <h2 className="bolum-baslik" style={{ top: HY - 26 }}>TASLAK HARİTASI</h2>
       {H.seritler.map((r) => {
         // C15 (0.34.0): gemi ve ad aynı HTML satırında; panelde çizim ile metin kaysa da simge adın üstüne binmez
-        const L = sarSatir(rolAdi(r.rol), 74, '650 10.5px Inter').slice(0, 2);
+        const L = sarSatir(rolAdi(r.rol), 74, '650 10.5px Bricolage').slice(0, 2);
         return <Metin key={r.rol.kod} y={r.y + 4 - (L.length - 1) * 5.75} x={20} fs={10.5} lh={11.5} agirlik={650} renk={r.eksik ? 'mercan' : 'ink2'} style={{ right: 'auto', width: 108, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
           <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26" style={{ flex: 'none', overflow: 'visible', marginTop: (L.length - 1) * 5.75 - 8 }} dangerouslySetInnerHTML={{ __html: rolGemisi(r.rol, 0, 0, r.eksik) }} />
-          <span>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</span>
+          <span>{L.map((l, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{l}</span>)}</span>
         </Metin>;
       })}
       <Metin y={HY + H.h + 26} x={Math.max(20, H.bugunX - 20)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>bugün</Metin>

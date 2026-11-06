@@ -1,3 +1,4 @@
+import { IlkTur } from '../../bilesen/Tur';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -56,12 +57,12 @@ export function YeniIs() {
   });
   const yarim: any[] = (ozet.data?.taslaklar || []).slice(0, 3);
   const bekliyor = tasla.isPending;
-  const satirlar = sarSatir(`“${cumle.trim()}”`, 320, 'italic 18.5px Caladea');
+  const satirlar = sarSatir(`“${cumle.trim()}”`, 320, '18.5px Bricolage');
   return (
     <Sahne gok={GOK} cizim={bekliyor ? koza(13, [], true) : ''} etiket="Yeni iş">
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
       {bekliyor ? <>
-        <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle">{satirlar.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}</Metin>
+        <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle">{satirlar.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}</Metin>
         <Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta" as="p" style={{ left: 20, right: 20 }}>Adımlar ve sorular çıkarılıyor.</Metin>
       </> : <form onSubmit={(e) => { e.preventDefault(); if (cumle.trim().length > 5) tasla.mutate(); }}>
         <Metin y={112} fs={17} lh={22} serif renk="ink2">Ne yapman lazım? Tek cümle yeter.</Metin>
@@ -78,6 +79,7 @@ export function YeniIs() {
           </ul>
         </>}
       </form>}
+      {!bekliyor && <IlkTur ad="kurma" />}
     </Sahne>
   );
 }
@@ -118,7 +120,7 @@ export function TaslakSorulari({ kod, haritaSolda = false }: { kod: string; hari
   const geri = () => (history.length > 1 ? history.back() : git('/'));
   if (!t) return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu>{q.isError && <Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta">{(q.error as Error).message}</Metin>}</Sahne>;
   if (t.durum !== 'acik') return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu><Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta" as="p">{t.durum === 'iptal' ? 'Bu taslaktan vazgeçildi.' : 'Bu taslaktan akış kuruldu.'}</Metin></Sahne>;
-  const satirlar = sarSatir(`“${String(t.cumle).trim().replace(/'/g, '’')}”`, 320, 'italic 18.5px Caladea').slice(0, t.motor?.yedek ? 3 : 4); // yedek motor etiketi rozetlere binmesin
+  const satirlar = sarSatir(`“${String(t.cumle).trim().replace(/'/g, '’')}”`, 320, '18.5px Bricolage').slice(0, t.motor?.yedek ? 3 : 4); // yedek motor etiketi rozetlere binmesin
   const hepsi = S.every((s) => cevap[s.kod] != null && cevap[s.kod] !== '');
   const i = Math.min(sira, Math.max(0, S.length - 1)), s = S[i];
   const sec = s?.secenekler?.length ? s.secenekler : null;
@@ -129,20 +131,20 @@ export function TaslakSorulari({ kod, haritaSolda = false }: { kod: string; hari
     const bos = sonraki >= 0 ? sonraki : S.findIndex((x) => yeni[x.kod] == null || yeni[x.kod] === '');
     if (bos >= 0) setTimeout(() => { setSira(bos); setMetin(''); }, 220);
   };
-  const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Caladea').slice(0, 3) : [];
+  const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Bricolage').slice(0, 3) : [];
   const vA = acik != null ? V[acik] : null;
   return (
     <>
       <Sahne gok={GOK} cizim={cizim + (s ? `<rect x="16" y="${qy}" width="358" height="${kartH}" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>` : '')} etiket="Yeni iş">
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} sag={<span className="baslik-eylemler"><button type="button" className="satir-eylem lila baslik-eylem" onClick={() => setPlan(true)}>Plan</button>{!haritaSolda && <button type="button" className="satir-eylem lila baslik-eylem" onClick={() => git(`/yeni/${encodeURIComponent(kod)}/harita`)}>Harita</button>}<button type="button" className="satir-eylem mercan baslik-eylem" onClick={() => setVazgec(true)}>Vazgeç</button></span>} /></Kutu>
-        <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+        <Metin y={122} x={24} fs={18.5} lh={24} serif className="taslak-cumle" as="blockquote" style={{ margin: 0 }}>{satirlar.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
         {V.slice(0, ACI.length).map((v, j) => { const [x, y] = rozetYeri(j); return <button key={j} type="button" className="varsayim-rozet" style={{ left: x - 22, top: y - 22 }} aria-label={`Varsayım: ${v.metin}`} onClick={() => setAcik(j)} />; })}
         {t.motor?.yedek && <Metin y={122 + satirlar.length * 24 + 8} x={24} fs={11.5} lh={20} as="p"><span className="hap hap-yedek" title={`Taslak yedek motorla (${t.motor.ad}) üretildi; birincil motor yanıt vermedi. Birincil dönünce aynı cümleyle yeniden taslak çıkarılabilir.`}>Yedek motor</span></Metin>}
         {S.length > 0 && s && <section aria-label="Taslak soruları">
           <div className="taslak-noktalar" style={{ top: qy + 26 - 11 }} role="tablist">
             {S.map((x, j) => <button key={x.kod} type="button" role="tab" aria-selected={j === i} aria-label={`${j + 1}. soru${cevap[x.kod] != null ? ', cevaplandı' : ''}`} className={`${j === i ? 'secili' : ''} ${cevap[x.kod] != null ? 'dolu' : ''}`} onClick={() => setSira(j)}><i /></button>)}
           </div>
-          <Metin y={qy + 66} fs={19.5} lh={25} serif hiza="orta" as="h2" style={{ whiteSpace: 'nowrap' }}>{soruSatir.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
+          <Metin y={qy + 66} fs={19.5} lh={25} serif hiza="orta" as="h2" style={{ whiteSpace: 'nowrap' }}>{soruSatir.map((x, j) => <span key={j}>{j ? <>{' '}<br /></> : null}{x}</span>)}</Metin>
           {sec ? sec.map((o, j) => (
             <Dugme key={o.deger} type="button" tur="ikincil" ton={j ? 'lila' : 'altin'} yukseklik={50} fs={15} aria-pressed={cevap[s.kod] === String(o.deger)} className={`taslak-secenek ${cevap[s.kod] === String(o.deger) ? 'secili' : ''}`} style={{ top: qy + 112 + j * 60, left: 36, right: 36 }} onClick={() => yaz(s.kod, String(o.deger))}>{o.etiket}</Dugme>
           )) : <form onSubmit={(e) => { e.preventDefault(); if (metin.trim()) yaz(s.kod, metin.trim()); }}>

@@ -6,7 +6,7 @@ import { adimAdi, ek } from '../../metin/turkce';
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const HARF = ['A', 'B', 'C', 'D'];
 
-export const soruRozet = (x: number, y: number, sc = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${sc})"><circle r="10" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text y="4.5" text-anchor="middle" font-family="Inter" font-weight="800" font-size="13" fill="#2A1D4F">?</text></g>`;
+export const soruRozet = (x: number, y: number, sc = 1) => `<g transform="translate(${f(x)},${f(y)}) scale(${sc})"><circle r="10" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text y="4.5" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="13" fill="#2A1D4F">?</text></g>`;
 
 export interface Dal { kod: string; soru: any; kollar: { harf: string; deger: string; etiket: string; kisa: string; sonuc: string; no: number }[] }
 
@@ -82,7 +82,7 @@ export function soruKatmani(d: any, M: Model, Y: any, geo: { cx: number; cy: num
     for (const { k, p } of pts) {
       const sec = o.sec == null ? undefined : o.sec === k.deger;
       s += `<g opacity="${sec === false ? .28 : sec ? 1 : .62}">` + planet(p[0], p[1], 11, sec ? 'wait' : 'dark', { life: false, waitRings: 1 }) + `<circle cx="${f(p[0])}" cy="${f(p[1])}" r="16" fill="none" stroke="#D9CCFF" stroke-width="1.2" stroke-dasharray="2 3"/></g>`;
-      s += `<g transform="translate(${f(p[0] + 13)},${f(p[1] - 13)})"><circle r="8" fill="#FFF1DC" stroke="#2A1D4F"/><text y="3.8" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10.5" fill="#2A1D4F">${k.harf}</text></g>`;
+      s += `<g transform="translate(${f(p[0] + 13)},${f(p[1] - 13)})"><circle r="8" fill="#FFF1DC" stroke="#2A1D4F"/><text y="3.8" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="10.5" fill="#2A1D4F">${k.harf}</text></g>`;
       hedefler.push({ x: p[0], y: p[1], r: 22, soru: dal.kod, etiket: `${k.harf} dalı: ${k.etiket}. ${k.sonuc}.` });
     }
     s += `<circle cx="${f(q[0])}" cy="${f(q[1])}" r="18" fill="url(#glowGold)"/>` + soruRozet(q[0], q[1], 1.1);

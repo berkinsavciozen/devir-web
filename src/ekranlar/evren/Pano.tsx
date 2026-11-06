@@ -34,7 +34,7 @@ export const AKIS_EN = 5, KATILIMCI_EN = 6;
  * ve son hareketler. Her bölüm başlık + satırlar; boş bölüm yer tutmaz.
  */
 export function panoYerlesimi(P: PanoV, n: number, y0: number, hareket = 0, seritH = 0, katilimci = 0, akis = 0) {
-  const cumle = doluSatir(P.cumle, 350, '17.5px Caladea', 4);
+  const cumle = doluSatir(P.cumle, 350, '17.5px Bricolage', 4);
   // karar şeridi cümlenin altında (yüksekliği ölçülür; ölçülmeden önce tahmin)
   const cY = y0 + 66, kY = cY - 9 + cumle.length * 23, sY = cY + (cumle.length - 1) * 23 + 22 + (seritH ? seritH + 10 : 0), lY = sY + (P.suzgecler.length ? 56 : 0);
   const satir = Math.min(n, EN), aY = lY + (satir ? satir * (GSATIR + ARA) : 40) + 8;
@@ -89,7 +89,7 @@ export const EvrenPano = forwardRef<HTMLHeadingElement, { P: PanoV; y0: number; 
       <>
         <h2 ref={ref} className="bolum-durak" style={{ top: y0 }}>Pano</h2>
         <Metin y={Y.cY} x={20} fs={17.5} lh={23} serif as="p" style={{ whiteSpace: Y.cumle.length > 1 ? 'nowrap' : undefined }}>
-          {Y.cumle.map((t, i) => <span key={i}>{i ? <br /> : null}{t}</span>)}
+          {Y.cumle.map((t, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{t}</span>)}
         </Metin>
         {ak && <KararSeridi oz={ak.karar_ozeti} onek={akisAdi(ak)} ac={() => git(`/akis/${encodeURIComponent(ak.kod)}`)} style={{ left: 20, right: 20, top: Y.kY }} />}
         {P.suzgecler.length > 0 && (

@@ -107,14 +107,14 @@ export function Akislar({ ben }: { ben: Ben }) {
   }, [satirlar, detay, isaret, kisi, NOW, arsiv]);
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 52, yildiz: 260 }} etiket="Akışlar"><Metin y={70} fs={26} serif agirlik={700} as="h1">Akışlar</Metin></Sahne>;
-  const cumle = kartlar.length ? doluSatir(listeCumlesi(kartlar), 300, '17px Caladea', 2) : ['Henüz akış yok.'];
+  const cumle = kartlar.length ? doluSatir(listeCumlesi(kartlar), 300, '17px Bricolage', 2) : ['Henüz akış yok.'];
   const taslakN = ozet.data?.taslaklar?.length || 0;
 
   return (
     <Sahne gok={{ tohum: 52, yildiz: 260 }} cizim={cizim.svg} etiket="Akışlar" yukseklik={cizim.yd + 64 + 130}>
       <Metin y={70} fs={26} serif agirlik={700} as="h1">Akışlar</Metin>
       <UstDugmeler y={36} />
-      <Metin y={106} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <br /> : null}{c}</span>)}</Metin>
+      <Metin y={106} fs={17} lh={22} serif renk="ink2" style={cumle.length > 1 ? { whiteSpace: 'nowrap' } : undefined}>{cumle.map((c, i) => <span key={i}>{i ? <>{' '}<br /></> : null}{c}</span>)}</Metin>
       <ul className="akis-liste" aria-label="Akışlar">
         {satirlar.map((k, i) => {
           const cy = Y0 + i * RH + 34, d = detay[k.kod], t = d?.tekrar?.[0];

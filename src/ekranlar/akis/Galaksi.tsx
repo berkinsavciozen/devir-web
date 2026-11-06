@@ -11,6 +11,7 @@ import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
 import { genisDuzen, panelZemini } from './Genis';
 import { GorevDetay } from './GorevDetay';
+import { IlkTur } from '../../bilesen/Tur';
 import { TekPano } from '../pano/TekPano';
 import { HaritaKutusu } from './HaritaKutusu';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
@@ -381,10 +382,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // R18: bayrak ve bulut hedefi çakışırsa simgenin çevresinde boş yer aranır (tam boy, 44 px)
   for (const ik of (Y.ikonlar || []) as any[]) {
     const a = byNo.get(ik.no); if (!a) continue;
-    const temel: Omit<Hedef, 'x' | 'y' | 'r'> = ik.tur === 'bayrak'
-      ? { key: 'bayrak' + ik.no, etiket: `Karar: ${a.ad}.`, olay: { onClick: () => git(`/akis/${encodeURIComponent(kod)}/karar/${ik.no}`) } }
-      : { key: 'bulut' + ik.no, etiket: `Engel: ${a.engel ? a.engel.replace(/[.\s]+$/, '') : a.ad}.`, olay: { onClick: () => ac(ik.no) } };
-    const yer = [[0, 0], [0, -10], [10, -6], [-10, -6], [12, 6], [-12, 6], [0, -18], [18, -8], [-18, -8], [20, 8], [-20, 8]].map(([dx, dy]) => ({ x: ik.x + dx, y: ik.y + dy, r: 22 })).find((c) => gor(c.x, c.y) && bos(c, hedefler));
+    // W7: hamle damlası (yakınlaşınca kendi dokunma hedefi): dokununca görev açılır
+    const temel: Omit<Hedef, 'x' | 'y' | 'r'> = { key: 'damla' + ik.no, etiket: `${ik.etiket}: ${a.ad}${a.durum === 'engelli' && a.engel ? '. Engel: ' + a.engel.replace(/[.\s]+$/, '') : ''}.`, olay: { onClick: () => ac(ik.no) } };
+    const yer = [[0, 0], [0, -10], [10, -6], [-10, -6], [12, 6], [-12, 6], [0, -18], [18, -8], [-18, -8], [20, 8], [-20, 8], [0, -28], [26, -14], [-26, -14], [28, 8], [-28, 8], [0, -38], [40, 0], [-40, 0], [36, -20], [-36, -20], [36, 20], [-36, 20]].map(([dx, dy]) => ({ x: ik.x + dx, y: ik.y + dy, r: 22 })).find((c) => gor(c.x, c.y) && bos(c, hedefler));
     if (yer) hedefler.push({ ...temel, ...yer } as Hedef);
   }
   for (const sh of (Y.gemiler || []) as any[]) {
@@ -484,6 +484,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
           <div style={{ position: 'relative', height: B.y + 24 }}>{B.dugum}</div>
         </div>}
         <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
+        <IlkTur ad="harita" />
       </GenisSahne>
     );
   }
@@ -512,6 +513,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         ayrinti={() => ac(kutuNo)} kapat={() => setKutuNo(null)} style={{ left: 16, right: 16, top: bolge.y + bolge.h + 6, transform: 'translateY(-100%)' }} />}
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
+      <IlkTur ad="harita" />
     </Sahne>
   );
 }

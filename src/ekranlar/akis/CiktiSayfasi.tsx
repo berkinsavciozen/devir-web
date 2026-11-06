@@ -27,7 +27,7 @@ export function MetinGoster({ metin }: { metin: string }) {
   const bloklar: ReactNode[] = [];
   let liste: { tur: 'ul' | 'ol'; ogeler: string[] } | null = null, para: string[] = [];
   const bosalt = () => {
-    if (para.length) { bloklar.push(<p key={bloklar.length}>{para.map((s, j) => <Fragment key={j}>{j ? <br /> : null}{satirIci(s)}</Fragment>)}</p>); para = []; }
+    if (para.length) { bloklar.push(<p key={bloklar.length}>{para.map((s, j) => <Fragment key={j}>{j ? <>{' '}<br /></> : null}{satirIci(s)}</Fragment>)}</p>); para = []; }
     if (liste) { const L = liste.tur; const ic = liste.ogeler.map((s, j) => <li key={j}>{satirIci(s)}</li>); bloklar.push(L === 'ul' ? <ul key={bloklar.length}>{ic}</ul> : <ol key={bloklar.length}>{ic}</ol>); liste = null; }
   };
   for (const ham of metin.replace(/\r/g, '').split('\n')) {

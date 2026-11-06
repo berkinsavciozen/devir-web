@@ -17,7 +17,7 @@ const satir = adlar.map((ad) => {
 </div></section>`;
 }).join('\n');
 writeFileSync(join(kok, 'index.html'), `<!doctype html><html lang="tr"><meta charset="utf-8"><title>Devir · tasarım karşılaştırması</title>
-<style>body{background:#090619;color:#FFF3E8;font:14px Inter,system-ui,sans-serif;margin:24px}h2{font:700 18px Caladea,Georgia,serif}
+<style>body{background:#090619;color:#FFF3E8;font:14px Bricolage,system-ui,sans-serif;margin:24px}h2{font:700 18px Bricolage,Georgia,serif}
 .cift{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}figure{margin:0}figcaption{color:#BFB0E0;margin-bottom:6px}
 img{width:390px;display:block;border-radius:12px}.yigin{position:relative}.yigin .fark{position:absolute;inset:0;mix-blend-mode:difference}
 .yok{width:390px;height:200px;display:grid;place-items:center;border:1px dashed #8E80D6;border-radius:12px}</style>

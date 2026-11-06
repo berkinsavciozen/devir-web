@@ -33,7 +33,7 @@ import { TaslakHaritasi, TaslakSol } from './ekranlar/yeni/TaslakHaritasi';
 import { Bildirimler } from './ekranlar/bildirimler/Bildirimler';
 import { PanoSayfasi } from './ekranlar/pano/TekPano';
 import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
-import { Tanitim, tanitimGorulmeli } from './ekranlar/evren/Tanitim';
+import { IlkTur } from './bilesen/Tur';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
 import { OrnekMenusu } from './bilesen/OrnekMenusu';
@@ -54,10 +54,8 @@ function Bulunamadi() {
 }
 
 /** İlk açılışta bir kez üç kartlık tanıtım (evrenin üstünde). */
-function IlkTanitim() {
-  const [acik, setAcik] = useState(tanitimGorulmeli);
-  return acik ? <Tanitim bitti={() => setAcik(false)} /> : null;
-}
+// W8: ilk açılışta ürün turu (eski üç kartlık tanıtımın yerine)
+function IlkTanitim() { return <IlkTur ad="urun" />; }
 
 /** Yüklenirken gök hemen çizilir; beyaz boş ekran yok (§3.21). */
 const Yukleniyor = () => <Gok tohum={21} yildiz={330} />;

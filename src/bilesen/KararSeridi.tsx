@@ -119,7 +119,7 @@ export function seritYuksekligi(oz: KararOzeti | null | undefined, en: number, o
   const P = kararParcalari(oz, o.kisa);
   if (!P.length) return 0;
   const metin = [o.onek, ...P.map((p) => p.metin), o.neden ? 'Bu tarih neden?' : null].filter(Boolean).join(' · ');
-  return sarSatir(metin, en * .94, `600 ${o.kisa ? 12 : 13}px Inter`).length * (o.kisa ? 16 : 18);
+  return sarSatir(metin, en * .94, `600 ${o.kisa ? 12 : 13}px Bricolage`).length * (o.kisa ? 16 : 18);
 }
 
 export interface KararSeridiOz {

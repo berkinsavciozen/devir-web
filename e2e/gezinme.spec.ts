@@ -111,7 +111,7 @@ test.describe('dokunmatik', () => {
     await cek(page, 'B3-kisi');
   });
 
-  test('B3-ikon: 2×+ yakınlıkta bulut ve bayrak kendi hedefleri', async ({ page }) => {
+  test('B3-ikon: 2×+ yakınlıkta damla kendi hedefi (W7)', async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin');
     // engelli "Görsel" gezegeni (zaman ölçeğiyle konum, plan 27 Eki D)
     const g = (await page.getByRole('listitem', { name: /^6\. adım/ }).boundingBox())!;
@@ -120,7 +120,7 @@ test.describe('dokunmatik', () => {
     await page.waitForTimeout(400);
     await hedefKontrol(page);
     await cek(page, 'B3-ikon');
-    await page.getByRole('listitem', { name: /^Engel:/ }).first().click();
+    await page.getByRole('listitem', { name: /^Engeli kaldır:/ }).first().click();
     await expect(page).toHaveURL(/\/adim\//);
   });
 });
