@@ -107,7 +107,7 @@ export function Akislar({ ben }: { ben: Ben }) {
   }, [satirlar, detay, isaret, kisi, NOW, arsiv]);
 
   if (ozet.isPending) return <Sahne gok={{ tohum: 52, yildiz: 260 }} etiket="Akışlar"><Metin y={70} fs={26} serif agirlik={700} as="h1">Akışlar</Metin></Sahne>;
-  const cumle = kartlar.length ? doluSatir(listeCumlesi(kartlar), 300, '17px Caladea', 2) : ['Henüz akış yok.'];
+  const cumle = kartlar.length ? doluSatir(listeCumlesi(kartlar), 300, '17px Bricolage', 2) : ['Henüz akış yok.'];
   const taslakN = ozet.data?.taslaklar?.length || 0;
 
   return (

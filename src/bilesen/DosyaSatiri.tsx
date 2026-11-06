@@ -9,7 +9,7 @@ export function DosyaGlif({ ad, tur, silindi }: { ad: string; tur?: string; sili
     <svg className="dosya-glif" aria-hidden width="26" height="32" viewBox="-13 -16 26 32" style={{ color: renk }}>
       <path d="M-12,-15 L5,-15 L12,-8 L12,15 L-12,15Z" fill="var(--renk-zemin-hap)" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" strokeDasharray={silindi ? '3 3' : undefined} />
       <path d="M5,-15 L5,-8 L12,-8" fill="none" stroke="currentColor" strokeWidth="1.4" />
-      <text y="7" textAnchor="middle" fontFamily="Inter" fontWeight="800" fontSize={t.length > 3 ? 6.4 : 7.6} fill="currentColor">{t}</text>
+      <text y="7" textAnchor="middle" fontFamily="Bricolage" fontWeight="800" fontSize={t.length > 3 ? 6.4 : 7.6} fill="currentColor">{t}</text>
     </svg>
   );
 }

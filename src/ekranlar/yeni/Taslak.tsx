@@ -57,7 +57,7 @@ export function YeniIs() {
   });
   const yarim: any[] = (ozet.data?.taslaklar || []).slice(0, 3);
   const bekliyor = tasla.isPending;
-  const satirlar = sarSatir(`“${cumle.trim()}”`, 320, 'italic 18.5px Caladea');
+  const satirlar = sarSatir(`“${cumle.trim()}”`, 320, '18.5px Bricolage');
   return (
     <Sahne gok={GOK} cizim={bekliyor ? koza(13, [], true) : ''} etiket="Yeni iş">
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={() => (history.length > 1 ? history.back() : git('/'))} /></Kutu>
@@ -120,7 +120,7 @@ export function TaslakSorulari({ kod, haritaSolda = false }: { kod: string; hari
   const geri = () => (history.length > 1 ? history.back() : git('/'));
   if (!t) return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu>{q.isError && <Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta">{(q.error as Error).message}</Metin>}</Sahne>;
   if (t.durum !== 'acik') return <Sahne gok={GOK} cizim={cizim} etiket="Yeni iş"><Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik="Yeni iş" geri={geri} /></Kutu><Metin y={500} fs={17} lh={22} serif renk="ink2" hiza="orta" as="p">{t.durum === 'iptal' ? 'Bu taslaktan vazgeçildi.' : 'Bu taslaktan akış kuruldu.'}</Metin></Sahne>;
-  const satirlar = sarSatir(`“${String(t.cumle).trim().replace(/'/g, '’')}”`, 320, 'italic 18.5px Caladea').slice(0, t.motor?.yedek ? 3 : 4); // yedek motor etiketi rozetlere binmesin
+  const satirlar = sarSatir(`“${String(t.cumle).trim().replace(/'/g, '’')}”`, 320, '18.5px Bricolage').slice(0, t.motor?.yedek ? 3 : 4); // yedek motor etiketi rozetlere binmesin
   const hepsi = S.every((s) => cevap[s.kod] != null && cevap[s.kod] !== '');
   const i = Math.min(sira, Math.max(0, S.length - 1)), s = S[i];
   const sec = s?.secenekler?.length ? s.secenekler : null;
@@ -131,7 +131,7 @@ export function TaslakSorulari({ kod, haritaSolda = false }: { kod: string; hari
     const bos = sonraki >= 0 ? sonraki : S.findIndex((x) => yeni[x.kod] == null || yeni[x.kod] === '');
     if (bos >= 0) setTimeout(() => { setSira(bos); setMetin(''); }, 220);
   };
-  const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Caladea').slice(0, 3) : [];
+  const soruSatir = s ? sarSatir(s.soru.replace(/'/g, '’'), 300, '19.5px Bricolage').slice(0, 3) : [];
   const vA = acik != null ? V[acik] : null;
   return (
     <>

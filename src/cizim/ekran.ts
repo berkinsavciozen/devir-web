@@ -125,7 +125,7 @@ export interface UYer { kod: string; x: number; y: number; rr: number; a: number
 /** Merkez = bitti (karar 3.I): kapanan akışlar halkada çizilmez; merkezde altın çekirdek ve sayısı, dokununca arşiv. */
 /** Merkez ışığı işaretleri: yakınlaşınca evren ışığı ölçeklemeden ayrı çizer (plan 28 Eki, K6). */
 export const MERKEZ_AC = '<!--merkez-->', MERKEZ_KAPA = '<!--/merkez-->';
-export const bittiMerkezi = (cx: number, cy: number, n: number) => `<circle cx="${cx}" cy="${cy}" r="22" fill="url(#bloom)" opacity="${n ? .9 : .45}"/><circle cx="${cx}" cy="${cy}" r="9" fill="url(#brass)"/>` + (n ? `<circle cx="${cx + 10}" cy="${cy - 10}" r="8" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${cx + 10}" y="${cy - 6.2}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="10" fill="#2A1D4F">${n}</text>` : '');
+export const bittiMerkezi = (cx: number, cy: number, n: number) => `<circle cx="${cx}" cy="${cy}" r="22" fill="url(#bloom)" opacity="${n ? .9 : .45}"/><circle cx="${cx}" cy="${cy}" r="9" fill="url(#brass)"/>` + (n ? `<circle cx="${cx + 10}" cy="${cy - 10}" r="8" fill="#FFF1DC" stroke="#2A1D4F" stroke-width="1.2"/><text x="${cx + 10}" y="${cy - 6.2}" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="10" fill="#2A1D4F">${n}</text>` : '');
 
 /**
  * B1 · usturlap (ekranlar.js astrolabe, §3.10): R 170 bant 22; pirinç yay 1 Eki → bugün; ay adları dışta;
@@ -163,7 +163,7 @@ export function usturlap(o: {
     for (const gun of [5, 12, 22]) {
       const ms = Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), gun) - 3 * 36e5, [x, y] = pol(ang(ms), R + 18);
       if (x < 30 || x > 360) continue;
-      s += `<text x="${f(x)}" y="${f(y + 4)}" font-family="Inter" font-size="11.5" font-weight="600" fill="#BFB0E0" text-anchor="middle">${AY_KISA[m.getUTCMonth()]}</text>`;
+      s += `<text x="${f(x)}" y="${f(y + 4)}" font-family="Bricolage" font-size="11.5" font-weight="600" fill="#BFB0E0" text-anchor="middle">${AY_KISA[m.getUTCMonth()]}</text>`;
       break;
     }
   }

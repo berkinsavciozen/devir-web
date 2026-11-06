@@ -56,9 +56,9 @@ export function KapaliGalaksi({ d, kod, sahipMi, sahip }: { d: any; kod: string;
   }, [oynuyor]); // eslint-disable-line react-hooks/exhaustive-deps
   const K = d.kapanis;
   const deg = K?.degerlendirme ? K.degerlendirme.split(/(?<=[.!?])\s+/)[0] : null;
-  const degSatir = deg ? sar(`“${deg.replace(/'/g, '’')}”`, 262, '16px Caladea').slice(0, 3) : [];
+  const degSatir = deg ? sar(`“${deg.replace(/'/g, '’')}”`, 262, '16px Bricolage').slice(0, 3) : [];
   const devir = K && K.devredilen ? `${K.devredilen} açık iş ${d.akis.varlik ? tarihEkAd(d.akis.varlik) : 'sonraki işlere'} devredildi · ${K.arac || K.kim}, ${gunAy(Date.parse(K.zaman))}` : K ? `${K.arac || K.kim}, ${gunAy(Date.parse(K.zaman))}` : '';
-  const cumle = ikiSatir(kapanisCumlesi(d), 350, '17px Caladea');
+  const cumle = ikiSatir(kapanisCumlesi(d), 350, '17px Bricolage');
   const Z = cizim.Z;
   return (
     <>

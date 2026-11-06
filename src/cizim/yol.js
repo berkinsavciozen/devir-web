@@ -15,7 +15,7 @@ export const gunAy = (ms) => { const d = tl(ms); return `${d.getUTCDate()} ${AY[
 export const gunAyHafta = (ms) => { const d = tl(ms); return `${d.getUTCDate()} ${AY[d.getUTCMonth()]} ${DOW[d.getUTCDay()]}`; };
 export const saat = (ms) => { const d = tl(ms); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
 const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-export const sans = (x, y, t, o = {}) => `<text x="${x}" y="${y}" font-family="Inter" font-size="${o.fs || 12}" font-weight="${o.fw || 500}" fill="${o.col || C.ink2}" ${o.anchor ? `text-anchor="${o.anchor}"` : ''} ${o.ls ? `letter-spacing="${o.ls}"` : ''}>${esc(t)}</text>`;
+export const sans = (x, y, t, o = {}) => `<text x="${x}" y="${y}" font-family="Bricolage" font-size="${o.fs || 12}" font-weight="${o.fw || 500}" fill="${o.col || C.ink2}" ${o.anchor ? `text-anchor="${o.anchor}"` : ''} ${o.ls ? `letter-spacing="${o.ls}"` : ''}>${esc(t)}</text>`;
 export function kart(x, y, w, h, o = {}) {
   return `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${o.rx || 22}" fill="${o.fill || '#061A24'}" fill-opacity="${o.op ?? .72}" stroke="${o.stroke || '#FFFFFF'}" stroke-opacity="${o.sop ?? .08}"/>`;
 }
@@ -91,7 +91,7 @@ export function clusterBadge(x, y, members, radOf, stOf, ps = 1) {
   s += planet(x, y, r, stOf(fr)[0], stOf(fr)[1]);
   const bx = x - r * .8 - 3 * ps, by = y - r * .8 - 3 * ps;
   // 2 Kas: krem daire yalnız merkezdeki bitti sayısında; küme rozeti koyu, "+n" = öndekinin arkasındaki adım sayısı
-  s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${f(8.5 * ps)}" fill="#08222E" stroke="#D9CCFF" stroke-width="1.2"/><text x="${f(bx)}" y="${f(by + 3.6 * ps)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(9.5 * ps)}" fill="#FFF3E8">+${members.length - 1}</text>`;
+  s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${f(8.5 * ps)}" fill="#08222E" stroke="#D9CCFF" stroke-width="1.2"/><text x="${f(bx)}" y="${f(by + 3.6 * ps)}" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="${f(9.5 * ps)}" fill="#FFF3E8">+${members.length - 1}</text>`;
   return s;
 }
 
@@ -336,7 +336,7 @@ export function yolCiz(M, o = {}) {
     else t += planet(g.x, g.y, r, k, ex(no));
     // darboğaz (orta yakınlıktan): altında onu bekleyen iş sayısı
     const bek = !SONUK.includes(k) && F.darbogaz === +no ? bekleyen(no) : 0;
-    if (bek && !o.uzak) { const yz = `${bek}${o.ikonAyri ? ' bekliyor' : ''}`, w = o.ikonAyri ? 50 : 14; t += `<g transform="translate(${f(g.x)},${f(g.y + r + 11 * m13)}) scale(${f(m13)})"><rect x="${-w / 2}" y="-6.5" width="${w}" height="13" rx="6.5" fill="#08222E" stroke="#FFF6E0" stroke-width="1"/><text y="3.4" text-anchor="middle" font-family="Inter" font-size="8.5" font-weight="800" fill="#FFF6E0">${yz}</text></g>`; }
+    if (bek && !o.uzak) { const yz = `${bek}${o.ikonAyri ? ' bekliyor' : ''}`, w = o.ikonAyri ? 50 : 14; t += `<g transform="translate(${f(g.x)},${f(g.y + r + 11 * m13)}) scale(${f(m13)})"><rect x="${-w / 2}" y="-6.5" width="${w}" height="13" rx="6.5" fill="#08222E" stroke="#FFF6E0" stroke-width="1"/><text y="3.4" text-anchor="middle" font-family="Bricolage" font-size="8.5" font-weight="800" fill="#FFF6E0">${yz}</text></g>`; }
     // hamle damlası (gezegenin tam üstünde)
     const h = hamleAdim(no);
     if (h) {

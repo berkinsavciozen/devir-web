@@ -17,7 +17,7 @@ import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
 import { C, pill, ship } from '../../cizim/ortak.js';
 import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
-import { tanitimGorulmeli } from './Tanitim';
+import { turGorulmeli } from '../../bilesen/Tur';
 import { yakinlas } from '../../cizim/yakinlas';
 import { AvatarAd, BosEvren, BosEvrenGenis } from './BosEvren';
 import { evrenCumleleri } from './cumleler';
@@ -301,7 +301,7 @@ export function evrenDiliniSifirla() { try { localStorage.removeItem(LEJANT_ANAH
 /** Evren dili ilk açılışta bir kez: genel tanıtım görüldükten sonra (sahte kipte yalnız ?lejant=1). */
 function evrenDiliGorulmeli(): boolean {
   if (SAHTE) return arama().get('lejant') === '1';
-  try { return !localStorage.getItem(LEJANT_ANAHTAR) && !tanitimGorulmeli(); } catch { return false; }
+  try { return !localStorage.getItem(LEJANT_ANAHTAR) && !turGorulmeli('urun'); } catch { return false; }
 }
 
 /**

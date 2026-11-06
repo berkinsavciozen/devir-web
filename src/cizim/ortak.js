@@ -274,9 +274,9 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
     s += `<circle cx="0" cy="0" r="9" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
     s += `<rect x="-6.5" y="-3.5" width="13" height="7" rx="3" fill="${GECE}" stroke="${col}" stroke-width="${K}"/>`;
     // vizörde baş harf (sahibinin renginde); harf yoksa iki göz
-    if (initial) s += `<text x="0" y="2.2" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6" fill="${col}">${initial}</text>`;
+    if (initial) s += `<text x="0" y="2.2" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6" fill="${col}">${initial}</text>`;
     else s += `<circle cx="-2.6" cy="0" r="1.2" fill="${col}"/><circle cx="2.6" cy="0" r="1.2" fill="${col}"/>`;
-    if (o.sira) s += `<text x="13" y="-7" text-anchor="middle" font-family="Inter" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
+    if (o.sira) s += `<text x="13" y="-7" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
     return s + son;
   }
   if (o.flame !== false) s += `<path d="M-12,-3.5 Q-25,0 -12,3.5Z" fill="url(#flame)"/>`;
@@ -284,7 +284,7 @@ function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
   s += `<rect x="-13" y="-7.5" width="24" height="15" rx="7.5" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
   s += `<path d="M11,-5 Q18,0 11,5Z" fill="${col}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
   s += `<circle cx="0" cy="0" r="5.6" fill="${GECE}" stroke="${col}" stroke-width="${K}"/>`;
-  s += `<text x="0" y="2.7" transform="rotate(${f(-ang)} 0 0)" text-anchor="middle" font-family="Inter" font-weight="700" font-size="7.5" fill="#FFF3E8">${initial}</text>`;
+  s += `<text x="0" y="2.7" transform="rotate(${f(-ang)} 0 0)" text-anchor="middle" font-family="Bricolage" font-weight="700" font-size="7.5" fill="#FFF3E8">${initial}</text>`;
   return s + son;
 }
 
@@ -293,7 +293,7 @@ function pill(x, y, text, o = {}) {
   const fs = o.fs || 11, w = o.w || Math.round(text.length * fs * .56 + 14), h = fs + 9;
   const ax = o.anchor === 'start' ? x : o.anchor === 'end' ? x - w : x - w / 2;
   return `<g><rect x="${f(ax)}" y="${f(y - h / 2)}" width="${w}" height="${h}" rx="${h / 2}" fill="${o.bg || '#0A2736'}" fill-opacity="${o.bgo ?? .88}" stroke="${o.stroke || 'none'}" stroke-width="1"/>
-  <text x="${f(ax + w / 2)}" y="${f(y + fs * .36)}" text-anchor="middle" font-family="Inter" font-weight="${o.fw || 600}" font-size="${fs}" fill="${o.col || C.ink}">${text}</text></g>`;
+  <text x="${f(ax + w / 2)}" y="${f(y + fs * .36)}" text-anchor="middle" font-family="Bricolage" font-weight="${o.fw || 600}" font-size="${fs}" fill="${o.col || C.ink}">${text}</text></g>`;
 }
 
 // Monument Valley kulesi (hedef)
@@ -464,7 +464,7 @@ function shareRing(x, y, r, shares, o = {}) {
     }
     if (o.beads !== false) {
       const am = (a0 + da / 2) * Math.PI / 180, bx = Math.cos(am) * r, by = Math.sin(am) * r, br = o.br || 7;
-      s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${br}" fill="#08222E" stroke="${col(sh)}" stroke-width="1.3"/><text x="${f(bx)}" y="${f(by + br * .42)}" text-anchor="middle" font-family="Inter" font-weight="800" font-size="${f(br * 1.15)}" fill="#FFF3E8">${sh.ad[0]}</text>`;
+      s += `<circle cx="${f(bx)}" cy="${f(by)}" r="${br}" fill="#08222E" stroke="${col(sh)}" stroke-width="1.3"/><text x="${f(bx)}" y="${f(by + br * .42)}" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="${f(br * 1.15)}" fill="#FFF3E8">${sh.ad[0]}</text>`;
     }
     a0 = a1;
   }

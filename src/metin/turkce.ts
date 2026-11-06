@@ -96,7 +96,7 @@ export function paySure(saat: number | null | undefined): string {
 
 let tuval: CanvasRenderingContext2D | null = null;
 /** Metin genişliği (px); tarayıcı yoksa yaklaşık. */
-export function genislik(metin: string, font = '17px Caladea'): number {
+export function genislik(metin: string, font = '17px Bricolage'): number {
   if (typeof document === 'undefined') return metin.length * 7.4;
   tuval = tuval || document.createElement('canvas').getContext('2d');
   if (!tuval) return metin.length * 7.4;
@@ -107,7 +107,7 @@ export function genislik(metin: string, font = '17px Caladea'): number {
  * Akıllı cümleyi iki satıra böler: ortaya yakın noktalama (; ,) önce, yoksa ortaya en yakın boşluk; iki satır da sığmalı.
  * Sığmazsa tek satır döner (tarayıcı kırar).
  */
-export function ikiSatir(metin: string, en = 350, font = '17px Caladea'): string[] {
+export function ikiSatir(metin: string, en = 350, font = '17px Bricolage'): string[] {
   if (genislik(metin, font) <= en) return [metin];
   const yarim = metin.length / 2, aday: { i: number; puan: number }[] = [];
   for (let i = 1; i < metin.length - 1; i++) {
@@ -121,7 +121,7 @@ export function ikiSatir(metin: string, en = 350, font = '17px Caladea'): string
 }
 
 /** Açgözlü iki satır: ilk satıra sığan en çok kelime, ikinci satırda en az 4 kelime (B1 cümleleri tasarımda böyle kırılır). */
-export function doluSatir(metin: string, en: number, font = '17.5px Caladea', enAzSon = 4): string[] {
+export function doluSatir(metin: string, en: number, font = '17.5px Bricolage', enAzSon = 4): string[] {
   const w = metin.split(' ');
   if (genislik(metin, font) <= en) return [metin];
   // ikinci satır en az enAzSon kelime taşır (kısa kuyruk kalmaz)
@@ -130,7 +130,7 @@ export function doluSatir(metin: string, en: number, font = '17.5px Caladea', en
 }
 
 /** Açgözlü çok satır: her satıra sığan en çok kelime. */
-export function sarSatir(metin: string, en: number, font = '17px Caladea'): string[] {
+export function sarSatir(metin: string, en: number, font = '17px Bricolage'): string[] {
   const L: string[] = [];
   for (const w of metin.split(' ')) { const s = L.length ? `${L[L.length - 1]} ${w}` : w; if (L.length && genislik(s, font) <= en) L[L.length - 1] = s; else L.push(w); }
   return L;
@@ -138,7 +138,7 @@ export function sarSatir(metin: string, en: number, font = '17px Caladea'): stri
 
 /** Yazı tipleri yüklenince yeniden ölçmek için: yüklenene dek canvas yedek yazı tipini ölçer. */
 export function yaziTipleriHazir(): Promise<unknown> {
-  return typeof document !== 'undefined' && document.fonts ? Promise.all([document.fonts.load('17px Caladea'), document.fonts.load('italic 17px Caladea').catch(() => null), document.fonts.ready]) : Promise.resolve();
+  return typeof document !== 'undefined' && document.fonts ? Promise.all([document.fonts.load('17px Bricolage'), document.fonts.load('17px Bricolage').catch(() => null), document.fonts.ready]) : Promise.resolve();
 }
 
 /** Sayı + iyelik: 2 → "2’si", 3 → "3’ü", 5 → "5’i", 10 → "10’u" (okunuşa göre). */

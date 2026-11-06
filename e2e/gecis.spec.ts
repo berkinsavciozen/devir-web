@@ -70,25 +70,36 @@ test('ayar-azalt: Görünüm · Azalt sistem tercihi olmadan da döngüleri durd
 test('B3-lejant: "?" harita dilini açar', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Harita dili' }).click();
-  const L = page.getByRole('list', { name: 'Harita işaretleri' });
-  await expect(L.getByRole('listitem')).toHaveCount(15);
+  // W7: dört öbek (Hamle, Işık, Kim, Yol); yalnız bu haritada olanlar
+  const L = page.getByRole('list', { name: /^(Hamle|Işık|Kim|Yol) işaretleri$/ });
+  await expect(L).toHaveCount(4);
+  expect(await L.getByRole('listitem').count()).toBeGreaterThan(10);
   await page.waitForTimeout(150);
   await cek(page, 'B3-lejant');
   await page.keyboard.press('Escape');
   await expect(L).toHaveCount(0);
 });
 
-test('A0-tanitim: üç kart, Başla ile kapanır', async ({ page }) => {
-  await ac(page, '/?senaryo=berkin&tanitim=1');
-  const d = page.getByRole('dialog', { name: 'Her iş bir harita' });
+test('A0-tur: ürün turu gerçek öğeleri ışıkla çevirir, Geri/İleri, Başla ile kapanır (W8)', async ({ page }) => {
+  await ac(page, '/?senaryo=berkin&tur=urun');
+  const d = page.getByRole('dialog', { name: 'Devir’e hoş geldin' });
   await d.waitFor();
-  await page.waitForTimeout(150);
-  await cek(page, 'A0-tanitim');
+  await cek(page, 'A0-tur');
   await page.getByRole('button', { name: 'İleri' }).click();
-  await expect(page.getByRole('heading', { name: 'Kimde, ne zaman' })).toBeVisible();
-  await page.getByRole('button', { name: 'İleri' }).click();
+  await expect(page.getByRole('heading', { name: 'Evren' })).toBeVisible();
+  await expect(page.locator('.tur-isik:not(.tur-isik-yok)')).toBeVisible();
+  await page.getByRole('button', { name: 'Geri' }).click();
+  await expect(page.getByRole('heading', { name: 'Devir’e hoş geldin' })).toBeVisible();
+  for (let i = 0; i < 12 && await page.getByRole('button', { name: 'İleri' }).count(); i++) await page.getByRole('button', { name: 'İleri' }).click();
   await page.getByRole('button', { name: 'Başla' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('A0-tur-harita: harita turu Esc ile kapanır (W8)', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&tur=harita');
+  await expect(page.getByRole('heading', { name: 'Akışın haritası' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog', { name: 'Akışın haritası' })).toHaveCount(0);
 });
 
 test('X2-bulunamadi: bilinmeyen adres kullanıcı dilinde; evrene döner', async ({ page }) => {

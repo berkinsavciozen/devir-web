@@ -94,7 +94,7 @@ export function Bildirimler({ ben }: { ben: Ben }) {
 
   const cumleMetin = eski ? 'Akışlarının son hareketleri; okundu bilgisi sunucu 0.12.0 ile gelir.' : hata ? ''
     : !Q.data ? '' : tumYeni ? `${tumYeni} yeni hareket${ilgiliYeni ? `; ${ilgiliYeni === tumYeni ? 'hepsi' : ilgiliYeni} senin işlerinle ilgili` : ''}.` : 'Yeni hareket yok; hepsini gördün.';
-  const cumle = doluSatir(cumleMetin, 340, '17px Caladea', 2);
+  const cumle = doluSatir(cumleMetin, 340, '17px Bricolage', 2);
   const kisiAd = S.kisi ? kisa(S.kisi) : 'Herkes';
   const akisAd = S.akis ? (O.find((e) => e.akis === S.akis)?.akis_kisa_ad || O.find((e) => e.akis === S.akis)?.akis_baslik || S.akis) : 'Hepsi';
 

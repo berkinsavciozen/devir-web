@@ -44,8 +44,8 @@
   --degrade-sayfa: linear-gradient(180deg, #12405A 0%, #0E3346 50%, #0A2736 100%);
   --degrade-dugme: linear-gradient(135deg, #FFE0C2 0%, #FFB08C 100%);
   --degrade-pirinc: linear-gradient(135deg, #FFE3B8 0%, #E9A879 50%, #B9708F 100%);
-  --font-serif: Caladea, 'Cambria', Georgia, 'Times New Roman', serif;
-  --font-sans: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Bricolage, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: Bricolage, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --tip-ekran-basligi-aile: var(--font-serif);
   --tip-ekran-basligi-boyut: 24px;
   --tip-ekran-basligi-agirlik: 700;

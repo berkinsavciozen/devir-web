@@ -47,7 +47,7 @@ export function Cevapla({ kod, soru, ben }: { kod: string; soru: string; ben: st
       </Sahne>
     );
   }
-  const satirlar = doluSatir(S.soru, 330, '21px Caladea', 3);
+  const satirlar = doluSatir(S.soru, 330, '21px Bricolage', 3);
   const alt = dal ? (dal.kollar.length === 2 ? 'Cevaba göre bir adım kalır, öbürü söner.' : 'Cevaba göre bir adım kalır, öbürleri söner.') : 'Tarih gelince adım takvimdeki yerine oturur.';
   const hazir = dal ? !!secili : /^\d{4}-\d{2}-\d{2}$/.test(tarih);
   const butonY = dal ? P(352 + 152) + dal.kollar.length * 76 + 8 : P(352 + 312);

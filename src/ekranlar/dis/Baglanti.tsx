@@ -83,7 +83,7 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
   let cumle: string = v.ozet;
   if (a && a.durum === 'hazir' && a.durum_at) cumle = `${adimAdi(a)} ${tarihEk(gunAyUzun(a.durum_at), 'den')} beri sende${a.son_tarih ? `; son tarih ${gunAyUzun(a.son_tarih)}` : ''}.`;
   else if (a && a.durum === 'suruyor') cumle = `${adimAdi(a)} sende sürüyor${a.son_tarih ? `; son tarih ${gunAyUzun(a.son_tarih)}` : ''}.`;
-  const satir = doluSatir(cumle, 350, '20px Caladea', 5);
+  const satir = doluSatir(cumle, 350, '20px Bricolage', 5);
   const kart = 430, b1 = kart + 108, b2 = b1 + 68, b3 = b2 + 68;
   const ey: string[] = a?.eylemler || [];
   const beklemede = a && !BITTI(a.durum) && !ey.includes('tamam');

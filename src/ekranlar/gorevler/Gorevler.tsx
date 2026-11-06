@@ -35,7 +35,7 @@ const enc = encodeURIComponent;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const taslakIkon = `<g transform="translate(28,29)"><circle r="12" fill="#B9A6F2" fill-opacity=".12" stroke="#D9CCFF" stroke-dasharray="1.5 3"/>${sparkle(0, 0, 5, '#FFF1D6', .95)}</g>`;
 const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22" height="16" rx="3" fill="#08222E" stroke="#F2B8D8" stroke-width="1.3"/><path d="M-10,-7 L0,1 L10,-7" fill="none" stroke="#F2B8D8" stroke-width="1.3"/></g>`;
-const soruIkon = `<g transform="translate(28,29)"><circle r="12" fill="#FFC9A3" fill-opacity=".14" stroke="#FFC9A3" stroke-width="1.3"/><text y="5" text-anchor="middle" font-family="Caladea, serif" font-size="15" font-weight="700" fill="#FFF1E2">?</text></g>`;
+const soruIkon = `<g transform="translate(28,29)"><circle r="12" fill="#FFC9A3" fill-opacity=".14" stroke="#FFC9A3" stroke-width="1.3"/><text y="5" text-anchor="middle" font-family="Bricolage, serif" font-size="15" font-weight="700" fill="#FFF1E2">?</text></g>`;
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean, destek = false) => destek
   ? destekGemisi(x, y, 1, -.35, '#FFC9A3', k * 1.6)
   : tip === 'dis'
@@ -193,7 +193,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const listeY = benKip ? (L.length && !panelde ? HY + H.h + 66 : ustListeY + ustListeBoyu + 16) : L.length && !panelde ? HY + H.h + 66 : (L.length ? HY : 196 + kayma);
   const Lst = Liste({ y0: listeY, ogeler, etiket: benKip ? 'Diğer işler' : 'Görevler' });
 
-  const cumle = G.data || eski ? doluSatir(benKip ? benCumlesi(B, AG.data ? AA : null) : gorevCumlesi(L, S.kisi, kisi, S.durum), 340, '17px Caladea', 3) : [''];
+  const cumle = G.data || eski ? doluSatir(benKip ? benCumlesi(B, AG.data ? AA : null) : gorevCumlesi(L, S.kisi, kisi, S.durum), 340, '17px Bricolage', 3) : [''];
   const kisiAd = S.kisi === 'ben' ? (AA.length ? 'Ben + agent’larım' : 'Ben') : S.kisi === 'hepsi' ? 'Herkes' : kisaAd(S.kisi);
   const akisAd = S.akis.length ? (G.data?.akislar || []).filter((a: any) => S.akis.includes(a.kod)).map((a: any) => a.kisa_ad || a.baslik).join(', ') || S.akis.join(', ') : 'Hepsi';
 
@@ -215,7 +215,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
           <h2 className="bolum-baslik" style={{ top: HY - 26 }}>{benKip ? 'HARİTA · SEN VE AGENT’LARIN' : kisiBasina ? 'GÖREV HARİTASI · KİŞİLER' : 'GÖREV HARİTASI · AKIŞLAR'}</h2>
           {H.seritler.map((r) => {
             // şerit adı kesilmez (P1-F): sütuna sığan en çok üç satır, şeridin ortasında
-            const ad = r.tip === 'kisi' && r.sahipTip !== 'agent' ? kisaAd(r.ad) : r.ad, L = sarSatir(ad, 62, '650 10.5px Inter').slice(0, 3);
+            const ad = r.tip === 'kisi' && r.sahipTip !== 'agent' ? kisaAd(r.ad) : r.ad, L = sarSatir(ad, 62, '650 10.5px Bricolage').slice(0, 3);
             return <Metin key={r.ad} y={r.y + 4 - (L.length - 1) * 5.75} x={48} fs={L.length > 1 ? 10.5 : 11.5} lh={11.5} agirlik={650} renk="ink2" style={{ right: 'auto', width: 62, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</Metin>;
           })}
           {/* eksen (K6): haftalık tarihler, birbirine ve "bugün"e binmeyenler; altında bugün */}

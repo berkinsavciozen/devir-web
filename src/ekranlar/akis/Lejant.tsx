@@ -39,7 +39,7 @@ const SATIRLAR: Satir[] = [
   [ship(22, 24, 0, 'dis', '', O, .6), 'Dış katılımcı', 'Balon; yalnız kendi işlerini görür', 'dis', 'Kim'],
   [yol(SEN, { isik: '#FFF6E0' }), 'Geride kalan yol', 'Beyaz parlar; gecikince kırmızı', undefined, 'Yol'],
   [`<path d="M4,30 Q22,6 40,24" fill="none" stroke="#FFF6E0" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/>`, 'Kritik yol', 'Beyaz noktalı zincir: gecikirse hedef tarih kayar', 'kritik', 'Yol'],
-  [planet(22, 18, 8, 'dark', { life: false, halka: O }) + `<g transform="translate(22,36)"><rect x="-7" y="-6.5" width="14" height="13" rx="6.5" fill="#08222E" stroke="#FFF6E0"/><text y="3.4" text-anchor="middle" font-family="Inter" font-size="8.5" font-weight="800" fill="#FFF6E0">3</text></g>`, 'Darboğaz', 'Altındaki sayı: onu bekleyen iş; yakınlaşınca yazıyla', 'darbogaz', 'Yol'],
+  [planet(22, 18, 8, 'dark', { life: false, halka: O }) + `<g transform="translate(22,36)"><rect x="-7" y="-6.5" width="14" height="13" rx="6.5" fill="#08222E" stroke="#FFF6E0"/><text y="3.4" text-anchor="middle" font-family="Bricolage" font-size="8.5" font-weight="800" fill="#FFF6E0">3</text></g>`, 'Darboğaz', 'Altındaki sayı: onu bekleyen iş; yakınlaşınca yazıyla', 'darbogaz', 'Yol'],
   [planet(22, 22, 9, 'lit', { life: false, halka: SEN, sonuc: 'belge' }), 'Çıktı', 'Belge rozeti: işin teslim ettiği bir şey var', 'cikti', 'Yol'],
   [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol', undefined, 'Yol'],
 ];
