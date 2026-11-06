@@ -24,7 +24,7 @@ import { TumHaritaDili } from '../akis/Lejant';
 import { whatsappAdresi } from '../akis/BaglantiGonder';
 import { uyumDurumu } from '../../api/surum';
 import { RutinKur } from './RutinKur';
-import { AgentDetay, agentCumlesi, agentIkonu, baglantiOf, useAgentlar } from './Agentlarim';
+import { AgentDetay, agentCumlesi, agentIkonu, baglantiOf, RutinDetay, rutinAlt, useAgentlar } from './Agentlarim';
 
 const GOK = { tohum: 17, yildiz: 200 };
 const MCP_TABAN = () => (SAHTE ? 'https://sahte.devir/functions/v1/devir-mcp' : API_TABAN);
@@ -43,15 +43,18 @@ export function KopyaAlan({ deger, gosterim, etiket, style }: { deger: string; g
   );
 }
 
+/** adresle gelinen grup (?bolum=ben, eski ?sekme=hesap) */
+const hedefGrup = (): Bolum | null => { const q = arama(); const b = q.get('bolum') || q.get('sekme') || ''; return (BOLUMLER as readonly string[]).includes(b) ? (b as Bolum) : ESKI[b] || null; };
 const sonKullanim = (t: string | null) => (t ? `Son kullanım ${gunAy(Date.parse(t))}` : 'Hiç kullanılmadı');
 /** Anahtar süresi (MK-1): yeni anahtarlar 90 gün; eskilerde süre yok */
 const sureMetni = (k: any) => (k.suresi_doldu ? 'süresi doldu' : k.son_gecerlilik ? `${gunAy(Date.parse(k.son_gecerlilik))}'e kadar` : null);
 
-const BOLUMLER = ['ben', 'kisiler', 'oner', 'harita', 'gelismis'] as const;
+// W2 (0.34.1, B10): dört grup + katlı Gelişmiş. Ben ve agent'larım · Kişiler · Bağlantılar · Görünüm · (Gelişmiş)
+const BOLUMLER = ['ben', 'kisiler', 'baglantilar', 'gorunum', 'gelismis'] as const;
 type Bolum = typeof BOLUMLER[number];
-// eski adresler (?sekme=hesap, ?bolum=ekip …) yeni gruplara iner
-const ESKI: Record<string, Bolum> = { hesap: 'ben', alan: 'kisiler', ekip: 'kisiler', baglantilar: 'gelismis', gorunum: 'harita' };
-const BASLIK: Record<Bolum, string> = { ben: 'BEN', kisiler: 'KİŞİLER', oner: 'DEVİR’İ ÖNER', harita: 'HARİTA DİLİ', gelismis: 'GELİŞMİŞ' };
+// eski adresler (?sekme=hesap, ?bolum=ekip, ?bolum=harita …) yeni gruplara iner
+const ESKI: Record<string, Bolum> = { hesap: 'ben', alan: 'kisiler', ekip: 'kisiler', oner: 'kisiler', harita: 'gorunum' };
+const BASLIK: Record<Bolum, string> = { ben: 'BEN VE AGENT’LARIM', kisiler: 'KİŞİLER', baglantilar: 'BAĞLANTILAR', gorunum: 'GÖRÜNÜM', gelismis: 'GELİŞMİŞ' };
 
 /** "Berkin’in Claude’u" yerine satırda yalnız uygulama; alt satır ne zaman kullanıldı. */
 const agentAlt = (a: { son_kullanim?: string | null; ilk_kullanim?: string | null; tarih?: string; kullanilmiyor?: boolean }) =>
@@ -98,6 +101,8 @@ export function Ayarlar() {
   const [kaldir, setKaldir] = useState<null | { id: string; ad: string; istemci?: string; eski?: boolean }>(null);
   const [lejant, setLejant] = useState(false);
   const [onayAcik, setOnayAcik] = useState(false);
+  const [gelismis, setGelismis] = useState(false);
+  const [rutinAc, setRutinAc] = useState<string | null>(null);
   // bağlı uygulamalar (OAuth izinleri) yalnız e-postayla girişte; anahtarla girişte Supabase oturumu yok
   const ist = useQuery({ queryKey: ['istemciler'], queryFn: () => kimlik.istemciler(), enabled: oturum && ag.isError, retry: false });
   const pol = useQuery({ queryKey: ['politika'], queryFn: () => api.get<any>('/politika'), enabled: sahip });
@@ -123,31 +128,34 @@ export function Ayarlar() {
   y = hesapYuksekligi(ben, y + 14, false);
   const TK: any[] = tk.data?.tetikler || [];
   const AA = aa.data?.agentlar || [];
-  const genelT = aa.data?.genel_rutin ? TK.find((t) => t.id === aa.data!.genel_rutin!.id) : null;
   const tek = !!aa.data;
+  // K1 (0.34.0): rutinler agent'lardan ayrı liste; eski sunucuda tetik listesi
+  const RL: any[] = tek ? (aa.data!.rutinler || TK.map((t) => ({ id: t.id, ad: t.ad, tur: t.tur, son_calisma: t.son_tetik_at, son_hata: t.son_hata, agentlar: t.agentlar ?? null }))) : [];
   const agY = y + 34;
-  // tek liste: agent'lar, genel rutin, kurulum satırı; altta bağlı uygulamalar
-  const agSatir = tek ? AA.length + (genelT ? 1 : 0) + 1 : AG.length + 1;
-  y = agY + 14 + agSatir * 68 - 2;
-  const bgY = tek ? y + 34 : null; if (bgY != null) y = bgY + 14 + (AG.length + 1) * 68 - 2;
-  const tkY = !tek && tk.data ? y + 34 : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
+  const agSatir = tek ? AA.length : 0;
+  if (tek) y = agY + 14 + Math.max(agSatir, 1) * 68 - 2;
+  const rtY = tek ? y + 34 : null; if (rtY != null) y = rtY + 14 + (RL.length + 1) * 68 - 2;
+  const tkY = !tek && tk.data ? agY : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
   const kuY = k ? y + 34 : null; if (kuY != null) y = kuY + 14 + 70;
   bY.kisiler = y + 46; y = bY.kisiler + 14 + (sahip ? 2 * 74 : 66);
   const onerVar = !dis && !!rf.data;
-  if (onerVar) { bY.oner = y + 46; y = bY.oner + 14 + 66 + 8 + 50 + (sahip ? 74 + 8 : 0); }
-  bY.harita = y + 46; y = bY.harita + 14 + 74;
+  const onerY = onerVar ? y + 34 : 0; if (onerVar) y = onerY + 14 + 66 + 8 + 50 + (sahip ? 74 + 8 : 0);
+  bY.baglantilar = y + 46; y = bY.baglantilar + 14 + (AG.length + 1) * 68 - 2;
+  const mcpY = y + 14; if (sahip) y = mcpY + 66 + 30;
+  bY.gorunum = y + 46; y = bY.gorunum + 14 + 74;
   const hareketY = y + 14; y = hareketY + 100;
   const bildirimY = y; y += 74;
   bY.gelismis = y + 46; y = bY.gelismis + 14;
-  const mcpY = y; if (sahip) y += 66 + 30;
-  const anahtarY = y + 26; if (sahip) y = anahtarY + 14 + L.length * 68 + 8 + 58;
-  const polY = y; if (sahip) y += 74;
-  const denetimY = y; y += 74;
+  const gelAc = gelismis || hedefGrup() === 'gelismis';
+  const gelY = y; y += 74;
+  const anahtarY = y + 26; if (gelAc && sahip) y = anahtarY + 14 + L.length * 68 + 8 + 58;
+  const polY = y; if (gelAc && sahip) y += 74;
+  const denetimY = y; if (gelAc) y += 74;
   const cikisY = y + 10;
   const h = cikisY + 60;
 
   // adresle gelinen grup (?bolum=ben, eski ?sekme=hesap): ilk çizimden sonra oraya kayar
-  const hedef = (() => { const q = arama(); const b = q.get('bolum') || q.get('sekme') || ''; const g = (BOLUMLER as readonly string[]).includes(b) ? (b as Bolum) : ESKI[b] || null; return g; })();
+  const hedef = hedefGrup();
   const kaydi = useRef(false);
   useEffect(() => {
     if (!hedef || hedef === 'ben' || kaydi.current || !ben) return;
@@ -172,30 +180,18 @@ export function Ayarlar() {
 
         {baslik('ben')}
         <HesapIcerik y={bY.ben + 14} ben={ben} cikis={false} />
-        <h3 className="bolum-baslik" style={{ top: agY - 12 }}>AGENT’LARIM</h3>
-        {tek ? <>
-          {AA.map((a, i) => (
-            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a)} ust={a.ad} alt={agentCumlesi(a, !!genelT, true)} onClick={() => setAgentAc(a.ad)} />
+        {tek && <>
+          <h3 className="bolum-baslik" style={{ top: agY - 12 }}>AGENT’LARIM</h3>
+          {AA.length ? AA.map((a, i) => (
+            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a)} ust={a.ad} alt={agentCumlesi(a, false, true)} onClick={() => setAgentAc(a.ad)} />
+          )) : <Metin y={agY + 40} x={22} fs={13} lh={17} renk="ink3" style={{ right: 22 }}>Henüz agent yok. Bir görevin sahibi agent olunca burada görünür.</Metin>}
+          <h3 className="bolum-baslik" style={{ top: rtY! - 12 }}>RUTİNLERİM · AI YAPSIN</h3>
+          {RL.map((t, i) => (
+            <SatirKart key={t.id} y={rtY! + 14 + i * 68} h={60} ikon={ozelIkon(t.tur === 'zamanli' ? '<circle r="6" fill="none" stroke="#B9A6F2" stroke-width="1.6"/><path d="M0,-3.5 L0,0 L2.5,1.5" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linecap="round"/>' : '<path d="M1.5,-7 L-4,1 L0,1 L-1.5,7 L4,-1 L0,-1 Z" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linejoin="round"/>')}
+              ust={t.ad} alt={rutinAlt(t, true)} onClick={() => setRutinAc(t.id)} />
           ))}
-          {genelT && <SatirKart y={agY + 14 + AA.length * 68} h={60} ikon={ozelIkon('<circle r="6" fill="none" stroke="#B9A6F2" stroke-width="1.6"/><path d="M0,-3.5 L0,0 L2.5,1.5" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linecap="round"/>')} ust={genelT.ad}
-            alt={`Tüm agent’larının işine bakar · ${genelT.son_tetik_at ? `son uğradı ${gunAy(Date.parse(genelT.son_tetik_at))} ${saat(Date.parse(genelT.son_tetik_at))}` : 'henüz uğramadı'}`}
-            sag={<button type="button" className="satir-eylem mercan" onClick={() => setRutinKaldir(genelT)} aria-label={`${genelT.ad} rutinini kaldır`}>Kaldır</button>} />}
-          <SatirKart y={agY + 14 + (agSatir - 1) * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
-            ust={AA.length || genelT ? 'AI yapsın kurulumu' : 'AI yapsın’ı kur'} alt={AA.length || genelT ? 'Yeni rutin kur ya da bağlantıyı kontrol et' : 'İki adım, bir kez: Claude’u bağla, rutini kur'} onClick={() => setRutin(true)} />
-          <h3 className="bolum-baslik" style={{ top: bgY! - 12 }}>BAĞLI UYGULAMALAR</h3>
-          {AG.map((a, i) => (
-            <SatirKart key={a.id} y={bgY! + 14 + i * 68} h={60} ikon={ozelIkon(`<text y="4.5" text-anchor="middle" font-size="12" font-weight="700" fill="#FFC9A3">${(a.ad[0] || 'C').toLocaleUpperCase('tr')}</text>`)} ust={a.ad} alt={a.alt}
-              sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
-          ))}
-          <SatirKart y={bgY! + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
-            ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
-        </> : <>
-        {AG.map((a, i) => (
-          <SatirKart key={a.id} y={agY + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (a.ad[0] || 'C').toLocaleUpperCase('tr'), '#FFC9A3', .62, { flame: false })} ust={a.ad} alt={a.alt}
-            sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
-        ))}
-        <SatirKart y={agY + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
-          ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
+          <SatirKart y={rtY! + 14 + RL.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
+            ust={RL.length ? 'Yeni rutin kur' : 'AI yapsın’ı kur'} alt={RL.length ? 'Hangi agent’lar için çalışacağını seçersin' : 'İki adım, bir kez: Claude’u bağla, rutini kur'} onClick={() => setRutin(true)} />
         </>}
         {tkY != null && <>
           <h3 className="bolum-baslik" style={{ top: tkY - 12 }}>AI YAPSIN · CLAUDE RUTİNLERİ</h3>
@@ -224,17 +220,30 @@ export function Ayarlar() {
           alt={ben?.rol === 'ekip' && akisErisimi(ben?.kapsam) ? `${akisErisimi(ben?.kapsam)!.length} akışı görürsün` : dis ? 'Yalnız kendi adımlarını görürsün' : 'Ekibi alanın sahibi yönetir'} />}
 
         {onerVar && <>
-          {baslik('oner')}
-          <KopyaAlan deger={rf.data.link} gosterim={rf.data.link.replace(/^https?:\/\//, '')} etiket="Referans bağlantısı" style={{ top: bY.oner + 14 }} />
-          <Metin y={bY.oner + 14 + 66 + 14} x={22} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 22 }}>{rf.data.gelen ? `Bu bağlantıyla ${rf.data.gelen} kişi geldi.` : 'Bağlantıyla gelen kişi onaydan sonra kendi alanını açar.'}</Metin>
-          <Dugme tur="ikincil" ton="altin" yukseklik={50} fs={15} style={{ top: bY.oner + 14 + 66 + 8 + 20, right: 200 }} onClick={() => window.open(whatsappAdresi(rf.data.mesaj), '_blank', 'noopener')}>WhatsApp’ta paylaş</Dugme>
-          <MesajKopyala metin={rf.data.mesaj} style={{ top: bY.oner + 14 + 66 + 8 + 20, left: 200 }} />
-          {sahip && <SatirKart y={bY.oner + 14 + 66 + 8 + 50 + 28} h={66} ikon={ozelIkon(`<text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="${B.length ? '#FFD27A' : '#D9CCFF'}">${B.length}</text>`)}
+          <h3 className="bolum-baslik" style={{ top: onerY - 12 }}>DEVİR’İ ÖNER</h3>
+          <KopyaAlan deger={rf.data.link} gosterim={rf.data.link.replace(/^https?:\/\//, '')} etiket="Referans bağlantısı" style={{ top: onerY + 14 }} />
+          <Metin y={onerY + 14 + 66 + 14} x={22} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 22 }}>{rf.data.gelen ? `Bu bağlantıyla ${rf.data.gelen} kişi geldi.` : 'Bağlantıyla gelen kişi onaydan sonra kendi alanını açar.'}</Metin>
+          <Dugme tur="ikincil" ton="altin" yukseklik={50} fs={15} style={{ top: onerY + 14 + 66 + 8 + 20, right: 200 }} onClick={() => window.open(whatsappAdresi(rf.data.mesaj), '_blank', 'noopener')}>WhatsApp’ta paylaş</Dugme>
+          <MesajKopyala metin={rf.data.mesaj} style={{ top: onerY + 14 + 66 + 8 + 20, left: 200 }} />
+          {sahip && <SatirKart y={onerY + 14 + 66 + 8 + 50 + 28} h={66} ikon={ozelIkon(`<text y="5" text-anchor="middle" font-size="13" font-weight="700" fill="${B.length ? '#FFD27A' : '#D9CCFF'}">${B.length}</text>`)}
             ust="Onay bekleyenler" alt={bk.isPending ? '…' : B.length ? `${B.length} kişi Devir’e katılmak istiyor` : 'Bekleyen kimse yok'} onClick={() => setOnayAcik(true)} />}
         </>}
 
-        {baslik('harita')}
-        <SatirKart y={bY.harita + 14} h={66} ikon={ozelIkon('<text y="5" text-anchor="middle" font-size="15" font-weight="700" fill="#D9CCFF">?</text>')}
+        {baslik('baglantilar')}
+        {AG.map((a, i) => (
+          <SatirKart key={a.id} y={bY.baglantilar + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (a.ad[0] || 'C').toLocaleUpperCase('tr'), '#FFC9A3', .62, { flame: false })} ust={a.ad} alt={a.alt}
+            sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
+        ))}
+        <SatirKart y={bY.baglantilar + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}
+          ust={AG.length ? 'Başka bir uygulama bağla' : 'Claude ya da ChatGPT bağla'} alt="İki adım: uygulamayı seç, adresi ekle" onClick={() => git('/bagla')} />
+        {sahip && <>
+          <KopyaAlan deger={MCP_TABAN()} gosterim={kisaMcp(MCP_TABAN())} etiket="MCP adresi" style={{ top: mcpY }} />
+          <Svg w={14} h={14} x={27} y={mcpY + 67} svg={`<circle cx="34" cy="${mcpY + 74}" r="6" fill="url(#pLit2)"/>`} />
+          <Metin y={mcpY + 78} x={48} fs={12.5} lh={16} agirlik={600} renk="ink2" className="tek-satir">{son ? `Son MCP çağrısı ${gunAy(Date.parse(son))} ${saat(Date.parse(son))}` : 'MCP henüz çağrılmadı'}</Metin>
+        </>}
+
+        {baslik('gorunum')}
+        <SatirKart y={bY.gorunum + 14} h={66} ikon={ozelIkon('<text y="5" text-anchor="middle" font-size="15" font-weight="700" fill="#D9CCFF">?</text>')}
           ust="Tüm harita dili" alt="Bütün işaretler: gezegen, gemi, galaksi, takvim" onClick={() => setLejant(true)} />
         <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: hareketY - 2 }}>Hareket</span>
         <div className="ayar-secenek" style={{ top: hareketY + 20 }}><Segment secenekler={['Sistem', 'Azalt']} aktif={hareket === 'az' ? 1 : 0} sec={(i) => { const h2 = i ? 'az' : 'sistem'; hareketKoy(h2); setHareket(h2); }} /></div>
@@ -243,10 +252,9 @@ export function Ayarlar() {
           ust="Bildirimler" alt={okunmamis ? `${okunmamis} okunmamış · okundu bilgisi cihazlarında aynı` : 'Okundu bilgisi cihazlarında aynı'} onClick={() => git('/bildirimler')} />
 
         {baslik('gelismis')}
-        {sahip && <>
-          <KopyaAlan deger={MCP_TABAN()} gosterim={kisaMcp(MCP_TABAN())} etiket="MCP adresi" style={{ top: mcpY }} />
-          <Svg w={14} h={14} x={27} y={mcpY + 67} svg={`<circle cx="34" cy="${mcpY + 74}" r="6" fill="url(#pLit2)"/>`} />
-          <Metin y={mcpY + 78} x={48} fs={12.5} lh={16} agirlik={600} renk="ink2" className="tek-satir">{son ? `Son MCP çağrısı ${gunAy(Date.parse(son))} ${saat(Date.parse(son))}` : 'MCP henüz çağrılmadı'}</Metin>
+        <SatirKart y={gelY} h={60} ikon={ozelIkon(`<path d="${gelAc ? 'M-5,-2 L0,3 L5,-2' : 'M-2,-5 L3,0 L-2,5'}" fill="none" stroke="#D9CCFF" stroke-width="1.8" stroke-linecap="round"/>`)}
+          ust={gelAc ? 'Gelişmişi kapat' : 'Gelişmiş ayarlar'} alt={sahip ? 'Anahtarlar · agent kararları · bağlantı denetimi' : 'Bağlantı denetimi'} sag={<span />} onClick={() => setGelismis(!gelAc)} />
+        {gelAc && sahip && <>
           <h3 className="bolum-baslik" style={{ top: anahtarY - 12 }}>ANAHTARLAR · CLAUDE CODE VE BETİKLER</h3>
           {L.map((k, i) => {
             const el = (
@@ -261,8 +269,8 @@ export function Ayarlar() {
             ikon={<svg aria-hidden width="14" height="14" viewBox="-7 -7 14 14"><path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" strokeWidth="2" strokeLinecap="round" /></svg>}>Yeni anahtar</Dugme>
           <SatirKart y={polY} h={66} ikon={ozelIkon('<path d="M-6,1 L-2,5 L6,-5" fill="none" stroke="#9EE6CF" stroke-width="1.8" stroke-linecap="round"/>')} ust="Agent kararları" alt={pol.isPending ? '…' : politikaOzeti(pol.data?.politika?.agent_karari)} onClick={() => setPolitikaAcik(true)} />
         </>}
-        <SatirKart y={denetimY} h={66} ikon={ozelIkon(`<circle r="5" fill="${durum.isError || (durum.data && !uyum.tamam) ? '#FF9A8A' : durum.data ? '#9EE6CF' : '#8E80D6'}"/>`)}
-          ust="Bağlantı denetimi" alt={durum.isPending ? 'denetleniyor…' : durum.isError ? 'Sunucuya ulaşılamadı' : uyum.metin} />
+        {gelAc && <SatirKart y={denetimY} h={66} ikon={ozelIkon(`<circle r="5" fill="${durum.isError || (durum.data && !uyum.tamam) ? '#FF9A8A' : durum.data ? '#9EE6CF' : '#8E80D6'}"/>`)}
+          ust="Bağlantı denetimi" alt={durum.isPending ? 'denetleniyor…' : durum.isError ? 'Sunucuya ulaşılamadı' : uyum.metin} />}
         <CikisSatiri y={cikisY} />
         <AltGezinme aktif="ayarlar" yeni={() => git('/yeni')} />
       </Sahne>
@@ -280,6 +288,7 @@ export function Ayarlar() {
       {agentAc && aa.data && (() => { const a = AA.find((x) => x.ad === agentAc) || (sonAgent.current?.ad === agentEski.current ? sonAgent.current : undefined); if (a) sonAgent.current = a; return a ? <AgentDetay a={a} veri={aa.data} kip="yonetim" baglanti={baglantiOf(a.ad, AG)} kapat={() => setAgentAc(null)}
         kurAc={(ad) => { setAgentAc(null); setRutin(ad); }} adDegisti={agentAdDegisti} rutinKaldir={(t) => { setAgentAc(null); setRutinKaldir(TK.find((x) => x.id === t.id) || t); }} /> : null; })()}
       {rutin && <RutinKur mcpAdres={MCP_TABAN()} mcpBagli={!!(AG.length || ben?.mcp_son_kullanim)} agent={typeof rutin === 'string' ? rutin : null} kapat={() => setRutin(false)} />}
+      {rutinAc && tek && (() => { const t = RL.find((x) => x.id === rutinAc); return t ? <RutinDetay t={t} agentlar={AA.map((a) => a.ad)} kapat={() => setRutinAc(null)} kaldir={() => { setRutinAc(null); setRutinKaldir(t); }} /> : null; })()}
       {rutinKaldir && <RutinKaldir t={rutinKaldir} kapat={() => setRutinKaldir(null)} />}
       {yeni && <YeniAnahtar kapat={() => setYeni(false)} />}
     </>

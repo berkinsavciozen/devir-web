@@ -758,6 +758,13 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .gorev-sol-ad { position: absolute; font-size: 13px; line-height: 20px; font-weight: 650; color: var(--renk-metin-ink2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .gorev-sol-tarih { position: absolute; width: 60px; text-align: center; font-size: 11.5px; font-weight: 600; color: var(--renk-metin-ink3); pointer-events: none; }
 .gorev-sol-tarih.bugun { color: var(--renk-metin-altin); font-weight: 750; }
+.gorev-sol-tarih.hedef { width: 90px; margin-left: -15px; color: var(--renk-metin-altin); }
+.gorev-sol-ad.eksik { color: #FF9A8A; }
+.gorev-sol-ad small { font-weight: 500; opacity: .85; }
+.taslak-sol-baslik { position: absolute; margin: 0; font-family: var(--font-serif); font-weight: 700; font-size: 24px; line-height: 30px; color: var(--renk-metin-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.taslak-sol-cumle { position: absolute; margin: 0; font-size: 14.5px; line-height: 20px; color: var(--renk-metin-ink2); }
+.taslak-sol-not { position: absolute; margin: 0; font-size: 13.5px; line-height: 19px; color: var(--renk-metin-ink2); }
+.taslak-sol-not b { color: var(--renk-metin-ink); font-weight: 650; }
 .gorev-sol-bos { position: absolute; left: 48px; top: 160px; margin: 0; font-family: var(--font-serif); font-size: 17px; color: var(--renk-metin-ink2); }
 
 /* W2 · tek görev detayı (GorevDetay): telefonda alt sayfada, masaüstünde akış panelinde; akan düzen */
@@ -1159,3 +1166,11 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .taslak-rozet.dis { box-shadow: inset 0 0 0 1.5px #5FE3F0; }
 .taslak-rozet.karar { color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1.5px currentColor; }
 .taslak-rozet.inceleme { opacity: .9; }
+/* W2 (0.34.1): agent rengi, rutin detayı */
+.ag-renkler { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 8px; }
+.ag-renk { width: 32px; height: 32px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); position: relative; }
+.ag-renk::after { content: ""; position: absolute; inset: -6px; }
+.ag-renk[aria-checked="true"] { box-shadow: 0 0 0 2px var(--renk-zemin-kart), 0 0 0 4px var(--renk-metin-ink); }
+.rutin-detay .alan { width: 100%; }
+.agent-detay > .dugme { margin-top: 14px; }
+.agent-detay > .metin-baglanti.mercan { display: block; margin-top: 18px; }

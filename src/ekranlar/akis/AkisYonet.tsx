@@ -11,6 +11,12 @@ import { SatirKart } from '../hesap/Hesap';
 // "Arşivden çıkar" önceki durumuna döndürür.
 const enc = encodeURIComponent;
 export const YONET_Y = 32 + 66 + 12;
+const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
+/** W2 (K3): akış düzeyinde AI yapsın: akıştaki açık agent işleri (alt görevler hariç). */
+export const acikAgentIsleri = (d: any): any[] => (d?.adimlar || []).filter((a: any) => a.sahip_tip === 'agent' && !BITTI(a.durum) && a.ust_adim == null);
+/** Bölümün yüksekliği: AI yapsın satırı yalnız açık agent işi olan aktif akışta. */
+export const yonetY = (d: any) => YONET_Y + (d?.akis?.durum === 'aktif' && acikAgentIsleri(d).length ? 66 : 0);
+const aiIkon = `<g transform="translate(28,33)"><path d="M2,-12 L-6,2 L0,2 L-2,12 L7,-3 L1,-3Z" fill="none" stroke="#FFD27A" stroke-width="1.5" stroke-linejoin="round"/></g>`;
 const ikon = (arsiv: boolean) => `<g transform="translate(28,33)" fill="none" stroke="#D9CCFF" stroke-width="1.5" stroke-linejoin="round" opacity="${arsiv ? 1 : .85}"><rect x="-11" y="-10" width="22" height="6" rx="1.5"/><path d="M-9,-4 V9 H9 V-4"/><path d="M-3.5,1 H3.5" stroke-linecap="round"/></g>`;
 
 export function AkisYonetSatiri({ d, kod, y }: { d: any; kod: string; y: number }) {
@@ -22,6 +28,37 @@ export function AkisYonetSatiri({ d, kod, y }: { d: any; kod: string; y: number 
       <SatirKart y={y + 32} h={58} ikon={ikon(arsiv)} ust={arsiv ? 'Bu akış arşivde' : 'Adı ve arşiv'} alt={arsiv ? 'Arşivden çıkar · adını değiştir' : 'Adını değiştir · arşive at'}
         etiket={arsiv ? 'Bu akış arşivde. Arşivden çıkar ya da adını değiştir.' : 'Akışın adını değiştir ya da arşive at.'} onClick={() => setAcik(true)} />
       <AkisYonetSayfasi acik={acik} kapat={() => setAcik(false)} d={d} kod={kod} />
+      {yonetY(d) > YONET_Y && <AkisAiSatiri d={d} kod={kod} y={y + 32 + 66} />}
+    </>
+  );
+}
+
+/** W2 (6 Kas, K3): akış düzeyinde AI yapsın anahtarı: akıştaki senin agent işlerinin hepsinde aç ya da kapat. */
+function AkisAiSatiri({ d, kod, y }: { d: any; kod: string; y: number }) {
+  const [acik, setAcik] = useState(false);
+  const L = acikAgentIsleri(d), n = L.filter((a) => a.oto).length;
+  const [sonuc, setSonuc] = useState<any>(null);
+  const m = useMutation({
+    mutationFn: (oto: boolean) => api.post<any>(`/akis/${enc(kod)}/ai`, { oto }),
+    onSuccess: (r) => { setSonuc(r); void sorguIstemcisi.invalidateQueries(); },
+  });
+  useEffect(() => { if (acik) { setSonuc(null); m.reset(); } }, [acik]); // eslint-disable-line react-hooks/exhaustive-deps
+  const alt = n === 0 ? `${L.length} agent işinde kapalı · hepsinde aç` : n === L.length ? `${L.length} agent işinin hepsinde açık` : `${L.length} agent işinin ${n} tanesinde açık`;
+  return (
+    <>
+      <SatirKart y={y} h={58} ikon={aiIkon} ust="AI yapsın" alt={alt} etiket={`AI yapsın: ${alt}. Akışın bütün agent işlerinde aç ya da kapat.`} onClick={() => setAcik(true)} />
+      <AltSayfa acik={acik} kapat={() => setAcik(false)} baslik="AI yapsın" yukseklik={420}>
+        {acik && (
+          <div className="onay-sayfa">
+            <h2>Bu akışta AI yapsın</h2>
+            <p className="onay-cumle">Açınca akıştaki agent işlerin zamanı gelince bağlı Claude rutinin tarafından yapılır; çıktı taslak olarak gelir, sen onaylarsın. Karar, dışarı gönderme ve ödeme adımları senin elinde kalır.</p>
+            <Dugme className="statik" yukseklik={50} fs={15} mesgul={m.isPending && m.variables === true} disabled={m.isPending} onClick={() => m.mutate(true)}>Agent işlerinin hepsinde aç</Dugme>
+            {n > 0 && <Dugme className="statik" style={{ marginTop: 10 }} tur="ikincil" ton="lila" yukseklik={48} fs={15} mesgul={m.isPending && m.variables === false} disabled={m.isPending} onClick={() => m.mutate(false)}>Hepsinde kapat</Dugme>}
+            {sonuc && <p className="onay-cumle" role="status">{sonuc.not}{sonuc.atlanan?.length ? ` Açılmayan: ${sonuc.atlanan.slice(0, 4).map((x: any) => `${x.no}. adım (${x.neden})`).join(', ')}${sonuc.atlanan.length > 4 ? '…' : ''}.` : ''}</p>}
+            {m.isError && <p className="canli-hata-satir" role="alert">{(m.error as Error).message}</p>}
+          </div>
+        )}
+      </AltSayfa>
     </>
   );
 }

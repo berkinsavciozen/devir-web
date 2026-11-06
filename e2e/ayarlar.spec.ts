@@ -64,7 +64,7 @@ test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır, şeritler kişi baş�
 });
 
 // tek sayfa (plan 27 Eki, Epic 4): beş grup; adres grubu açar, eski ?bolum= / ?sekme= adresleri de aynı gruba iner
-for (const [s, ad, baslik] of [['kisiler', 'K1-alan', 'KİŞİLER'], ['gelismis', 'K1-baglantilar', 'GELİŞMİŞ'], ['ben', 'K1-hesap', 'BEN'], ['harita', 'K1-gorunum', 'HARİTA DİLİ'], ['oner', 'K1-oner', 'DEVİR’İ ÖNER'], ['ekip', 'K1-eski-ekip', 'KİŞİLER']] as const) {
+for (const [s, ad, baslik] of [['kisiler', 'K1-alan', 'KİŞİLER'], ['gelismis', 'K1-baglantilar', 'GELİŞMİŞ'], ['ben', 'K1-hesap', 'BEN VE AGENT’LARIM'], ['harita', 'K1-gorunum', 'GÖRÜNÜM'], ['oner', 'K1-oner', 'DEVİR’İ ÖNER'], ['ekip', 'K1-eski-ekip', 'KİŞİLER']] as const) {
   test(`${ad}: Ayarlar · ${s}`, async ({ page }) => {
     await ac(page, `/ayarlar?senaryo=berkin&hal=ekip&bolum=${s}`);
     const h = page.getByRole('heading', { name: baslik, exact: true });
@@ -77,9 +77,12 @@ for (const [s, ad, baslik] of [['kisiler', 'K1-alan', 'KİŞİLER'], ['gelismis'
 
 test('K1-tek-sayfa: beş grup tek sayfada; rol tablosu "?" arkasında; avatar Ben grubunu açar', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin&hal=ekip&sekme=gorunum');
-  await expect(page.getByRole('heading', { name: 'HARİTA DİLİ' })).toBeInViewport();
-  for (const b of ['BEN', 'KİŞİLER', 'DEVİR’İ ÖNER', 'GELİŞMİŞ']) await expect(page.getByRole('heading', { name: b, exact: true })).toHaveCount(1);
-  await expect(page.getByText('Bağlantı denetimi')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'GÖRÜNÜM', exact: true })).toBeInViewport();
+  for (const b of ['BEN VE AGENT’LARIM', 'KİŞİLER', 'BAĞLANTILAR', 'DEVİR’İ ÖNER', 'GELİŞMİŞ']) await expect(page.getByRole('heading', { name: b, exact: true })).toHaveCount(1);
+  // W2 (6 Kas): anahtarlar, agent kararları ve bağlantı denetimi "Gelişmiş" altında katlı
+  await expect(page.getByText('Bağlantı denetimi', { exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: /Gelişmiş ayarlar/ }).click();
+  await expect(page.getByText('Bağlantı denetimi', { exact: true })).toBeVisible();
   // son satır alt çubuğun üstüne kadar kayabilir
   await page.mouse.wheel(0, 4000);
   await page.waitForTimeout(200);
@@ -90,7 +93,7 @@ test('K1-tek-sayfa: beş grup tek sayfada; rol tablosu "?" arkasında; avatar Be
   await page.goto('/?senaryo=berkin');
   await page.getByRole('button', { name: /hesap ve çalışma alanı/ }).click();
   await expect(page).toHaveURL(/\/ayarlar\?bolum=ben/);
-  await expect(page.getByRole('heading', { name: 'BEN', exact: true })).toBeInViewport();
+  await expect(page.getByRole('heading', { name: 'BEN VE AGENT’LARIM', exact: true })).toBeInViewport();
 });
 
 test('K1-sayilar: Ayarlar ekip satırı ile Ekip sayfası aynı sayıyı söyler', async ({ page }) => {
@@ -140,7 +143,7 @@ test('M2-ayarlar: masaüstünde panel üstünden Ayarlar, yüzen gezinmeden Gör
 
 test('K1-tek-alan: tek çalışma alanı gösterilmez; ikinci alan olunca liste görünür', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin');
-  await expect(page.getByRole('heading', { name: 'BEN', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'BEN VE AGENT’LARIM', exact: true })).toBeVisible();
   await expect(page.getByText('ÇALIŞMA ALANLARI')).toHaveCount(0);
   await ac(page, '/ayarlar?senaryo=iki-alan');
   await expect(page.getByText('ÇALIŞMA ALANLARI')).toBeVisible();
@@ -148,7 +151,7 @@ test('K1-tek-alan: tek çalışma alanı gösterilmez; ikinci alan olunca liste 
 
 test('P7-agentlar: bağlı Claude listede; kaldırılınca çıkar, bağlama rehberi açılır', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin');
-  await expect(page.getByRole('heading', { name: 'AGENT’LARIM' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'AGENT’LARIM', exact: true })).toBeVisible();
   await expect(page.locator('.satir-kart', { hasText: 'son kullanım 14 Eki' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Claude bağlantısını kaldır' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Kaldır', exact: true }).click();

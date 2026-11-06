@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useBoyut } from '../../bilesen/Gok';
+import { PANEL_EN } from '../../bilesen/Kabuk';
+import { soruyaOdaklan, useTaslakDurumu } from './taslakDurum';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
@@ -29,7 +32,8 @@ const rolGemisi = (r: TRol, x: number, y: number, eksik: boolean) => eksik
     : ship(x, y, -12, r.tip === 'agent' ? 'agent' : 'insan', (rolAdi(r)[0] || '?').toLocaleUpperCase('tr'), r.tip === 'agent' ? '#B9A6F2' : '#FFC9A3', .5, { flame: false });
 
 function taslakGezegeni(n: TNokta, r: number, sec: boolean) {
-  let s = `<g opacity="${n.soru ? .55 : .85}">${planet(n.x, n.y, r, 'dark', { life: false })}</g>`;
+  // W3 (B8): cevabı beklenen soruya bağlı adım henüz yok: gövdesiz, yalnız kesik halka ve "?"
+  let s = n.soru ? `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="#B9A6F2" fill-opacity=".05"/>` : `<g opacity=".85">${planet(n.x, n.y, r, 'dark', { life: false })}</g>`;
   s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 3}" fill="none" stroke="${n.gec ? MERCAN : '#D9CCFF'}" stroke-width="${n.gec ? 1.6 : 1.1}" stroke-dasharray="2 3"/>`;
   if (n.soru) s += `<g transform="translate(${(n.x + r * .8).toFixed(1)},${(n.y - r * .8).toFixed(1)})"><circle r="6" fill="${ALTIN}" stroke="#2A1D4F" stroke-width=".8"/><text y="3.4" text-anchor="middle" font-family="Inter" font-size="9" font-weight="800" fill="#2A1D4F">?</text></g>`;
   if (sec) s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 8}" fill="none" stroke="#FFF3E8" stroke-width="1.5" opacity=".7"/>`;
@@ -127,5 +131,76 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
       <Dugme style={{ top: HY + H.h + 62 }} yukseklik={50} fs={16} onClick={() => git(`/yeni/${enc(kod)}`)}>{S.length ? 'Soruları cevapla, akışı kur' : 'Akışı kur'}</Dugme>
       {Lst.dugum}
     </Sahne>
+  );
+}
+
+/**
+ * W3 (B8): masaüstünde taslak sayfasının sol bölmesi. Evren yerine akışın taslak haritası, normal akış haritasının
+ * düzeninde: sahip şeritleri, tahmini zaman, bugün ve hedef çizgisi. Taslağı taslak yapan eksikler boş çizilir:
+ * cevapsız soruya bağlı adım gövdesiz kesik halka ve "?", sahibi belli olmayan rol kesik mercan şerit ve "?" gemisi.
+ * Sağdaki panelde soru cevaplandıkça bağlı adımlar dolar; "?" e basınca paneldeki soru açılır.
+ */
+export function TaslakSol({ kod }: { kod: string }) {
+  const NOW = simdi();
+  const { w: W, h: Hh } = useBoyut();
+  const SW = W - PANEL_EN;
+  const q = useQuery({ queryKey: ['taslak', kod], queryFn: () => api.get<any>(`/taslak/${enc(kod)}`) });
+  const t = q.data;
+  const { cevap } = useTaslakDurumu(kod);
+  const [sec, setSec] = useState<number | null>(null);
+  const y0 = 196;
+  const H = useMemo(() => {
+    if (!t) return null;
+    const n = Math.max(1, taslakHaritasi(t, { now: NOW }).seritler.length);
+    const satir = Math.max(52, Math.min(96, (Hh - y0 - 190) / n));
+    return taslakHaritasi(t, { now: NOW, x0: 260, x1: SW - 72, y0, satir, cevaplar: cevap });
+  }, [t, NOW, SW, Hh, cevap]);
+  const svg = useMemo(() => {
+    if (!H) return '';
+    let s = `<rect x="40" y="${y0 - 26}" width="${SW - 80}" height="${H.h + 64}" rx="26" fill="#061A24" fill-opacity=".5" stroke="#D9CCFF" stroke-opacity=".18" stroke-dasharray="3 5"/>`;
+    for (const t0 of haftaCizgileri(H.t0, H.t1)) {
+      const x = H.x0 + (t0 - H.t0) / (H.t1 - H.t0) * (H.x1 - H.x0);
+      s += `<line x1="${x.toFixed(1)}" y1="${y0 - 8}" x2="${x.toFixed(1)}" y2="${y0 + H.h + 10}" stroke="#FFFFFF" stroke-opacity=".05"/>`;
+    }
+    for (const r of H.seritler) {
+      s += `<line x1="${H.x0}" y1="${r.y}" x2="${H.x1}" y2="${r.y}" stroke="${r.eksik ? MERCAN : '#4B4380'}" stroke-opacity="${r.eksik ? .55 : 1}" stroke-width="1.3" stroke-dasharray="2 5"/>`;
+      s += rolGemisi(r.rol, 92, r.y, r.eksik);
+    }
+    const yer = new Map(H.noktalar.map((n) => [n.a.id, n]));
+    for (const n of H.noktalar) for (const d of n.a.bagimli || []) {
+      const p = yer.get(d);
+      if (p) s += `<path d="M${p.x.toFixed(1)},${p.y.toFixed(1)} C${((p.x + n.x) / 2).toFixed(1)},${p.y.toFixed(1)} ${((p.x + n.x) / 2).toFixed(1)},${n.y.toFixed(1)} ${n.x.toFixed(1)},${n.y.toFixed(1)}" fill="none" stroke="#B9A6F2" stroke-opacity="${n.soru || p.soru ? .18 : .35}" stroke-width="1.1" stroke-dasharray="2 3"/>`;
+    }
+    s += `<line x1="${H.bugunX.toFixed(1)}" y1="${y0 - 8}" x2="${H.bugunX.toFixed(1)}" y2="${y0 + H.h + 12}" stroke="#FFC9A3" stroke-width="1.8" stroke-linecap="round"/>`;
+    if (H.hedefX != null) s += `<line x1="${H.hedefX.toFixed(1)}" y1="${y0 - 8}" x2="${H.hedefX.toFixed(1)}" y2="${y0 + H.h + 12}" stroke="${ALTIN}" stroke-width="1.5" stroke-dasharray="4 3"/>`;
+    for (const n of H.noktalar) s += taslakGezegeni(n, 10, sec === n.no);
+    return s;
+  }, [H, SW, sec]);
+  if (!t || !H) return <div style={{ position: 'absolute', inset: 0 }}>{q.isError && <p className="gorev-sol-bos">{(q.error as Error).message}</p>}</div>;
+  const S: any[] = t.sorular || [];
+  const acik = S.filter((x) => cevap[x.kod] == null || cevap[x.kod] === '').length;
+  const n = sec != null ? H.noktalar[sec - 1] : null;
+  return (
+    <div className="taslak-sol" style={{ position: 'absolute', inset: 0 }}>
+      <svg aria-hidden width={SW} height={Hh} viewBox={`0 0 ${SW} ${Hh}`} style={{ position: 'absolute', left: 0, top: 0 }} dangerouslySetInnerHTML={{ __html: svg }} />
+      <div className="genis-bolum" style={{ left: 48, top: 40 }}>TASLAK HARİTASI</div>
+      <h1 className="taslak-sol-baslik" style={{ left: 48, top: 62, width: SW - 96 }}>{String(t.baslik || t.cumle || '').replace(/'/g, '’')}</h1>
+      <p className="taslak-sol-cumle" style={{ left: 48, top: 128, width: SW - 96 }}>{taslakCumlesi(H, acik, gunAy)}</p>
+      {H.seritler.map((r) => (
+        <span key={r.rol.kod} className={`gorev-sol-ad ${r.eksik ? 'eksik' : ''}`} style={{ left: 112, top: r.y - 17, width: 142, whiteSpace: 'normal', lineHeight: '17px' }} title={rolAdi(r.rol)}>
+          {rolAdi(r.rol)}{r.eksik ? <small> · kim yapacak?</small> : null}
+        </span>
+      ))}
+      <span className="gorev-sol-tarih bugun" style={{ left: H.bugunX - 30, top: y0 + H.h + 18 }}>bugün</span>
+      {H.hedefX != null && <span className="gorev-sol-tarih hedef" style={{ left: H.hedefX - 30, top: y0 + H.h + 18 }}>hedef {H.hedef ? gunAy(H.hedef) : ''}</span>}
+      <div className="harita-katman gorev-harita">
+        {H.noktalar.map((p) => <button key={p.a.id} type="button" className="gezegen-hedef" aria-label={`${p.no}. ${p.a.ad}${p.soru ? ', soruya bağlı' : ''}`} aria-pressed={sec === p.no} style={{ left: p.x - 16, top: p.y - 16, width: 32, height: 32 }}
+          onClick={() => { setSec(sec === p.no ? null : p.no); if (p.soru) soruyaOdaklan(kod, p.soru); }} />)}
+      </div>
+      <p className="taslak-sol-not" style={{ left: 48, top: y0 + H.h + 52, width: SW - 96 }}>
+        {n ? <><b>{n.no}. {n.a.ad}</b> · {rolAdi(H.seritler[n.serit].rol)} · tahmini {gunAy(n.bit)}{n.soru ? ` · “${S.find((x) => x.kod === n.soru)?.soru || 'soru'}” cevabına bağlı` : ''}{n.gec ? ' · hedefi aşıyor' : ''}</>
+          : <>Boş halkalı adımlar cevap bekleyen soruya bağlı; kesik mercan şeritte kimin yapacağı belli değil. Sağda cevapladıkça harita dolar.</>}
+      </p>
+    </div>
   );
 }
