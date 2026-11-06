@@ -55,7 +55,9 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
   const G = gorevCumlesi({ ...a, bitis }, { gun: (x) => gunAy(tarihMs(x)), kisa: (x) => (x === ben ? 'Sen' : kisaAd(x)) });
   // "Sen" ile çekim: 2. tekil kişi eki ("netleştirmelisin", "netleştiriyorsun", "netleştirdin")
   const c0 = G.cumle.replace(', Sen onaylayacak', ', sen onaylayacaksın').replace('Sen’in onayını bekliyor', 'onayını bekliyor').replace('Sen’in onayını', 'onayını');
-  const cumle = c0.startsWith('Sen ') ? senEki(c0) : c0.replace(/: Sen(,|$| ·)/, ': sende$1').replace(/: Sen bitirdi$/, ': bitirdin');
+  const c1 = c0.startsWith('Sen ') ? senEki(c0) : c0.replace(/: Sen(,|$| ·)/, ': sende$1').replace(/: Sen bitirdi$/, ': bitirdin');
+  // Berkin 16:55: satır sonu tarih ortasından bölünmesin ("2 Kas’a kadar" bir arada)
+  const cumle = c1.replace(/(\d{1,2}) ([A-ZÇĞİÖŞÜ][a-zçğıöşü]{2}(?:’[a-zçğıöşü]+)?)( kadar)?/g, (_m, g, a, k) => `${g}\u00A0${a}${k ? '\u00A0kadar' : ''}`);
   const h = hamle(a, { renkler });
   const M = d ? miniHarita(d, ben, now) : null;
   const odak = a.ust_adim != null ? a.ust_adim : a.no;
@@ -67,7 +69,7 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
     <div className={`gorev-kart ton-${G.ton} ${className}`} style={style}>
       <button type="button" className="gorev-kart-ac" onClick={ac} aria-label={`${cumle}${akisAdi ? `. ${akisAdi}` : ''}`}>
         <span className="gorev-kart-harita" aria-hidden>
-          <svg width="48" height="48" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="#FFF3E8" stroke-width="1.6"/>` : '') }} />
+          <svg width="40" height="40" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="#FFF3E8" stroke-width="1.6"/>` : '') }} />
           {a.ust_adim != null && <i className="gorev-kart-alt">alt</i>}
         </span>
         <span className="gorev-kart-metin">
@@ -77,7 +79,7 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
       </button>
       {h && !hamleGizli && <button type="button" className="gorev-kart-hamle" style={{ ['--hamle' as string]: h.renk }} aria-label={`${h.etiket}${h.kim !== ben ? ` (${h.kim})` : ''}`} title={h.etiket}
         onClick={() => (hamleYap ? hamleYap(h) : ac())}>
-        <svg aria-hidden width="22" height="22" viewBox="-5 -5 10 10" dangerouslySetInnerHTML={{ __html: hamleSimgesi(h.tur, 1.15, '#08222E') }} />
+        <svg aria-hidden width="20" height="20" viewBox="-5 -5 10 10" dangerouslySetInnerHTML={{ __html: hamleSimgesi(h.tur, 1.15, '#08222E') }} />
       </button>}
     </div>
   );

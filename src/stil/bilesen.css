@@ -1176,18 +1176,20 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .agent-detay > .metin-baglanti.mercan { display: block; margin-top: 18px; }
 
 /* W4 · tek görev bileşeni (GorevKart): solda mini harita, ortada cümle (2 satıra kadar, kesilmez), sağda hamle düğmesi */
-.gorev-kart { position: relative; display: flex; align-items: stretch; gap: 0; min-height: 64px; border-radius: 20px; background: var(--renk-zemin-kart); border: 1px solid rgba(255, 255, 255, .08); }
-.gorev-kart-ac { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; background: none; border: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; border-radius: 20px; }
+.gorev-kart { position: relative; display: flex; align-items: stretch; gap: 0; min-height: 56px; border-radius: 18px; background: var(--renk-zemin-kart); border: 1px solid rgba(255, 255, 255, .08); }
+.gorev-kart-ac { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 8px; background: none; border: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; border-radius: 20px; }
 .gorev-kart-ac:focus-visible, .gorev-kart-hamle:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
-.gorev-kart-harita { position: relative; flex: none; width: 48px; height: 48px; border-radius: 14px; overflow: hidden; background: #061A24; }
+.gorev-kart-harita { position: relative; flex: none; width: 40px; height: 40px; border-radius: 12px; overflow: hidden; background: #061A24; }
 .gorev-kart-harita svg { display: block; }
 .gorev-kart-alt { position: absolute; right: 2px; bottom: 2px; font-style: normal; font-size: 9px; line-height: 12px; font-weight: 800; padding: 0 4px; border-radius: 6px; background: #08222E; color: var(--renk-metin-ink2); }
-.gorev-kart-metin { min-width: 0; display: grid; gap: 3px; }
-.gorev-kart-metin b { font-size: 14px; line-height: 18px; font-weight: 650; color: var(--renk-metin-ink); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.gorev-kart-metin small { display: flex; align-items: center; gap: 5px; font-size: 12px; line-height: 15px; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gorev-kart-metin { min-width: 0; display: grid; gap: 2px; align-content: center; }
+.gorev-kart-metin b { font-size: 13.5px; line-height: 17px; font-weight: 650; color: var(--renk-metin-ink); text-wrap: pretty; hyphens: none; overflow-wrap: normal; }
+.gorev-kart-metin small { display: flex; align-items: center; gap: 5px; font-size: 11.5px; line-height: 14px; color: var(--renk-metin-ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .gorev-kart.ton-risk .gorev-kart-metin b { color: #FFB3B3; }
 .gorev-kart.ton-bitti .gorev-kart-metin b { color: var(--renk-metin-ink2); font-weight: 550; }
-.gorev-kart-hamle { flex: none; align-self: center; width: 44px; height: 44px; margin-right: 10px; border-radius: 50%; border: 0; background: var(--hamle); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hamle) 28%, transparent), 0 4px 14px rgba(0, 0, 0, .35); display: grid; place-items: center; cursor: pointer; }
+.gorev-kart-hamle { position: relative; flex: none; align-self: center; width: 44px; height: 44px; margin-right: 6px; border: 0; padding: 0; background: none; display: grid; place-items: center; cursor: pointer; border-radius: 50%; }
+.gorev-kart-hamle::before { content: ''; position: absolute; inset: 5px; border-radius: 50%; background: var(--hamle); box-shadow: 0 0 0 3px color-mix(in srgb, var(--hamle) 26%, transparent), 0 3px 10px rgba(0, 0, 0, .3); }
+.gorev-kart-hamle svg { position: relative; }
 .gorev-kart-hamle svg { overflow: visible; }
 .dugme.hamle-renkli { background: var(--hamle); color: #08222E; box-shadow: 0 0 0 3px color-mix(in srgb, var(--hamle) 25%, transparent), 0 6px 18px rgba(0, 0, 0, .3); }
 .dugme.hamle-renkli::before, .dugme.hamle-renkli::after { display: none; }

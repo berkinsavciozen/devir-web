@@ -24,7 +24,7 @@ import { simdi } from '../../api/ortam';
 
 const SATIR = 60, ARA = 8, EN = 6;
 /** W4: görev satırı (GorevKart) iki satırlık cümleye göre */
-const GSATIR = 84;
+const GSATIR = 70;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 
 /** Bölüm sayıları: akış ve katılımcı satırları en çok bu kadar (ötesi "Bütün akışlar"ta). */
