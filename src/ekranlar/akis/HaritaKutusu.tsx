@@ -4,6 +4,9 @@ import { planet } from '../../cizim/ortak.js';
 import { kisaAd, otoRozet } from '../../cizim/yol.js';
 import { adimAdi } from '../../metin/turkce';
 import { EylemCubugu } from './EylemCubugu';
+import { GorevKart } from '../../bilesen/GorevKart';
+import { hamle } from '../../cizim/hamle';
+import { simdi } from '../../api/ortam';
 import { ajanMi, BITTI, eylemPlani } from './eylemler';
 
 const DURUM: Record<string, string> = { tamam: 'bitti', atlandi: 'atlandı', ertelendi: 'ertelendi', engelli: 'engelli', suruyor: 'sürüyor', hazir: 'başlayabilir', sirada: 'sırada' };
@@ -14,30 +17,24 @@ const gor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'li
  * W5 (4 Kas, K4): telefonda gezegene dokununca harita ona yakınlaşır ve altta küçük kutu açılır. Metin yalnız bu kutuda:
  * ad, durum, sahip, AI durumu ve tek ana eylem. Ayrıntılar tam görevi açar.
  */
-export function HaritaKutusu({ a, kod, ben, acikAlt, ayrinti, kapat, style }: {
-  a: any; kod: string; ben: string; acikAlt: number; ayrinti: () => void; kapat: () => void; style?: React.CSSProperties;
+export function HaritaKutusu({ a, d, kod, ben, acikAlt, ayrinti, kapat, style }: {
+  a: any; d?: any; kod: string; ben: string; acikAlt: number; ayrinti: () => void; kapat: () => void; style?: React.CSSProperties;
 }) {
   const tetikler = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), retry: false, staleTime: 60_000 });
   const tetikYok = !!tetikler.data && !(tetikler.data.tetikler || []).length;
   const p = eylemPlani({ a, ben, acikAlt, tetikYok });
   const plan = { ana: p.ana, ikincil: null, menu: [] };
-  const r = otoRozet(a);
-  const alt = [DURUM[a.durum] || a.durum_etiket || a.durum, a.sahip === ben ? 'senin' : ajanMi(a.sahip, a.sahip_tip) ? a.sahip : kisaAd(a.sahip), acikAlt ? `${acikAlt} alt görev açık` : null].filter(Boolean).join(' · ');
+  // W4 (B17): kutuda tek görev bileşeni; kutuya dokunmak detayı açar ("Ayrıntılar" yok), hızlı eylem hamle renginde
+  const h = hamle(a);
   return (
     <section className="harita-kutu" role="dialog" aria-label={`${a.no}. ${adimAdi(a)}`} style={style}>
       <div className="harita-kutu-ust">
-        <svg aria-hidden width="30" height="30" viewBox="-15 -15 30 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: planet(0, 0, 11, gor(a), { life: false, cloudGap: 2, oto: BITTI(a.durum) ? null : r }) }} />
-        <div className="harita-kutu-ad">
-          <b>{a.no}. {adimAdi(a)}</b>
-          <small>{alt}</small>
-          {r && !BITTI(a.durum) && <small className={`harita-kutu-ai ${r}`}>{AI[r]}</small>}
-          <button type="button" className="metin-baglanti harita-kutu-ayrinti" onClick={ayrinti}>Ayrıntılar ›</button>
-        </div>
+        <GorevKart a={a} d={d} ben={ben} now={simdi()} ac={ayrinti} className="harita-kutu-kart" hamleGizli={!!plan.ana} />
         <button type="button" className="harita-kutu-kapat" aria-label="Kutuyu kapat" onClick={kapat}>
           <svg aria-hidden viewBox="-8 -8 16 16"><path d="M-4,-4 L4,4 M4,-4 L-4,4" /></svg>
         </button>
       </div>
-      {plan.ana && <div className="harita-kutu-eylem"><EylemCubugu a={a} kod={kod} plan={plan} ciktiEkle={ayrinti} baglantiAc={ayrinti} /></div>}
+      {plan.ana && <div className="harita-kutu-eylem"><EylemCubugu a={a} kod={kod} plan={plan} ciktiEkle={ayrinti} baglantiAc={ayrinti} hamle={h} /></div>}
     </section>
   );
 }

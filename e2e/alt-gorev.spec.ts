@@ -15,11 +15,9 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     const bolum = page.getByRole('region', { name: /ALT GÖREVLER/ });
     await expect(bolum.locator('.gd-bolum-baslik')).toHaveText('ALT GÖREVLER · 1/3');
     await expect(bolum.locator('.gd-akordiyon')).toHaveCount(3);
-    await expect(page.locator('.gd-bas small')).toContainText('1/3 alt görev');
-    // K2: üst görevin sayıları alt görevlerden
-    await expect(page.locator('.gd-sayilar')).toContainText('1/3alt görev');
-    await expect(page.locator('.gd-sayilar')).toContainText('en erken bitiş');
-    await expect(page.locator('.gd-sayilar')).toContainText('son tarih');
+    await expect(page.locator('.gd-haplar')).toContainText('1/3 alt görev');
+    // K2: üst görevin sayıları alt görevlerden; NE ZAMAN satırlarında tarih
+    await expect(page.getByRole('region', { name: 'NE ZAMAN' }).locator('.gd-satirlar')).toContainText(/Son tarih|En erken/);
     // plan 28 Eki, B5: alt görev aynı yerde yönetilir
     const ig = bolum.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
     await ig.locator('summary').click();
@@ -32,7 +30,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 
 test('alt görev · 390: alt görevin adresi üst görevi o akordiyon açık getirir', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/12?senaryo=berkin&hal=alt', 390, 844);
-  await expect(page.locator('.gd-bas h2')).toContainText('Rapor');
+  await expect(page.locator('.gd-bas h2')).toContainText('raporla');
   const ig = page.locator('.gd-akordiyon', { hasText: 'Instagram içgörülerini çek' });
   await expect(ig).toHaveAttribute('open', '');
   await expect(page.locator('.gd-akordiyon[open]')).toHaveCount(1);
@@ -71,11 +69,12 @@ test('alt görev · 390: akış listesinde alt görevler üstünün hemen ardın
   await page.goto('/akis/RTD5/bilgi?senaryo=berkin&hal=alt');
   const liste = page.getByRole('list', { name: 'Adımlar' });
   await liste.getByRole('listitem').first().waitFor({ state: 'attached' });
-  const satirlar = (await liste.getByRole('listitem').allTextContents()).map((t) => t.trim());
+  // W4: satırlar görev kartı; numara ekran okuyucu etiketinde
+  const satirlar = await liste.locator('.gorev-kart-ac').evaluateAll((L) => L.map((e) => e.getAttribute('aria-label') || ''));
   const i = satirlar.findIndex((t) => t.startsWith('10. '));
   expect(satirlar[i]).toContain('1/3 alt görev');
   expect(satirlar.slice(i + 1, i + 4).map((t) => t.split('.')[0])).toEqual(['11', '12', '13']);
-  await expect(liste.getByRole('listitem').nth(i + 1).getByRole('button')).toHaveAccessibleName(/alt görev \(10\. Rapor görevinin\)/);
+  await expect(liste.locator('.gorev-kart-ac').nth(i + 1)).toHaveAccessibleName(/alt görev \(10\. Rapor görevinin\)/);
 });
 
 test('alt görev · 1440: panel konumu akış › üst görev › alt görev', async ({ page }) => {

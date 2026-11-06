@@ -39,10 +39,10 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'A5-davet-yok', yol: '/?senaryo=davetsiz&kayit=kapali' },
   { ad: 'A5-alan-ac', yol: '/?senaryo=davetsiz' }, // açık kayıt (tasarımda PNG yok)
   // B · Günlük
-  { ad: 'B1-evren', yol: '/?senaryo=berkin', hazirla: async (p) => { await p.getByText('tutuyor', { exact: false }).first().waitFor(); await p.waitForTimeout(600); } },
+  { ad: 'B1-evren', yol: '/?senaryo=berkin', hazirla: async (p) => { await p.locator('.gorev-kart').first().waitFor(); await p.waitForTimeout(600); } },
   { ad: 'B2-akislar', yol: '/akislar?senaryo=berkin', hazirla: async (p) => { await p.getByText('akış sürüyor', { exact: false }).waitFor(); await p.waitForTimeout(800); } },
   { ad: 'B3-galaksi', yol: '/akis/RTD5?senaryo=berkin' },
-  { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.getByText('tutuyor').waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'B4-adim', yol: '/akis/RTD5/adim/6?senaryo=berkin', hazirla: async (p) => { await p.locator('.gd-engel').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'B5-adim-gecmis', yol: '/akis/RTD5/adim/6?senaryo=berkin&sekme=gecmis', hazirla: async (p) => { await p.getByRole('heading', { name: 'GEÇMİŞ' }).waitFor(); await p.waitForTimeout(400); } },
   {
     ad: 'B8-adim-dosya', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',
@@ -79,8 +79,8 @@ export const EKRANLAR: EkranTanim[] = [
   { ad: 'K2d-uye', yol: '/ayarlar/ekip?senaryo=berkin&hal=ekip', hazirla: async (p) => { await p.getByRole('button', { name: /^Selin: rol/ }).click(); await p.getByText('Alandan çıkar').waitFor(); await p.waitForTimeout(600); } },
   { ad: 'K2e-uye-cikar', yol: '/ayarlar/ekip?senaryo=berkin&hal=ekip', hazirla: async (p) => { await p.getByRole('button', { name: /^Selin: rol/ }).click(); await p.getByText('Alandan çıkar').click(); await p.getByText('Selin çıkarılsın mı?').first().waitFor(); await p.waitForTimeout(600); } },
   { ad: 'K3-alan-sec', yol: '/hesap?senaryo=berkin&hal=ekip', hazirla: async (p) => { await p.getByText('Çıkış yap').waitFor(); await p.waitForTimeout(700); } },
-  { ad: 'T1-tablet-galaksi', w: 1024, h: 768, yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('list', { name: 'Adımlar' }).getByRole('button').first().waitFor(); await p.waitForTimeout(900); } },
-  { ad: 'M1-harita-panel', w: 1440, h: 900, yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('list', { name: 'Adımlar' }).getByRole('button').first().waitFor(); await p.waitForTimeout(900); } },
+  { ad: 'T1-tablet-galaksi', w: 1024, h: 768, yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.locator('.tek-pano .gorev-kart').first().waitFor(); await p.waitForTimeout(900); } },
+  { ad: 'M1-harita-panel', w: 1440, h: 900, yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.locator('.tek-pano .gorev-kart').first().waitFor(); await p.waitForTimeout(900); } },
   { ad: 'M2-evren', w: 1440, h: 900, yol: '/?senaryo=berkin', hazirla: async (p) => { await p.getByRole('heading', { name: 'Pano', exact: true }).waitFor(); await p.waitForTimeout(1500); } },
   { ad: 'X1-arsiv', yol: '/akislar/arsiv?senaryo=berkin&hal=olcek', hazirla: async (p) => { await p.getByText('kapandı', { exact: false }).first().waitFor(); await p.waitForTimeout(600); } },
   { ad: 'D2-kalem-listesi', yol: '/akis/XPVZ/tekrar/7?senaryo=berkin&hal=uydu', hazirla: async (p) => { await p.getByText('Hemşin Koop').waitFor(); await p.waitForTimeout(500); } },

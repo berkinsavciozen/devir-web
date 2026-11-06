@@ -21,9 +21,10 @@ test('B11/B16: çıktı görev detayında üstte; adına basınca okunur sayfa y
   await ac(page, '/akis/XPVZ/adim/1?senaryo=berkin&hal=karar');
   const cikti = page.getByRole('region', { name: 'Çıktılar' });
   await expect(cikti).toBeVisible();
-  // eylemlerin hemen altında: "NE ZAMAN" bölümünden önce
-  const [yc, yz] = await Promise.all([cikti.boundingBox(), page.getByText('NE ZAMAN').boundingBox()]);
-  expect(yc!.y).toBeLessThan(yz!.y);
+  // W5: NE ZAMAN kartının altında, geçmişten önce
+  const [yc, yz, yg] = await Promise.all([cikti.boundingBox(), page.getByRole('region', { name: 'NE ZAMAN' }).boundingBox(), page.locator('details.gd-gecmis').boundingBox()]);
+  expect(yc!.y).toBeGreaterThan(yz!.y);
+  expect(yc!.y).toBeLessThan(yg!.y);
   const [yeni] = await Promise.all([context.waitForEvent('page'), cikti.getByRole('button', { name: 'Önizle: Teklif paketi' }).click()]);
   await yeni.waitForLoadState();
   await expect(yeni).toHaveURL(/\/akis\/XPVZ\/cikti\/\d+/);

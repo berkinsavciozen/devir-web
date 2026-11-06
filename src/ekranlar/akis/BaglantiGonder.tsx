@@ -116,3 +116,46 @@ export function BaglantiGonder({ kod, kisi, kisiId, adimSayisi, kapat }: { kod: 
   );
 }
 const P2 = (y: number) => y - (500 + 28);
+
+/**
+ * W5 (6 Kas, B18): görev detayında satır içi paylaşım. En sık iş (mesajı WhatsApp'ta gönder, bağlantıyı kopyala, ne
+ * göreceğine bak) sayfadan çıkmadan yapılır; yenile ve kapat gibi seyrek işler "Bağlantı ayarları"nda (tam sayfa) kalır.
+ */
+export function BaglantiSatiri({ kod, kisi, kisiId, adimSayisi, kapat }: { kod: string; kisi: string; kisiId?: string | null; adimSayisi: number; kapat: () => void }) {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['katilimcilar', kod], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/katilimcilar`) });
+  const k = (q.data?.katilimcilar || []).find((x: any) => kisiId && x.kisi_id ? x.kisi_id === kisiId : x.ad.toLocaleLowerCase('tr') === kisi.toLocaleLowerCase('tr'));
+  const [metin, setMetin] = useState<string | null>(null);
+  const [iletisim, setIletisim] = useState('');
+  const [kopya, setKopya] = useState(false);
+  const [tam, setTam] = useState(false);
+  const olustur = useMutation({ mutationFn: () => api.post<any>(`/akis/${encodeURIComponent(kod)}/katilimci`, { ad: kisi, kisi_id: kisiId || undefined, rol: 'dis', iletisim: iletisim.trim() || undefined }), onSuccess: () => void qc.invalidateQueries({ queryKey: ['katilimcilar', kod] }) });
+  const m = metin ?? k?.mesaj ?? '';
+  const tamMetin = () => (k?.link && !m.includes(k.link) ? `${m.trim()} ${k.link}`.trim() : m);
+  const ad = kisi.replace(/\s*\(.*\)$/, '');
+  const D = k?.durum ? baglantiDurumu(k) : null;
+  if (tam) return <BaglantiGonder kod={kod} kisi={kisi} kisiId={kisiId} adimSayisi={adimSayisi} kapat={() => setTam(false)} />;
+  return (
+    <section className="gd-bolum gd-paylas" aria-label={`${ad} ile paylaş`}>
+      <div className="gd-paylas-ust"><h3 className="gd-bolum-baslik">{ozelEk(ad, 'e').toLocaleUpperCase('tr')} BAĞLANTI</h3>
+        <button type="button" className="gd-kapat-kucuk" aria-label="Paylaşımı kapat" onClick={kapat}><svg aria-hidden viewBox="-9 -9 18 18"><path d="M-5,-5 L5,5 M5,-5 L-5,5" /></svg></button></div>
+      {q.isPending ? <div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div>
+      : k?.link ? <>
+        {D && <p className="gd-satir" role="status"><b>{D.ust}</b> · {D.alt}</p>}
+        <textarea className="alan" rows={3} value={m} onChange={(e) => setMetin(e.target.value)} aria-label="WhatsApp mesajı" />
+        {!m.includes(k.link) && <p className="gd-satir">Metinde bağlantı yok; gönderirken sonuna eklenir.</p>}
+        <div className="gd-paylas-dugmeler">
+          <button type="button" className="gd-alt-ekle-dugme" onClick={() => window.open(whatsappAdresi(tamMetin(), k.iletisim), '_blank', 'noopener')}>WhatsApp’ta gönder</button>
+          <button type="button" className="gd-alt-ekle-dugme ikincil" onClick={() => { void navigator.clipboard?.writeText(k.link).then(() => { setKopya(true); setTimeout(() => setKopya(false), 1600); }).catch(() => {}); }}>{kopya ? 'Kopyalandı' : 'Bağlantıyı kopyala'}</button>
+          <button type="button" className="metin-baglanti" onClick={() => git(`/akis/${encodeURIComponent(kod)}/onizleme/${encodeURIComponent(k.id)}`)}>Ne görecek?</button>
+          <button type="button" className="metin-baglanti" onClick={() => setTam(true)}>Bağlantı ayarları</button>
+        </div>
+      </> : k ? <p className="gd-satir">Bağlantı kapalı. <button type="button" className="metin-baglanti" onClick={() => setTam(true)}>Yeni bağlantı üret</button></p>
+      : <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); olustur.mutate(); }}>
+        <input className="alan" value={iletisim} onChange={(e) => setIletisim(e.target.value)} placeholder="Telefon ya da e-posta (isteğe bağlı)" aria-label="İletişim" />
+        <button type="submit" className="gd-alt-ekle-dugme" disabled={olustur.isPending}>Bağlantı oluştur</button>
+      </form>}
+      {olustur.isError && <p className="canli-hata-satir" role="alert">{(olustur.error as Error).message}</p>}
+    </section>
+  );
+}

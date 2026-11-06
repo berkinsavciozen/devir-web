@@ -26,7 +26,8 @@ test('Pano: bağlantıyı açmayan dış katılımcı görünür; paylaşım say
 test('adımdan paylaşım: düzenlenen mesaj WhatsApp\'a gider, silinen bağlantı sona eklenir', async ({ page }) => {
   await ac(page, '/akis/U422/adim/14?senaryo=berkin&tam=1');
   await page.getByRole('button', { name: 'Emre’ye bağlantı gönder' }).click();
-  const d = page.getByRole('dialog', { name: 'Emre ile paylaş' });
+  // W5: görev detayında satır içi paylaşım
+  const d = page.getByRole('region', { name: 'Emre ile paylaş' });
   const m = d.getByLabel('WhatsApp mesajı');
   await expect(m).toHaveValue(/^Merhaba Emre, .* için senden beklenen adımlar burada: http.*\/l#k7Q2emreTestBank00wP9$/);
   await m.fill('Selam Emre, IP listesini buradan gönderebilir misin? http://localhost:5174/l#k7Q2emreTestBank00wP9');
@@ -41,7 +42,7 @@ test('adımdan paylaşım: düzenlenen mesaj WhatsApp\'a gider, silinen bağlant
 test('"Ne görecek?": katılımcının sayfası önizlenir, düğmeler çalışmaz, açılış sayılmaz', async ({ page }) => {
   await ac(page, '/akis/U422/adim/14?senaryo=berkin&tam=1');
   await page.getByRole('button', { name: 'Emre’ye bağlantı gönder' }).click();
-  await page.getByRole('dialog', { name: 'Emre ile paylaş' }).getByRole('button', { name: 'Ne görecek?' }).click();
+  await page.getByRole('region', { name: 'Emre ile paylaş' }).getByRole('button', { name: 'Ne görecek?' }).click();
   await expect(page).toHaveURL(/\/akis\/U422\/onizleme\//);
   await expect(page.getByRole('status').filter({ hasText: 'Önizleme · Emre bağlantıyı açınca bunu görür' })).toBeVisible();
   await expect(page.getByRole('heading', { level: 2 })).toHaveText('IP izin listesi talebi');
@@ -55,6 +56,8 @@ test('"Ne görecek?": katılımcının sayfası önizlenir, düğmeler çalışm
 test('bağlantıyı kapat: onaydan sonra açılmaz; yeni bağlantı üretilir ve açılır', async ({ page }) => {
   await ac(page, '/akis/U422/adim/14?senaryo=berkin&tam=1');
   await page.getByRole('button', { name: 'Emre’ye bağlantı gönder' }).click();
+  // seyrek işler (yenile, kapat) satır içinden "Bağlantı ayarları" ile tam sayfada
+  await page.getByRole('region', { name: 'Emre ile paylaş' }).getByRole('button', { name: 'Bağlantı ayarları' }).click();
   const d = page.getByRole('dialog', { name: 'Emre ile paylaş' });
   await expect(d.getByLabel('WhatsApp mesajı')).toBeVisible();
   expect(await disAc(page, 'k7Q2emreTestBank00wP9')).toBe(200);

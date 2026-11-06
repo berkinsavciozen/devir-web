@@ -1,6 +1,6 @@
 import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { hareketAz } from '../../ayar/hareket';
-import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
@@ -11,6 +11,7 @@ import { useBoyut } from '../../bilesen/Gok';
 import { PanelUst, YuzenGezinme } from '../../bilesen/Kabuk';
 import { genisDuzen, panelZemini } from './Genis';
 import { GorevDetay } from './GorevDetay';
+import { TekPano } from '../pano/TekPano';
 import { HaritaKutusu } from './HaritaKutusu';
 import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, type Model } from '../../cizim/yol.js';
 import { C, f, pill, planet } from '../../cizim/ortak.js';
@@ -128,6 +129,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const GD = useMemo(() => genisDuzen(boy.w, boy.h), [boy.w, boy.h]);
   const [gelis] = useState(haritaGelisi);
   const ben = useBen();
+  const [panoAcik, setPanoAcik] = useState(true);
   const ai = useAiAcik();
   const NOW = simdi();
   // ?an=2026-10-17T12:00 → sürgü o anda açılır (paylaşılan bağlantı, ekran testleri)
@@ -182,7 +184,16 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const seritH = Math.min(seritTam, 18);
   const [seritAcik, setSeritAcik] = useState(false);
   const TD = useMemo(() => telefonDuzeni(boy.h, seritH), [boy.h, seritH]);
-  const B = useAkisBolumu({ d, kod, ben: sahip, y0: GD ? 12 : TD.bolumY + 44, en: GD ? GD.kart.w : undefined });
+  // W6 (K8): telefonda haritanın altında önce akışa süzülmüş Pano; adım bölümü onun altından başlar
+  const [panoH, setPanoH] = useState(0);
+  const panoGozcu = useRef<ResizeObserver | null>(null);
+  const panoRef = useCallback((e: HTMLDivElement | null) => {
+    panoGozcu.current?.disconnect();
+    if (!e) { setPanoH(0); return; }
+    panoGozcu.current = new ResizeObserver(() => setPanoH(Math.ceil(e.getBoundingClientRect().height)));
+    panoGozcu.current.observe(e);
+  }, []);
+  const B = useAkisBolumu({ d, kod, ben: sahip, y0: GD ? 12 : TD.bolumY + 44 + (panoAcik ? panoH + 16 : 0), en: GD ? GD.kart.w : undefined });
   const bolumRef = useRef<HTMLHeadingElement>(null);
   // alt sayfa kapanırken geçmiş bir adım geri gider; kaydırma ondan sonra yapılır
   const bolumAc = (s?: AkisSuzgec) => { if (s) B.sec(s); if (GD) { if (secim != null) git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }); return; } setTimeout(() => bolumRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' }), 60); };
@@ -466,6 +477,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         {ai ? <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y - 40, width: GD.kart.w, height: GD.H - GD.kart.y + 24 }}><DevirAiPanel /></div>
         : a ? <div className="gd-kaydir genis-gorev" style={{ left: GD.kart.x, top: GD.kart.y, width: GD.kart.w, height: GD.H - GD.kart.y - 16 }}>
           <GorevDetay key={a.no} kod={kod} no={a.no} ben={sahip} />
+        </div> : panoAcik ? <div className="gd-kaydir genis-liste genis-pano" style={{ left: GD.kart.x, top: GD.kart.y - 12, width: GD.kart.w, height: GD.H - GD.kart.y }}>
+          {/* W6 (K8): seçim yokken akışa süzülmüş Pano; "Yalnız bu akış ×" adım listesine döner */}
+          <TekPano ben={sahip} akis={kod} akisAdi={ad} kapat={() => setPanoAcik(false)} />
         </div> : <div className="gd-kaydir genis-liste" style={{ left: GD.kart.x - 20, top: GD.kart.y - 12, width: GD.kart.w + 40, height: GD.H - GD.kart.y }}>
           <div style={{ position: 'relative', height: B.y + 24 }}>{B.dugum}</div>
         </div>}
@@ -489,8 +503,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </div>}
       <button type="button" className="bolum-ipucu" style={{ top: TD.ipucuY }} onClick={() => bolumAc()}>{B.ad} ve ayrıntılar</button>
       <h2 ref={bolumRef} className="bolum-durak" style={{ top: TD.bolumY }}>{ad}</h2>
+      {panoAcik && <div ref={panoRef} className="galaksi-pano" style={{ position: 'absolute', left: 20, right: 20, top: TD.bolumY + 44 }}>
+        <TekPano ben={sahip} akis={kod} akisAdi={null} kapat={() => setPanoAcik(false)} />
+      </div>}
       {B.dugum}
-      {kutuNo != null && byNo.get(kutuNo) && <HaritaKutusu key={kutuNo} a={byNo.get(kutuNo)} kod={kod} ben={sahip}
+      {kutuNo != null && byNo.get(kutuNo) && <HaritaKutusu key={kutuNo} a={byNo.get(kutuNo)} d={d} kod={kod} ben={sahip}
         acikAlt={(d.adimlar as any[]).filter((z) => z.ust_adim === kutuNo && !['tamam', 'atlandi', 'ertelendi'].includes(z.durum)).length}
         ayrinti={() => ac(kutuNo)} kapat={() => setKutuNo(null)} style={{ left: 16, right: 16, top: bolge.y + bolge.h + 6, transform: 'translateY(-100%)' }} />}
       <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />

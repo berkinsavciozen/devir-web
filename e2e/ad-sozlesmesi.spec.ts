@@ -41,7 +41,7 @@ test('360 px: uzun akış ve adım adları kesilmez; satırda kısa ad, adım de
   await expect(page.getByText('Hasat çiftçi kazanımı').first()).toBeVisible();
 
   await git('/akis/XPVZ/adim/6');
-  await expect(page.getByRole('heading', { name: 'Yetki belgesini al' })).toBeVisible();
-  await expect(page.getByText(UZUN[6])).toBeVisible();
+  // W5: detay başlığı adımın tam adı
+  await expect(page.getByRole('heading', { name: UZUN[6] })).toBeVisible();
   expect(await kesikler(page)).toEqual([]);
 });

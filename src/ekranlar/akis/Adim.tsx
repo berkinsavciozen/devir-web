@@ -102,8 +102,8 @@ function olayMetni(e: any): { metin: string; cikti: string | null } {
   return { metin: ilk ? ilk + '.' : '', cikti };
 }
 
-// görev alt sayfası ekranın en çok %60'ı (N20): tasarım karesinde üst kenar 844 − 0.6 × 844 ≈ 338; sürüklenince büyümez
-export const GOREV_SAYFA_Y = 338;
+// görev alt sayfası (W5, 6 Kas): ilk açılışta detayın 3. satırına (ne yapılacak mesajı) kadar görünür; sürüklenince büyür
+export const GOREV_SAYFA_Y = 290;
 
 /** Telefonda görev: üstte akışın haritası, altta tek görev detayı (W2). Masaüstünde aynı detay akış panelinde açılır. */
 export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string }) {
@@ -114,7 +114,7 @@ export function Adim({ kod, no, ben }: { kod: string; no: number; ben: string })
   return (
     <>
       <AdimArka d={akis.data} no={no} sheetY={GOREV_SAYFA_Y} sahip={ben} />
-      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Görev'} yukseklik={GOREV_SAYFA_Y} duraklar={[GOREV_SAYFA_Y]} perdesiz>
+      <AltSayfa acik kapat={kapat} baslik={a ? adimAdi(a) : 'Görev'} yukseklik={GOREV_SAYFA_Y} duraklar={[GOREV_SAYFA_Y, 96]} perdesiz>
         <GorevDetay kod={kod} no={no} ben={ben} />
       </AltSayfa>
     </>
@@ -183,7 +183,7 @@ export function Ciktilar({ a, kod, claudeGizle }: { a: any; kod: string; claudeG
       {hata && <p className="canli-hata-satir" role="alert">{hata}</p>}
       <p className="bilgi-satiri"><svg aria-hidden width="16" height="16" viewBox="-8 -8 16 16"><circle r="7" fill="none" stroke="currentColor" strokeWidth="1.4" /><rect x="-.8" y="-1" width="1.6" height="4.6" fill="currentColor" /><circle cy="-3.4" r=".9" fill="currentColor" /></svg>En çok 20 MB: PDF, görsel, Office, CSV, metin.</p>
       <input ref={girdi} type="file" multiple accept={KABUL_UZANTI} hidden onChange={(e) => { sec(e.target.files); e.target.value = ''; }} aria-label="Dosya seç" />
-      <Dugme className="statik" {...(claudeGizle ? { tur: "ikincil" as const, ton: "lila" as const, yukseklik: 48, fs: 15 } : {})} ikon={<YukleIkon />} ikonX={130} kayma={12} onClick={() => girdi.current?.click()}>Dosya ekle</Dugme>
+      <Dugme className="statik" {...(claudeGizle ? { tur: "ikincil" as const, ton: "lila" as const, yukseklik: 48, fs: 15 } : {})} ikon={<YukleIkon />} onClick={() => girdi.current?.click()}>Dosya ekle</Dugme>
       {claude && !claudeGizle && <Dugme className="statik" tur="ikincil" ton="lila" yukseklik={48} fs={15} onClick={() => window.open(claude, '_blank', 'noopener')}>Claude’da aç</Dugme>}
       <DosyaSilOnay dosya={silinecek} kapat={() => setSilinecek(null)} bitti={() => { setSilinecek(null); tazele(); }} />
     </section>

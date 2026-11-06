@@ -67,7 +67,7 @@ test('Q1 · evren: akış seçimi Uygula ile geçer, Vazgeç bırakır', async (
 
 test('K1: kendi görevinde "sen" yazar; K3: masaüstü ayarlarda tek geri', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/3?senaryo=berkin');
-  await expect(page.locator('.gd-bas, body').getByText(/^sen(\s·|$)/).first()).toBeVisible();
+  await expect(page.locator('.gd-r1-kim > span')).toHaveText('Sen');
   await ac(page, '/ayarlar?senaryo=berkin', 1440, 900);
   await expect(page.locator('.baslik .geri')).toHaveCount(0);
   await expect(page.locator('.panel-ust').getByRole('button', { name: /^Geri/ })).toHaveCount(1);

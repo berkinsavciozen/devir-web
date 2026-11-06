@@ -47,7 +47,7 @@ test('2.7: görev sayfasında yol izi Akış › Görev; tam adlar, dokununca gi
   await ac(page, '/akis/RTD5/adim/12?senaryo=berkin&hal=alt');
   const yol = page.getByRole('navigation', { name: 'Konum' });
   await expect(yol.getByRole('button', { name: /^Akış: / })).toBeVisible();
-  await expect(yol.locator('[aria-current=page]')).toContainText('raporla');
+  await expect(page.locator('.gd-bas h2')).toContainText('raporla');
   await expect(page.locator('.gd-akordiyon[open]')).toContainText('Instagram içgörülerini çek');
   await cek(page, 'P2-yol-izi');
   await yol.getByRole('button', { name: /^Akış: / }).click();
