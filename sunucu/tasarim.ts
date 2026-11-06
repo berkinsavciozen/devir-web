@@ -57,7 +57,10 @@ export const SISTEM = `Sen Devir'in akış tasarımcısısın. Kullanıcının t
 36. Doğrulama. Agent'ın internetten doğrulayamayacağı bilgi isteyen araştırma (güncel fiyat, çalışma saati, yerinde gözlem, biriyle görüşme) iki adımdır: agent araştırır ve taslak çıkarır; insan sahada ya da telefonla doğrular (doğrulama adımı agent adımına bağımlı).
 37. Ad uzunluğu. ad en çok 70 karakter; iki nokta, liste ve ayrıntı ad'a değil aciklama'ya yazılır ("Rakip kahvecileri analiz et"; fiyat, saat, ürün açıklamada).
 38. Türkçe yaz.
-39. Yürütme tasarımı. Her adım için kimin nasıl yaptığını yaz. yurutme: ai_yapar (agent tek başına yapar; araştırma, taslak, analiz, tablo, metin), ai_hazirlar_insan_bitirir (agent hazırlar, son adımı insan atar: dışarıya gönderme, para, imza, hassas iletişim), insan, dis. Agent'a uygun işi insana yığma: araştırma, karşılaştırma tablosu, metin ve rapor yazımı agent işidir; insan yalnız karar verir, sahada doğrular ya da dışarıyla konuşur. inceleme (yalnız agent adımında): hizli_onay (çıktıya bakıp onaylar), yorumlu_inceleme (dışarıya gidecek ya da riskli çıktıda yorumla düzeltir), yok. Karar adımında karar_tur yaz: secim (seçenekler şimdi biliniyorsa karar_secenekleri'ne 2–6 seçenek; yoksa seçenekleri önceki agent adımı üretir), coklu_secim, onay_red, tutar_tarih, serbest. Kullanıcının karar anlarını en çok 5'te tut: aynı konudaki kararları tek adımda topla; küçük onayları varsayım yap. "Yetenekler" verildiyse agent işlerini o agent'lara ver.`;
+39. Yürütme tasarımı. Her adım için kimin nasıl yaptığını yaz. yurutme: ai_yapar (agent tek başına yapar; araştırma, taslak, analiz, tablo, metin), ai_hazirlar_insan_bitirir (agent hazırlar, son adımı insan atar: dışarıya gönderme, para, imza, hassas iletişim), insan, dis. Agent'a uygun işi insana yığma: araştırma, karşılaştırma tablosu, metin ve rapor yazımı agent işidir; insan yalnız karar verir, sahada doğrular ya da dışarıyla konuşur. inceleme (yalnız agent adımında): hizli_onay (çıktıya bakıp onaylar), yorumlu_inceleme (dışarıya gidecek ya da riskli çıktıda yorumla düzeltir), yok. Karar adımında karar_tur yaz: secim (seçenekler şimdi biliniyorsa karar_secenekleri'ne 2–6 seçenek; yoksa seçenekleri önceki agent adımı üretir), coklu_secim, onay_red, tutar_tarih, serbest. Kullanıcının karar anlarını en çok 5'te tut: aynı konudaki kararları tek adımda topla; küçük onayları varsayım yap. "Yetenekler" verildiyse agent işlerini o agent'lara ver.
+40. Seçimli karar (6 Kas). Seçenekleri önceden bilinen ya da AI'ın önerebileceği bir tercih (oturum saati, mekan, tarih aralığı, tedarikçi, sıra) varsa onu karar_tur "secim" ve 2–4 karar_secenekleri ile kur; tutar_tarih ya da serbest yapma. Önerinin hazırlanması için ayrı "öneri hazırla" adımı kurma; öneri karar kartında gelir.
+41. Kişi başına iş (6 Kas). Adı belli 2–5 kişiden ya da kalemden ayrı ayrı bir şey istenecekse (her konuşmacının biyografisi, her tedarikçinin teklifi) tek adımda toplama: ana görev + kişi başına alt görev kur, alt görevin sahibi o kişiyi takip eden roldür. 6 ve daha çok kalemde varsayımlara "Bu iş kalem başına alt akışa bölünmeli" yaz.
+42. Ad yapısı (6 Kas). Her adım için ayrıca nesne ve fiil yaz: fiil, ad'ın son kelimesindeki emir kipindeki fiil kökü ("netleştir", "yaz", "gönder"); nesne, fiilin öncesindeki kısa ifade, en çok 50 karakter ("3 konuşmacının tek sayfalık özetini"). Devir bunlardan "Berkin 3 konuşmacının tek sayfalık özetini 8 Kas'a kadar netleştirmeli" gibi görev cümlesi kurar.`;
 
 export const TASLAK_ARACI: LlmTool = {
   name: "taslak_yaz",
@@ -96,7 +99,7 @@ export const TASLAK_ARACI: LlmTool = {
         items: {
           type: "object", required: ["id", "tur_kod", "ad", "sahip_rol", "kriter", "sure_tahmin_gun", "bagimli", "boyut", "karar_gerekli", "cikti_bekleniyor"],
           properties: {
-            id: { type: "string" }, tur_kod: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "en çok 40 karakter, akışta tekil; nesne + fiil." }, aciklama: { type: "string" },
+            id: { type: "string" }, tur_kod: { type: "string" }, ad: { type: "string" }, kisa_ad: { type: "string", description: "en çok 40 karakter, akışta tekil; nesne + fiil." }, nesne: { type: "string", description: "Fiilin öncesindeki kısa ifade, en çok 50 karakter (ör. '3 konuşmacının tek sayfalık özetini')." }, fiil: { type: "string", description: "Ad'ın son kelimesindeki emir kipindeki fiil kökü (ör. 'netleştir')." }, aciklama: { type: "string" },
             sahip_rol: { type: "string", description: "roller içindeki kod" }, arac: { type: ["string", "null"] },
             kriter: { type: "string" }, beklenen_cikti: { type: ["string", "null"] }, karar_kriteri: { type: ["string", "null"] },
             karar_gerekli: { type: "boolean", description: "Adım bir seçim, onay, ödeme ya da imzayla mı bitiyor (son söz insanda)?" },
@@ -166,7 +169,7 @@ export const DENETCI_SISTEM = `Sen Devir'in akış denetçisisin. Sana bir akı�
 6. Sorular: akışı değiştirecek ama sorulmayan kritik bir bilinmeyen varsa (en fazla 2) soru_ekle.
 7. Dallar: her seçim sorusunun cevabı en az bir adımı değiştirmeli. Bir cevapta gereksiz kalacak adımlara kosul_ekle ile koşul ekle (ör. şirket türü şahıs ise ana sözleşme, noter ve sermaye adımları yalnızca ltd|as ise). Her durumda gereken işe (ticari fatura, temel belge) koşul ekleme.
 Eklediğin adımın adı insanın okuyacağı kısa bir cümle olsun, kod değil. Bir soruyla cevaplanacak bir seçimi adım yapma; soru zaten varsa ekleme. Bekleme süresi ya da yasal süre yalnızca kartta ya da derste açıkça yazıyorsa adım olur; "X gün içinde yapılır" bir bekleme değildir.
-Var olan adımları ve bağımlılıkları kaldırma, döngü kurma, tartışmalı yama önerme. Emin değilsen önerme. Türkçe ve kısa yaz.`;
+Var olan adımları ve bağımlılıkları kaldırma, döngü kurma, tartışmalı yama önerme. Listede "yalnızca X=… ise" yazan adımın koşulu kuruludur; onu doğrulanacak bir eksik diye not etme. Emin değilsen önerme. Türkçe ve kısa yaz.`;
 export const DENETCI_ARACI: LlmTool = {
   name: "denetim_yaz",
   description: "Denetim yamalarını kaydeder.",
@@ -533,7 +536,7 @@ export function uygula(t: any, secilen: any[], varsayim: any[], cevaplar: Record
     const deps = [...new Set((s.bagimli || []).flatMap((d: string) => (son.some((x) => x.id === d) ? [d] : coz(d, new Set()))))].map((d) => noOf.get(d)).filter((n) => n && n !== noOf.get(s.id));
     const yazi = isle(s);
     return {
-      ad: yazi.ad, kisa_ad: s.kisa_ad || null, aciklama: yazi.aciklama, sahip: sahipAdi(r),
+      ad: yazi.ad, kisa_ad: s.kisa_ad || null, nesne: typeof s.nesne === "string" ? s.nesne.trim().slice(0, 60) || null : null, fiil: typeof s.fiil === "string" ? s.fiil.trim().slice(0, 30) || null : null, aciklama: yazi.aciklama, sahip: sahipAdi(r),
       sahip_tip: r.tip === "agent" ? "agent" : r.tip === "dis" ? "dis" : "insan", arac: s.arac || r.arac || null,
       // K1 (4 Kas): agent kişinin desteği; desteklediği kişi agent_sahibi olur ("Berkin'in Claude'u" → Berkin)
       agent_sahibi: r.tip === "agent" ? destekKisi(r, sahip) : null,

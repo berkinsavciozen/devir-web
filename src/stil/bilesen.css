@@ -434,6 +434,7 @@ button.satir-kart { cursor: pointer; }
 .satir-eylem { position: absolute; right: 12px; top: calc(50% - 22px); height: 44px; border: 0; border-radius: 14px; background: none; font: inherit; font-size: 13.5px; cursor: pointer; }
 .satir-eylem.altin { width: 76px; font-weight: 700; color: var(--renk-metin-altin); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-altin) 75%, transparent); }
 .satir-eylem.mercan { width: 68px; font-weight: 650; color: var(--renk-metin-mercan); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-mercan) 70%, transparent); }
+.satir-eylem.lila { padding: 0 12px; font-weight: 650; color: var(--renk-metin-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-cizgi-lila) 75%, transparent); }
 .satir-eylem:disabled { opacity: .5; }
 .rol-dugme { position: absolute; right: 12px; top: calc(50% - 22px); width: 96px; height: 44px; display: flex; align-items: center; padding: 0; border: 0; border-radius: 14px; font: inherit; font-size: 13.5px; font-weight: 650; color: var(--renk-metin-ink); cursor: pointer;
   background: color-mix(in srgb, var(--renk-zemin-sayfa-ust) 85%, var(--renk-vurgu-lila)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--renk-vurgu-lila) 60%, transparent); }
@@ -1039,6 +1040,10 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .rk-api .dugme { margin-top: 14px; }
 .rk-tamam { margin-top: 6px !important; color: var(--renk-metin-ink) !important; }
 .rk-api .alan-etiket { display: block; margin: 0 0 6px; }
+.rk-agentlar { border: 0; padding: 0; margin: 14px 0 0; }
+.rk-api .rk-agent { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; min-height: 32px; }
+.rk-agent input { width: 18px; height: 18px; accent-color: var(--renk-vurgu-seftali); }
+.rk-agent small { opacity: .7; }
 .rk-hata { margin: 10px 0 0; color: var(--renk-metin-mercan); font: 600 14px/20px var(--font-sans); }
 .rutin-kur > .dugme { margin-top: 18px; }
 .akis-secim-ad { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

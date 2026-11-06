@@ -5,7 +5,7 @@
  */
 const GUN = 864e5;
 export interface TRol { kod: string; ad: string; tip: string; kisi: string | null }
-export interface TAdim { id: string; ad: string; sahip_rol: string; sure_tahmin_gun: number | null; bagimli: string[]; kosul: { soru: string; deger: string } | null; ust?: string | null }
+export interface TAdim { id: string; ad: string; sahip_rol: string; sure_tahmin_gun: number | null; bagimli: string[]; kosul: { soru: string; deger: string } | null; ust?: string | null; yurutme?: string | null; inceleme?: string | null; karar?: boolean; karar_tur?: string | null; sahip_tip?: string; karar_secenekleri?: string[] | null }
 export interface TNokta { a: TAdim; no: number; bas: number; bit: number; serit: number; x: number; y: number; soru: string | null; gec: boolean }
 export interface THarita {
   seritler: { rol: TRol; y: number; eksik: boolean }[]; noktalar: TNokta[]; x0: number; x1: number; t0: number; t1: number; hedefX: number | null; bugunX: number; h: number;

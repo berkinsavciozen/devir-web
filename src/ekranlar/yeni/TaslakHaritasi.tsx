@@ -11,6 +11,7 @@ import { sarSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { Liste, type Oge } from '../akis/Bilgi';
 import { haftaCizgileri } from '../gorevler/model';
+import { adimRozetleri } from './plan';
 import { rolAdi, taslakCumlesi, taslakHaritasi, type TNokta, type TRol } from './taslakModel';
 
 /**
@@ -57,7 +58,6 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
     }
     for (const r of H.seritler) {
       s += `<line x1="${H.x0}" y1="${r.y}" x2="${H.x1}" y2="${r.y}" stroke="${r.eksik ? MERCAN : '#4B4380'}" stroke-opacity="${r.eksik ? .55 : 1}" stroke-width="1.2" stroke-dasharray="2 4"/>`;
-      s += rolGemisi(r.rol, 34, r.y, r.eksik);
     }
     const yer = new Map(H.noktalar.map((n) => [n.a.id, n]));
     for (const n of H.noktalar) for (const d of n.a.bagimli || []) {
@@ -95,7 +95,9 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
     ogeler.push({
       tur: 'satir', key: n.a.id, ikon: `<g transform="translate(-${(n.x - 28).toFixed(1)},-${(n.y - 29).toFixed(1)})">${taslakGezegeni(n, 9, false)}</g>`,
       ust: `${n.no}. ${n.a.ad}`, baslik: n.a.ad,
-      alt: [rolAdi(rol.rol) + (rol.eksik ? ' (belli değil)' : ''), n.a.sure_tahmin_gun != null ? `${n.a.sure_tahmin_gun} gün` : null, `tahmini ${gunAy(n.bit)}`, n.soru ? 'soruya bağlı' : null, n.gec ? 'hedefi aşıyor' : null].filter(Boolean).join(' · '),
+      // C14/C15: tarih başta (kesilmesin), sonra kim yürütür / inceleme / karar rozetleri, seçenekler
+      alt: [gunAy(n.bit), ...adimRozetleri(n.a).map((r) => r.metin), rolAdi(rol.rol) + (rol.eksik ? ' (belli değil)' : ''), n.a.sure_tahmin_gun != null ? `${n.a.sure_tahmin_gun} gün` : null, n.soru ? 'soruya bağlı' : null, n.gec ? 'hedefi aşıyor' : null,
+        n.a.karar_secenekleri?.length ? `seçenekler: ${n.a.karar_secenekleri.join(' / ')}` : null].filter(Boolean).join(' · '),
       sag: sec === n.no ? <span className="satir-not">seçili</span> : <span />,
     });
   }
@@ -109,8 +111,12 @@ export function TaslakHaritasi({ kod }: { kod: string }) {
       <Metin y={122 + baslikSatir.length * 26 + 6} fs={15} lh={20} renk="ink2" as="p" style={{ whiteSpace: 'nowrap' }}>{cumle.map((x, j) => <span key={j}>{j ? <br /> : null}{x}</span>)}</Metin>
       <h2 className="bolum-baslik" style={{ top: HY - 26 }}>TASLAK HARİTASI</h2>
       {H.seritler.map((r) => {
-        const L = sarSatir(rolAdi(r.rol), 76, '650 10.5px Inter').slice(0, 2);
-        return <Metin key={r.rol.kod} y={r.y + 4 - (L.length - 1) * 5.75} x={50} fs={10.5} lh={11.5} agirlik={650} renk={r.eksik ? 'mercan' : 'ink2'} style={{ right: 'auto', width: 76, pointerEvents: 'none' }}>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</Metin>;
+        // C15 (0.34.0): gemi ve ad aynı HTML satırında; panelde çizim ile metin kaysa da simge adın üstüne binmez
+        const L = sarSatir(rolAdi(r.rol), 74, '650 10.5px Inter').slice(0, 2);
+        return <Metin key={r.rol.kod} y={r.y + 4 - (L.length - 1) * 5.75} x={20} fs={10.5} lh={11.5} agirlik={650} renk={r.eksik ? 'mercan' : 'ink2'} style={{ right: 'auto', width: 108, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26" style={{ flex: 'none', overflow: 'visible', marginTop: (L.length - 1) * 5.75 - 8 }} dangerouslySetInnerHTML={{ __html: rolGemisi(r.rol, 0, 0, r.eksik) }} />
+          <span>{L.map((l, i) => <span key={i}>{i ? <br /> : null}{l}</span>)}</span>
+        </Metin>;
       })}
       <Metin y={HY + H.h + 26} x={Math.max(20, H.bugunX - 20)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>bugün</Metin>
       {H.hedefX != null && <Metin y={HY + H.h + 26} x={Math.min(332, H.hedefX - 16)} fs={11} lh={14} agirlik={700} renk="altin" className="tek-satir" style={{ right: 'auto' }}>hedef</Metin>}

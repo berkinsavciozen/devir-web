@@ -4,9 +4,9 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, referansBilgisi, beklemeYonlendir, agentBaglantisi, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.33.2";
+export const SURUM = "0.34.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
-export const SEMA = "20261105140000_s033_yurutme";
+export const SEMA = "20261106160000_s034_agent_rutin";
 async function semaDurumu(db: DB) {
   // bellek DB'si (testler, sahte kip) şema tutmaz: uyum bilinmez (null). Canlıda işlev yoksa migration uygulanmamıştır.
   if (!db.rpc) return { beklenen: SEMA, canli: null, uyumlu: null };
@@ -88,7 +88,10 @@ async function anahtarCoz(db: DB, token: string | null, now: number) {
   return { key, ws };
 }
 
-type Ek = { llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string; sifre?: Sifre | null; tetik?: TetikFn };
+type Ek = { llm?: LlmFn; sohbet?: SohbetFn; gom?: GomFn; modeller?: { taslak?: string; hizli?: string }; taban?: string; kimlik?: KimlikFn; posta?: Posta; depo?: Depo; yetki?: string; sifre?: Sifre | null; tetik?: TetikFn; yayin?: YayinFn };
+/** K7 (0.34.0): alanda yazım oldu; web'e verisiz "degisti" sinyali. Hata isteği bozmaz. */
+export type YayinFn = (wsId: string) => void;
+const yayinla = (ek: Ek, ctx: any) => { try { if (ctx?.ws?.id) ek.yayin?.(ctx.ws.id); } catch { /* sinyal isteğe bağlı */ } };
 
 /** Korunan kaynak belgesi (RFC 9728): MCP istemcisi yetkilendirme sunucusunu buradan bulur (MK-1). */
 const kaynakBelgesi = (fn: string, ek: Ek) => ({ resource: fn, authorization_servers: ek.yetki ? [ek.yetki] : [], bearer_methods_supported: ["header"], resource_name: "Devir" });
@@ -158,9 +161,10 @@ async function web(req: Request, url: URL, yol: string[], db: DB, now: number, e
     // yazan istek (P1-B): hız sınırı; Idempotency-Key varsa aynı istek ikinci kez yazmaz, ilk sonuç döner
     await hizSiniri(ctx, "api");
     const anahtar = (req.headers.get("idempotency-key") || "").trim();
-    if (!anahtar) return json({ ok: true, ...(await yurut()) });
+    if (!anahtar) { const s = await yurut(); yayinla(ek, ctx); return json({ ok: true, ...s }); }
     if (anahtar.length > 200) throw new ApiHata(400, "Idempotency-Key en çok 200 karakter olmalı.");
     const r = await birKez(ctx, `api:${anahtar}`, await karma(`${req.method} ${rota.join("/")} ${sirali(body)}`), ANAHTAR_MS, yurut);
+    if (!r.tekrar) yayinla(ek, ctx);
     return json({ ok: true, ...r.sonuc }, 200, r.tekrar ? { "Idempotent-Replayed": "true" } : {});
   } catch (e) {
     const m = (e as Error).message || String(e);
@@ -251,6 +255,7 @@ export async function handle(req: Request, db: DB, now = Date.now(), ek: Ek = {}
             const r = islem_id
               ? await birKez(ctx, `mcp:${String(islem_id).slice(0, 200)}`, oz, ANAHTAR_MS, () => callTool(name, arg, ctx))
               : await birKez(ctx, `dogal:${oz}`, oz, TEKRAR_MS, () => callTool(name, arg, ctx));
+            if (!r.tekrar) yayinla(ek, ctx);
             text = r.tekrar ? `(Bu işlem ${islem_id ? "bu islem_id ile" : "son 10 dakikada aynı argümanlarla"} zaten yapılmıştı; ikinci kez yazılmadı, önceki sonuç aşağıda.)\n\n${r.sonuc}` : r.sonuc;
           } else text = await callTool(name, args, ctx);
           ok({ content: [{ type: "text", text }] });

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { alanSecimi } from './api/istemci';
 import { sorguIstemcisi, useBen, useOzet } from './api/sorgular';
+import { useDegisimSinyali } from './api/degisim';
 import type { Ben } from './api/turler';
 import { Baslik } from './bilesen/Baslik';
 import { Gok, Gren, useBoyut } from './bilesen/Gok';
@@ -70,6 +71,8 @@ function Uygulama({ yol }: { yol: string }) {
   }, []);
   // birden çok alanda: son seçilen yoksa sunucunun seçtiği alan hatırlanır
   useEffect(() => { const id = ben.data?.calisma_alani?.id; if (id && !alanSecimi.al()) alanSecimi.koy(id); }, [ben.data]);
+  // K7: alanda bir yazım olunca açık ekranlar kendiliğinden yenilenir
+  useDegisimSinyali(ben.data?.calisma_alani?.id);
 
   if (ben.isPending) return <Yukleniyor />;
   if (ben.isError && !ben.data) return <Giris />;
@@ -80,7 +83,7 @@ function Uygulama({ yol }: { yol: string }) {
   const genis = masaustu(boy.w, boy.h);
   const panel = (sayfa: JSX.Element, konum: string, o: { aktif?: KabukSekme; serbest?: boolean; geri?: string } = {}) =>
     genis ? <Evren ben={b} panel={sayfa} konum={konum} aktif={o.aktif ?? null} serbest={o.serbest} geri={o.geri ? () => git(o.geri!) : undefined} /> : sayfa;
-  if (yol === '/bagla') return panel(<ClaudeaBagla ben={b} />, 'Claude’a bağla', { geri: '/ayarlar' });
+  if (yol === '/bagla') return panel(<ClaudeaBagla ben={b} />, 'Bağla', { geri: '/ayarlar' });
   if (yol === '/' || yol === '') return <><Evren ben={b} /><IlkTanitim /></>;
   if (yol === '/hesap') return <Yonlen yol="/ayarlar?bolum=ben" />;
   if (yol === '/ayarlar') return panel(<Ayarlar />, 'Ayarlar', { geri: '/' });

@@ -61,7 +61,12 @@ export async function oturumYonlendir(db: DB, ot: Oturum, ctx: Ctx | null, uyeli
   if (r0 === "ben" && r1 === "agentlar" && method === "GET") {
     if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");
     const L = await db.many("agent_baglanti", { uye_id: ctx.key.uye_id }, "ilk_kullanim").catch(() => []);
-    return { agentlar: L.filter((x: any) => !x.kaldirildi_at).map(agentV), mcp_adresi: taban.fn };
+    // 0.34.0 (C19): bağlayıcı her yeniden eklenişte yeni istemci kaydeder; aynı uygulamanın daha yeni bağlantısı açıldıktan
+    // sonra hiç kullanılmamış eski bağlantı "eski" işaretlenir (kişi tek dokunuşla kaldırır; kendiliğinden kapatılmaz)
+    const A = L.filter((x: any) => !x.kaldirildi_at);
+    const t = (v: unknown) => (v ? Date.parse(String(v)) : 0);
+    const eski = (x: any) => A.some((y: any) => y !== x && String(y.ad).toLocaleLowerCase("tr") === String(x.ad).toLocaleLowerCase("tr") && t(y.ilk_kullanim) > t(x.ilk_kullanim) && t(x.son_kullanim) <= t(y.ilk_kullanim));
+    return { agentlar: A.map((x: any) => ({ ...agentV(x), kullanilmiyor: eski(x) })), mcp_adresi: taban.fn };
   }
   if (r0 === "ben" && r1 === "agent" && r2 && method === "POST" && yol[3] === "kaldir") {
     if (!ctx) throw new HesapHata(403, "Önce bir çalışma alanına katıl.");

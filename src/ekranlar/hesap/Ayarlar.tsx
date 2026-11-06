@@ -54,8 +54,9 @@ const ESKI: Record<string, Bolum> = { hesap: 'ben', alan: 'kisiler', ekip: 'kisi
 const BASLIK: Record<Bolum, string> = { ben: 'BEN', kisiler: 'KİŞİLER', oner: 'DEVİR’İ ÖNER', harita: 'HARİTA DİLİ', gelismis: 'GELİŞMİŞ' };
 
 /** "Berkin’in Claude’u" yerine satırda yalnız uygulama; alt satır ne zaman kullanıldı. */
-const agentAlt = (a: { son_kullanim?: string | null; ilk_kullanim?: string | null; tarih?: string }) =>
-  `senin adına yazar · ${a.son_kullanim ? `son kullanım ${gunAy(Date.parse(a.son_kullanim))}` : a.ilk_kullanim || a.tarih ? `${gunAy(Date.parse((a.ilk_kullanim || a.tarih)!))} bağlandı` : 'henüz kullanılmadı'}`;
+const agentAlt = (a: { son_kullanim?: string | null; ilk_kullanim?: string | null; tarih?: string; kullanilmiyor?: boolean }) =>
+  // 0.34.0 (C19): aynı uygulamanın yeni bağlantısı açıldıktan sonra kullanılmayan eski bağlantı
+  a.kullanilmiyor ? `eski bağlantı, artık kullanılmıyor · ${a.ilk_kullanim ? `${gunAy(Date.parse(a.ilk_kullanim))} bağlandı` : ''}; kaldırabilirsin` : `senin adına yazar · ${a.son_kullanim ? `son kullanım ${gunAy(Date.parse(a.son_kullanim))}` : a.ilk_kullanim || a.tarih ? `${gunAy(Date.parse((a.ilk_kullanim || a.tarih)!))} bağlandı` : 'henüz kullanılmadı'}`;
 /** Dış katılımcı bağlantısının kısa durumu (Kişiler satırı ve Ekip listesi) */
 export const katilimciDurumu = (k: any) => (k.durum === 'iptal' ? 'bağlantı kapalı' : k.durum === 'suresi_doldu' ? 'süresi doldu' : k.son_acilis ? (k.acik_adim ? 'aktif' : 'açtı') : 'bağlantı gönderildi, açılmadı');
 

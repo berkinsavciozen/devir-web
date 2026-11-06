@@ -138,6 +138,20 @@ async function hazirla() {
   return motorlar;
 }
 
+// K7 (0.34.0): yazımdan sonra alanın kanalına verisiz "degisti" (Realtime REST yayını). Aynı alana saniyede en çok bir.
+const sonYayin = new Map<string, number>();
+const yayin = (wsId: string) => {
+  const t = Date.now();
+  if (t - (sonYayin.get(wsId) || 0) < 1000) return;
+  sonYayin.set(wsId, t);
+  const anahtar = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const p = fetch(`${Deno.env.get("SUPABASE_URL")}/realtime/v1/api/broadcast`, {
+    method: "POST", headers: { apikey: anahtar, Authorization: `Bearer ${anahtar}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ messages: [{ topic: `devir-${wsId}`, event: "degisti", payload: {} }] }),
+  }).then((r) => { if (!r.ok) console.warn("yayın:", r.status); }).catch((e) => console.warn("yayın:", (e as Error).message));
+  (globalThis as any).EdgeRuntime?.waitUntil?.(p);
+};
+
 Deno.serve(async (req) => {
   // if (req.method === "POST" && new URL(req.url).pathname.endsWith("/kiyas")) return kiyasHandle(req, sb); // Faz 1.5.0 kıyas düzeneği (ayrı anahtarla)
   const m = await hazirla();
@@ -147,5 +161,5 @@ Deno.serve(async (req) => {
   const openai = om && m.openaiKey ? openaiLlm(m.openaiKey, { ...OPENAI_MODELLER, taslak: om, yedek: [] }) : m.openai;
   // 0.32.0 (P1, M5): yedekli her istek için kurulur; bir istekte motor bir kez seçilir (taslak ve denetim aynı sağlayıcıdan)
   const llm = zorla === "openai" ? openai : zorla === "claude" ? m.claude : yedekli(m.claude, m.openai, (e) => console.warn("Claude hata verdi, OpenAI yedeğine geçildi:", e));
-  return handle(req, db, Date.now(), { tetik, llm, sohbet: m.sohbet, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre });
+  return handle(req, db, Date.now(), { tetik, llm, sohbet: m.sohbet, gom: m.gom, modeller, taban: `${Deno.env.get("SUPABASE_URL")}/functions/v1/devir-mcp`, yetki: `${Deno.env.get("SUPABASE_URL")}/auth/v1`, kimlik, posta, depo, sifre: await sifre, yayin });
 });
