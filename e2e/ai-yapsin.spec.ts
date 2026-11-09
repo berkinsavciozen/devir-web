@@ -25,7 +25,7 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
 test('AI yapsın: öncül bekleyen görev ne beklediğini söyler; ⋯ menüsünden kapatılır', async ({ page }) => {
   await ac(page, '/akis/RTD5/adim/10?senaryo=berkin&hal=ai');
   const b = page.getByRole('region', { name: 'AI YAPSIN' });
-  await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlar.');
+  await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlayacak.');
   await expect(b.getByRole('checkbox', { name: /planlanan başlangıç/i })).not.toBeChecked();
   await page.getByRole('button', { name: 'Diğer eylemler' }).click();
   await page.getByRole('menuitem', { name: 'AI yapsın’ı kapat' }).click();

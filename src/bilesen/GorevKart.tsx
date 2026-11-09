@@ -95,7 +95,7 @@ export function kartCumlesi(a: any, ben: string): string {
 }
 export const kartTonu = (a: any, ben: string) => gorevCumlesi({ ...a, bitis: BITTI(a.durum) ? null : a.son_tarih || a.en_erken_bitis || null }, { gun: (x) => x, kisa: (x) => (x === ben ? 'Sen' : x) }).ton;
 
-/** "Sen kapsamı netleştirmeli" → "Kapsamı netleştirmelisin". */
+/** "Sen kapsamı netleştirecek" → "Kapsamı netleştireceksin". */
 export function senEki(c: string): string {
   const [ana, ...kuyruk] = c.slice(4).split(/(?=[;,])/);
   const w = ana.trim().split(' '), f = w[w.length - 1];

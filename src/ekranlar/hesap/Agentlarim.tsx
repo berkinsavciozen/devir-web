@@ -155,7 +155,7 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
         </section>}
 
         <section className="ai-grup" aria-label="Özet">
-          <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık iş${a.sirada ? `; ${a.sirada} tanesi AI yapsın, sırası gelince başlar` : ''}.` : 'Açık işi yok.'}{a.son_etkinlik ? ` Son etkinlik ${zaman(a.son_etkinlik.zaman)}.` : ''}</p>
+          <p className="gd-satir">{a.acik_is ? `${a.acik_is} açık iş${a.sirada ? `; ${a.sirada} tanesi AI yapsın, sırası gelince başlayacak` : ''}.` : 'Açık işi yok.'}{a.son_etkinlik ? ` Son etkinlik ${zaman(a.son_etkinlik.zaman)}.` : ''}</p>
         </section>
         <AgentIsleri agent={a.ad} kapat={kapat} />
         {kip === 'yonetim' && <button type="button" className="metin-baglanti mercan" onClick={() => setKaldirAc(true)}>Agent’ı kaldır</button>}

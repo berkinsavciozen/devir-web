@@ -189,20 +189,20 @@ export function otoDurumCumlesi(a: any, o: { ben: string; tetikYok: boolean; sor
     const q = (o.sorular || []).find((x: any) => x.kod === kod);
     const ad = q?.kisa || 'Açık soru';
     const yer = q?.adim_no != null ? o.by?.get(q.adim_no) : null;
-    const kim = yer ? (yer.sahip === o.ben ? ` Cevabı ${q.adim_no}. görevde verirsin.` : ` Cevabı ${q.adim_no}. görevde ${o.kisa(yer.sahip)} verir.`) : '';
-    return `${/soru/i.test(ad) ? ad : `${ad} sorusu`} cevaplanınca ${ag} başlar.${kim}`;
+    const kim = yer ? (yer.sahip === o.ben ? ` Cevabı ${q.adim_no}. görevde vereceksin.` : ` Cevabı ${q.adim_no}. görevde ${o.kisa(yer.sahip)} verecek.`) : '';
+    return `${/soru/i.test(ad) ? ad : `${ad} sorusu`} cevaplanınca ${ag} başlayacak.${kim}`;
   }
   const cikti = b.match(/^çıktı \(([\d, ]+)\)$/);
-  if (cikti) return `${cikti[1]}. görevin çıktısı yazılınca ${ag} başlar.`;
+  if (cikti) return `${cikti[1]}. görevin çıktısı yazılınca ${ag} başlayacak.`;
   const gun = b.match(/^planlanan gün \((.+)\)$/);
-  if (gun) return `${ag} planlanan günde, ${gun[1]}, başlar.`;
+  if (gun) return `${ag} planlanan günde, ${gun[1]}, başlayacak.`;
   if (b === 'öncüller') {
     const once = (a.bekledigi || []).filter((x: any) => !BITTI(x.durum)).map((x: any) => x.no);
-    return once.length ? `${once.join(', ')}. görev bitince ${ag} başlar.` : `Öncüller bitince ${ag} başlar.`;
+    return once.length ? `${once.join(', ')}. görev bitince ${ag} başlayacak.` : `Öncüller bitince ${ag} başlayacak.`;
   }
   if (b === 'sürüyor') return `${ag} üzerinde çalışıyor.`;
-  if (o.tetikYok) return `AI yapsın açık ama Claude rutinin kurulu değil; kurunca ${ag} başlar.`;
-  return `Hazır; ${ag} bir sonraki taramada başlar.`;
+  if (o.tetikYok) return `AI yapsın açık ama Claude rutinin kurulu değil; kurunca ${ag} başlayacak.`;
+  return `Hazır; ${ag} bir sonraki taramada başlayacak.`;
 }
 
 /** Çıktı beklenen ve henüz çıktısı olmayan kendi işin: neyin beklendiği (W1 cümle tablosu). */
@@ -227,6 +227,6 @@ export function aiArdilCumlesi(a: any, adimlar: any[], ben: string, kisa: (ad: s
   const ne = L.length > 1 ? `${L.map((x: any) => `${x.no}.`).join(', ')} görevdeki ${L.length} AI yapsın işi` : `${kim(ilk)} ${ilk.no}. göreve`;
   const ciktiSart = a.cikti_bekleniyor === true && !((a.ciktilar || []).length || a.cikti_sayisi > 0);
   return ciktiSart
-    ? `Bu görevin çıktısı eklenip bitince ${ne} kendiliğinden başlar (AI yapsın); çıktısız bitirilirse AI başlamaz.`
-    : `Bu görev bitince ${ne} kendiliğinden başlar (AI yapsın).`;
+    ? `Bu görevin çıktısı eklenip bitince ${ne} kendiliğinden başlayacak (AI yapsın); çıktısız bitirilirse AI başlamaz.`
+    : `Bu görev bitince ${ne} kendiliğinden başlayacak (AI yapsın).`;
 }

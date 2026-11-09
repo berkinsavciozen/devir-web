@@ -55,7 +55,7 @@ test('W1 · AI yapamadı: cümle nedenini söyler; Yeniden dene engeli kaldırı
   await cek(page, 'W1-ai-hata-390');
   await cubuk(page).getByRole('button', { name: 'Yeniden dene' }).click();
   await expect(page.locator('.gd-haplar')).not.toContainText('Engelli');
-  await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlar.');
+  await expect(page.locator('.gd-cumle')).toHaveText('9. görev bitince Berkin’in Claude’u başlayacak.');
 });
 
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {

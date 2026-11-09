@@ -67,7 +67,7 @@ function Bolum({ baslik, children, id, ikon }: { baslik: string; children: React
 /** AI YAPSIN bölümünün tek satırı (W1): açık mı, açıksa ne olur. Ayrıntılı durum başlık altındaki cümlede. */
 export function otoSatiri(a: any): string {
   const ag = a.sahip;
-  return a.oto ? `Açık. Görev hazır olunca ${ag} kendiliğinden yapar; çıktı onayına gelir.` : `Kapalı. Açarsan görev hazır olunca ${ag} kendiliğinden yapar. Karar, ödeme ve dışarıya gönderme işleri otomatik yapılmaz.`;
+  return a.oto ? `Açık. Görev hazır olunca ${ag} kendiliğinden yapacak; çıktı onayına gelecek.` : `Kapalı. Açarsan görev hazır olunca ${ag} kendiliğinden yapacak. Karar, ödeme ve dışarıya gönderme işleri otomatik yapılmaz.`;
 }
 
 export function GorevDetay(o: { kod: string; no: number; ben: string; kapat?: () => void }) {
@@ -210,15 +210,15 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const acikSonra = sonra.filter((z) => !BITTI(z.durum));
   const neden0 = BITTI(A.durum) ? (sonra.length ? 'Bitti; bekleyenlerin önü açıldı.' : 'Bitti.')
     : tut.length ? `${tut.length} görev bunun bitmesini bekliyor${krt ? '; kritik yolda, her gün gecikmesi akışın bitişini bir gün kaydırır' : ''}.`
-    : ust ? `${adimAdi(ust)} görevinin parçası; o, alt görevleri bitince tamamlanır.` : 'Bunu bekleyen başka görev yok.';
+    : ust ? `${adimAdi(ust)} görevinin parçası; o, alt görevleri bitince tamamlanacak.` : 'Bunu bekleyen başka görev yok.';
   // zaman çizgisi: başlangıç · bugün · bitiş · son tarih (yalnız bilinenler)
   const nokta: { k: string; ms: number; t: 'bas' | 'bugun' | 'bitis' | 'son' }[] = [];
-  if (bas.ms) nokta.push({ k: bas.etiket === 'başladı' ? 'başladı' : bas.etiket === 'sırası geldi' ? 'sırası geldi' : 'en erken başlar', ms: bas.ms, t: 'bas' });
+  if (bas.ms) nokta.push({ k: bas.etiket === 'başladı' ? 'başladı' : bas.etiket === 'sırası geldi' ? 'sırası geldi' : 'en erken başlayacak', ms: bas.ms, t: 'bas' });
   if (!BITTI(A.durum)) nokta.push({ k: 'bugün', ms: simdiMs, t: 'bugun' });
-  if (bitis) nokta.push({ k: bitis.etiket === 'en erken' ? 'en erken biter' : bitis.etiket, ms: bitis.ms, t: 'bitis' });
+  if (bitis) nokta.push({ k: bitis.etiket === 'en erken' ? 'en erken bitecek' : bitis.etiket, ms: bitis.ms, t: 'bitis' });
   if (A.son_tarih) nokta.push({ k: 'son tarih', ms: tarihMs(A.son_tarih), t: 'son' });
   const gunu = (ms: number) => new Date(ms).toDateString();
-  for (let j = nokta.length - 1; j > 0; j--) for (let i = 0; i < j; i++) if (nokta[i].t !== 'bugun' && nokta[j].t !== 'bugun' && gunu(nokta[i].ms) === gunu(nokta[j].ms)) { nokta[i].k = nokta[i].t === 'bas' && nokta[j].t === 'bitis' ? 'başlar ve biter' : `${nokta[i].k} · ${nokta[j].k}`; nokta.splice(j, 1); break; }
+  for (let j = nokta.length - 1; j > 0; j--) for (let i = 0; i < j; i++) if (nokta[i].t !== 'bugun' && nokta[j].t !== 'bugun' && gunu(nokta[i].ms) === gunu(nokta[j].ms)) { nokta[i].k = nokta[i].t === 'bas' && nokta[j].t === 'bitis' ? 'başlayıp bitecek' : `${nokta[i].k} · ${nokta[j].k}`; nokta.splice(j, 1); break; }
   nokta.sort((p, r) => p.ms - r.ms);
   const z0 = nokta.length ? nokta[0].ms : 0, z1 = nokta.length ? nokta[nokta.length - 1].ms : 1, zw = Math.max(z1 - z0, GUN);
   const zx = (ms: number) => (nokta.length < 2 ? 50 : 4 + 92 * ((ms - z0) / zw));
@@ -285,7 +285,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
 
       <EylemCubugu a={A} kod={kod} plan={plan} hamle={h} ciktiEkle={ciktiGirdisi} baglantiAc={() => setPaylas((x) => !x)}>
         {hatirlatildi && !plan.ana && !plan.ikincil && <p className="gd-satir">Bugün hatırlattın; {kisaAd(A.sahip_tip === 'agent' && A.agent_sahibi ? A.agent_sahibi : A.sahip)} bildirim aldı.</p>}
-        {A.sahip === ben && acikAlt.length > 0 && <p className="gd-satir">Alt görevlerin hepsi bitince {A.karar_adimi || A.cikti_bekleniyor ? 'bu görevi sen tamamlarsın' : 'bu görev kendiliğinden tamamlanır'}.</p>}
+        {A.sahip === ben && acikAlt.length > 0 && <p className="gd-satir">Alt görevlerin hepsi bitince {A.karar_adimi || A.cikti_bekleniyor ? 'bu görevi sen tamamlayacaksın' : 'bu görev kendiliğinden tamamlanacak'}.</p>}
       </EylemCubugu>
       {paylas && <BaglantiSatiri kod={kod} kisi={A.sahip} kisiId={A.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === A.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === A.sahip).length} kapat={() => setPaylas(false)} />}
 

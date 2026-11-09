@@ -28,7 +28,7 @@ export const isGrubu = (a: any): Grup => {
 /** Satırın alt cümlesi: akış · AI durumu · zaman */
 export function isAlt(a: any): string {
   const g = isGrubu(a);
-  const ne = g === 'calisiyor' ? 'rutin üzerinde çalışıyor' : g === 'bakilacak' ? 'çıktıyı yazdı, bakıp onayla' : g === 'hata' ? (a.engel || 'rutin bitiremedi') : g === 'sirada' ? (a.durum === 'hazir' ? 'hazır, bir sonraki çalışmada başlar' : 'öncülleri bitince başlar') : g === 'kapali' ? (a.durum === 'hazir' || a.durum === 'suruyor' ? 'hazır; AI yapsın kapalı' : 'AI yapsın kapalı') : a.durum === 'atlandi' ? 'atlandı' : 'bitti';
+  const ne = g === 'calisiyor' ? 'rutin üzerinde çalışıyor' : g === 'bakilacak' ? 'çıktıyı yazdı, bakıp onayla' : g === 'hata' ? (a.engel || 'rutin bitiremedi') : g === 'sirada' ? (a.durum === 'hazir' ? 'hazır, bir sonraki çalışmada başlayacak' : 'öncülleri bitince başlayacak') : g === 'kapali' ? (a.durum === 'hazir' || a.durum === 'suruyor' ? 'hazır; AI yapsın kapalı' : 'AI yapsın kapalı') : a.durum === 'atlandi' ? 'atlandı' : 'bitti';
   const t = g === 'bitti' ? (a.durum_at ? gunAy(Date.parse(a.durum_at)) : '') : a.son_tarih ? `son ${gunAy(tarihMs(a.son_tarih))}` : '';
   return [a.akis_kisa_ad || a.akis_baslik, ne, t].filter(Boolean).join(' · ');
 }
