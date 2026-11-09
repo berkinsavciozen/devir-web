@@ -37,13 +37,13 @@ export function AvatarAd({ ad, ac }: { ad: string; ac?: () => void }) {
 export function useBagliLlm(): { yukleniyor: boolean; uyg: Uygulama | null } {
   const ag = useQuery({ queryKey: ['agentlar'], queryFn: () => api.get<any>('/ben/agentlar'), retry: false });
   const L = ((ag.data?.agentlar || []) as any[]).filter((a) => !a.kullanilmiyor);
-  const uyg = L.some((a) => UYGULAMALAR.claude.esle.test(String(a.ad || ''))) ? 'claude'
-    : L.some((a) => UYGULAMALAR.chatgpt.esle.test(String(a.ad || ''))) ? 'chatgpt' : L.length ? 'claude' : null;
+  // 0.35.0: bağlı ilk uygulama (Claude önce); adı tanınmayan bağlantı Claude sayılır
+  const uyg = (Object.keys(UYGULAMALAR) as Uygulama[]).find((k) => L.some((a) => UYGULAMALAR[k].esle.test(String(a.ad || '')))) ?? (L.length ? 'claude' : null);
   return { yukleniyor: ag.isPending, uyg };
 }
 
 /** Sohbette yeni sayfa: bağlı uygulamada işi anlatmak için. */
-const SOHBET_AC: Record<Uygulama, string> = { claude: 'https://claude.ai/new', chatgpt: 'https://chatgpt.com/' };
+const SOHBET_AC: Record<Uygulama, string> = { claude: 'https://claude.ai/new', chatgpt: 'https://chatgpt.com/', gemini: 'https://gemini.google.com/app', perplexity: 'https://www.perplexity.ai/', lechat: 'https://chat.mistral.ai/chat', grok: 'https://grok.com/' };
 const ORNEK = 'Aralık sonuna kadar 5 çiftçi daha kazandırmam lazım.';
 
 /** İlk akışını başlat (B4, B7): metinler LLM bağlı mı değil mi ona göre. "Buradan yaz" yok; elle başlatmak + ile. */
@@ -84,7 +84,7 @@ export function BosEvren({ ad, avatar }: { ad: string; avatar?: () => void }) {
   );
 }
 
-const UygGemi = ({ uyg }: { uyg: Uygulama }) => <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -12, 'agent', uyg === 'claude' ? 'C' : 'G', C.lilac, .7, { flame: false }) }} />;
+const UygGemi = ({ uyg }: { uyg: Uygulama }) => <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -12, 'agent', UYGULAMALAR[uyg].ad[0], C.lilac, .7, { flame: false }) }} />;
 
 const genisDugme = { position: 'relative', flex: 1, left: 'auto', right: 'auto', top: 'auto' } as const;
 

@@ -14,12 +14,16 @@ import { arama, git } from '../../yonlendirme';
 import { gunAy } from '../../cizim/yol.js';
 
 /**
- * Uygulamaya göre yol (B12/C22/C23/K9, 0.34.0). Claude bağlayıcıları Ayarlar'dan Customize'a taşıdı;
- * ChatGPT'de özel bağlayıcı geliştirici kipinde "Oluştur" ile eklenir.
+ * Uygulamaya göre yol (B12/C22/C23/K9, 0.34.0; 0.35.0'da altı uygulama). Hepsi aynı anahtarsız MCP adresini ekler ve
+ * Devir'de e-postayla onaylar (OAuth, istemci kendini kaydeder). not: o uygulamaya özgü kısıt; yollar Kasım 2026.
  */
 export const UYGULAMALAR = {
-  claude: { ad: 'Claude', a: 'Claude’a', da: 'Claude’da', i: 'Claude’u', ac: 'https://claude.ai/customize/connectors', yol: 'Claude › Customize › Connectors › Add custom connector', esle: /claude/i },
-  chatgpt: { ad: 'ChatGPT', a: 'ChatGPT’ye', da: 'ChatGPT’de', i: 'ChatGPT’yi', ac: 'https://chatgpt.com/#settings/Connectors', yol: 'ChatGPT › Ayarlar › Apps & Connectors › Create (Developer mode açık)', esle: /chatgpt|openai/i },
+  claude: { ad: 'Claude', a: 'Claude’a', da: 'Claude’da', i: 'Claude’u', ac: 'https://claude.ai/customize/connectors', yol: 'Claude › Customize › Connectors › Add custom connector', esle: /claude/i, not: '' },
+  chatgpt: { ad: 'ChatGPT', a: 'ChatGPT’ye', da: 'ChatGPT’de', i: 'ChatGPT’yi', ac: 'https://chatgpt.com/#settings/Connectors', yol: 'ChatGPT › Ayarlar › Apps & Connectors › Create (Developer mode açık)', esle: /chatgpt|openai/i, not: 'Create yoksa Apps’te Developer mode’u aç.' },
+  gemini: { ad: 'Gemini', a: 'Gemini’ye', da: 'Gemini’de', i: 'Gemini’yi', ac: 'https://gemini.google.com/', yol: 'Gemini (web) › Settings › Connected Apps › Add a custom app', esle: /gemini/i, not: 'Web’den eklenir; şimdilik kişisel hesap, İngilizce, ABD.' },
+  perplexity: { ad: 'Perplexity', a: 'Perplexity’ye', da: 'Perplexity’de', i: 'Perplexity’yi', ac: 'https://www.perplexity.ai/', yol: 'Perplexity › Plugins › Add custom › MCP connector › Remote', esle: /perplexity/i, not: 'Plugins yoksa Customize › Connectors. Kimlik olarak OAuth seç.' },
+  lechat: { ad: 'Le Chat', a: 'Le Chat’ya', da: 'Le Chat’da', i: 'Le Chat’yı', ac: 'https://chat.mistral.ai/', yol: 'Le Chat › Intelligence › Connectors › Add Connector › Custom MCP', esle: /le ?chat|mistral/i, not: 'Adı boşluksuz yaz: Devir. Ekipte yönetici ekler.' },
+  grok: { ad: 'Grok', a: 'Grok’a', da: 'Grok’ta', i: 'Grok’u', ac: 'https://grok.com/connectors', yol: 'Grok › Connectors › New Connector › Custom', esle: /grok/i, not: 'Ücretli hesap gerekir.' },
 } as const;
 export type Uygulama = keyof typeof UYGULAMALAR;
 const YOKLAMA = 5000;
@@ -50,11 +54,11 @@ function KopyaAlani({ y, deger, gosterim, etiket, es }: { y: number; deger: stri
 }
 
 /**
- * A3 · Claude ya da ChatGPT'ye bağla: uygulama seçimi + anahtarsız adres + OAuth onayı (K9).
+ * A3 · Claude, ChatGPT, Gemini, Perplexity, Le Chat ya da Grok'a bağla: uygulama seçimi + anahtarsız adres + OAuth onayı (K9).
  * Zaten bağlıysa (C12) "bağlı" gösterir; değilse /ben 5 sn'de bir yoklanır, ilk MCP çağrısı gelince yanar.
  */
 export function ClaudeaBagla({ ben }: { ben: Ben }) {
-  const [uyg, setUyg] = useState<Uygulama>(arama().get('uygulama') === 'chatgpt' ? 'chatgpt' : 'claude');
+  const [uyg, setUyg] = useState<Uygulama>(() => { const q = arama().get('uygulama'); return q && q in UYGULAMALAR ? q as Uygulama : 'claude'; });
   const U = UYGULAMALAR[uyg];
   const [baglandi, setBaglandi] = useState(false);
   const acilis = useRef(Date.now());
@@ -95,24 +99,24 @@ export function ClaudeaBagla({ ben }: { ben: Ben }) {
   const son = mevcut?.son_kullanim || mevcut?.ilk_kullanim;
 
   return (
-    <Sahne gok={{ tohum: 11, yildiz: 220 }} etiket="Claude ya da ChatGPT’ye bağla">
+    <Sahne gok={{ tohum: 11, yildiz: 220 }} etiket="Yapay zekâna bağla">
       <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={`${U.a} bağla`} geri={() => history.length > 1 ? history.back() : git('/')} /></Kutu>
-      <Kutu x={0} y={100} h={44} style={{ right: 0 }}>
-        <div className="segment" role="tablist" aria-label="Uygulama">
+      <Kutu x={0} y={100} h={96} style={{ right: 0 }}>
+        <div className="segment uyg-secici" role="tablist" aria-label="Uygulama">
           {(Object.keys(UYGULAMALAR) as Uygulama[]).map((k) => (
             <button key={k} type="button" role="tab" aria-selected={uyg === k} className={uyg === k ? 'secili' : ''} onClick={() => { setUyg(k); setBaglandi(false); acilis.current = Date.now(); }}>{UYGULAMALAR[k].ad}</button>
           ))}
         </div>
       </Kutu>
-      <Metin y={172} fs={15} lh={20} serif renk="ink2">Adresi {U.a} ekle, Devir’de onayla; bağlanınca burası yanar.</Metin>
-      {adim(1, 222, U.yol)}
-      {adim(2, 270, 'Adresi yapıştır')}
-      <KopyaAlani y={290} deger={MCP_ADRESI || null} gosterim={kisaAdres(MCP_ADRESI)} etiket="MCP adresi" />
-      {adim(3, 372, `Bağlan’a bas, Devir’de izin ver`)}
-      <Kutu x={57} y={399} w={18} h={18} aria-hidden><Ikon svg={bilgiIkon()} w={18} /></Kutu>
-      <Metin y={412} x={80} fs={12} lh={16} renk="ink3" style={{ right: 16 }}>Anahtar gerekmez; izni {ben.eposta || 'e-postan'} ile verirsin.{uyg === 'chatgpt' ? ' AI yapsın rutinleri şimdilik yalnız Claude’da.' : ''}</Metin>
+      <Metin y={224} fs={15} lh={20} serif renk="ink2">Adresi {U.a} ekle, Devir’de onayla; bağlanınca burası yanar.</Metin>
+      {adim(1, 274, U.yol)}
+      {adim(2, 322, 'Adresi yapıştır')}
+      <KopyaAlani y={342} deger={MCP_ADRESI || null} gosterim={kisaAdres(MCP_ADRESI)} etiket="MCP adresi" />
+      {adim(3, 424, `Bağlan’a bas, Devir’de izin ver`)}
+      <Kutu x={57} y={451} w={18} h={18} aria-hidden><Ikon svg={bilgiIkon()} w={18} /></Kutu>
+      <Metin y={464} x={80} fs={12} lh={16} renk="ink3" style={{ right: 16 }}>Anahtar gerekmez; izni {ben.eposta || 'e-postan'} ile verirsin.{U.not ? ' ' + U.not : ''}{uyg !== 'claude' ? ' AI yapsın şimdilik yalnız Claude’da.' : ''}</Metin>
 
-      <Kutu y={470} h={150} className={`kart baglanti-karti ${yandi ? 'baglandi' : ''}`} role="status" aria-live="polite">
+      <Kutu y={530} h={150} className={`kart baglanti-karti ${yandi ? 'baglandi' : ''}`} role="status" aria-live="polite">
         <svg aria-hidden className="baglanti-gezegen" width="128" height="150" viewBox="0 0 128 150" dangerouslySetInnerHTML={{ __html: kartCizim }} />
         <div className="baglanti-metin">
           {baglandi ? <><b>Bağlandı</b><span>{U.ad} artık bu alana<br />senin adına yazıyor.</span></>
@@ -120,8 +124,8 @@ export function ClaudeaBagla({ ben }: { ben: Ben }) {
             : <><b>Bağlantı bekleniyor</b><span>İzin verip {U.da} ilk<br />komutu verince hazır.</span></>}
         </div>
       </Kutu>
-      <Dugme style={{ top: 660 }} onClick={() => window.open(U.ac, '_blank', 'noopener')}>{U.i} aç</Dugme>
-      <Dugme tur="ikincil" ton="lila" yukseklik={48} fs={15} style={{ top: 726 }} onClick={() => git('/', { yerine: true })}>{mevcut ? 'Evrene dön' : 'Sonra'}</Dugme>
+      <Dugme style={{ top: 706 }} onClick={() => window.open(U.ac, '_blank', 'noopener')}>{U.i} aç</Dugme>
+      <Dugme tur="ikincil" ton="lila" yukseklik={48} fs={15} style={{ top: 770 }} onClick={() => git('/', { yerine: true })}>{mevcut ? 'Evrene dön' : 'Sonra'}</Dugme>
     </Sahne>
   );
 }

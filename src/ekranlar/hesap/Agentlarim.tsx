@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UYGULAMALAR, type Uygulama } from '../evren/ClaudeaBagla';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { sorguIstemcisi } from '../../api/sorgular';
@@ -32,7 +33,9 @@ const tazele = () => { for (const k of [['agentlar-ai'], ['tetikler']]) void sor
 
 const zaman = (t: string | null | undefined) => (t ? `${gunAy(Date.parse(t))} ${saat(Date.parse(t))}` : null);
 /** Agent'ın hangi uygulamayla çalıştığı: adından (ör. "Berkin'in Claude'u", "Ayşe'nin ChatGPT'si") */
-export const uygulamaOf = (ad: string) => (/chat\s?gpt|openai|gpt/i.test(ad) ? 'ChatGPT' : 'Claude');
+export const uygulamaOf = (ad: string) => (/chat\s?gpt|openai|gpt/i.test(ad) ? 'ChatGPT' : /gemini/i.test(ad) ? 'Gemini' : /perplexity/i.test(ad) ? 'Perplexity' : /le ?chat|mistral/i.test(ad) ? 'Le Chat' : /grok/i.test(ad) ? 'Grok' : 'Claude');
+/** Bağla sayfasındaki sekme (UYGULAMALAR anahtarı) */
+const uygAnahtari = (ad: string): Uygulama => (Object.keys(UYGULAMALAR) as Uygulama[]).find((k) => UYGULAMALAR[k].ad === uygulamaOf(ad)) ?? 'claude';
 /** Agent'ın uygulamasıyla kurulmuş OAuth bağlantısı (varsa) */
 export const baglantiOf = (ad: string, L: Baglanti[]) => {
   const u = uygulamaOf(ad).toLocaleLowerCase('tr');
@@ -123,7 +126,7 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
         {kip === 'yonetim' && <section className="ai-grup" aria-label="Bağlantı">
           <h3 className="gd-bolum-baslik">BAĞLANTI</h3>
           <p className="gd-satir">{baglanti ? `${uygulamaOf(a.ad)} · ${baglanti.alt}` : `${uygulamaOf(a.ad)} bu hesaba bağlı görünmüyor. Bağlanınca ${a.ad} Devir’de yazabilir.`}</p>
-          {!baglanti && kip === 'yonetim' && <button type="button" className="metin-baglanti" onClick={() => { kapat(); git(/chatgpt/i.test(uygulamaOf(a.ad)) ? '/bagla?uygulama=chatgpt' : '/bagla'); }}>{/chatgpt/i.test(uygulamaOf(a.ad)) ? 'ChatGPT’yi' : `${uygulamaOf(a.ad)}’u`} bağla</button>}
+          {!baglanti && kip === 'yonetim' && <button type="button" className="metin-baglanti" onClick={() => { kapat(); git(`/bagla?uygulama=${uygAnahtari(a.ad)}`); }}>{UYGULAMALAR[uygAnahtari(a.ad)].i} bağla</button>}
         </section>}
 
         <section className="ai-grup" aria-label="Rutinler">

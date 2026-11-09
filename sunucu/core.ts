@@ -132,6 +132,11 @@ export function aracOf(a: any, ua: string): string {
   if (/openai|chatgpt/i.test(ua)) return "ChatGPT";
   if (/cursor/i.test(ua)) return "Cursor";
   if (/gemini|google/i.test(ua)) return "Gemini";
+  // 0.35.0: diğer sohbet uygulamaları (bağlayıcı adı ve olay satırındaki "… adına")
+  if (/perplexity/i.test(ua)) return "Perplexity";
+  if (/mistral|le ?chat/i.test(ua)) return "Le Chat";
+  if (/grok|x\.ai|xai/i.test(ua)) return "Grok";
+  if (/copilot|microsoft/i.test(ua)) return "Copilot";
   return "MCP istemcisi";
 }
 // Aktör kimlik bilgisinden gelir: kim her zaman anahtarın, oturumun ya da bağlantının kişisi; argümandaki kim ve kim_tip yok sayılır.
