@@ -428,6 +428,32 @@ export function yolCiz(M, o = {}) {
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
     gorunen[u.ad] = { u, p };
   }
+  // zaman spirali (9 Kas, Berkin: "kişiler üst üste binmesin"): gemi bugün çentiğinde değil, o an yaptığı işin gezegeninde
+  // durur. İşi yoksa (sırası gelmemiş) son bitirdiği gezegende ya da yolunun başında küçük ve soluk bekler. Aynı gezegende
+  // birden çok kişi varsa gezegenin çevresine dizilir.
+  const soluk = {};
+  if (G.spiral) {
+    const ONCE = { run: 0, block: 1, wait: 2 };
+    const yer = {}, sayac = {};
+    for (const ad of Object.keys(gorunen)) {
+      const { u } = gorunen[ad];
+      const aktif = u.kendi.filter((no) => G.gezegen[no] && ONCE[stOf(no)] != null).sort((a, b) => ONCE[stOf(a)] - ONCE[stOf(b)] || G.gezegen[a].t - G.gezegen[b].t)[0];
+      const biten = u.kendi.filter((no) => G.gezegen[no] && BIT(byNo[no].durum) && G.gezegen[no].t <= X).sort((a, b) => G.gezegen[b].t - G.gezegen[a].t)[0];
+      const no = aktif ?? biten;
+      if (aktif == null) soluk[ad] = true;
+      if (no == null) { const q = G.konumAn(ad, u.t0); if (q) gorunen[ad].p = { ...q, demir: true }; continue; }
+      yer[ad] = no; sayac[no] = (sayac[no] || 0) + 1;
+    }
+    const sira = {};
+    for (const ad of Object.keys(yer)) {
+      const no = yer[ad], g = G.gezegen[no], i = (sira[no] = (sira[no] ?? -1) + 1), n = sayac[no];
+      const q = G.pT(g.t), ox = G.cx - q.x, oy = G.cy - q.y, on = Math.hypot(ox, oy) || 1;
+      // önce gezegenin merkezden dış yanına; kalabalıkta gezegenin çevresine eşit aralıkla
+      const a0 = Math.atan2(-oy / on, -ox / on), a = a0 + (i - (n - 1) / 2) * (n > 1 ? Math.min(1.1, 2 * Math.PI / n) : 0);
+      const d = radOf(no) + 16 * Math.min(ps, 1.4) * OK;
+      gorunen[ad].p = { x: g.x + Math.cos(a) * d, y: g.y + Math.sin(a) * d, yon: gorunen[ad].p.yon, demir: soluk[ad] };
+    }
+  }
   // B22 (W5, 4 Kas): gemi gezegenlerden ve simgelerden en az bir dokunma hedefi (44 px) uzakta durur. Yolun üstünde, gezegene
   // varmışken bile gezegenin dışına, ondan uzağa itilir; birkaç turda en yakın çakışan çözülür (çizim ve dokunma hedefi aynı yerde)
   const engeller = vis.filter((no) => !inCl.has(no)).map((no) => ({ x: G.gezegen[no].x, y: G.gezegen[no].y, d: Math.max(22, radOf(no)) + 22 }))
@@ -452,10 +478,11 @@ export function yolCiz(M, o = {}) {
   for (const ad of Object.keys(gorunen)) {
     const { u, p } = gorunen[ad];
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
-    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK;
-    const ev = kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
+    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK * (soluk[u.ad] ? .78 : 1);
+    // zaman spiralinde agent kendi işinin gezegeninde, ayrı bir robot gemi (sahibine ip yok: ipler haritayı keserdi)
+    const ev = !G.spiral && kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
     if (ev && ev.u.tip !== 'agent') continue; // sahibinin gemisiyle birlikte çizilir
-    const yapisik = G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
+    const yapisik = G.spiral ? [] : G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
     const renk = o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u);
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
     let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx });
@@ -472,7 +499,7 @@ export function yolCiz(M, o = {}) {
       gemiler.push({ ad: a.ad, tip: 'agent', x: p.x + dx, y: p.y + dy, sc: sc * .72, destek: u.ad });
       g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc, { ip: true, yon: q.yon, alev: X <= NOWx }) + g;
     });
-    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${X > NOWx ? .75 : 1}">` + g + '</g>';
+    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${soluk[u.ad] ? .55 : X > NOWx ? .75 : 1}">` + g + '</g>';
   }
   // W7: kritik yol beyaz noktalı zincir (açık gezegenler zaman sırasıyla); uzakta çizilmez
   if (!o.uzak && !F.kapandi && o.kritikZincir !== false) {
