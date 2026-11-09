@@ -538,7 +538,7 @@ export function kumeAyrismaKati(gezegen: Record<number, { x: number; y: number }
 
 /** SABIT.AYRIK yakınlaşmada bile üst üste kalacak gezegen çiftlerini yol yönünde (yon) iter; sıra zaman, sonra no.
  *  olcek: R / R0 (yakınlaşmış çizimde aralık da büyür; yarıçaplar büyümez) */
-function ayrikla(gezegen: Record<number, Gezegen>, olcek: number, yon: (no: number) => [number, number]) {
+export function ayrikla(gezegen: Record<number, Gezegen>, olcek: number, yon: (no: number) => [number, number]) {
   const nos = Object.keys(gezegen).map(Number).sort((x, y) => gezegen[x].t - gezegen[y].t || x - y);
   for (let tur = 0; tur < 40; tur++) {
     let itti = false;

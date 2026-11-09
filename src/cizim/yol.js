@@ -4,6 +4,8 @@
 import { apidenAkis } from '../geometri/galaksi-geometri';
 import { ilerleme } from '../api/ilerleme';
 import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
+import { kurKol } from '../geometri/kol-geometri';
+import { haritaBicimi } from '../geometri/kol-bayrak';
 import { C, destekGemisi, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 import { hamle as hamleOf, damla, kisiRengi } from './hamle';
 
@@ -192,11 +194,66 @@ function fenerDizisi(pts, ps = 1, aralik = 14) {
  *   ships, lod: 'detay'|'kucuk', allLit, sira, spin, sis, ip, fener, kule, kuleEtiket, kuleDx, tw, shipSc, rk, rad, pr,
  *   ok (öğe katsayısı: gemi, gezegen), rf (gezegen yarıçap işlevi; verilirse ok yerine), yk (yazı katsayısı) }
  */
+/**
+ * Kol haritasının tarih halkaları (9 Kas): her gün ince halka, pazartesi belirgin ve tarihli; hedef halkası pirinç,
+ * bugün halkası şeftali ve kesik (içi yapılmış iş). Halkalar sabittir: ölçek o anki süreye göre değişmez.
+ */
+function kolHalkalari(G, now, m, yk, kapali) {
+  let s = '';
+  const g0 = Math.ceil((G.T0 - 3 * 36e5) / GUN) * GUN + 21 * 36e5, son = G.T0 + (G.RS > G.RH ? (G.hedef - G.T0) * 1.6 : 0);
+  for (let t = g0; G.rT(t) < G.RS - .5 && t < son + 60 * GUN; t += GUN) {
+    const r = G.rT(t), pzt = tl(t).getUTCDay() === 1;
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(r)}" fill="none" stroke="#B9A6F2" stroke-width="${pzt ? .7 : .35}" ${pzt ? '' : 'stroke-dasharray="1 4"'} opacity="${pzt ? .34 : .2}"/>`;
+    if (pzt && Math.abs(t - G.hedef) > 2 * GUN) s += sans(f(G.cx + 3 * m), f(G.cy - r + 10 * m), gunAy(t), { fs: 9 * m * yk, fw: 600, col: C.ink3 });
+  }
+  s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.RH)}" fill="none" stroke="url(#brass)" stroke-width="${f(1.8 * m)}" opacity=".85"/>`;
+  if (G.RS > G.RH + 2) s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.RS)}" fill="none" stroke="#FF8A78" stroke-width=".8" stroke-dasharray="2 5" opacity=".45"/>`;
+  if (!kapali) {
+    const rb = G.rT(now);
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(rb)}" fill="url(#glowPeach)" opacity=".06"/>`;
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(rb)}" fill="none" stroke="#FFC9A3" stroke-width="${f(1.6 * m)}" stroke-dasharray="${f(7 * m)} ${f(5 * m)}" opacity=".9"/>`;
+    s += pill(G.cx, G.cy + rb, 'Bugün · ' + gunAy(now), { fs: 9.5 * m * yk, fw: 700, col: '#2A1D4F', bg: '#FFC9A3', bgo: 1 });
+  }
+  return s;
+}
+
+/**
+ * Zaman spiralinin yolu (9 Kas): herkesin şeridini taşıyan tek bant. Gün çentikleri bandın enine (pazartesi tarihli),
+ * geçmiş bant hafif aydınlık, bugün şeftali çentik, hedef pirinç çentik, hedeften sonrası mercan kesik.
+ */
+function spiralYolu(G, now, m, yk, kapali) {
+  let s = '';
+  const w = G.bant * .4, adim = Math.max(36e5, (G.tBit - G.tBas) / 600);
+  const orta = (ta, tb) => { const P = []; for (let t = ta; t < tb; t += adim) { const p = G.pT(t); P.push([p.x, p.y]); } const p = G.pT(tb); P.push([p.x, p.y]); return P; };
+  const tum = orta(G.tBas, G.tBit), oncesi = orta(G.tBas, Math.min(G.hedef, G.tBit)), sonrasi = G.tBit > G.hedef ? orta(G.hedef, G.tBit) : null;
+  s += `<path d="${yolD(oncesi)}" fill="none" stroke="#9C8BE0" stroke-width="${f(w * 2)}" opacity=".09" stroke-linecap="round"/>`;
+  if (sonrasi) s += `<path d="${yolD(sonrasi)}" fill="none" stroke="#FF8A78" stroke-width="${f(w * 2)}" opacity=".05" stroke-linecap="butt"/>`;
+  for (const k of [-w, w]) { const P = []; for (let t = G.tBas; t <= G.tBit; t += adim) { const p = G.pT(t, k); P.push([p.x, p.y]); } s += `<path d="${yolD(P)}" fill="none" stroke="#B9A6F2" stroke-width=".6" opacity=".22"/>`; }
+  if (!kapali && now > G.tBas) s += `<path d="${yolD(orta(G.tBas, Math.min(now, G.tBit)))}" fill="none" stroke="#FFF6E0" stroke-width="${f(w * 2)}" opacity=".05" stroke-linecap="round"/>`;
+  else if (kapali) s += `<path d="${yolD(tum)}" fill="none" stroke="#FFD9B8" stroke-width="${f(w * 2)}" opacity=".06"/>`;
+  const cent = (t, k, st) => { const a = G.pT(t, -w * k), b = G.pT(t, w * k); return `<path d="M${f(a.x)},${f(a.y)} L${f(b.x)},${f(b.y)}" ${st}/>`; };
+  const g0 = Math.ceil((G.tBas - 3 * 36e5) / GUN) * GUN + 21 * 36e5;
+  for (let t = g0; t < G.tBit; t += GUN) {
+    const pzt = tl(t).getUTCDay() === 1;
+    s += cent(t, pzt ? 1 : .55, `stroke="#B9A6F2" stroke-width="${pzt ? .8 : .45}" opacity="${pzt ? .4 : .22}"`);
+    if (pzt && Math.abs(t - G.hedef) > 1.5 * GUN && Math.abs(t - now) > 1.5 * GUN) { const q = G.pT(t, w + 9 * m); s += sans(f(q.x), f(q.y + 3 * m), gunAy(t), { fs: 8.5 * m * yk, fw: 600, col: C.ink3, anchor: 'middle' }); }
+  }
+  s += cent(G.hedef, 1.15, `stroke="url(#brass)" stroke-width="${f(2.4 * m)}" stroke-linecap="round"`);
+  if (!kapali && now >= G.tBas && now <= G.tBit) {
+    s += cent(now, 1.2, `stroke="#FFC9A3" stroke-width="${f(2 * m)}" stroke-linecap="round" opacity=".95"`);
+    // bugünün tarihi sürgüde yazar; haritada etiket gemilerin altında kalıyordu, yalnız çentik
+  }
+  return s;
+}
+
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
-  const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU, R0: o.R0 });
+  // kol haritası (9 Kas, bayrakla): kol = kişi, halka = tarih; çizim aynı, yalnız yerleşim değişir
+  const geo = { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, sy: o.sy, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, R0: o.R0 };
+  const bicim = o.bicim ?? (o.kol === true ? 'kol' : o.kol === false ? 'eski' : haritaBicimi());
+  const G = bicim !== 'eski' ? kurKol(AK, { ...geo, bicim, ajanSahibi: ajanSahipleri(F.steps) }) : olcekliKur(AK, { ...geo, tau: o.tau ?? TAU });
   const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps), o.renkler || {});
   const BEN = o.ben ?? M.sahip;
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
@@ -238,6 +295,8 @@ export function yolCiz(M, o = {}) {
   // ---------- ayrıntılı ----------
   s += `<ellipse cx="${f(G.cx)}" cy="${f(G.cy)}" rx="${f(G.R * 1.4)}" ry="${f(G.R * 1.35)}" fill="url(#glowLilac)" opacity=".32"/>`;
   s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.R * .22)}" fill="url(#bloom)" opacity=".9"/>`;
+  if (G.kol && o.halkalar !== false) s += kolHalkalari(G, NOWx, Math.min(ps, 1.3), o.yk ?? 1, !!F.kapandi);
+  if (G.spiral && o.halkalar !== false) s += spiralYolu(G, NOWx, Math.min(ps, 1.3), o.yk ?? 1, !!F.kapandi);
   const L = {}; for (const u of G.uyeler) L[u.ad] = '';
   const tSolid = F.kapandi ? tEnd : Math.min(X, NOWx);
   const m13 = Math.min(ps, 1.3);
@@ -369,6 +428,32 @@ export function yolCiz(M, o = {}) {
     if (p.demir && X >= u.tSon && !u.kendi.some((no) => !BIT(byNo[no].durum))) continue;
     gorunen[u.ad] = { u, p };
   }
+  // zaman spirali (9 Kas, Berkin: "kişiler üst üste binmesin"): gemi bugün çentiğinde değil, o an yaptığı işin gezegeninde
+  // durur. İşi yoksa (sırası gelmemiş) son bitirdiği gezegende ya da yolunun başında küçük ve soluk bekler. Aynı gezegende
+  // birden çok kişi varsa gezegenin çevresine dizilir.
+  const soluk = {};
+  if (G.spiral) {
+    const ONCE = { run: 0, block: 1, wait: 2 };
+    const yer = {}, sayac = {};
+    for (const ad of Object.keys(gorunen)) {
+      const { u } = gorunen[ad];
+      const aktif = u.kendi.filter((no) => G.gezegen[no] && ONCE[stOf(no)] != null).sort((a, b) => ONCE[stOf(a)] - ONCE[stOf(b)] || G.gezegen[a].t - G.gezegen[b].t)[0];
+      const biten = u.kendi.filter((no) => G.gezegen[no] && BIT(byNo[no].durum) && G.gezegen[no].t <= X).sort((a, b) => G.gezegen[b].t - G.gezegen[a].t)[0];
+      const no = aktif ?? biten;
+      if (aktif == null) soluk[ad] = true;
+      if (no == null) { const q = G.konumAn(ad, u.t0); if (q) gorunen[ad].p = { ...q, demir: true }; continue; }
+      yer[ad] = no; sayac[no] = (sayac[no] || 0) + 1;
+    }
+    const sira = {};
+    for (const ad of Object.keys(yer)) {
+      const no = yer[ad], g = G.gezegen[no], i = (sira[no] = (sira[no] ?? -1) + 1), n = sayac[no];
+      const q = G.pT(g.t), ox = G.cx - q.x, oy = G.cy - q.y, on = Math.hypot(ox, oy) || 1;
+      // önce gezegenin merkezden dış yanına; kalabalıkta gezegenin çevresine eşit aralıkla
+      const a0 = Math.atan2(-oy / on, -ox / on), a = a0 + (i - (n - 1) / 2) * (n > 1 ? Math.min(1.1, 2 * Math.PI / n) : 0);
+      const d = radOf(no) + 16 * Math.min(ps, 1.4) * OK;
+      gorunen[ad].p = { x: g.x + Math.cos(a) * d, y: g.y + Math.sin(a) * d, yon: gorunen[ad].p.yon, demir: soluk[ad] };
+    }
+  }
   // B22 (W5, 4 Kas): gemi gezegenlerden ve simgelerden en az bir dokunma hedefi (44 px) uzakta durur. Yolun üstünde, gezegene
   // varmışken bile gezegenin dışına, ondan uzağa itilir; birkaç turda en yakın çakışan çözülür (çizim ve dokunma hedefi aynı yerde)
   const engeller = vis.filter((no) => !inCl.has(no)).map((no) => ({ x: G.gezegen[no].x, y: G.gezegen[no].y, d: Math.max(22, radOf(no)) + 22 }))
@@ -393,10 +478,11 @@ export function yolCiz(M, o = {}) {
   for (const ad of Object.keys(gorunen)) {
     const { u, p } = gorunen[ad];
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
-    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK;
-    const ev = kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
+    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK * (soluk[u.ad] ? .78 : 1);
+    // zaman spiralinde agent kendi işinin gezegeninde, ayrı bir robot gemi (sahibine ip yok: ipler haritayı keserdi)
+    const ev = !G.spiral && kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
     if (ev && ev.u.tip !== 'agent') continue; // sahibinin gemisiyle birlikte çizilir
-    const yapisik = G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
+    const yapisik = G.spiral ? [] : G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
     const renk = o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u);
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
     let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx });
@@ -413,7 +499,7 @@ export function yolCiz(M, o = {}) {
       gemiler.push({ ad: a.ad, tip: 'agent', x: p.x + dx, y: p.y + dy, sc: sc * .72, destek: u.ad });
       g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc, { ip: true, yon: q.yon, alev: X <= NOWx }) + g;
     });
-    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${X > NOWx ? .75 : 1}">` + g + '</g>';
+    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${soluk[u.ad] ? .55 : X > NOWx ? .75 : 1}">` + g + '</g>';
   }
   // W7: kritik yol beyaz noktalı zincir (açık gezegenler zaman sırasıyla); uzakta çizilmez
   if (!o.uzak && !F.kapandi && o.kritikZincir !== false) {

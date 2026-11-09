@@ -18,6 +18,7 @@ import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, ty
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { git, arama, listeyeDon } from '../../yonlendirme';
+import { haritaBicimi } from '../../geometri/kol-bayrak';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { AiEtkinligi, aiCipYazisi } from './AiEtkinligi';
@@ -55,6 +56,8 @@ const GDURUM: Record<GDurum, { ad: string; uyar: (a: any, ben: string) => boolea
 export const HARITA = { cx: 195, cy: 420, R: 164, ps: .8 };
 /** Haritanın üstü: başlığın altı (karar şeridi varsa onun da altı). */
 const HARITA_UST = 92;
+/** Zaman spiralinde gezegenler küçük (9 Kas, Berkin): yol ve şeritler görünsün. */
+const GEZ_KUCULT = haritaBicimi() === 'spiral' ? .72 : 1;
 
 /**
  * Telefon düzeni ekranın gerçek boyuna göre (plan 28 Eki, B8, K5): zaman sürgüsü ve "Adımlar" ipucu ilk ekranda,
@@ -67,7 +70,9 @@ export function telefonDuzeni(boy: number, seritH = 0) {
   const bolge: Bolge = { x: 0, y: y0, w: 390, h: surgu.y - 56 - y0 };
   // sarmal dikeyde yarıçapın ~%85'i kadar yer kaplar; süzgeç satırının (56) altı ile bölgenin altı arası
   const ust = y0 + 56, alt = y0 + bolge.h, R = Math.min(HARITA.R, (alt - ust) / 2 / .88);
-  return { H, surgu, bolge, harita: { ...HARITA, cy: Math.round((ust + alt) / 2 + R * .04), R }, ipucuY: H - 32, bolumY: H + 8 };
+  // zaman spirali dikeyde uzayabilir: boş kalan boyu doldurur (eski harita sy'yi kullanmaz)
+  const sy = Math.max(1, Math.min(1.4, (alt - ust) / 2 / .95 / R));
+  return { H, surgu, bolge, harita: { ...HARITA, cy: Math.round((ust + alt) / 2 + R * .04), R, sy }, ipucuY: H - 32, bolumY: H + 8 };
 }
 
 /** hedefsiz akışta kulenin yeri (ufuk): en erken bitiş günü */
@@ -255,7 +260,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     const gz0 = Object.values(temel.G.gezegen) as { x: number; y: number; r: number }[], r0 = Math.max(Math.min(...gz0.map((g) => g.r)), 6.5 * geo.ps);
     // geniş düzende tasarım boyu zaten büyük (ps 1.35 ≈ telefonun 1,7 katı): hedef kat √(telefon ps / ps) ile iner
     const kat = Math.min(ogeKat('ana', gz0.length, zk) * Math.min(1, Math.sqrt(HARITA.ps / geo.ps)), uygunKat(gz0.map((g) => ({ x: g.x * zk, y: g.y * zk, r: g.r })), OLCEK.ANA * 2, r0, 1.4));
-    const yk = yaziKat(kat, 11), gemiK = Math.min(kat, 1.9), rf = (r: number) => buyut(r, kat, r0);
+    const yk = yaziKat(kat, 11), gemiK = Math.min(kat, 1.9), rf = (r: number) => buyut(r, kat, r0) * GEZ_KUCULT;
     // küme: yalnız tasarım boyunda da üst üste binenler (büyüyen gezegenler birbirinin üstüne çizilir, rozete düşmez)
     // yakınken (plan 2 Kas) büyümüş gövdeler de sayılır: çizimde hâlâ çoğu üst üsteyse rozet kalır, dokununca yakınlaşma sürer
     const kumeRad = (no: number) => zk > 1.05 ? Math.max(temel.radOf(no) * Math.min(kat, 1.4), rf(temel.radOf(no)) * .9) : temel.radOf(no) * Math.min(kat, 1.4);

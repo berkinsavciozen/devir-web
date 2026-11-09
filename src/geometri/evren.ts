@@ -39,7 +39,18 @@ export function payYaricap(payGun: number | null, ic: number, dis: number, P = 4
   return dis - (dis - ic) * Math.min(1, payGun / P);
 }
 
-export function evrenYerlesimi(akislar: EAkis[], o: { cx: number; cy: number; R: number; CA: number; CB: number; enBuyuk?: number; enKucuk?: number; bosluk?: number; engeller?: { x: number; y: number; r: number }[] }): EYerlesim {
+/**
+ * Kol haritası evreni (9 Kas, bayrakla): zaman içten dışa. İç sınır bugün; hedefi yakın akış içte, uzak akış dışta;
+ * hedefi geçmiş akış bugün halkasının içine düşer (merkez yine bitenlerin). 0–14 gün iç yarı, 14–60 gün dış yarı.
+ */
+export function zamanYaricap(kalanGun: number, ic: number, dis: number): number {
+  if (kalanGun <= 0) return Math.max(ic * .45, ic * (1 + kalanGun / 30));
+  const yari = ic + (dis - ic) * .5;
+  return kalanGun <= 14 ? ic + (yari - ic) * kalanGun / 14 : yari + (dis - yari) * Math.min(1, (kalanGun - 14) / 46);
+}
+export const ZAMAN_HALKALARI = [[0, 'Bugün'], [7, '+1 hafta'], [14, '+2 hafta'], [30, '+1 ay'], [60, '+2 ay']] as const;
+
+export function evrenYerlesimi(akislar: EAkis[], o: { cx: number; cy: number; R: number; CA: number; CB: number; enBuyuk?: number; enKucuk?: number; bosluk?: number; engeller?: { x: number; y: number; r: number }[]; zaman?: number }): EYerlesim {
   const { cx, cy, R, CA, CB } = o, gap = o.bosluk ?? 6, EN_B = o.enBuyuk ?? 36, EN_K = o.enKucuk ?? 14;
   const ang = (ms: number) => -90 + (ms - CA) / (CB - CA) * 360;
   const ic = R * .25, dis = R - 30;
@@ -50,7 +61,7 @@ export function evrenYerlesimi(akislar: EAkis[], o: { cx: number; cy: number; R:
   let yer: EYer[] = [];
   for (let tur = 0; tur < 16; tur++) {
     yer = sirali.map((a) => {
-      const rr = Math.max(EN_K * olcek / olcek0, olcek * Math.sqrt(Math.max(1, a.adim))), rhoPay = kalanYaricap(a.biten, a.adim, ic, dis);
+      const rr = Math.max(EN_K * olcek / olcek0, olcek * Math.sqrt(Math.max(1, a.adim))), rhoPay = o.zaman != null ? zamanYaricap((a.hedef - o.zaman) / GUN, ic, dis) : kalanYaricap(a.biten, a.adim, ic, dis);
       return { kod: a.kod, a: ang(a.hedef), rr, rho: Math.min(rhoPay, R - 14 - rr), rhoPay, x: 0, y: 0, isik: a.adim ? a.biten / a.adim : 0, yay: [ang(a.t0), ang(a.hedef)] as [number, number], gec: a.payGun != null && a.payGun < 0 };
     });
     const konum = (g: EYer) => { const r = g.a * Math.PI / 180; g.x = cx + Math.cos(r) * g.rho; g.y = cy + Math.sin(r) * g.rho; };
