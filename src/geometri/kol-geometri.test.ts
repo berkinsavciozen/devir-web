@@ -32,3 +32,23 @@ describe('kol haritası', () => {
     expect(G.ipler.filter((x) => x.no === 2).map((x) => x.uye).sort()).toEqual(['Ece', 'Selin']);
   });
 });
+
+describe('zaman spirali', () => {
+  it('yol boyu tarih: ölçek bugünden bağımsız, gün aralıkları eşit, hedef kapısı yolun üstünde', () => {
+    const a = kurKol(akis(), { R: 100, simdi: T0 + GUN, bicim: 'spiral' }), b = kurKol(akis(), { R: 100, simdi: T0 + 4 * GUN, bicim: 'spiral' });
+    expect(a.spiral).toBe(true);
+    for (const no of [1, 2, 3, 4]) { expect(a.gezegen[no].x).toBeCloseTo(b.gezegen[no].x, 6); expect(a.gezegen[no].y).toBeCloseTo(b.gezegen[no].y, 6); }
+    const P = a.pT!, d = (t: number) => { const p = P(t), q = P(t + GUN / 4); return Math.hypot(q.x - p.x, q.y - p.y); };
+    expect(d(T0 + 2 * GUN) / d(T0 + 18 * GUN)).toBeGreaterThan(0.8);
+    const h = P(a.hedef); expect(a.kule!.x).toBeCloseTo(h.x, 6); expect(a.kule!.y).toBeCloseTo(h.y, 6);
+  });
+  it('kişi = şerit: herkes kendi şeridinde, agent sahibinin şeridine yapışık; devir ipleri var', () => {
+    const G = kurKol(akis(), { R: 100, simdi: T0, bicim: 'spiral' });
+    const kay = (no: number) => { const g = G.gezegen[no], c = G.pT!(g.t); return Math.hypot(g.x - c.x, g.y - c.y); };
+    expect(G.seritAra!).toBeGreaterThan(1);
+    expect(kay(4)).toBeCloseTo(G.seritAra!, 0);          // Selin dış şeritte
+    expect(kay(1)).toBeCloseTo(G.seritAra!, 0);          // Berkin iç şeritte
+    expect(kay(2)).toBeLessThan(kay(1));                // Berkin'in Claude'u Berkin'in şeridinden ortaya doğru
+    expect(G.ipler.filter((x) => x.no === 2).length).toBe(2);
+  });
+});

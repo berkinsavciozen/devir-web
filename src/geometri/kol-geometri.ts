@@ -6,6 +6,12 @@
  * - Gemi bugün halkasında (konumAn(ad, simdi)); geçmiş yol içte, gelecek dışta.
  * - Başka kişiye geçen iş, devir ipi (ipler) olarak; birden çok kişiye açılan adım ortak (uyeler > 1).
  * Bayrakla açılır (kol-bayrak.ts); kapalıyken kur() / olcekliKur() aynen çalışır.
+ *
+ * Zaman spirali (9 Kas 15:00, Berkin: "spiral daha mantıklıydı, yol görünsün, alan dolsun, gezegenler küçülsün"):
+ * bicim 'spiral' ile herkes tek bir spiral yolda, kendi şeridinde ilerler. Yol boyu = tarih (gün aralıkları her yerde
+ * eşit; yay uzunluğuna göre), merkez başlangıç, spiralin sonu hedef + aşım. Kişi = şerit (spiral bandının içinde sabit
+ * kaydırma), agent sahibinin şeridine yapışık. Aynı günün işleri yan yana şeritlerde durur; devir ipi şeritler arasında
+ * kısa bir köprüdür. Harita alanı turlarla dolar, ölçek her gün aynıdır.
  */
 import { SABIT, darbogaz, ayrikla, type Galaksi, type GirdiAkis, type GirdiAdim, type Gezegen, type Ip, type Konum, type Uye, type ZamanliNokta, type GorselDurum, type KurSecenek } from './galaksi-geometri';
 
@@ -22,9 +28,20 @@ export const KOL = Object.freeze({
   ORNEK: 6,         // yol örnekleme aralığı (px)
 });
 
-export interface KolSecenek extends KurSecenek { ajanSahibi?: Record<string, string> }
+export const SPIRAL = Object.freeze({
+  R0_KAT: 0.12,     // merkez boşluğu
+  TUR_GUN: 9,       // bir turun aşağı yukarı kaç gün olduğu (tur sayısı süreden)
+  TUR_MIN: 1.4, TUR_MAX: 3.2,
+  SERIT_KAT: 0.62,  // şeritlerin bant genişliğine oranı
+  GEZEGEN_KAT: 0.62, // gezegenler eski haritadan küçük
+  AY_SERIT: 0.42,   // agent'ın sahibinin şeridinden kayması (şerit aralığı katı)
+});
 
-export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: true; rT: (t: number) => number; RH: number; RS: number } {
+/** sy: spiral dikeyde bu kadar uzar (telefonda boş kalan dikey alanı doldurur; 1 = daire) */
+export interface KolSecenek extends KurSecenek { ajanSahibi?: Record<string, string>; bicim?: 'kol' | 'spiral'; sy?: number }
+export interface SpiralBilgi { spiral: true; bant: number; seritAra: number; tBas: number; tBit: number; pT: (t: number, kay?: number) => { x: number; y: number; yon: number } }
+
+export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol?: true; rT: (t: number) => number; RH: number; RS: number } & Partial<SpiralBilgi> {
   const cx = o.cx ?? 0, cy = o.cy ?? 0, R = o.R ?? 100, ps = o.ps ?? 1, simdi = o.simdi ?? Date.now();
   const haric = new Set<number>([...(o.haric || []), ...akis.adimlar.filter((a) => a.tarih_bilinmiyor).map((a) => a.no)]);
   const adimlar = akis.adimlar.filter((a) => !haric.has(a.no));
@@ -38,7 +55,6 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
   const r0 = R * KOL.R0_KAT, RH = R * KOL.HEDEF_KAT, RS = R;
   const tAsim = Math.max(hedef + KOL.ASIM_GUN * GUN, tSon, simdi);
   const rT = (t: number) => t <= hedef ? r0 + (Math.max(t, T0) - T0) / (hedef - T0) * (RH - r0) : RH + (Math.min(t, tAsim) - hedef) / (tAsim - hedef) * (RS - RH);
-  const tR = (r: number) => r <= RH ? T0 + (r - r0) / (RH - r0) * (hedef - T0) : hedef + (r - RH) / (RS - RH) * (tAsim - hedef);
   const k = (RH - r0) / ((hedef - T0) / GUN);
 
   // 1) kollar: insanlar ve dış katılımcılar; agent, sahibinin kolunu paylaşır
@@ -52,12 +68,35 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
   const psiOf: Record<string, number> = {}; kollar.forEach((ad, i) => (psiOf[ad] = (-90 + i * 360 / n + (o.spin || 0)) * Math.PI / 180));
   const kolOf = (ad: string) => (kollar.includes(ad) ? ad : (sahibi(ad) as string));
   const yanOf = (ad: string) => (kollar.includes(ad) ? 0 : R * KOL.AY_KAT);
-  const nokta = (ad: string, r: number): { x: number; y: number; yon: number } => {
+  const noktaKol = (ad: string, r: number): { x: number; y: number; yon: number } => {
     const psi = psiOf[kolOf(ad)], a = psi + KOL.KIVRIM * (r / RS), yan = yanOf(ad);
     const x = Math.cos(a) * r, y = Math.sin(a) * r;
     const dx = Math.cos(a) - r * KOL.KIVRIM / RS * Math.sin(a), dy = Math.sin(a) + r * KOL.KIVRIM / RS * Math.cos(a), m = Math.hypot(dx, dy);
     return { x: cx + x - dy / m * yan, y: cy + y + dx / m * yan, yon: Math.atan2(dy, dx) };
   };
+  // ---- zaman spirali: r(θ) = s0 + b·θ; yay uzunluğu ≈ s0·θ + b·θ²/2, tarih yay boyunca doğrusal ----
+  const SP = o.bicim === 'spiral';
+  const tBit = Math.max(hedef + KOL.ASIM_GUN * GUN, tSon, simdi);
+  const gunler = (tBit - T0) / GUN;
+  const tur = Math.max(SPIRAL.TUR_MIN, Math.min(SPIRAL.TUR_MAX, gunler / SPIRAL.TUR_GUN));
+  const TH = tur * 2 * Math.PI, s0 = R * SPIRAL.R0_KAT;
+  const bS = (R - s0) / (TH + Math.PI);          // son turun dışında yarım bant pay
+  const bant = bS * 2 * Math.PI;
+  const yayTop = s0 * TH + bS * TH * TH / 2;
+  const nS = kollar.length;
+  const seritAra = nS > 1 ? Math.min(bant * SPIRAL.SERIT_KAT / (nS - 1), bant * 0.24) : 0;
+  const seritOf = (ad: string) => { const i = kollar.indexOf(kolOf(ad)); return (i - (nS - 1) / 2) * seritAra + (kollar.includes(ad) ? 0 : seritAra * SPIRAL.AY_SERIT * (i === nS - 1 && nS > 1 ? -1 : 1)); };
+  const th0 = -Math.PI / 2 + (o.spin || 0) * Math.PI / 180, sy = SP ? Math.max(1, Math.min(1.5, o.sy ?? 1)) : 1;
+  const pT = (t: number, kay = 0) => {
+    const f = Math.max(0, Math.min(1, (t - T0) / (tBit - T0))), yy = f * yayTop;
+    const th = (-s0 + Math.sqrt(s0 * s0 + 2 * bS * yy)) / bS, r = s0 + bS * th, a = th0 + th;
+    const tx = bS * Math.cos(a) - r * Math.sin(a), ty = bS * Math.sin(a) + r * Math.cos(a), m = Math.hypot(tx, ty);
+    // dış normal (ty, -tx)/m: şerit kayması merkezden dışa
+    return { x: cx + Math.cos(a) * r + ty / m * kay, y: cy + (Math.sin(a) * r - tx / m * kay) * sy, yon: Math.atan2(ty * sy, tx) };
+  };
+  const nokta = (ad: string, t: number) => (SP ? pT(t, seritOf(ad)) : noktaKol(ad, rT(t)));
+  // yol örnekleme adımı (ms): yaklaşık ORNEK px
+  const dtOrnek = SP ? KOL.ORNEK * Math.max(ps, .5) / (yayTop / (tBit - T0)) : KOL.ORNEK * Math.max(ps, .5) / ((RH - r0) / (hedef - T0));
   const uyeler: Uye[] = sira.map((ad, i) => {
     const kendi = adimlar.filter((a) => a.sahip === ad);
     const bas = Math.min(...kendi.map((a) => a.hazir_at ?? a.basla_plan ?? a.t));
@@ -65,9 +104,9 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
     const son = bitti ? (akis.kapandi as number) : Math.max(...kendi.map((a) => a.t), t0);
     // yol: kolun t0 → son aralığı, yarıçapa göre zaman damgalı (yol = tarih)
     const yol: ZamanliNokta[] = [];
-    const ra = rT(t0), rb = Math.max(rT(son), ra + 1);
-    for (let r = ra; r < rb; r += KOL.ORNEK * Math.max(ps, .5)) { const p = nokta(ad, r); yol.push({ x: p.x, y: p.y, t: tR(r) }); }
-    const p = nokta(ad, rb); yol.push({ x: p.x, y: p.y, t: Math.max(son, (yol[yol.length - 1]?.t ?? t0) + 1) });
+    const sonT = Math.max(son, t0 + 36e5);
+    for (let t = t0; t < sonT; t += dtOrnek) { const p = nokta(ad, t); yol.push({ x: p.x, y: p.y, t }); }
+    const p = nokta(ad, sonT); yol.push({ x: p.x, y: p.y, t: Math.max(sonT, (yol[yol.length - 1]?.t ?? t0) + 1) });
     return { ad, i, tip: tipOf(ad), psi: psiOf[kolOf(ad)], t0, hayalet: kendi.every((a) => a.durum === 'atlandi'), kendi: kendi.map((a) => a.no), ziyaret: kendi.map((a) => a.no), parcalar: [{ ta: t0, tb: son, L: (son - t0) / GUN, hata: 0, tur: 'dogal', pts: yol }], yol, tSon: son } as Uye;
   });
   const uyeOf: Record<string, Uye> = {}; for (const u of uyeler) uyeOf[u.ad] = u;
@@ -78,12 +117,12 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
   const gecisli = (no: number, acik: boolean) => { const g = new Set<number>(), st = [...(bekleyen[no] || [])]; while (st.length) { const x = st.pop() as number; if (g.has(x) || !byNo[x] || byNo[x].durum === 'atlandi') continue; if (acik && BITTI(byNo[x].durum)) continue; g.add(x); st.push(...(bekleyen[x] || [])); } return g.size; };
   const gezegen: Record<number, Gezegen> = {}, ipler: Ip[] = [];
   for (const a of adimlar) {
-    const p = nokta(a.sahip, rT(a.t));
+    const p = nokta(a.sahip, a.t);
     // ortak iş: işi bekleyenler en az iki başka kola dağılıyorsa halka o kişilerin renkleriyle bölünür
     const acilan = [...new Set((bekleyen[a.no] || []).map((x) => byNo[x]?.sahip).filter((s) => s && kolOf(s) !== kolOf(a.sahip)).map((s) => kolOf(s as string)))];
     const uy = acilan.length >= 2 ? [a.sahip, ...acilan] : [a.sahip];
     const W = gecisli(a.no, !BITTI(a.durum)), dz = darbogaz(a, W, kritik.has(a.no), 1, ps, simdi);
-    gezegen[a.no] = { no: a.no, x: p.x, y: p.y, t: a.t, r: dz.r, puan: dz.puan, korona: dz.korona, W, uyeler: uy, ortak: uy.length > 1, kritik: kritik.has(a.no) };
+    gezegen[a.no] = { no: a.no, x: p.x, y: p.y, t: a.t, r: SP ? dz.r * SPIRAL.GEZEGEN_KAT : dz.r, puan: dz.puan, korona: dz.korona, W, uyeler: uy, ortak: uy.length > 1, kritik: kritik.has(a.no) };
     // devir ipi: bu işi bekleyen başka koldaki kişiye doğru kısa ok
     for (const x of bekleyen[a.no] || []) { const b = byNo[x]; if (!b || b.durum === 'atlandi' || kolOf(b.sahip) === kolOf(a.sahip)) continue; if (!ipler.some((q) => q.no === a.no && kolOf(q.uye) === kolOf(b.sahip))) ipler.push({ no: a.no, uye: b.sahip, t: a.t }); }
   }
@@ -92,12 +131,13 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
   const sonK = [...kritik].filter((x) => gezegen[x]).sort((x, y) => gezegen[x].t - gezegen[y].t).pop() ?? adimlar.slice().sort((x, y) => x.t - y.t).pop()?.no;
   const kuleUye = sonK != null ? byNo[sonK].sahip : sira[0];
   const gec = !bitti && tAktif > akis.hedef + 6 * 36e5;
-  const kp = nokta(kuleUye, rT(bitti ? (akis.kapandi as number) : akis.hedef));
+  const kp = SP ? pT(bitti ? (akis.kapandi as number) : akis.hedef) : nokta(kuleUye, bitti ? (akis.kapandi as number) : akis.hedef);
   const kule = { x: kp.x, y: kp.y, t: bitti ? (akis.kapandi as number) : akis.hedef, uye: kuleUye, gec };
   let kuyruk: Galaksi['kuyruk'] = null;
   if (!bitti && sonK != null && akis.hedef > gezegen[sonK].t) {
-    const pts: ZamanliNokta[] = [], ra = rT(gezegen[sonK].t), rb = rT(akis.hedef);
-    for (let r = ra; r <= rb; r += KOL.ORNEK) { const p = nokta(kuleUye, r); pts.push({ x: p.x, y: p.y, t: tR(r) }); }
+    const pts: ZamanliNokta[] = [];
+    for (let t = gezegen[sonK].t; t < akis.hedef; t += dtOrnek) { const p = nokta(kuleUye, t); pts.push({ x: p.x, y: p.y, t }); }
+    const ph = nokta(kuleUye, akis.hedef); pts.push({ x: ph.x, y: ph.y, t: akis.hedef });
     const gercek = (akis.hedef - gezegen[sonK].t) / GUN;
     kuyruk = { ta: gezegen[sonK].t, tb: akis.hedef, L: gercek, gercekGun: gercek, kirik: false, P: pts.map((p) => [p.x, p.y] as Nokta), hata: 0, pts };
   }
@@ -141,6 +181,7 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol: tr
   }
   const seritX = (t: number, x0: number, pxGun: number) => x0 + (t - T0) / GUN * pxGun;
   // aynı ana düşen gezegenler kol yönünde aralanır (kur() ile aynı kural)
-  ayrikla(gezegen, R / (o.R0 ?? R), (no) => { const p = nokta(byNo[no].sahip, rT(gezegen[no].t)); return [Math.cos(p.yon), Math.sin(p.yon)]; });
-  return { kol: true, rT, RH, RS, cx, cy, R, ps, k, b: 0, T0, tSon, payGun, hedef: akis.hedef, kapandi: akis.kapandi, simdi, uyeler, uyeOf, gezegen, ipler, kule, kuyruk, gec, kuleUye, byNo, konumAn, kesit, durumAn, kumeler, seritX, haric };
+  ayrikla(gezegen, R / (o.R0 ?? R), (no) => { const p = nokta(byNo[no].sahip, gezegen[no].t); return [Math.cos(p.yon), Math.sin(p.yon)]; });
+  const ek = SP ? { spiral: true as const, bant, seritAra, tBas: T0, tBit, pT } : { kol: true as const };
+  return { ...ek, rT, RH, RS, cx, cy, R, ps, k, b: 0, T0, tSon, payGun, hedef: akis.hedef, kapandi: akis.kapandi, simdi, uyeler, uyeOf, gezegen, ipler, kule, kuyruk, gec, kuleUye, byNo, konumAn, kesit, durumAn, kumeler, seritX, haric };
 }

@@ -5,7 +5,7 @@ import { apidenAkis } from '../geometri/galaksi-geometri';
 import { ilerleme } from '../api/ilerleme';
 import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
 import { kurKol } from '../geometri/kol-geometri';
-import { kolHarita } from '../geometri/kol-bayrak';
+import { haritaBicimi } from '../geometri/kol-bayrak';
 import { C, destekGemisi, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 import { hamle as hamleOf, damla, kisiRengi } from './hamle';
 
@@ -217,13 +217,43 @@ function kolHalkalari(G, now, m, yk, kapali) {
   return s;
 }
 
+/**
+ * Zaman spiralinin yolu (9 Kas): herkesin şeridini taşıyan tek bant. Gün çentikleri bandın enine (pazartesi tarihli),
+ * geçmiş bant hafif aydınlık, bugün şeftali çentik, hedef pirinç çentik, hedeften sonrası mercan kesik.
+ */
+function spiralYolu(G, now, m, yk, kapali) {
+  let s = '';
+  const w = G.bant * .4, adim = Math.max(36e5, (G.tBit - G.tBas) / 600);
+  const orta = (ta, tb) => { const P = []; for (let t = ta; t < tb; t += adim) { const p = G.pT(t); P.push([p.x, p.y]); } const p = G.pT(tb); P.push([p.x, p.y]); return P; };
+  const tum = orta(G.tBas, G.tBit), oncesi = orta(G.tBas, Math.min(G.hedef, G.tBit)), sonrasi = G.tBit > G.hedef ? orta(G.hedef, G.tBit) : null;
+  s += `<path d="${yolD(oncesi)}" fill="none" stroke="#9C8BE0" stroke-width="${f(w * 2)}" opacity=".09" stroke-linecap="round"/>`;
+  if (sonrasi) s += `<path d="${yolD(sonrasi)}" fill="none" stroke="#FF8A78" stroke-width="${f(w * 2)}" opacity=".05" stroke-linecap="butt"/>`;
+  for (const k of [-w, w]) { const P = []; for (let t = G.tBas; t <= G.tBit; t += adim) { const p = G.pT(t, k); P.push([p.x, p.y]); } s += `<path d="${yolD(P)}" fill="none" stroke="#B9A6F2" stroke-width=".6" opacity=".22"/>`; }
+  if (!kapali && now > G.tBas) s += `<path d="${yolD(orta(G.tBas, Math.min(now, G.tBit)))}" fill="none" stroke="#FFF6E0" stroke-width="${f(w * 2)}" opacity=".05" stroke-linecap="round"/>`;
+  else if (kapali) s += `<path d="${yolD(tum)}" fill="none" stroke="#FFD9B8" stroke-width="${f(w * 2)}" opacity=".06"/>`;
+  const cent = (t, k, st) => { const a = G.pT(t, -w * k), b = G.pT(t, w * k); return `<path d="M${f(a.x)},${f(a.y)} L${f(b.x)},${f(b.y)}" ${st}/>`; };
+  const g0 = Math.ceil((G.tBas - 3 * 36e5) / GUN) * GUN + 21 * 36e5;
+  for (let t = g0; t < G.tBit; t += GUN) {
+    const pzt = tl(t).getUTCDay() === 1;
+    s += cent(t, pzt ? 1 : .55, `stroke="#B9A6F2" stroke-width="${pzt ? .8 : .45}" opacity="${pzt ? .4 : .22}"`);
+    if (pzt && Math.abs(t - G.hedef) > 1.5 * GUN && Math.abs(t - now) > 1.5 * GUN) { const q = G.pT(t, w + 9 * m); s += sans(f(q.x), f(q.y + 3 * m), gunAy(t), { fs: 8.5 * m * yk, fw: 600, col: C.ink3, anchor: 'middle' }); }
+  }
+  s += cent(G.hedef, 1.15, `stroke="url(#brass)" stroke-width="${f(2.4 * m)}" stroke-linecap="round"`);
+  if (!kapali && now >= G.tBas && now <= G.tBit) {
+    s += cent(now, 1.2, `stroke="#FFC9A3" stroke-width="${f(2 * m)}" stroke-linecap="round" opacity=".95"`);
+    // bugünün tarihi sürgüde yazar; haritada etiket gemilerin altında kalıyordu, yalnız çentik
+  }
+  return s;
+}
+
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
   // kol haritası (9 Kas, bayrakla): kol = kişi, halka = tarih; çizim aynı, yalnız yerleşim değişir
-  const geo = { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, R0: o.R0 };
-  const G = (o.kol ?? kolHarita()) ? kurKol(AK, { ...geo, ajanSahibi: ajanSahipleri(F.steps) }) : olcekliKur(AK, { ...geo, tau: o.tau ?? TAU });
+  const geo = { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, sy: o.sy, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, R0: o.R0 };
+  const bicim = o.bicim ?? (o.kol === true ? 'kol' : o.kol === false ? 'eski' : haritaBicimi());
+  const G = bicim !== 'eski' ? kurKol(AK, { ...geo, bicim, ajanSahibi: ajanSahipleri(F.steps) }) : olcekliKur(AK, { ...geo, tau: o.tau ?? TAU });
   const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps), o.renkler || {});
   const BEN = o.ben ?? M.sahip;
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
@@ -266,6 +296,7 @@ export function yolCiz(M, o = {}) {
   s += `<ellipse cx="${f(G.cx)}" cy="${f(G.cy)}" rx="${f(G.R * 1.4)}" ry="${f(G.R * 1.35)}" fill="url(#glowLilac)" opacity=".32"/>`;
   s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.R * .22)}" fill="url(#bloom)" opacity=".9"/>`;
   if (G.kol && o.halkalar !== false) s += kolHalkalari(G, NOWx, Math.min(ps, 1.3), o.yk ?? 1, !!F.kapandi);
+  if (G.spiral && o.halkalar !== false) s += spiralYolu(G, NOWx, Math.min(ps, 1.3), o.yk ?? 1, !!F.kapandi);
   const L = {}; for (const u of G.uyeler) L[u.ad] = '';
   const tSolid = F.kapandi ? tEnd : Math.min(X, NOWx);
   const m13 = Math.min(ps, 1.3);
