@@ -18,12 +18,12 @@ import { gunAy } from '../../cizim/yol.js';
  * Devir'de e-postayla onaylar (OAuth, istemci kendini kaydeder). not: o uygulamaya özgü kısıt; yollar Kasım 2026.
  */
 export const UYGULAMALAR = {
-  claude: { ad: 'Claude', a: 'Claude’a', da: 'Claude’da', i: 'Claude’u', ac: 'https://claude.ai/customize/connectors', yol: 'Claude › Customize › Connectors › Add custom connector', esle: /claude/i, not: '' },
-  chatgpt: { ad: 'ChatGPT', a: 'ChatGPT’ye', da: 'ChatGPT’de', i: 'ChatGPT’yi', ac: 'https://chatgpt.com/#settings/Connectors', yol: 'ChatGPT › Ayarlar › Apps & Connectors › Create (Developer mode açık)', esle: /chatgpt|openai/i, not: 'Create yoksa Apps’te Developer mode’u aç.' },
-  gemini: { ad: 'Gemini', a: 'Gemini’ye', da: 'Gemini’de', i: 'Gemini’yi', ac: 'https://gemini.google.com/', yol: 'Gemini (web) › Settings › Connected Apps › Add a custom app', esle: /gemini/i, not: 'Web’den eklenir; şimdilik kişisel hesap, İngilizce, ABD.' },
-  perplexity: { ad: 'Perplexity', a: 'Perplexity’ye', da: 'Perplexity’de', i: 'Perplexity’yi', ac: 'https://www.perplexity.ai/', yol: 'Perplexity › Plugins › Add custom › MCP connector › Remote', esle: /perplexity/i, not: 'Plugins yoksa Customize › Connectors. Kimlik olarak OAuth seç.' },
-  lechat: { ad: 'Le Chat', a: 'Le Chat’ya', da: 'Le Chat’da', i: 'Le Chat’yı', ac: 'https://chat.mistral.ai/', yol: 'Le Chat › Intelligence › Connectors › Add Connector › Custom MCP', esle: /le ?chat|mistral/i, not: 'Adı boşluksuz yaz: Devir. Ekipte yönetici ekler.' },
-  grok: { ad: 'Grok', a: 'Grok’a', da: 'Grok’ta', i: 'Grok’u', ac: 'https://grok.com/connectors', yol: 'Grok › Connectors › New Connector › Custom', esle: /grok/i, not: 'Ücretli hesap gerekir.' },
+  claude: { ad: 'Claude', a: 'Claude’a', da: 'Claude’da', i: 'Claude’u', la: 'Claude’la', ac: 'https://claude.ai/customize/connectors', yol: 'Claude › Customize › Connectors › Add custom connector', esle: /claude/i, not: '' },
+  chatgpt: { ad: 'ChatGPT', a: 'ChatGPT’ye', da: 'ChatGPT’de', i: 'ChatGPT’yi', la: 'ChatGPT’yle', ac: 'https://chatgpt.com/#settings/Connectors', yol: 'ChatGPT › Ayarlar › Apps & Connectors › Create (Developer mode açık)', esle: /chatgpt|openai/i, not: 'Create yoksa Apps’te Developer mode’u aç.' },
+  gemini: { ad: 'Gemini', a: 'Gemini’ye', da: 'Gemini’de', i: 'Gemini’yi', la: 'Gemini’yle', ac: 'https://gemini.google.com/', yol: 'Gemini (web) › Settings › Connected Apps › Add a custom app', esle: /gemini/i, not: 'Web’den eklenir; şimdilik kişisel hesap, İngilizce, ABD.' },
+  perplexity: { ad: 'Perplexity', a: 'Perplexity’ye', da: 'Perplexity’de', i: 'Perplexity’yi', la: 'Perplexity’yle', ac: 'https://www.perplexity.ai/', yol: 'Perplexity › Plugins › Add custom › MCP connector › Remote', esle: /perplexity/i, not: 'Plugins yoksa Customize › Connectors. Kimlik olarak OAuth seç.' },
+  lechat: { ad: 'Le Chat', a: 'Le Chat’ya', da: 'Le Chat’da', i: 'Le Chat’yı', la: 'Le Chat’yla', ac: 'https://chat.mistral.ai/', yol: 'Le Chat › Intelligence › Connectors › Add Connector › Custom MCP', esle: /le ?chat|mistral/i, not: 'Adı boşluksuz yaz: Devir. Ekipte yönetici ekler.' },
+  grok: { ad: 'Grok', a: 'Grok’a', da: 'Grok’ta', i: 'Grok’u', la: 'Grok’la', ac: 'https://grok.com/connectors', yol: 'Grok › Connectors › New Connector › Custom', esle: /grok/i, not: 'Ücretli hesap gerekir.' },
 } as const;
 export type Uygulama = keyof typeof UYGULAMALAR;
 const YOKLAMA = 5000;

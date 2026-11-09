@@ -215,5 +215,5 @@ test('P7-harita-dili: "Tüm harita dili" evren ve akış işaretlerinin hepsini 
   // W7 Kimin Hamlesi: dört öbek, toplam 21 işaret
   const L = d.getByRole('list', { name: /^(Hamle|Işık|Kim|Yol) işaretleri$/ });
   await expect(L).toHaveCount(4);
-  await expect(L.getByRole('listitem')).toHaveCount(21);
+  await expect(L.getByRole('listitem')).toHaveCount(22);
 });

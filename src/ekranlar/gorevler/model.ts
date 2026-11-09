@@ -44,10 +44,15 @@ export function gorevCumlesi(G: any[], kisi: string, ben: string, durum: Durum):
   return `${bas}${sira && engel ? `; ${engel === 1 ? 'biri' : engel} engelli` : ''}${suren ? `, ${suren} görev sürüyor` : ''}.`;
 }
 
-export type GrupAd = 'SIRASI GELEN' | 'ENGELLİ' | 'SÜRÜYOR' | 'SIRADA' | 'BİTTİ';
-/** Durum grupları, ekrandaki sırayla; içte sunucu sırası (engel ve karar önce, en çok tutan). */
+export type GrupAd = 'ONAY BEKLİYOR' | 'SIRASI GELEN' | 'ENGELLİ' | 'SÜRÜYOR' | 'AI ÇALIŞIYOR' | 'SIRADA' | 'BİTTİ';
+/**
+ * 9 Kas (harita denetimi A3): AI'ın yazıp onay beklediği iş "Sürüyor"da değil, en üstte "Onay bekliyor"da; AI'ın
+ * kendi sırası olan iş (AI yapsın açık, çalışıyor ya da sırası geldi) "AI çalışıyor"da: kimseden bir şey beklemez.
+ */
 export function gruplar(G: any[]): [GrupAd, any[]][] {
-  const g: [GrupAd, (a: any) => boolean][] = [['SIRASI GELEN', (a) => a.durum === 'hazir'], ['ENGELLİ', (a) => a.durum === 'engelli'], ['SÜRÜYOR', (a) => a.durum === 'suruyor'], ['SIRADA', (a) => a.durum === 'sirada' || a.durum === 'bekliyor'], ['BİTTİ', (a) => BITTI(a.durum)]];
+  const onay = (a: any) => !BITTI(a.durum) && a.oto && a.oto_durum === 'bakilacak';
+  const ai = (a: any) => !BITTI(a.durum) && a.oto && a.durum !== 'engelli' && a.durum !== 'sirada' && a.oto_durum !== 'bakilacak' && a.oto_durum !== 'hata';
+  const g: [GrupAd, (a: any) => boolean][] = [['ONAY BEKLİYOR', onay], ['SIRASI GELEN', (a) => a.durum === 'hazir' && !onay(a) && !ai(a)], ['ENGELLİ', (a) => a.durum === 'engelli'], ['SÜRÜYOR', (a) => a.durum === 'suruyor' && !onay(a) && !ai(a)], ['AI ÇALIŞIYOR', ai], ['SIRADA', (a) => a.durum === 'sirada' || a.durum === 'bekliyor'], ['BİTTİ', (a) => BITTI(a.durum)]];
   return g.map(([ad, f]) => [ad, G.filter(f)] as [GrupAd, any[]]).filter(([, L]) => L.length);
 }
 

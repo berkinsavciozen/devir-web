@@ -8,6 +8,8 @@ import { GorevKart } from '../../bilesen/GorevKart';
 import { hamle } from '../../cizim/hamle';
 import { simdi } from '../../api/ortam';
 import { ajanMi, BITTI, eylemPlani } from './eylemler';
+import { useSohbet } from './sohbet';
+import { useBen } from '../../api/sorgular';
 
 const DURUM: Record<string, string> = { tamam: 'bitti', atlandi: 'atlandı', ertelendi: 'ertelendi', engelli: 'engelli', suruyor: 'sürüyor', hazir: 'başlayabilir', sirada: 'sırada' };
 const AI: Record<string, string> = { calisiyor: 'AI çalışıyor', bakilacak: 'AI yazdı, onayını bekliyor', hata: 'AI yapamadı', bekliyor: 'AI yapsın · sırada' };
@@ -22,10 +24,12 @@ export function HaritaKutusu({ a, d, kod, ben, acikAlt, ayrinti, kapat, style }:
 }) {
   const tetikler = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), retry: false, staleTime: 60_000 });
   const tetikYok = !!tetikler.data && !(tetikler.data.tetikler || []).length;
-  const p = eylemPlani({ a, ben, acikAlt, tetikYok });
+  const { claudeYok } = useSohbet();
+  const akisSahibi = useBen().data?.rol === 'sahip';
+  const p = eylemPlani({ a, ben, acikAlt, tetikYok, claudeYok, akisSahibi });
   const plan = { ana: p.ana, ikincil: null, menu: [] };
   // W4 (B17): kutuda tek görev bileşeni; kutuya dokunmak detayı açar ("Ayrıntılar" yok), hızlı eylem hamle renginde
-  const h = hamle(a);
+  const h = hamle(a, { ben, rutinYok: tetikYok });
   return (
     <section className="harita-kutu" role="dialog" aria-label={`${a.no}. ${adimAdi(a)}`} style={style}>
       <div className="harita-kutu-ust">
@@ -34,7 +38,7 @@ export function HaritaKutusu({ a, d, kod, ben, acikAlt, ayrinti, kapat, style }:
           <svg aria-hidden viewBox="-8 -8 16 16"><path d="M-4,-4 L4,4 M4,-4 L-4,4" /></svg>
         </button>
       </div>
-      {plan.ana && <div className="harita-kutu-eylem"><EylemCubugu a={a} kod={kod} plan={plan} ciktiEkle={ayrinti} baglantiAc={ayrinti} hamle={h} /></div>}
+      {plan.ana && <div className="harita-kutu-eylem"><EylemCubugu a={a} kod={kod} plan={plan} ciktiEkle={ayrinti} baglantiAc={ayrinti} kararAc={ayrinti} hamle={h} /></div>}
     </section>
   );
 }

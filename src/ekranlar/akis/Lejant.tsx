@@ -25,6 +25,7 @@ const SATIRLAR: Satir[] = [
   [dm('karar', O), 'Karar ver', 'Soru işareti. Damla, kararı verecek kişinin renginde', 'karar', 'Hamle'],
   [dm('onayla', SEN), 'AI yazdı, onayla', 'Göz. Agent’ın işini sahibi onaylar; damla sahibinin renginde', 'ai_onay', 'Hamle'],
   [dm('engel', O), 'Engeli kaldır', 'Şimşek; gezegende kırmızı çatlak', 'engel', 'Hamle'],
+  [dm('kur', SEN), 'AI yapsın’ı kur', 'Kıvılcım. AI yapsın açık ama Claude rutinin yok; kurana kadar iş kendiliğinden başlamaz. AI çalışırken damla yoktur', undefined, 'Hamle'],
   [planet(22, 22, 9, 'lit', { life: false, halka: SEN }), 'Bitti', 'Tam yanık beyaz; sağ altta ne çıktığı: tik, belge, terazi', 'bitti', 'Işık'],
   [planet(22, 22, 9, 'run', { life: false, halka: SEN }), 'Sürüyor', 'Yarısı yanık, ışık döner', 'suruyor', 'Işık'],
   [planet(22, 22, 9, 'wait', { life: false, halka: SEN }), 'Sırası geldi', 'Karanlık, nabız atan beyaz halka', 'sira', 'Işık'],
