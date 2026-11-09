@@ -1,6 +1,6 @@
 /**
  * W4 (6 Kas, K6, C24): görev cümlesi. Her yerde aynı: KİM + NE + NE ZAMAN + durum fiili.
- * "Berkin brifi 16 Eki’ye kadar netleştirmeli", "Berkin brifi netleştirdi", "Claude post görselini yazdı, Berkin’in onayını bekliyor".
+ * "Berkin brifi 16 Eki’ye kadar netleştirecek", "Berkin brifi netleştirdi", "Claude post görselini yazdı, Berkin’in onayını bekliyor".
  * Kural tabanlı: adım adının son sözcüğü emir kipinde fiil (yardımcı fiilli "kontrol et" iki sözcük); öncesi nesne.
  * Fiilsiz adlarda ("App Store onayı") ad olduğu gibi kalır, durum ayrı söylenir. LLM yok, satır başına maliyet yok.
  */
@@ -75,11 +75,12 @@ export function gorevCumlesi(a: CumleGirdisi, o: { gun: (iso: string) => string;
   if (a.durum === 'ertelendi') return { cumle: `${ad} ertelendi`, durum: 'ertelendi', ton: 'bitti' };
   if (ai === 'bakilacak') return { cumle: nf ? `${govde(cek(nf.fiil, gecmis))}, ${onaylayan ? ozelEk(onaylayan, 'in') : 'senin'} onayını bekliyor` : `${ad}: ${kim} yazdı, ${onaylayan ? ozelEk(onaylayan, 'in') + ' ' : ''}onayını bekliyor`, durum: 'onay bekliyor', ton: 'ai' };
   if (ai === 'calisiyor') return { cumle: nf ? govde(cek(nf.fiil, simdiki)) : `${ad}: ${kim} çalışıyor`, durum: 'AI çalışıyor', ton: 'ai' };
-  if (ai === 'hata') return { cumle: nf ? `${kim} ${nesne ? nesne + ' ' : ''}${cek(nf.fiil, gereklilik)}di; yapamadı` : `${ad}: ${kim} yapamadı`, durum: 'AI yapamadı', ton: 'risk' };
+  if (ai === 'hata') return { cumle: nf ? `${kim} ${nesne ? nesne + ' ' : ''}${cek(nf.fiil, gelecek)}${ikili(nf.fiil) === 'a' ? 'tı' : 'ti'}; yapamadı` : `${ad}: ${kim} yapamadı`, durum: 'AI yapamadı', ton: 'risk' };
   if (ai === 'bekliyor') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}${onaylayan ? `, ${onaylayan} onaylayacak` : ''}` : `${ad}: ${kim}`, durum: 'AI yapsın', ton: 'ai' };
-  if (a.durum === 'engelli') return { cumle: nf ? `${govde(cek(nf.fiil, gereklilik))}; engelde` : `${ad}: ${kim} · engelde`, durum: 'engelli', ton: 'risk' };
+  if (a.durum === 'engelli') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}; engelde` : `${ad}: ${kim} · engelde`, durum: 'engelli', ton: 'risk' };
   if (a.durum === 'suruyor') return { cumle: nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, simdiki)}` : `${ad}: ${kim} sürdürüyor`, durum: 'sürüyor', ton: 'surer' };
   const gec = a.gecikme_gun && a.gecikme_gun > 0 ? `; ${a.gecikme_gun} gün gecikti` : '';
-  const f = nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, gereklilik)}${gec}` : `${ad}: ${kim}${tarih ? `, ${tarihEk(tarih, 'e')} kadar` : ''}${gec}`;
+  // 9 Kas (Berkin): sırası gelen ve sıradaki iş gelecek zamanla: "Berkin kapsamı 16 Eki’ye kadar netleştirecek"
+  const f = nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, gelecek)}${gec}` : `${ad}: ${kim}${tarih ? `, ${tarihEk(tarih, 'e')} kadar` : ''}${gec}`;
   return { cumle: f, durum: a.durum === 'hazir' ? 'sırası geldi' : 'sırada', ton: gec ? 'risk' : a.durum === 'hazir' ? 'sende' : 'bekler' };
 }

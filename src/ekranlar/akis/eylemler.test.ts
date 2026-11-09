@@ -75,9 +75,9 @@ describe('W1 cümleler', () => {
   it('soru bekleyen AI işi', () => {
     const by = new Map<number, any>([[3, { no: 3, sahip: ben }]]);
     expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, oto_bekledigi: 'açık soru', capa_soru: 'butce' }, { ...o, by, sorular: [{ kod: 'butce', kisa: 'Bütçe', adim_no: 3 }] }))
-      .toBe('Bütçe sorusu cevaplanınca Claude başlar. Cevabı 3. görevde verirsin.');
+      .toBe('Bütçe sorusu cevaplanınca Claude başlayacak. Cevabı 3. görevde vereceksin.');
   });
-  it('öncül bekleyen AI işi', () => expect(otoDurumCumlesi({ ...agent, durum: 'sirada', oto: true, oto_bekledigi: 'öncüller', bekledigi: [{ no: 2, durum: 'hazir' }] }, o)).toBe('2. görev bitince Claude başlar.'));
+  it('öncül bekleyen AI işi', () => expect(otoDurumCumlesi({ ...agent, durum: 'sirada', oto: true, oto_bekledigi: 'öncüller', bekledigi: [{ no: 2, durum: 'hazir' }] }, o)).toBe('2. görev bitince Claude başlayacak.'));
   it('çıktı bekleniyor', () => expect(ciktiCumlesi({ ...insan, durum: 'hazir', beklenen_cikti: 'Rapor PDF’i' }, ben)).toBe('Rapor PDF’i bekleniyor. Ekleyince bitirebilirsin.'));
 });
 
@@ -90,7 +90,7 @@ describe('9 Kas · Hatırlat ve AI ardılı', () => {
   });
   it('AI yapsın işinin önündeki görev: bitince kim başlar; çıktı şartı', () => {
     const A = [{ no: 4, oto: true, durum: 'sirada', bagimli: [3], sahip: 'Ece’nin agent’ı', agent_sahibi: 'Ece Kaya' }];
-    expect(aiArdilCumlesi({ no: 3, durum: 'hazir' }, A, ben, (x) => x.split(' ')[0])).toBe('Bu görev bitince Ece’nin agent’ı 4. göreve kendiliğinden başlar (AI yapsın).');
+    expect(aiArdilCumlesi({ no: 3, durum: 'hazir' }, A, ben, (x) => x.split(' ')[0])).toBe('Bu görev bitince Ece’nin agent’ı 4. göreve kendiliğinden başlayacak (AI yapsın).');
     expect(aiArdilCumlesi({ no: 3, durum: 'hazir', cikti_bekleniyor: true }, A, ben, (x) => x.split(' ')[0])).toMatch(/çıktısız bitirilirse AI başlamaz/);
     expect(aiArdilCumlesi({ no: 2, durum: 'hazir' }, A, ben, (x) => x)).toBe(null);
   });

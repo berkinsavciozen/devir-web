@@ -55,7 +55,7 @@ export function adimCumlesi(a: any, ben: string): string {
   if (a.durum === 'tamam') return `${gunAy(Date.parse(a.durum_at))} günü bitti.`;
   if (a.durum === 'atlandi') return 'Bu adım atlandı.';
   const once = (a.bekledigi || []).filter((b: any) => !BITTI(b.durum)).map((b: any) => b.no);
-  return once.length ? `${once.join(', ')}. adım bitince başlar.` : 'Sırası yakında gelir.';
+  return once.length ? `${once.join(', ')}. adım bitince başlayacak.` : 'Sırası yakında gelecek.';
 }
 
 /** Kişi bazında yazan olay sayısı (§3.4): durum, guncelleme, not, adim_eklendi; aktör agent ise araç. */

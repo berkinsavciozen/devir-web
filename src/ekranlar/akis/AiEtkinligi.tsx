@@ -62,7 +62,7 @@ export function AiEtkinligi({ acik, kapat, kod, d }: { acik: boolean; kapat: () 
         {grup('ONAYINI BEKLİYOR', o.onay, (a) => `${a.sahip} çıktıyı yazdı; bakıp onayla`)}
         {grup('YAPAMADI', o.hata, (a) => a.engel || 'Rutin bitiremedi; yeniden dene')}
         {grup('ÇALIŞIYOR', o.calisiyor, (a) => `${a.sahip} şu an bunun üzerinde`)}
-        {grup('SIRADA', o.bekliyor, (a) => (a.oto_bekledigi ? `bekliyor: ${a.oto_bekledigi}` : 'hazır olunca başlar'))}
+        {grup('SIRADA', o.bekliyor, (a) => (a.oto_bekledigi ? `bekliyor: ${a.oto_bekledigi}` : 'hazır olunca başlayacak'))}
         <section className="ai-grup" aria-label="Zaman çizelgesi">
           <h3 className="gd-bolum-baslik">ZAMAN ÇİZELGESİ</h3>
           {olaylar.length ? <ol className="ai-cizelge">{olaylar.map((e) => (

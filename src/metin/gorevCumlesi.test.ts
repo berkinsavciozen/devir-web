@@ -26,12 +26,22 @@ describe('W4 görev cümlesi (K6, C24)', () => {
   });
   const gun = (x: string) => x;
   it('KİM + NE + NE ZAMAN + durum fiili', () => {
-    expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'hazir', bitis: '16 Eki' }, { gun }).cumle).toBe('Berkin kapsamı 16 Eki’ye kadar netleştirmeli');
+    expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'hazir', bitis: '16 Eki' }, { gun }).cumle).toBe('Berkin kapsamı 16 Eki’ye kadar netleştirecek');
     expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'suruyor', bitis: '16 Eki' }, { gun }).cumle).toBe('Berkin kapsamı 16 Eki’ye kadar netleştiriyor');
     expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'tamam' }, { gun }).cumle).toBe('Berkin kapsamı netleştirdi');
     expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Webinar metin agent’ı', sahip_tip: 'agent', agent_sahibi: 'Berkin', durum: 'hazir', oto: true, oto_durum: 'bekliyor' }, { gun }).cumle).toBe('Webinar metin agent’ı afiş brifini yazacak, Berkin onaylayacak');
     expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Claude', sahip_tip: 'agent', agent_sahibi: 'Berkin', durum: 'suruyor', oto: true, oto_durum: 'bakilacak' }, { gun }).cumle).toBe('Claude afiş brifini yazdı, Berkin’in onayını bekliyor');
     expect(gorevCumlesi({ ad: 'App Store onayı', sahip: 'Berkin', durum: 'hazir', bitis: '16 Eki' }, { gun }).cumle).toBe('App Store onayı: Berkin, 16 Eki’ye kadar');
-    expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'hazir', bitis: '16 Eki', gecikme_gun: 2 }, { gun }).cumle).toBe('Berkin kapsamı 16 Eki’ye kadar netleştirmeli; 2 gün gecikti');
+    expect(gorevCumlesi({ ad: 'Kapsamı netleştir', sahip: 'Berkin', durum: 'hazir', bitis: '16 Eki', gecikme_gun: 2 }, { gun }).cumle).toBe('Berkin kapsamı 16 Eki’ye kadar netleştirecek; 2 gün gecikti');
+  });
+});
+
+describe('9 Kas · sırası gelen ve sıradaki iş gelecek zamanla', () => {
+  const gun = (x: string) => x;
+  it('hazır, sırada, engelli, gecikmiş, AI hatası', () => {
+    expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Ece', durum: 'sirada' }, { gun }).cumle).toBe('Ece afiş brifini yazacak');
+    expect(gorevCumlesi({ ad: 'Sözleşmeyi kontrol et', sahip: 'Ece', durum: 'engelli' }, { gun }).cumle).toBe('Ece sözleşmeyi kontrol edecek; engelde');
+    expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Ece', durum: 'hazir', gecikme_gun: 2 }, { gun }).cumle).toBe('Ece afiş brifini yazacak; 2 gün gecikti');
+    expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Claude', sahip_tip: 'agent', durum: 'engelli', oto: true, oto_durum: 'hata' }, { gun }).cumle).toBe('Claude afiş brifini yazacaktı; yapamadı');
   });
 });
