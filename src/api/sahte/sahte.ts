@@ -8,6 +8,7 @@ import { handle } from '../../../sunucu/server.ts';
 import type { SohbetFn } from '../../../sunucu/llm.ts';
 import ornek from '../../../tasarim/veri/ornek-veri.json';
 import nm8r from '../../../tasarim/veri/nm8r.json';
+import rk8r from '../../../tasarim/veri/rk8r.json';
 
 /** AI yapsın sahte kipte: şifreleme yalnız önek (geri çevrilir), tetik her zaman başarılı döner (gerçek istek gitmez). */
 const SAHTE_SIFRE = { sifrele: async (t: string) => `sahte:${t}`, coz: async (t: string) => t.replace(/^sahte:/, '') };
@@ -215,6 +216,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'olcek30') halOtuz(T);
   // 3 Kas · NM8R (canlı yapı): 36 ana adım + 123 alt görev, hedef ve son tarih yok
   if (o.hal === 'nm8r' || o.hal === 'nm8r-hedef') halNm8r(T, o.hal === 'nm8r-hedef' ? '2027-05-26' : null);
+  if (o.hal?.startsWith('rk8r')) halRk8r(T);
   // 3 Kas · AI yapsın (0.29.0): Berkin'in bir Claude rutini; RTD5'te biri bakılacak, biri öncül bekleyen iki AI yapsın görevi
   const rtdAi = (o.hal === 'ai' || o.hal === 'w1' || o.hal === 'w3') && senaryo === 'berkin' ? T.akis.find((x) => x.kisa_kod === 'RTD5') : undefined;
   if (rtdAi) {
@@ -272,6 +274,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'uydu') await halUydu(yaz);
   if (o.hal === 'gecikme') await halGecikme(yaz);
   if (o.hal === 'alt') await halAlt(yaz);
+  if (o.hal?.startsWith('rk8r')) await halRk8rFaz(yaz, T, o.hal);
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   return {
@@ -316,7 +319,7 @@ export const sahteSohbet: SohbetFn = async ({ system, gecmis, calistir }) => {
 
 /** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
-const HAL_SAAT: Record<string, string> = { nm8r: '2026-11-03T12:51:00+03:00', 'nm8r-hedef': '2026-11-03T12:51:00+03:00', karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00' };
+const HAL_SAAT: Record<string, string> = { nm8r: '2026-11-03T12:51:00+03:00', 'nm8r-hedef': '2026-11-03T12:51:00+03:00', karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00', rk8r: '2026-11-09T16:20:00+03:00', 'rk8r-g4': '2026-11-13T11:00:00+03:00', 'rk8r-g12': '2026-11-21T11:00:00+03:00', 'rk8r-gec': '2026-11-25T11:00:00+03:00', 'rk8r-son': '2026-12-02T11:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim_tip: 'agent', arac: 'Claude' };
 
@@ -437,4 +440,64 @@ function halNm8r(T: Record<string, any[]>, hedef: string | null = null) {
     T.adim.push({ id: crypto.randomUUID(), akis_id: id, no, ust_adim, durum, sahip, sahip_tip, son_tarih, sure_tahmin_gun, bagimli, kosul, karar_gerekli, cikti_bekleniyor, tarih_sabit, capa_soru, cevap_soru, tur_kod, agent_sahibi, ad: tur_kod.replace(/-/g, ' '), kriter: 'tamam', ciktilar: [], kaynak: 'plan', created_at: at, durum_at: no >= 47 && no <= 51 ? '2026-11-03T09:07:00Z' : at });
   }
   T.olay.push({ id: 990100, akis_id: id, adim_no: null, kim: 'Claude', kim_tip: 'agent', arac: 'Claude', tip: 'akis_olustu', ozet: 'Akış kuruldu', veri: {}, created_at: at });
+}
+
+/** 9 Kas canlı RK8R (harita denetimi): akış, adımlar, olaylar, kişiler canlıdan; fazlar gerçek sunucu koduyla ilerletilir. */
+function halRk8r(T: Record<string, any[]>) {
+  const R = rk8r as any;
+  for (const t of ['akis', 'adim', 'olay', 'cikti', 'katilimci']) { T[t] = T[t] || []; T[t].push(...JSON.parse(JSON.stringify(R[t]))); }
+  T.kisi = T.kisi || [];
+  for (const k of R.kisi) if (!T.kisi.some((x: any) => x.id === k.id)) T.kisi.push({ ...k });
+}
+const FAZ = ['rk8r', 'rk8r-g4', 'rk8r-g12', 'rk8r-gec', 'rk8r-son'];
+async function halRk8rFaz(yaz: Yaz, T: Record<string, any[]>, hal: string) {
+  const f = FAZ.indexOf(hal); if (f < 0) return;
+  const a = (no: number) => `/api/v1/akis/RK8R/adim/${no}`;
+  const ak = T.akis.find((x) => x.kisa_kod === 'RK8R');
+  const adim = (no: number) => T.adim.find((x) => x.akis_id === ak.id && x.no === no);
+  // prototip (9 Kas): alt görev kırılımı — görseller (Selin) ve kurulum (Mert + Mert'in agent'ı)
+  await yaz('2026-11-09T16:18:00+03:00', `/api/v1/akis/RK8R/adim/7/alt`, { alt_gorevler: [{ ad: 'Kapak görseli', sure_tahmin_gun: 1 }, { ad: 'Bölüm görselleri', sure_tahmin_gun: 2 }], sirali: true });
+  await yaz('2026-11-09T16:19:00+03:00', `/api/v1/akis/RK8R/adim/8/alt`, { alt_gorevler: [{ ad: 'Şablonu hazırla', sure_tahmin_gun: 1 }, { ad: 'Formu bağla', sahip: "Mert'in agent'ı", sahip_tip: 'agent', sure_tahmin_gun: 1 }, { ad: 'Mobil düzeni bitir', sure_tahmin_gun: 1 }], sirali: true });
+  const alt = (ust: number, i: number) => T.adim.filter((x) => x.akis_id === ak.id && x.ust_adim === ust).sort((p, q) => p.no - q.no)[i]?.no as number;
+  if (f < 1) return;
+  const al = (no: number, an: string) => Object.assign(adim(no), { oto_durum: 'tetiklendi', oto_at: new Date(an).toISOString(), oto_deneme: 1 });
+  // gün 1-4: AI özeti → onay, karar B, SSS AI'da onay bekliyor, Ece'nin agent'ı rutinsiz bekliyor, Selin başladı
+  await yaz('2026-11-10T10:00:00+03:00', a(2), { ...AJAN, cikti: { ad: 'Rakip özeti', ozet: '3 rakip: biri hız, biri fiyat, biri güven anlatıyor.', icerik: '## Rakip özeti\n\n- A: hız\n- B: fiyat\n- C: güven' } });
+  await yaz('2026-11-10T14:00:00+03:00', a(2), { durum: 'tamam' });
+  await yaz('2026-11-11T09:00:00+03:00', a(3), { durum: 'tamam', karar_secimi: ['B · Sadelik'] });
+  al(5, '2026-11-11T10:00:00+03:00');
+  await yaz('2026-11-11T10:05:00+03:00', a(5), { ...AJAN, durum: 'suruyor' });
+  await yaz('2026-11-11T15:00:00+03:00', a(5), { ...AJAN, cikti: { ad: 'SSS taslağı', ozet: '8 soru', icerik: '## SSS\n\n1. ...' } });
+  await yaz('2026-11-12T10:00:00+03:00', a(7), { kim: 'Selin', durum: 'suruyor' });
+  if (f < 2) return;
+  // gün 5-12: SSS onaylandı, Ece agent işini kendisi bitirdi, metin + görsel bitti, Mert kuruyor
+  await yaz('2026-11-13T12:00:00+03:00', a(5), { durum: 'tamam' });
+  await yaz('2026-11-14T11:00:00+03:00', a(4), { kim: 'Ece', durum: 'tamam', not: 'Rutin yoktu; Ece Claude’da açıp yaptı', cikti: { ad: 'Metin taslağı', ozet: 'Sadelik yönünde 4 bölüm' } });
+  await yaz('2026-11-16T10:00:00+03:00', a(6), { kim: 'Ece', durum: 'suruyor' });
+  await yaz('2026-11-14T17:00:00+03:00', a(alt(7, 0)), { kim: 'Selin', durum: 'tamam' });
+  await yaz('2026-11-16T12:00:00+03:00', a(alt(7, 1)), { kim: 'Selin', durum: 'suruyor' });
+  await yaz('2026-11-17T16:00:00+03:00', a(alt(7, 1)), { kim: 'Selin', durum: 'tamam' });
+  await yaz('2026-11-17T17:00:00+03:00', a(7), { kim: 'Selin', durum: 'tamam', cikti: { ad: 'Görseller', ozet: 'Kapak + 3 bölüm', url: 'https://figma.com/sahte' } });
+  await yaz('2026-11-18T16:00:00+03:00', a(6), { kim: 'Ece', durum: 'tamam' });
+  await yaz('2026-11-19T10:00:00+03:00', a(8), { kim: 'Mert', durum: 'suruyor' });
+  await yaz('2026-11-20T15:00:00+03:00', a(alt(8, 0)), { kim: 'Mert', durum: 'tamam' });
+  await yaz('2026-11-20T16:00:00+03:00', a(alt(8, 1)), { ...AJAN, durum: 'suruyor' });
+  if (f < 3) return;
+  // gün 13-16: kurulum gecikti, Mert'in agent'ı hata, Selin engelli; yayın onayı bekliyor
+  await yaz('2026-11-21T18:00:00+03:00', a(alt(8, 1)), { kim: 'Mert', durum: 'tamam' });
+  await yaz('2026-11-23T14:00:00+03:00', a(alt(8, 2)), { kim: 'Mert', durum: 'tamam' });
+  await yaz('2026-11-23T15:00:00+03:00', a(8), { kim: 'Mert', durum: 'tamam', not: 'Bir gün geç' });
+  Object.assign(adim(9), { durum: 'engelli', engel: 'AI yapsın başlatılamadı: Mert için bağlı rutin yok', oto_durum: 'hata', oto_deneme: 3 });
+  await yaz('2026-11-24T12:00:00+03:00', a(10), { kim: 'Selin', durum: 'engelli', engel: 'Mobil görünüm ekran görüntüleri bekleniyor', engel_kisa: 'mobil ekran görüntülerini' });
+  if (f < 4) return;
+  // sonrası: hepsi bitti, son AI işi (ilk hafta raporu) çalışıyor
+  Object.assign(adim(9), { oto_durum: null, engel: null, oto_deneme: 0 });
+  await yaz('2026-11-25T12:00:00+03:00', a(9), { kim: 'Mert', durum: 'tamam', cikti: { ad: 'Test raporu', ozet: 'Hız 92, kırık bağlantı yok' } });
+  await yaz('2026-11-25T14:00:00+03:00', a(10), { kim: 'Selin', durum: 'tamam' });
+  await yaz('2026-11-25T16:00:00+03:00', a(11), { durum: 'tamam', karar_secimi: ['Onayla'] }).catch(() => yaz('2026-11-25T16:00:00+03:00', a(11), { durum: 'tamam' }));
+  await yaz('2026-11-26T10:00:00+03:00', a(12), { kim: 'Mert', durum: 'tamam' });
+  await yaz('2026-11-26T12:00:00+03:00', a(13), { kim: 'Ece', durum: 'tamam', cikti: { ad: 'Duyuru e-postası', ozet: 'Kısa duyuru' } });
+  await yaz('2026-11-27T10:00:00+03:00', a(14), { kim: 'Ece', durum: 'tamam' });
+  al(15, '2026-12-02T10:30:00+03:00');
+  await yaz('2026-12-02T10:31:00+03:00', a(15), { ...AJAN, durum: 'suruyor' });
 }
