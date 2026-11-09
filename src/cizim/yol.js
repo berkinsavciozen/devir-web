@@ -4,6 +4,8 @@
 import { apidenAkis } from '../geometri/galaksi-geometri';
 import { ilerleme } from '../api/ilerleme';
 import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
+import { kurKol } from '../geometri/kol-geometri';
+import { kolHarita } from '../geometri/kol-bayrak';
 import { C, destekGemisi, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
 import { hamle as hamleOf, damla, kisiRengi } from './hamle';
 
@@ -192,11 +194,36 @@ function fenerDizisi(pts, ps = 1, aralik = 14) {
  *   ships, lod: 'detay'|'kucuk', allLit, sira, spin, sis, ip, fener, kule, kuleEtiket, kuleDx, tw, shipSc, rk, rad, pr,
  *   ok (öğe katsayısı: gemi, gezegen), rf (gezegen yarıçap işlevi; verilirse ok yerine), yk (yazı katsayısı) }
  */
+/**
+ * Kol haritasının tarih halkaları (9 Kas): her gün ince halka, pazartesi belirgin ve tarihli; hedef halkası pirinç,
+ * bugün halkası şeftali ve kesik (içi yapılmış iş). Halkalar sabittir: ölçek o anki süreye göre değişmez.
+ */
+function kolHalkalari(G, now, m, yk, kapali) {
+  let s = '';
+  const g0 = Math.ceil((G.T0 - 3 * 36e5) / GUN) * GUN + 21 * 36e5, son = G.T0 + (G.RS > G.RH ? (G.hedef - G.T0) * 1.6 : 0);
+  for (let t = g0; G.rT(t) < G.RS - .5 && t < son + 60 * GUN; t += GUN) {
+    const r = G.rT(t), pzt = tl(t).getUTCDay() === 1;
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(r)}" fill="none" stroke="#B9A6F2" stroke-width="${pzt ? .7 : .35}" ${pzt ? '' : 'stroke-dasharray="1 4"'} opacity="${pzt ? .34 : .2}"/>`;
+    if (pzt && Math.abs(t - G.hedef) > 2 * GUN) s += sans(f(G.cx + 3 * m), f(G.cy - r + 10 * m), gunAy(t), { fs: 9 * m * yk, fw: 600, col: C.ink3 });
+  }
+  s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.RH)}" fill="none" stroke="url(#brass)" stroke-width="${f(1.8 * m)}" opacity=".85"/>`;
+  if (G.RS > G.RH + 2) s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.RS)}" fill="none" stroke="#FF8A78" stroke-width=".8" stroke-dasharray="2 5" opacity=".45"/>`;
+  if (!kapali) {
+    const rb = G.rT(now);
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(rb)}" fill="url(#glowPeach)" opacity=".06"/>`;
+    s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(rb)}" fill="none" stroke="#FFC9A3" stroke-width="${f(1.6 * m)}" stroke-dasharray="${f(7 * m)} ${f(5 * m)}" opacity=".9"/>`;
+    s += pill(G.cx, G.cy + rb, 'Bugün · ' + gunAy(now), { fs: 9.5 * m * yk, fw: 700, col: '#2A1D4F', bg: '#FFC9A3', bgo: 1 });
+  }
+  return s;
+}
+
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
-  const G = olcekliKur(AK, { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, tau: o.tau ?? TAU, R0: o.R0 });
+  // kol haritası (9 Kas, bayrakla): kol = kişi, halka = tarih; çizim aynı, yalnız yerleşim değişir
+  const geo = { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, R0: o.R0 };
+  const G = (o.kol ?? kolHarita()) ? kurKol(AK, { ...geo, ajanSahibi: ajanSahipleri(F.steps) }) : olcekliKur(AK, { ...geo, tau: o.tau ?? TAU });
   const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps), o.renkler || {});
   const BEN = o.ben ?? M.sahip;
   const UYE_RENK = (u) => RENK[u.ad] || TAKIM_RENGI;
@@ -238,6 +265,7 @@ export function yolCiz(M, o = {}) {
   // ---------- ayrıntılı ----------
   s += `<ellipse cx="${f(G.cx)}" cy="${f(G.cy)}" rx="${f(G.R * 1.4)}" ry="${f(G.R * 1.35)}" fill="url(#glowLilac)" opacity=".32"/>`;
   s += `<circle cx="${f(G.cx)}" cy="${f(G.cy)}" r="${f(G.R * .22)}" fill="url(#bloom)" opacity=".9"/>`;
+  if (G.kol && o.halkalar !== false) s += kolHalkalari(G, NOWx, Math.min(ps, 1.3), o.yk ?? 1, !!F.kapandi);
   const L = {}; for (const u of G.uyeler) L[u.ad] = '';
   const tSolid = F.kapandi ? tEnd : Math.min(X, NOWx);
   const m13 = Math.min(ps, 1.3);

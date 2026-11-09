@@ -1,4 +1,5 @@
-import { evrenYerlesimi } from '../geometri/evren';
+import { evrenYerlesimi, zamanYaricap, ZAMAN_HALKALARI } from '../geometri/evren';
+import { kolHarita } from '../geometri/kol-bayrak';
 // Ekran süsleri: tasarım kaynağındaki (d3-son/kaynak/son-ortak.js, son-090.js, ekranlar.js) yardımcıların
 // yalnız çizim kısmı. Metin, düğme ve alanlar HTML olarak çizilir; burada yalnız SVG süsleri kalır.
 // Ölçüler ve renkler kaynakla aynıdır (token dışı illüstrasyon renkleri: tasarim/CELISKILER.md #1).
@@ -184,7 +185,15 @@ export function usturlap(o: {
   const bantlar = [R - 60, R - 30, R - 90, R - 115];
   // evren matematiği (el notu 5, geometri/evren.ts): açı = hedef, uzaklık = pay, alan ∝ adım; çakışma yalnız yarıçap yönünde
   const matematik = aktif.length > 0 && aktif.every((x) => x.F.adim != null && x.F.t0 != null);
-  const EY = matematik ? evrenYerlesimi(aktif.map(({ F }) => ({ kod: F.kod, t0: F.t0!, hedef: F.hedef, payGun: F.payGun ?? null, adim: F.adim!, biten: F.biten ?? 0, kisiler: F.kisiler || [] })), { cx, cy, R, CA, CB, engeller }) : null;
+  const EY = matematik ? evrenYerlesimi(aktif.map(({ F }) => ({ kod: F.kod, t0: F.t0!, hedef: F.hedef, payGun: F.payGun ?? null, adim: F.adim!, biten: F.biten ?? 0, kisiler: F.kisiler || [] })), { cx, cy, R, CA, CB, engeller, zaman: kolHarita() ? NOW : undefined }) : null;
+  // kol haritası (9 Kas): evrende de zaman içten dışa; iç sınır bugün, dışa doğru +1 hafta … +2 ay
+  if (EY && kolHarita()) {
+    for (const [g, ad] of ZAMAN_HALKALARI) {
+      const r = zamanYaricap(g, EY.ic, EY.dis), bugun = g === 0;
+      s += `<circle cx="${cx}" cy="${cy}" r="${f(r)}" fill="none" stroke="${bugun ? '#FFC9A3' : '#B9A6F2'}" stroke-width="${bugun ? 1.6 : .7}" ${bugun ? 'stroke-dasharray="7 5"' : ''} opacity="${bugun ? .9 : .35}"/>`;
+      if (!bugun) s += `<text x="${f(cx + 3)}" y="${f(cy - r + 10)}" font-family="Bricolage" font-size="9" font-weight="600" fill="#BFB0E0" opacity=".85">${ad}</text>`;
+    }
+  }
   if (EY) {
     // zaman yayı (yörünge): galaksinin kendi uzaklığında, başlangıcından hedefine; bugüne kadarki kısmı altın. İbre her yörüngeyi
     // o akışın bugünkü noktasında keser
