@@ -152,7 +152,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
     if (!bu) { uye('sahte-berkin', 'berkin@ornek.com', BERKIN_ALAN, 'Berkin', 'sahip'); bu = T.uye[T.uye.length - 1]; }
     T.referans = [{ kod: 'BERK26', ws_id: BERKIN_ALAN, uye_id: bu.id, created_at: '2026-10-12T15:00:00Z' }];
     T.bekleme = [{ id: crypto.randomUUID(), eposta: 'ayse@ornek.com', ad: 'Ayşe', referans_kod: 'BERK26', referans_ws: BERKIN_ALAN, referans_uye_id: bu.id, durum: 'bekliyor', created_at: '2026-10-13T19:20:00Z' }];
-    T.agent_baglanti = [{ id: crypto.randomUUID(), ws_id: BERKIN_ALAN, uye_id: bu.id, istemci: 'sahte-claude', ad: 'Claude', ilk_kullanim: '2026-10-12T15:30:00Z', son_kullanim: '2026-10-14T06:10:00Z', kaldirildi_at: null }];
+    T.agent_baglanti = [{ id: crypto.randomUUID(), ws_id: BERKIN_ALAN, uye_id: bu.id, istemci: o.hal === 'chatgpt' ? 'sahte-chatgpt' : 'sahte-claude', ad: o.hal === 'chatgpt' ? 'ChatGPT' : 'Claude', ilk_kullanim: '2026-10-12T15:30:00Z', son_kullanim: '2026-10-14T06:10:00Z', kaldirildi_at: null }];
     if (bosBagli) {
       const yeni = T.uye.find((x) => x.kullanici_id === 'bos-alan');
       T.agent_baglanti.push({ id: crypto.randomUUID(), ws_id: 'bos-alan', uye_id: yeni?.id, istemci: 'sahte-claude-yeni', ad: 'Claude', ilk_kullanim: '2026-10-14T07:00:00Z', son_kullanim: '2026-10-14T07:02:00Z', kaldirildi_at: null });
