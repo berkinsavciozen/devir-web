@@ -17,7 +17,7 @@ test('W1 · çıktı beklenen iş: ana düğme Çıktı ekle; engel bildirilir v
   await expect(cubuk(page).getByRole('button', { name: 'Çıktı ekle' })).toBeVisible();
   await expect(cubuk(page).getByRole('button', { name: 'Bitti', exact: true })).toHaveCount(0);
   await cubuk(page).getByRole('button', { name: 'Diğer eylemler' }).click();
-  await expect(page.getByRole('menuitem')).toHaveText(['Çıktısız bitir', 'Engel bildir']);
+  await expect(page.getByRole('menuitem')).toHaveText(['Başladım', 'Çıktısız bitir', 'Engel bildir']);
   await cek(page, 'W1-menu-390');
   await page.getByRole('menuitem', { name: 'Engel bildir' }).click();
   await cubuk(page).getByRole('textbox', { name: 'Neye takıldın' }).fill('Apple geliştirici hesabı onayı');

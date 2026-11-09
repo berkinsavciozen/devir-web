@@ -3,7 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
 import { ilerleme } from '../../api/ilerleme';
-import { sorguIstemcisi } from '../../api/sorgular';
+import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { hedefPayi } from '../../bilesen/KararSeridi';
 import { C, planet, ship } from '../../cizim/ortak.js';
 import { gunAy, gunAyHafta, kisaAd, otoRozet, saat } from '../../cizim/yol.js';
@@ -12,7 +12,8 @@ import { arama, git } from '../../yonlendirme';
 import { AdimGecmis, Ciktilar, isPayi, sureKisa, takvimIhlali, tuttuklari } from './Adim';
 import { BaglantiSatiri } from './BaglantiGonder';
 import { EylemCubugu } from './EylemCubugu';
-import { ajanMi, BITTI, ciktiCumlesi, eylemPlani, otoDurumCumlesi, otoUygun } from './eylemler';
+import { aiArdilCumlesi, ajanMi, BITTI, ciktiCumlesi, eylemPlani, otoDurumCumlesi, otoUygun, sonHatirlatma } from './eylemler';
+import { useSohbet } from './sohbet';
 import { useAkis } from './Galaksi';
 import { KararBolumu } from './Karar';
 import { TarihNedenIcerik } from './TarihNeden';
@@ -127,6 +128,9 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   // AI yapsın (0.29.0): agent görevinin sahibi işaretler (W1: aç/kapat eylem çubuğunda; burada planlanan gün ayarı)
   const otoYaz = useMutation({ mutationFn: (g: Record<string, unknown>) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${no}`, g), onSuccess: yenile });
   const tetikler = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), retry: false, staleTime: 60_000 });
+  const { U, claudeYok } = useSohbet();
+  // akışın sahibi: çalışma alanının sahibi (karar 4–5)
+  const akisSahibi = useBen().data?.rol === 'sahip';
 
   if (!a || !d) return <div className="gd" ref={kok}><div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div></div>;
 
@@ -169,14 +173,17 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const altAkordiyon = (z: any) => <AltGorev key={z.no} kod={kod} z={z} d={d} ben={ben} ustNo={A.no} acik={secAlt === z.no} />;
 
   const ciktiBolumu = <div id="gd-ciktilar" className="gd-bolum gd-kart gd-ciktilar"><Ciktilar a={A} kod={kod} claudeGizle /></div>;
-  const plan = eylemPlani({ a: A, ben, acikAlt: acikAlt.length, tetikYok });
+  const hatirlatildi = sonHatirlatma(A.olaylar, ben, simdi());
+  const plan = eylemPlani({ a: A, ben, acikAlt: acikAlt.length, tetikYok, akisSahibi, claudeYok, hatirlatildi });
+  // AI yapsın işini etkileyen görev: bitince hangi agent kendiliğinden başlar (9 Kas, AI yapsın netliği)
+  const aiArdil = aiArdilCumlesi(A, d.adimlar, ben, (x) => (ajanMi(x) ? x : kisaAd(x)));
 
   // W5 ikinci tur (Berkin 20:26): bölüm bölüm, hepsi aynı kart bileşeni; ilk bakışta NE yapılacak, NEDEN ve NE ZAMAN.
   // Başlık kartı (kim, durum) · eylem · NE YAPILACAK · NEDEN (bunu bekleyenler) · NE ZAMAN (zaman çizgisi, önce bitmesi
   // gerekenler) · karar / çıktı / AI yapsın / alt görevler / kalemler · geçmiş. Alt sayfa yok: tarih nedeni ve bağlantı satır içinde.
   // tek ipucu cümlesi: AI durumu ya da beklenen çıktı ("…bekleniyor. Ekleyince bitirebilirsin.")
   const ipucu = otoC || ciktiCumlesi(A, ben);
-  const h = hamle(A);
+  const h = hamle(A, { ben, rutinYok: tetikYok });
   const simdiMs = simdi();
   const kc = kartCumlesi(A, ben), G = { ton: kartTonu(A, ben) };
   const adBas = adimAdi(A) + ': ';
@@ -277,6 +284,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
       </header>
 
       <EylemCubugu a={A} kod={kod} plan={plan} hamle={h} ciktiEkle={ciktiGirdisi} baglantiAc={() => setPaylas((x) => !x)}>
+        {hatirlatildi && !plan.ana && !plan.ikincil && <p className="gd-satir">Bugün hatırlattın; {kisaAd(A.sahip_tip === 'agent' && A.agent_sahibi ? A.agent_sahibi : A.sahip)} bildirim aldı.</p>}
         {A.sahip === ben && acikAlt.length > 0 && <p className="gd-satir">Alt görevlerin hepsi bitince {A.karar_adimi || A.cikti_bekleniyor ? 'bu görevi sen tamamlarsın' : 'bu görev kendiliğinden tamamlanır'}.</p>}
       </EylemCubugu>
       {paylas && <BaglantiSatiri kod={kod} kisi={A.sahip} kisiId={A.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === A.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === A.sahip).length} kapat={() => setPaylas(false)} />}
@@ -291,6 +299,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
 
       <Bolum baslik="NEDEN" ikon="neden">
         <p className="gd-lead">{neden0}</p>
+        {aiArdil && <p className="gd-satir gd-ai-ardil" role="note">{aiArdil}</p>}
         {acikSonra.length > 0 && kartlar(acikSonra.slice(0, 3), ardilKisa)}
         {acikSonra.length > 3 && <p className="gd-satir">+{acikSonra.length - 3} görev daha{dolayli > 0 ? `, ${dolayli} dolaylı` : ''}</p>}
         {acikSonra.length <= 3 && dolayli > 0 && <p className="gd-satir">Onların ardından {dolayli} görev daha dolaylı bekliyor.</p>}
@@ -317,7 +326,8 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
       {otoGoster && <Bolum baslik="AI YAPSIN" id="gd-oto">
         <p className="gd-satir" role="status">{otoSatiri(A)}</p>
         {A.oto && <label className="gd-oto-sec"><input type="checkbox" checked={!!A.oto_tarih_bekle} disabled={otoYaz.isPending} onChange={(e) => otoYaz.mutate({ oto_tarih_bekle: e.target.checked })} /><span>Planlanan başlangıç gününü beklesin</span></label>}
-        {A.oto && tetikYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
+        {claudeYok && tetikYok && <p className="gd-satir">AI yapsın şimdilik yalnız Claude’la çalışır; sende {U.ad} bağlı. Kendiliğinden yapılsın istersen Claude’u da bağlayıp rutini kur, o zamana kadar {U.da} açıp birlikte yap. <button type="button" className="metin-baglanti" onClick={() => git('/bagla?uygulama=claude')}>Claude’u bağla</button></p>}
+        {A.oto && tetikYok && !claudeYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
         {otoYaz.isError && <p className="canli-hata-satir" role="alert">{(otoYaz.error as Error).message}</p>}
       </Bolum>}
 
@@ -374,33 +384,38 @@ function AltGorev({ kod, z, d, ben, ustNo, acik: ilkAcik }: { kod: string; z: an
 
 function AltGorevIcerik({ kod, z, d, ben, ustNo }: { kod: string; z: any; d: any; ben: string; ustNo: number }) {
   const q = useQuery({ queryKey: ['adim', kod, z.no], queryFn: () => api.get<any>(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`) });
+  const tetikler = useQuery({ queryKey: ['tetikler'], queryFn: () => api.get<any>('/tetikler'), retry: false, staleTime: 60_000 });
+  const { claudeYok } = useSohbet();
+  const akisSahibi = useBen().data?.rol === 'sahip';
   const Z = { ...z, ...(q.data?.adim || {}) };
   const yenile = () => { for (const k of [['akis', kod], ['adim', kod, z.no], ['adim', kod, ustNo], ['ozet']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); };
   const yaz = useMutation({ mutationFn: (g: Record<string, unknown>) => api.post<any>(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`, g), onSuccess: yenile });
-  const [engelAc, setEngelAc] = useState(false);
-  const [engel, setEngel] = useState('');
   const [not, setNot] = useState('');
-  const bitti = BITTI(Z.durum), benim = Z.sahip === ben && !bitti, sirada = Z.durum === 'hazir' || Z.durum === 'suruyor' || Z.durum === 'engelli';
+  const [paylas, setPaylas] = useState(false);
+  const kok = useRef<HTMLDivElement>(null);
+  const bitti = BITTI(Z.durum);
+  // karar 5: alt görevi yalnız sahibi (agent'ında agent'ın sahibi) ve akış sahibi yönetir; diğerleri okur
+  const yetkili = Z.sahip === ben || (ajanMi(Z.sahip, Z.sahip_tip) && (!Z.agent_sahibi || Z.agent_sahibi === ben)) || akisSahibi;
+  const tetikYok = !!tetikler.data && !(tetikler.data.tetikler || []).length;
+  // karar 6–7: aynı düğme planı (AI yapsın, Engeli kaldır, Yeniden aç); karar alt görevinde karar formu hemen altta
+  const plan = eylemPlani({ a: Z, ben, acikAlt: 0, tetikYok, akisSahibi, alt: true, claudeYok });
+  const altPlan = { ...plan, ana: plan.ana === 'karar_ver' ? null : plan.ana };
   const t = bitti ? (Z.durum_at ? `bitti ${gunAy(Date.parse(Z.durum_at))}` : '–') : Z.en_erken_bitis ? `en erken ${gunAyHafta(Date.parse(Z.en_erken_bitis))}` : 'öncülleri bitince';
   const kisiler: { ad: string; tip: string }[] = (d.sahipler || []).map((x: any) => ({ ad: x.ad, tip: x.tip }));
   if (!kisiler.some((x) => x.ad === Z.sahip)) kisiler.unshift({ ad: Z.sahip, tip: Z.sahip_tip });
   const notlar = (Z.olaylar || []).filter((e: any) => e.tip === 'not' && e.ozet).slice(0, 3);
   const id = `alt-${z.no}`;
+  const kilitli = bitti || yaz.isPending || !yetkili;
   return (
-    <div className="gd-alt-icerik">
-      {/* durum: yalnız kendi alt görevin ve sırası geldiyse */}
-      {benim && sirada && <div className="gd-alt-durum" role="group" aria-label="Durum">
-        {Z.durum !== 'suruyor' && <button type="button" className="gd-alt-ekle-dugme ikincil" disabled={yaz.isPending} onClick={() => yaz.mutate({ durum: 'suruyor' })}>Başladım</button>}
-        {Z.durum !== 'engelli' && <button type="button" className="gd-alt-ekle-dugme ikincil" aria-expanded={engelAc} disabled={yaz.isPending} onClick={() => setEngelAc(!engelAc)}>Takıldım</button>}
-        {!Z.karar_adimi && <button type="button" className="gd-alt-ekle-dugme" disabled={yaz.isPending} onClick={() => yaz.mutate({ durum: 'tamam' })}>Bitti</button>}
-      </div>}
-      {engelAc && <form className="gd-alt-ekle" onSubmit={(e) => { e.preventDefault(); const v = engel.trim(); if (v) yaz.mutate({ durum: 'engelli', engel: v }, { onSuccess: () => { setEngelAc(false); setEngel(''); } }); }}>
-        <input className="alan" value={engel} onChange={(e) => setEngel(e.target.value)} placeholder="Ne ya da kim bekleniyor?" aria-label="Neye takıldın" maxLength={160} />
-        <button type="submit" className="gd-alt-ekle-dugme" disabled={!engel.trim() || yaz.isPending}>Kaydet</button>
-      </form>}
+    <div className="gd-alt-icerik" ref={kok}>
+      {q.data && <EylemCubugu a={Z} kod={kod} plan={altPlan} kucuk ustNo={ustNo}
+        ciktiEkle={() => (kok.current?.querySelector('.gd-alt-cikti input[type=file]') as HTMLInputElement | null)?.click()}
+        baglantiAc={() => setPaylas((x) => !x)} />}
+      {paylas && <BaglantiSatiri kod={kod} kisi={Z.sahip} kisiId={Z.sahip_kisi_id || (d.sahipler || []).find((x: any) => x.ad === Z.sahip)?.kisi_id} adimSayisi={d.adimlar.filter((x: any) => x.sahip === Z.sahip).length} kapat={() => setPaylas(false)} />}
+      {!yetkili && !bitti && <p className="gd-satir">Bu alt görevi {kisaAd(ajanMi(Z.sahip, Z.sahip_tip) && Z.agent_sahibi ? Z.agent_sahibi : Z.sahip)} ve çalışma alanının sahibi yönetir; sen not ekleyebilirsin.</p>}
       <dl className="gd-liste">
         <div><dt><label htmlFor={`${id}-sahip`}>Sahip</label></dt><dd>
-          <select id={`${id}-sahip`} className="gd-alt-secim" value={Z.sahip} disabled={bitti || yaz.isPending} onChange={(e) => { const k = kisiler.find((x) => x.ad === e.target.value); if (k) yaz.mutate({ sahip: k.ad, sahip_tip: k.tip }); }}>
+          <select id={`${id}-sahip`} className="gd-alt-secim" value={Z.sahip} disabled={kilitli} onChange={(e) => { const k = kisiler.find((x) => x.ad === e.target.value); if (k) yaz.mutate({ sahip: k.ad, sahip_tip: k.tip }); }}>
             {kisiler.map((k) => <option key={k.ad} value={k.ad}>{k.ad}</option>)}
           </select>
           {ajanMi(Z.sahip, Z.sahip_tip) && Z.agent_sahibi ? <small> {kisaAd(Z.agent_sahibi)} adına</small> : null}
@@ -408,7 +423,7 @@ function AltGorevIcerik({ kod, z, d, ben, ustNo }: { kod: string; z: any; d: any
         <div><dt>Durum</dt><dd>{Z.durum_etiket || Z.durum}{Z.engel ? ` · ${Z.engel}` : ''}</dd></div>
         <div><dt>Bitiş</dt><dd>{t}</dd></div>
         <div><dt><label htmlFor={`${id}-son`}>Son tarih</label></dt><dd>
-          <input id={`${id}-son`} type="date" className="gd-alt-secim" value={(Z.son_tarih || '').slice(0, 10)} disabled={bitti || yaz.isPending} onChange={(e) => { if (e.target.value) yaz.mutate({ son_tarih: e.target.value }); }} />
+          <input id={`${id}-son`} type="date" className="gd-alt-secim" value={(Z.son_tarih || '').slice(0, 10)} disabled={kilitli} onChange={(e) => { if (e.target.value) yaz.mutate({ son_tarih: e.target.value }); }} />
         </dd></div>
         {Z.kriter && <div><dt>Kabul kriteri</dt><dd>{Z.kriter}</dd></div>}
       </dl>

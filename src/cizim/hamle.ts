@@ -36,28 +36,33 @@ export function kisiRengi(ad: string, o: { tip?: string; sahibi?: string | null;
   return PALET[hash(ad) % PALET.length];
 }
 
-export type HamleTur = 'bitir' | 'karar' | 'onayla' | 'engel';
+export type HamleTur = 'bitir' | 'karar' | 'onayla' | 'engel' | 'kur';
 export interface Hamle { tur: HamleTur; kim: string; renk: string; etiket: string }
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
-const ETIKET: Record<HamleTur, string> = { bitir: 'Bitir', karar: 'Karar ver', onayla: 'Onayla', engel: 'Engeli kaldır' };
+const ETIKET: Record<HamleTur, string> = { bitir: 'Bitir', karar: 'Karar ver', onayla: 'Onayla', engel: 'Engeli kaldır', kur: 'AI yapsın’ı kur' };
 
-/** Hamle kimde ve ne? Sıradaki (henüz başlayamayan) ve biten işte hamle yok. */
-export function hamle(a: any, o: { renkler?: Record<string, string> } = {}): Hamle | null {
+/**
+ * Hamle kimde ve ne? Sıradaki (henüz başlayamayan) ve biten işte hamle yok.
+ * 9 Kas (harita denetimi A1, A2): AI yapsın açık işte sıra AI'dadır; AI çalışırken ya da sırasını beklerken kimseden bir şey
+ * beklenmez. Bakan kişi agent'ın sahibiyse ve Claude rutini yoksa (`rutinYok`) iş kendiliğinden başlamaz: hamle "kur",
+ * sahibinin renginde.
+ */
+export function hamle(a: any, o: { renkler?: Record<string, string>; ben?: string; rutinYok?: boolean } = {}): Hamle | null {
   if (BITTI(a.durum) || a.durum === 'sirada') return null;
   const agent = a.sahip_tip === 'agent';
   const insan = agent ? a.agent_sahibi || a.sahip : a.sahip;
-  const ai = a.oto ? a.oto_durum : null;
+  const ai = a.oto ? a.oto_durum || 'sirada' : null;
   let tur: HamleTur | null = null;
   if (ai === 'bakilacak') tur = 'onayla';
   else if (a.durum === 'engelli' || ai === 'hata') tur = 'engel';
-  else if (ai === 'calisiyor' || ai === 'bekliyor') tur = null;
+  else if (ai) tur = o.rutinYok && o.ben && insan === o.ben && a.durum === 'hazir' && ai === 'sirada' ? 'kur' : null;
   else if (a.karar_adimi) tur = 'karar';
   else if (a.durum === 'hazir' || a.durum === 'suruyor') tur = 'bitir';
   if (!tur) return null;
-  const kim = tur === 'onayla' ? insan : agent && tur === 'bitir' ? insan : a.sahip;
+  const kim = tur === 'onayla' || tur === 'kur' ? insan : agent && tur === 'bitir' ? insan : a.sahip;
   return { tur, kim, renk: kisiRengi(kim, { tip: kim === a.sahip ? a.sahip_tip : 'insan', sahibi: a.agent_sahibi, renkler: o.renkler }), etiket: ETIKET[tur] };
 }
-const IC: Record<HamleTur, (s: number, c: string) => string> = { bitir: SIMGE.unlem, karar: SIMGE.soru, onayla: SIMGE.goz, engel: SIMGE.simsek };
+const IC: Record<HamleTur, (s: number, c: string) => string> = { bitir: SIMGE.unlem, karar: SIMGE.soru, onayla: SIMGE.goz, engel: SIMGE.simsek, kur: SIMGE.kivilcim };
 /** Düğmenin ve damlanın simgesi. */
 export const hamleSimgesi = (t: HamleTur, s = 1.15, c = '#08222E') => IC[t](s, c);
 /** Haritadaki damla: gezegenin tam üstünde. */

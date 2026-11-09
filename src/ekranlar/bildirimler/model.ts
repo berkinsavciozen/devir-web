@@ -42,6 +42,8 @@ export function olayFiili(e: any): string {
   }
   if (e.adim_no == null) return sistem ? (e.tip === 'akis_kapandi' ? 'Akış kapandı' : 'Akışta değişiklik') : `${kisa(e.kim)} ${AKIS_FIIL[e.tip] || 'akışı güncelledi'}`;
   if (sistem) return e.tip === 'not' ? 'Devir not düştü' : 'Devir güncelledi';
+  // 9 Kas (düğme tablosu karar 3): "Hatırlat" düğmesinin notu
+  if (e.tip === 'not' && /^Hatırlatma:/.test(String(e.ozet || ''))) return `${kisa(e.kim)} hatırlattı`;
   return `${kisa(e.kim)} ${TIP_FIIL[e.tip] || 'güncelledi'}`;
 }
 
@@ -51,7 +53,7 @@ export function olayAciklamasi(e: any): string | null {
   const c = o.match(/·\s*çıktı:\s*(.+)$/);
   if (c) return c[1].split(/[:(—]/)[0].trim();
   if (e.tip === 'durum' && e.durum !== 'engelli') return null;
-  o = o.replace(/^ilerleme:\s*/i, '').replace(/^Adım \d+[^:;]*[:;]\s*/i, '').replace(/\s*\([^)]*\)/g, '').trim();
+  o = o.replace(/^Hatırlatma:\s*/, '').replace(/^ilerleme:\s*/i, '').replace(/^Adım \d+[^:;]*[:;]\s*/i, '').replace(/\s*\([^)]*\)/g, '').trim();
   const ilk = o.split(/(?<=[.;])\s/)[0].replace(/[.;]$/, '').trim();
   return ilk || null;
 }
