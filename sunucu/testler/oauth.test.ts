@@ -56,6 +56,16 @@ const arac = (name: string, args: any) => rpc("tools/call", { name, arguments: a
   // bearer_kabul_edilir
   x = await istek("", { auth: "dv_eski", body: rpc("tools/list") });
   ok(x.st === 200 && x.j.result.tools.length > 0, "bearer_kabul_edilir");
+  // 0.35.0: her araç işaretli (ChatGPT, Gemini, Le Chat okuma aracını onaysız çalıştırır)
+  {
+    const A = x.j.result.tools as any[], bul = (n: string) => A.find((t) => t.name === n)?.annotations;
+    ok(A.every((t) => t.annotations && typeof t.annotations.readOnlyHint === "boolean" && typeof t.annotations.destructiveHint === "boolean"), "her araçta readOnlyHint ve destructiveHint var");
+    ok(bul("devir_akis")?.readOnlyHint === true && bul("devir_akislar")?.readOnlyHint === true, "okuma araçları readOnlyHint");
+    ok(bul("devir_adim_guncelle")?.readOnlyHint === false && bul("devir_adim_guncelle")?.destructiveHint === false, "adım güncelleme yazan, yıkıcı değil");
+    ok(bul("devir_karar_ver")?.destructiveHint === true && bul("devir_akis_kapat")?.destructiveHint === true, "karar ve kapanış yıkıcı");
+  }
+  x = await istek("", { auth: "dv_eski", body: rpc("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "t", version: "1" } }) });
+  ok(x.j.result?.protocolVersion === "2025-11-25", "2025-11-25 protokolü kabul edilir");
 
   // suresi_dolmus_anahtar_401, iptal_anahtar_401
   x = await istek("", { auth: "dv_suresi", body: rpc("tools/list") });

@@ -4,7 +4,7 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, referansBilgisi, beklemeYonlendir, agentBaglantisi, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.34.0";
+export const SURUM = "0.35.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
 export const SEMA = "20261106160000_s034_agent_rutin";
 async function semaDurumu(db: DB) {
@@ -17,7 +17,7 @@ import type { Depo } from "./dosya.ts";
 import { bekleyenleriSifrele, type Sifre } from "./baglanti.ts";
 import { ANAHTAR_MS, TEKRAR_MS, birKez, hizSiniri, karma, llmButcesi, sirali, yazanArac } from "./islem.ts";
 
-const PROTOS = ["2025-06-18", "2025-03-26", "2024-11-05"];
+const PROTOS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const CORS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, content-type, accept, mcp-session-id, mcp-protocol-version, x-client-info, apikey, x-devir-alan, x-devir-baglanti, idempotency-key",
@@ -27,8 +27,19 @@ const CORS: Record<string, string> = {
   "Access-Control-Max-Age": "86400",
 };
 const ISLEM_ID = { type: "string", description: "İsteğe bağlı işlem kimliği. Aynı çağrıyı yeniden denerken (zaman aşımı, bağlantı kopması) aynı değeri ver: Devir ikinci kez yazmaz, ilk sonucu döner." };
+/**
+ * Araç işaretleri (MCP annotations, 0.35.0): ChatGPT, Gemini, Le Chat ve Perplexity okuma aracını onaysız çalıştırır,
+ * yazanı kullanıcıya sorar; işaretsiz araç yazan sayılır ve her çağrıda onay ister. Geri alınamayanlar yıkıcı.
+ */
+const OKUYAN = new Set(["devir_akislar", "devir_akis", "devir_adim_oku", "devir_cikti_oku", "devir_kurallar", "devir_ai_isler"]);
+const YIKICI = new Set(["devir_karar_ver", "devir_akis_kapat"]);
+export const isaretler = (t: any) => ({
+  title: t.title || t.name,
+  readOnlyHint: OKUYAN.has(t.name), destructiveHint: YIKICI.has(t.name), idempotentHint: OKUYAN.has(t.name), openWorldHint: false,
+  ...(t.annotations || {}),
+});
 /** Yazan araçlara islem_id (P1-B); okuma araçları olduğu gibi. */
-const ARACLAR = TOOLS.map((t: any) => (yazanArac(t.name, { islem: true }) ? { ...t, inputSchema: { ...t.inputSchema, properties: { ...(t.inputSchema.properties || {}), islem_id: ISLEM_ID } } } : t));
+const ARACLAR = TOOLS.map((t: any) => ({ ...t, annotations: isaretler(t) })).map((t: any) => (yazanArac(t.name, { islem: true }) ? { ...t, inputSchema: { ...t.inputSchema, properties: { ...(t.inputSchema.properties || {}), islem_id: ISLEM_ID } } } : t));
 const json = (body: unknown, status = 200, ek: Record<string, string> = {}) => new Response(JSON.stringify(body), { status, headers: { ...CORS, "Content-Type": "application/json", ...ek } });
 
 async function sha256(s: string) {

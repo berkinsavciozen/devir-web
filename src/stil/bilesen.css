@@ -227,6 +227,9 @@
 .segment button { position: relative; }
 /* dolgu da dokunma alanı: 36 px çizim, 44 px hedef */
 .segment button::after { content: ""; position: absolute; inset: -4px 0; }
+/* 0.35.0: altı uygulama, iki satır üçer */
+.segment.uyg-secici { height: 96px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px 4px; border-radius: 24px; }
+.segment.uyg-secici button { height: 40px; }
 .segment button.secili { background: var(--renk-vurgu-seftali); color: var(--renk-metin-koyu-uzerine); font-weight: 750; }
 .adim-durum { position: relative; height: 540px; }
 .yapilacak { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
