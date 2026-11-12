@@ -7,7 +7,10 @@ import { olcekliKur, TAU } from '../geometri/zaman-olcegi';
 import { kurKol } from '../geometri/kol-geometri';
 import { haritaBicimi } from '../geometri/kol-bayrak';
 import { C, destekGemisi, f, pill, planet, ship, kapi, yildiz } from './ortak.js';
-import { hamle as hamleOf, damla, kisiRengi } from './hamle';
+import { hamle as hamleOf, damla, kisiRengi, SIMGE } from './hamle';
+import { kisiDurumu } from './kisi-durumu';
+/** 12 Kas taslak (harita durum denetimi): ?durum=yeni ile gemi = kişi durumu, bekleme ipi, robot durumları */
+const DURUM_YENI = (() => { try { return new URLSearchParams(globalThis.location?.search || '').get('durum') === 'yeni'; } catch { return false; } })();
 
 export const GUN = 864e5;
 const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -246,6 +249,25 @@ function spiralYolu(G, now, m, yk, kapali) {
   return s;
 }
 
+/**
+ * Taslak (12 Kas): gemi rozeti kişinin durumunu söyler. Kum saati bekliyor, "3g" gelecek (kaç gün sonra), tik işi bitti,
+ * "+2g" geç, kırmızı çerçeve engel ya da AI hatası, saat AI sırada, yanıp sönen halka AI çalışıyor.
+ */
+function kisiRozeti(d, p, sc, renk, kind, X, u) {
+  const k = sc / .78, bx = p.x + 11 * k, by = p.y - 12 * k, R = 6 * k;
+  const daire = (ic, bg = '#08222E', st = renk) => `<g transform="translate(${f(bx)},${f(by)})"><circle r="${f(R)}" fill="${bg}" stroke="${st}" stroke-width="${f(1.1 * k)}"/>${ic}</g>`;
+  const yazi = (t, bg, col) => { const w = (t.length * 4.6 + 6) * k; return `<g transform="translate(${f(bx)},${f(by)})"><rect x="${f(-w / 2)}" y="${f(-R)}" width="${f(w)}" height="${f(2 * R)}" rx="${f(R)}" fill="${bg}"/><text y="${f(2.6 * k)}" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="${f(7.5 * k)}" fill="${col}">${t}</text></g>`; };
+  let s = '';
+  if (d.durum === 'engel' || d.durum === 'ai_hata') s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(15 * k)}" fill="none" stroke="#FF5A5A" stroke-width="${f(1.8 * k)}"/>`;
+  if (d.durum === 'ai_calisiyor') s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(15 * k)}" fill="none" stroke="${renk}" stroke-width="${f(1.4 * k)}" class="dongu-nabiz"/>`;
+  if (d.gecGun > 0 && !['bitti', 'gelecek', 'bekliyor'].includes(d.durum)) return s + yazi(`+${d.gecGun}g`, '#FF5A5A', '#FFF6E0');
+  if (d.durum === 'bekliyor') s += daire(`<path d="M${f(-2.4 * k)},${f(-3.2 * k)} H${f(2.4 * k)} L${f(-2.4 * k)},${f(3.2 * k)} H${f(2.4 * k)}Z" fill="none" stroke="${renk}" stroke-width="${f(1 * k)}" stroke-linejoin="round"/>`);
+  else if (d.durum === 'gelecek') { const g = Math.max(1, Math.ceil((u.t0 - X) / GUN)); s += yazi(`${g}g`, '#08222E', renk); }
+  else if (d.durum === 'bitti') s += daire(SIMGE.tik(1.1 * k, '#08222E'), renk, '#08222E');
+  else if (d.durum === 'ai_sirada') s += daire(SIMGE.saat(1.05 * k, renk));
+  return s;
+}
+
 export function yolCiz(M, o = {}) {
   const F = M.F, NOWx = o.now, X = o.x ?? NOWx, ps = o.ps ?? 1, kucuk = o.lod === 'kucuk';
   const AK = M.AK;
@@ -334,7 +356,7 @@ export function yolCiz(M, o = {}) {
     L[u.ad] += t;
   }
   // devir ipi (plan 27 Eki, 3.11): görevin sahibinin renginden devralanın rengine geçen ince ok
-  if (o.ip !== false) G.ipler.forEach((ip, i) => {
+  if (o.ip !== false && !(G.spiral && (o.durumYeni ?? DURUM_YENI))) G.ipler.forEach((ip, i) => {
     const p = G.konumAn(ip.uye, ip.t), g = G.gezegen[ip.no]; if (!p || !g) return;
     const L0 = Math.hypot(p.x - g.x, p.y - g.y); if (L0 < 6) return;
     // ok kısa kalır (en çok 34 px): devralanın yönünü gösterir, haritayı boydan boya kesmez
@@ -418,7 +440,17 @@ export function yolCiz(M, o = {}) {
   const gemiler = [], GEMI = {};
   // W2 (4 Kas, K1): agent kişinin desteğidir; sahibinin gemisi haritadaysa robot ona kısa bir kolla yapışık çizilir
   const destek = ajanSahipleri(F.steps), gorunen = {};
-  if (o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
+  const YENI = G.spiral && (o.durumYeni ?? DURUM_YENI), KD = {};
+  // taslak: her üye her an haritada; yeri ve rozeti kisiDurumu'ndan
+  if (YENI && o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
+    if (u.hayalet || (o.sis && o.focus !== u.ad)) continue;
+    const d = kisiDurumu(u.kendi, byNo, (n) => stOf(n), (n) => G.gezegen[n]?.t ?? 0, X, u.t0);
+    if (d.no == null || !G.gezegen[d.no]) continue;
+    KD[u.ad] = d;
+    const q = G.konumAn(u.ad, Math.max(X, u.t0)) || G.pT(G.gezegen[d.no].t);
+    gorunen[u.ad] = { u, p: { x: q.x, y: q.y, yon: q.yon } };
+  }
+  if (!YENI && o.ships !== false && !F.kapandi) for (const u of G.uyeler) {
     if (u.hayalet || (o.sis && o.focus !== u.ad)) continue;
     const acik = u.ziyaret.some((no) => !BIT(byNo[no].durum)) || X < u.tSon;
     const p0 = G.konumAn(u.ad, X); if (!p0 || !acik) continue;
@@ -439,8 +471,8 @@ export function yolCiz(M, o = {}) {
       const { u } = gorunen[ad];
       const aktif = u.kendi.filter((no) => G.gezegen[no] && ONCE[stOf(no)] != null).sort((a, b) => ONCE[stOf(a)] - ONCE[stOf(b)] || G.gezegen[a].t - G.gezegen[b].t)[0];
       const biten = u.kendi.filter((no) => G.gezegen[no] && BIT(byNo[no].durum) && G.gezegen[no].t <= X).sort((a, b) => G.gezegen[b].t - G.gezegen[a].t)[0];
-      const no = aktif ?? biten;
-      if (aktif == null) soluk[ad] = true;
+      const no = KD[ad] ? KD[ad].no : aktif ?? biten;
+      if (KD[ad] ? ['gelecek', 'bekliyor', 'bitti'].includes(KD[ad].durum) : aktif == null) soluk[ad] = true;
       if (no == null) { const q = G.konumAn(ad, u.t0); if (q) gorunen[ad].p = { ...q, demir: true }; continue; }
       yer[ad] = no; sayac[no] = (sayac[no] || 0) + 1;
     }
@@ -478,7 +510,7 @@ export function yolCiz(M, o = {}) {
   for (const ad of Object.keys(gorunen)) {
     const { u, p } = gorunen[ad];
     const kind = u.tip === 'agent' ? 'agent' : u.tip === 'dis' ? 'dis' : 'insan';
-    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK * (soluk[u.ad] ? .78 : 1);
+    const sc = (o.shipSc ?? .78) * Math.min(ps, 1.4) * OK * (KD[u.ad]?.durum === 'bitti' ? .66 : soluk[u.ad] ? .78 : 1);
     // zaman spiralinde agent kendi işinin gezegeninde, ayrı bir robot gemi (sahibine ip yok: ipler haritayı keserdi)
     const ev = !G.spiral && kind === 'agent' && destek[u.ad] && destek[u.ad] !== u.ad ? gorunen[destek[u.ad]] : null;
     if (ev && ev.u.tip !== 'agent') continue; // sahibinin gemisiyle birlikte çizilir
@@ -499,7 +531,9 @@ export function yolCiz(M, o = {}) {
       gemiler.push({ ad: a.ad, tip: 'agent', x: p.x + dx, y: p.y + dy, sc: sc * .72, destek: u.ad });
       g = destekGemisi(p.x, p.y, dx, dy, o.sis && o.focus !== a.ad ? '#9C8BE0' : UYE_RENK(a), sc, { ip: true, yon: q.yon, alev: X <= NOWx }) + g;
     });
-    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${soluk[u.ad] ? .55 : X > NOWx ? .75 : 1}">` + g + '</g>';
+    if (KD[u.ad]) g += kisiRozeti(KD[u.ad], p, sc, renk, kind, X, u);
+    const sol = KD[u.ad] ? ({ gelecek: .42, bekliyor: .62, bitti: .6 })[KD[u.ad].durum] : null;
+    GEMI[u.ad] = (GEMI[u.ad] || '') + `<g opacity="${sol ?? (soluk[u.ad] ? .55 : X > NOWx ? .75 : 1)}">` + g + '</g>';
   }
   // W7: kritik yol beyaz noktalı zincir (açık gezegenler zaman sırasıyla); uzakta çizilmez
   if (!o.uzak && !F.kapandi && o.kritikZincir !== false) {
@@ -508,6 +542,22 @@ export function yolCiz(M, o = {}) {
   }
   for (const u of G.uyeler) { const d = dim(u.ad); if (d) s += `<g opacity="${o.sel ? Math.min(d, .55) : d}" ${o.sis && o.focus !== u.ad ? 'filter="url(#blur2)"' : ''}>${L[u.ad]}</g>`; }
   // katman (B22): gemi > gezegen > spiral; gemiler bütün gezegenlerin üstünde
+  // taslak: bekleme ipi (bekleyen gemiden onu tutan işe) ve onay ipi (onay bekleyen robottan sahibinin gemisine)
+  if (YENI) for (const ad of Object.keys(KD)) {
+    const d = KD[ad], G0 = gorunen[ad]; if (!G0) continue;
+    const col = UYE_RENK(G0.u);
+    if (d.durum === 'bekliyor' && d.tutan != null && G.gezegen[d.tutan] && ['run', 'wait', 'block'].includes(stOf(d.tutan))) {
+      const g = G.gezegen[d.tutan], p = G0.p, L0 = Math.hypot(g.x - p.x, g.y - p.y); if (L0 < 20) continue;
+      const ux = (g.x - p.x) / L0, uy = (g.y - p.y) / L0, r0 = radOf(d.tutan) + 4, bx = g.x - ux * r0, by = g.y - uy * r0, ok = 5 * m13;
+      s += `<path d="M${f(p.x + ux * 12)},${f(p.y + uy * 12)} L${f(bx)},${f(by)}" stroke="${col}" stroke-width="${f(1.3 * m13)}" stroke-dasharray="1 ${f(3.5 * m13)}" stroke-linecap="round" opacity=".9"/>`
+        + `<path d="M${f(bx)},${f(by)} L${f(bx - ux * ok - uy * ok * .6)},${f(by - uy * ok + ux * ok * .6)} L${f(bx - ux * ok + uy * ok * .6)},${f(by - uy * ok - ux * ok * .6)}Z" fill="${col}" opacity=".9"/>`;
+    }
+    const sah = destek[ad];
+    if (d.durum === 'ai_onay' && sah && gorunen[sah]) {
+      const a = G0.p, b = gorunen[sah].p, oc = UYE_RENK(gorunen[sah].u);
+      s += `<path d="M${f(a.x)},${f(a.y)} L${f(b.x)},${f(b.y)}" stroke="${oc}" stroke-width="${f(1.4 * m13)}" stroke-dasharray="${f(5 * m13)} ${f(3 * m13)}" opacity=".85"/>`;
+    }
+  }
   for (const u of G.uyeler) { const d = dim(u.ad); if (d && GEMI[u.ad]) s += `<g opacity="${o.sel ? Math.min(d, .55) : d}">${GEMI[u.ad]}</g>`; }
   s += ust;
   if (G.kule && o.kule !== false) {
