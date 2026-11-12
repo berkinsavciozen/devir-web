@@ -1,4 +1,4 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { git } from '../yonlendirme';
 import { Gok, useBoyut } from './Gok';
 import { Zil } from './Zil';
@@ -14,6 +14,7 @@ export const masaustu = (w: number, h: number) => w >= 1024 && h >= 600;
 export function useMasaustu() { const b = useBoyut(); return masaustu(b.w, b.h); }
 
 const PanelBaglam = createContext(false);
+
 /** Panelin içinde mi (masaüstü kabuğu)? */
 export const usePanelIcinde = () => useContext(PanelBaglam);
 
@@ -39,12 +40,82 @@ const ArtiIkon = () => (
 );
 const GeriIkon = () => <svg aria-hidden width="36" height="36" viewBox="-18 -18 36 36"><circle r="18" fill="var(--renk-zemin-kart)" stroke="#FFFFFF" strokeOpacity=".14" /><path d="M3,-6 L-4,0 L3,6" stroke="var(--renk-metin-ink)" strokeWidth="2" fill="none" strokeLinecap="round" /></svg>;
 
-/** Panelin üst çubuğu (N9): solda geri ve konum, sağda zil, ayarlar ve yeni iş. */
-export function PanelUst({ geri, konum, sag = true }: { geri?: () => void; konum?: string; sag?: boolean }) {
+/**
+ * Panel başlığı tek (12 Kas, Tek Pano P4): sayfanın kendi büyük başlığı (ilk h1; Tek Pano'da başlık satırındaki h2)
+ * panelde gizlenir, metni üst çubuğa çıkar; altındaki içerik başlığın yeri kadar yukarı kayar.
+ */
+function usePanelBasligi(etkin: boolean) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [metin, setMetin] = useState<string | null>(null);
+  // sayfanın başlık yanındaki kendi geri düğmesi: panelde gizlenir, üst çubuğun geri düğmesi onu tıklar
+  const [geri, setGeri] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    const kok = ref.current;
+    if (!kok || !etkin) { setMetin(null); setGeri(null); return; }
+    let son: HTMLElement | null = null, sonGeri: HTMLElement | null = null;
+    const bak = () => {
+      const h = kok.querySelector<HTMLElement>('h1, .tek-pano-ust h2');
+      setMetin(h?.textContent?.trim() || null);
+      // içerik sonradan dolar (veri gelince): kayma her değişimde, kayma kalkmış hâliyle yeniden ölçülür
+      const once = kok.style.getPropertyValue('--baslik-kayma');
+      kok.style.removeProperty('--baslik-kayma');
+      if (h !== son) {
+        if (son) delete son.dataset.panelBasligi;
+        if (sonGeri) delete sonGeri.dataset.panelBasligi;
+        son = h; sonGeri = null; setGeri(null);
+      }
+      if (!h) return;
+      void kok.offsetHeight;
+      h.dataset.panelBasligi = '1';
+      const r = h.getBoundingClientRect(), orta = (r.top + r.bottom) / 2;
+      if (!sonGeri || !kok.contains(sonGeri)) for (const e of kok.querySelectorAll<HTMLElement>('button')) {
+        const q = e.getBoundingClientRect();
+        if (q.right <= r.left + 2 && q.top <= orta && q.bottom >= orta) { sonGeri = e; e.dataset.panelBasligi = '1'; setGeri(e); break; }
+      }
+      // başlığın altındaki ilk öğe panel başlığının hemen altına çıkar; Tek Pano'da Liste/Zaman satırı kalır
+      const kokUst = kok.getBoundingClientRect().top - kok.scrollTop;
+      let alt = Infinity;
+      // başlık satırında sağda düğme varsa (Taslak'ta Plan, Vazgeç) satır kalır, yalnız başlık metni gizlenir
+      const sagda = [...kok.querySelectorAll('button')].some((e) => { const q = e.getBoundingClientRect(); return q.height > 0 && q.left >= r.right - 2 && q.top <= orta && q.bottom >= orta; });
+      if (sagda) alt = Math.min(r.top, ...[...kok.querySelectorAll('button')].map((e) => e.getBoundingClientRect()).filter((q) => q.height > 0 && q.left >= r.right - 2 && q.top <= orta && q.bottom >= orta).map((q) => q.top));
+      else if (h.tagName === 'H1') {
+        const satirAlti = Math.max(r.bottom, sonGeri ? sonGeri.getBoundingClientRect().bottom : r.bottom);
+        for (const e of kok.querySelectorAll('h2, h3, p, button, [role=tablist], [role=list], textarea, .kart, .sahne-metin')) {
+          if (h.contains(e) || e === sonGeri) continue;
+          const q = e.getBoundingClientRect();
+          if (q.height && q.top >= satirAlti - 2 && q.top < alt) alt = q.top;
+        }
+      } else alt = (h.closest('.tek-pano-ust') || h).getBoundingClientRect().top;
+      const yeni = alt < Infinity ? Math.max(0, Math.round(alt - kokUst - 10)) + 'px' : once;
+      if (yeni) kok.style.setProperty('--baslik-kayma', yeni);
+    };
+    bak();
+    const g = new MutationObserver(bak);
+    g.observe(kok, { childList: true, subtree: true, characterData: true });
+    return () => { g.disconnect(); if (son) delete son.dataset.panelBasligi; if (sonGeri) delete sonGeri.dataset.panelBasligi; };
+  }, [etkin]);
+  return { ref, metin, geri };
+}
+
+/** Panel başlığı (P4): üst çubuğun altında tek satır; alt sayfada önünde küçük yol ("Ayarlar ›"). */
+function PanelBaslik({ konum, baslik }: { konum?: string; baslik?: string | null }) {
+  const P = (konum || '').split(' › ').filter(Boolean);
+  const buyuk = baslik && !P.slice(0, -1).includes(baslik) ? baslik : P[P.length - 1];
+  if (!buyuk) return null;
+  const yol = P.slice(0, -1);
+  return <h1 className="panel-baslik">{yol.length > 0 && <small>{yol.join(' › ')} ›</small>}{buyuk}</h1>;
+}
+
+/**
+ * Panelin üst çubuğu (N9): solda geri, sağda Devir AI, Pano, Bildirimler, ayarlar ve yeni iş. Sayfa başlığı (P4)
+ * çubuğun altında PanelBaslik'ta.
+ */
+export function PanelUst({ geri, konum, sag = true, kucuk }: { geri?: () => void; konum?: string; sag?: boolean; kucuk?: boolean }) {
   return (
     <div className="panel-ust">
       {geri && <button type="button" className="panel-geri" aria-label={konum ? `Geri: ${konum}` : 'Geri'} onClick={geri}><GeriIkon /></button>}
-      {konum && <span className="panel-konum">{konum}</span>}
+      {/* akış haritası, görev detayı ve Devir AI'da konum küçük yol olarak kalır; diğer sayfalarda başlık çubuğun altında (P4) */}
+      {kucuk && konum ? <span className="panel-konum">{konum}</span> : <span className="panel-bosluk" />}
       {sag && <span className="panel-ust-sag">
         <DevirAiDugme />
         <Zil y={0} kabukta aktif={/^\/(pano|bildirimler)/.test(location.pathname)} stil={{ position: 'relative', right: 'auto', left: 'auto' }} />
@@ -62,11 +133,14 @@ export function PanelUst({ geri, konum, sag = true }: { geri?: () => void; konum
 export function KabukPanel({ X, H, geri, konum, children }: { X: number; H: number; geri?: () => void; konum?: string; children: ReactNode }) {
   // Devir AI açıksa panelin içeriği sohbettir (plan 28 Eki, Q1); geri sayfaya döner
   const ai = useAiAcik();
+  const baslik = usePanelBasligi(!ai && !!konum);
+  const bMetin = baslik.metin, bGeri = baslik.geri ? () => baslik.geri!.click() : undefined;
   return (
     <aside className="kabuk-panel" style={{ left: X, width: PANEL_EN, height: H }} aria-label={ai ? 'Devir AI' : konum || 'Panel'}>
-      <PanelUst geri={ai ? devirAiKapat : geri} konum={ai ? 'Devir AI' : konum} />
-      <div className="kabuk-panel-icerik">
-        <PanelBaglam.Provider value>{ai ? <DevirAiPanel /> : children}</PanelBaglam.Provider>
+      <PanelUst geri={ai ? devirAiKapat : geri || bGeri} konum={ai ? 'Devir AI' : konum} kucuk={ai} />
+      {!ai && konum && <PanelBaslik konum={konum} baslik={bMetin} />}
+      <div className="kabuk-panel-icerik" ref={baslik.ref}>
+        <div className="kabuk-panel-sarma"><PanelBaglam.Provider value>{ai ? <DevirAiPanel /> : children}</PanelBaglam.Provider></div>
       </div>
     </aside>
   );

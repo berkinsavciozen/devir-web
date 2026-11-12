@@ -739,6 +739,13 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .panel-ust { position: relative; flex: none; height: 76px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 18px; }
 .panel-geri { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 22px; flex: none; }
 .panel-konum { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 650; letter-spacing: .3px; color: var(--renk-metin-ink3); }
+.panel-bosluk { flex: 1; }
+.panel-baslik { flex: none; margin: -6px 0 0; padding: 0 24px 6px; font: 700 24px/30px var(--font-serif); color: var(--renk-metin-ink); overflow-wrap: break-word; }
+.panel-baslik small { margin-right: 6px; font: 650 15px/30px var(--font-sans); letter-spacing: .3px; color: var(--renk-metin-ink3); }
+.kabuk-panel-icerik [data-panel-basligi] { visibility: hidden; }
+.kabuk-panel-sarma { margin-top: calc(-1 * var(--baslik-kayma, 0px)); }
+.kabuk-panel .tek-pano-ust h2[data-panel-basligi] { display: none; }
+.kabuk-panel .tek-pano-ust { justify-content: flex-end; }
 .panel-ust-sag { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .panel-ust-sag .zil-dugme { position: relative; top: auto; }
 .panel-ayarlar { position: relative; }

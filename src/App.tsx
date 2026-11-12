@@ -82,7 +82,7 @@ function Uygulama({ yol }: { yol: string }) {
   const genis = masaustu(boy.w, boy.h);
   const panel = (sayfa: JSX.Element, konum: string, o: { aktif?: KabukSekme; serbest?: boolean; geri?: string } = {}) =>
     genis ? <Evren ben={b} panel={sayfa} konum={konum} aktif={o.aktif ?? null} serbest={o.serbest} geri={o.geri ? () => git(o.geri!) : undefined} /> : sayfa;
-  if (yol === '/bagla') return panel(<ClaudeaBagla ben={b} />, 'Bağla', { geri: '/ayarlar' });
+  if (yol === '/bagla') return panel(<ClaudeaBagla ben={b} />, 'Ayarlar › Bağla', { geri: '/ayarlar' });
   if (yol === '/' || yol === '') return <><Evren ben={b} /><IlkTanitim /></>;
   if (yol === '/hesap') return <Yonlen yol="/ayarlar?bolum=ben" />;
   if (yol === '/ayarlar') return panel(<Ayarlar />, 'Ayarlar', { geri: '/' });
