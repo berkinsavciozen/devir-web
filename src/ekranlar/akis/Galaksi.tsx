@@ -475,7 +475,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         </div>
         {/* panelin üstü (N9): seçili adımdan akışa geri, konum; zil, ayarlar, yeni iş */}
         <div style={{ position: 'absolute', left: GD.PX, top: 0, width: GD.W - GD.PX }}>
-          <PanelUst geri={ai ? devirAiKapat : secim != null ? () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : undefined} konum={ai ? 'Devir AI' : panelKonum} />
+          <PanelUst geri={ai ? devirAiKapat : secim != null ? () => git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : undefined} konum={ai ? 'Devir AI' : panelKonum} kucuk={!ai} />
         </div>
         <YuzenGezinme aktif="akislar" solEn={GD.PX} />
         {kontroller}
