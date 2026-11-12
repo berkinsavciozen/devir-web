@@ -102,7 +102,8 @@ export function senEki(c: string): string {
   const u = (s: string) => { for (let i = s.length - 1; i >= 0; i--) if ('aeıioöuü'.includes(s[i])) return s[i]; return 'e'; };
   const d4 = (s: string) => { const v = u(s); return 'aı'.includes(v) ? 'ı' : 'ei'.includes(v) ? 'i' : 'ou'.includes(v) ? 'u' : 'ü'; };
   let y = f;
-  if (/(malı|meli|yor|acak|ecek)$/.test(f)) y = f.replace(/(acak|ecek)$/, (m) => m.slice(0, -1) + 'ğ') + 's' + d4(f) + 'n';
+  // -acak/-ecek ünsüzle gelen ekte yumuşamaz: "netleştirecek" → "netleştireceksin" ("-eceğsin" değil)
+  if (/(malı|meli|yor|acak|ecek)$/.test(f)) y = f + 's' + d4(f) + 'n';
   else if (/(dı|di|du|dü|tı|ti|tu|tü)$/.test(f)) y = f + 'n';
   w[w.length - 1] = y;
   const s = w.join(' ');

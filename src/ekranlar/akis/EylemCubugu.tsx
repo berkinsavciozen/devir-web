@@ -5,8 +5,8 @@ import { api } from '../../api/istemci';
 import { sorguIstemcisi } from '../../api/sorgular';
 import { Dugme } from '../../bilesen/Dugme';
 import { ship } from '../../cizim/ortak.js';
-import { kisaAd } from '../../cizim/yol.js';
-import { ozelEk } from '../../metin/turkce';
+import { gunAy, kisaAd } from '../../cizim/yol.js';
+import { ozelEk, tarihEk } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { duzeltIstemi, eylemAdi, EYLEM_AD, hatirlatilan, hatirlatmaNotu, RED_NEDENLERI, type Eylem, type EylemPlani } from './eylemler';
 import { sohbetLinki, useSohbet } from './sohbet';
@@ -41,6 +41,8 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
   const [menuAcik, setMenuAcik] = useState(false);
   const [engelAc, setEngelAc] = useState(false);
   const [engel, setEngel] = useState('');
+  const [tarihAc, setTarihAc] = useState(false);
+  const [tarih, setTarih] = useState('');
   const [bilgi, setBilgi] = useState<string | null>(null);
   // P4 (0.33.0): AI çıktısına geri bildirim; geri_gonder yorum ister, reddet neden ister (hazır nedenler + ek)
   const [geri, setGeri] = useState<null | 'geri_gonder' | 'reddet'>(null);
@@ -54,7 +56,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
     addEventListener('keydown', kapat); addEventListener('pointerdown', kapat);
     return () => { removeEventListener('keydown', kapat); removeEventListener('pointerdown', kapat); };
   }, [menuAcik]);
-  useEffect(() => { setEngelAc(false); setBilgi(null); setMenuAcik(false); setGeri(null); setNeden(null); setYorum(''); }, [a.no]);
+  useEffect(() => { setEngelAc(false); setTarihAc(false); setBilgi(null); setMenuAcik(false); setGeri(null); setNeden(null); setYorum(''); }, [a.no]);
   const geriMetni = () => (geri === 'reddet' ? [neden, yorum.trim()].filter(Boolean).join(': ') : yorum.trim());
   const geriGonder = () => {
     const v = geriMetni(); if (!v || !geri) return;
@@ -87,7 +89,8 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
       }
       case 'hatirlat': return yaz.mutate({ not: hatirlatmaNotu(a) }, { onSuccess: () => setBilgi(`${kisaAd(hatirlatilan(a))} bildirim aldı.`) });
       case 'oturum': return ac(a.oto_oturum);
-      case 'engel_bildir': return setEngelAc((x) => !x);
+      case 'engel_bildir': setTarihAc(false); return setEngelAc((x) => !x);
+      case 'tarih_degistir': setEngelAc(false); setTarih((a.son_tarih || '').slice(0, 10)); return setTarihAc((x) => !x);
       case 'engel_kaldir': case 'yeniden_ac': return yaz.mutate({ durum: 'hazir' });
       case 'oto_ac': return yaz.mutate({ oto: true });
       case 'oto_kur': return git('/ayarlar?bolum=ben&kur=ai');
@@ -110,7 +113,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
     }
   };
   const ad = (e: Eylem) => (e === 'baglanti' ? `${ozelEk(kisaAd(a.sahip), 'e')} bağlantı gönder` : eylemAdi(e, U));
-  const mesgul = (e: Eylem | null) => !!e && yaz.isPending && !['claude', 'claude_dusun', 'karar_ver', 'oturum', 'cikti_ekle', 'oto_kur', 'baglanti', 'onizle', 'duzelt', 'engel_bildir', 'geri_gonder', 'reddet'].includes(e);
+  const mesgul = (e: Eylem | null) => !!e && yaz.isPending && !['claude', 'claude_dusun', 'karar_ver', 'oturum', 'cikti_ekle', 'oto_kur', 'baglanti', 'onizle', 'duzelt', 'engel_bildir', 'tarih_degistir', 'geri_gonder', 'reddet'].includes(e);
 
   const { ana, ikincil, menu } = plan;
   if (!ana && !ikincil && !menu.length && !children) return null;
@@ -118,6 +121,10 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
       {engelAc && <form className="gd-alt-ekle gd-engel" onSubmit={(e) => { e.preventDefault(); const v = engel.trim(); if (v) yaz.mutate({ durum: 'engelli', engel: v }, { onSuccess: () => { setEngelAc(false); setEngel(''); } }); }}>
         <input className="alan" value={engel} autoFocus onChange={(e) => setEngel(e.target.value)} placeholder="Ne ya da kim bekleniyor?" aria-label="Neye takıldın" maxLength={160} />
         <button type="submit" className="gd-alt-ekle-dugme" disabled={!engel.trim() || yaz.isPending}>Kaydet</button>
+      </form>}
+      {tarihAc && <form className="gd-alt-ekle gd-tarih" onSubmit={(e) => { e.preventDefault(); if (tarih) yaz.mutate({ son_tarih: tarih }, { onSuccess: () => { setTarihAc(false); setBilgi(`Son tarih ${tarihEk(gunAy(Date.parse(tarih + 'T12:00:00+03:00')), 'e')} alındı; takvim buna göre yeniden kuruldu.`); } }); }}>
+        <input className="alan" type="date" value={tarih} autoFocus onChange={(e) => setTarih(e.target.value)} aria-label="Yeni son tarih" />
+        <button type="submit" className="gd-alt-ekle-dugme" disabled={!tarih || tarih === (a.son_tarih || '').slice(0, 10) || yaz.isPending}>Kaydet</button>
       </form>}
       {geri && <form className="gd-alt-ekle gd-geri" aria-label={EYLEM_AD[geri]} onSubmit={(e) => { e.preventDefault(); geriGonder(); }}>
         {geri === 'reddet' && <div className="gd-geri-nedenler" role="radiogroup" aria-label="Red nedeni">
@@ -137,7 +144,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
     return (
       <div className="gd-alt-eylem">
         {L.length > 0 && <div className="gd-alt-durum" role="group" aria-label="Eylemler">
-          {L.map((e) => <button key={e} type="button" className={`gd-alt-ekle-dugme${e === ana ? '' : ' ikincil'}`} aria-expanded={e === 'engel_bildir' ? engelAc : e === 'geri_gonder' || e === 'reddet' ? geri === e : undefined}
+          {L.map((e) => <button key={e} type="button" className={`gd-alt-ekle-dugme${e === ana ? '' : ' ikincil'}`} aria-expanded={e === 'engel_bildir' ? engelAc : e === 'tarih_degistir' ? tarihAc : e === 'geri_gonder' || e === 'reddet' ? geri === e : undefined}
             disabled={mesgul(e)} onClick={() => calis(e)}>{ad(e)}</button>)}
         </div>}
         {formlar}
