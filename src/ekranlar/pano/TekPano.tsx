@@ -40,7 +40,8 @@ export function panoBolumleri(L: any[], olaylar: any[], o: { ben: string; now: n
   const senden = al(acik.filter((a) => { const h = hamle(a); return h && h.kim === o.ben; }).sort((p, r) => tarih(p) - tarih(r)));
   const riskte = al(acik.filter(kapsam).filter((a) => a.durum === 'engelli' || takvimIhlali(a) || (a.son_tarih && tarihMs(a.son_tarih) < o.now)).sort((p, r) => tarih(p) - tarih(r)));
   const yakin = al(acik.filter(kapsam).filter((a) => tarih(a) - o.now < 7 * GUN).sort((p, r) => tarih(p) - tarih(r)));
-  const degisim = topla(olaylar).filter((t) => t.e.adim_no != null && !t.sira).filter((t) => { if (!o.kisi) return true; const a = o.adimBul(t.e.akis, t.e.adim_no); return t.e.kim === o.kisi || (a ? kapsam(a) : false); }).slice(0, en).map((t) => {
+  // K3: Pano son birkaç hareketi gösterir (en çok 5); tamamı Bildirimler'de
+  const degisim = topla(olaylar).filter((t) => t.e.adim_no != null && !t.sira).filter((t) => { if (!o.kisi) return true; const a = o.adimBul(t.e.akis, t.e.adim_no); return t.e.kim === o.kisi || (a ? kapsam(a) : false); }).slice(0, Math.min(en, 5)).map((t) => {
     const a = o.adimBul(t.e.akis, t.e.adim_no) || { akis: t.e.akis, no: t.e.adim_no, ad: t.e.adim_ad || '', durum: 'hazir', sahip: t.e.kim };
     const acik2 = olayAciklamasi(t.e);
     return { a: { ...a, akis: t.e.akis }, key: t.ids.join('-'), yeni: t.ids.some((i) => o.yeniler?.has(i)), not: [olayFiili(t.e), acik2, t.n > 1 ? `${t.n} hareket` : null, saat(Date.parse(t.e.zaman))].filter(Boolean).join(' · ') };
@@ -194,6 +195,8 @@ export function TekPano({ ben, akis, akisAdi, kapat, baslik, kisiSecimi, ust, on
           {b.satirlar.length ? <ul className="gd-kartlar">{b.satirlar.map((x) => (
             <li key={x.key} className={x.yeni ? 'yeni' : undefined}>{kart(x.a, x.not, x.yeni)}</li>))}</ul>
           : <p className="gd-satir">{b.bos}</p>}
+          {/* K3: son birkaç hareket burada; tamamı Bildirimler'de */}
+          {b.id === 'degisim' && <button type="button" className="metin-baglanti pano-akim-baglanti" onClick={() => git(`/bildirimler?sekme=tum${akis ? `&akis=${enc(akis)}` : ''}`)}>Bildirimler’de tümü</button>}
         </section>
       ))}
       {alt}

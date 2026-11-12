@@ -1356,3 +1356,11 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .pano-akim .satir-kart { position: relative; width: 100%; height: 60px; }
 .pano-akim-baglanti { display: inline-flex; align-items: center; height: 44px; font-size: 14px; font-weight: 650; }
 .veri-durumu.akim { position: relative; top: auto !important; left: auto !important; right: auto; margin-top: 22px; }
+
+/* Bildirimler (12 Kas, Tek Pano P3): akan sayfa, görev olayları görev kartıyla */
+.bildirim-baslik { margin: 0; font: 700 26px/32px var(--font-serif); color: var(--renk-metin-ink); }
+.bildirim-segment { margin-top: 14px; }
+.pano-cipler.akim { position: relative; left: auto; right: auto; margin: 12px -20px 0; }
+.bildirim-liste { margin-top: 4px; }
+.bildirim-sayfa .gd-kartlar > li > .satir-kart { position: relative; width: 100%; height: 60px; }
+.bildirim-sayfa .satir-metin b .okunmamis-nokta { margin-right: 6px; }
