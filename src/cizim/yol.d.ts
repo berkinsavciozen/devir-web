@@ -2,7 +2,7 @@
 import type { Galaksi } from '../geometri/galaksi-geometri';
 type O = Record<string, any>;
 export interface Model { F: { kod: string; baslik: string; kapandi: number | null; steps: { no: number; ad: string; sahip: string; tip?: string; durum: string; dep: number[]; karar: boolean }[] }; AK: any; sahip?: string; detay: any }
-export interface YolSonuc { svg: string; G: Galaksi; P: Record<number, [number, number]>; radOf: (no: number) => number; stOf: (no: number) => string; clusters?: number[][]; secim?: string; RENK: Record<string, string>; gemiler?: { ad: string; tip: string; x: number; y: number; sc: number }[]; ikonlar?: { tur: 'bayrak' | 'bulut'; no: number; x: number; y: number }[]; uydular?: { no: number; ust: number; x: number; y: number; r: number }[] }
+export interface YolSonuc { svg: string; G: Galaksi; P: Record<number, [number, number]>; radOf: (no: number) => number; stOf: (no: number) => string; clusters?: number[][]; secim?: string; RENK: Record<string, string>; gemiler?: { ad: string; tip: string; x: number; y: number; sc: number }[]; ikonlar?: { tur: 'bayrak' | 'bulut'; no: number; x: number; y: number }[]; uydular?: { no: number; ust: number; x: number; y: number; r: number }[]; KD?: Record<string, import('./kisi-durumu').KisiDurumu> }
 export const GUN: number;
 export function tl(ms: number): Date;
 export function gunAy(ms: number): string;
@@ -26,3 +26,4 @@ export function uydular(x: number, y: number, r: number, kalemler: { ad: string;
 export function yolCiz(M: Model, o?: O): YolSonuc;
 export function zamanCubugu(x: number, y: number, w: number, G: Galaksi, X: number, o?: O): { svg: string; xOf: (t: number) => number; tOf: (px: number) => number; x0: number; x1: number; t0: number; t1: number };
 export function otoRozet(a: any): 'bekliyor' | 'calisiyor' | 'bakilacak' | 'hata' | null;
+export function kisiRozeti(d: { durum: string; gecGun: number }, p: { x: number; y: number }, sc: number, renk: string, kind: string, X: number, u: { t0: number }): string;

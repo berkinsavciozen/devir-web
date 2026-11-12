@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
 import { destekGemisi, planet, ship, kapi } from '../../cizim/ortak.js';
-import { otoRozet } from '../../cizim/yol.js';
+import { otoRozet, kisiRozeti } from '../../cizim/yol.js';
+import { haritaBicimi } from '../../geometri/kol-bayrak';
 import { acik, damla, type HamleTur } from '../../cizim/hamle';
 import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
 import { yuzeyKodlamalari, type Yuzey } from '../../geometri/kodlama';
@@ -44,6 +45,40 @@ const SATIRLAR: Satir[] = [
   [planet(22, 22, 9, 'lit', { life: false, halka: SEN, sonuc: 'belge' }), 'Çıktı', 'Belge rozeti: işin teslim ettiği bir şey var', 'cikti', 'Yol'],
   [kapi(22, 34, .34, true), 'Hedef tarih', 'Varış kapısı; dokununca pay ve kritik yol', undefined, 'Yol'],
 ];
+/**
+ * Zaman spiralinin dili (12 Kas, harita durum denetimi D1–D4): gemi = kişi. Gemi o anki ya da sıradaki işinin yanında durur,
+ * rozeti durumunu söyler; bekleme ipi onu tutan işe, onay ipi robottan sahibine gider. Eski haritada eski satırlar kalır.
+ */
+const rz = (durum: string, kind: 'insan' | 'agent' = 'insan', gecGun = 0) => (kind === 'agent' ? ship(18, 26, 0, 'agent', 'B', SEN, .55, { flame: false }) : ship(18, 26, -12, 'insan', 'B', SEN, .55, { flame: false }))
+  + kisiRozeti({ durum, gecGun }, { x: 18, y: 26 }, .55 * 1.25, SEN, kind, 0, { t0: 3 * 864e5 });
+const ip = (kesik: boolean) => `<path d="M6,34 L36,12" stroke="${SEN}" stroke-width="1.5" ${kesik ? 'stroke-dasharray="5 3"' : 'stroke-dasharray="1 3.5" stroke-linecap="round"'}/>${kesik ? '' : '<path d="M36,12 L30,13.5 L33,18Z" fill="' + SEN + '"/>'}`;
+const SPIRAL_KIM: Satir[] = [
+  [ship(22, 22, -12, 'insan', 'B', SEN, .62, { flame: false }), 'Kişi', 'Kapsül, penceresinde baş harfi. O an yaptığı ya da sıradaki işinin yanında durur', 'insan', 'Kim'],
+  [ship(22, 22, 0, 'agent', 'B', acik(SEN), .62, { flame: false }), 'Agent', 'Robot, sahibinin renginin açık tonu; kendi işinin yanında durur', 'agent', 'Kim'],
+  [ship(22, 24, 0, 'dis', '', O, .6), 'Dış katılımcı', 'Balon; yalnız kendi işlerini görür', 'dis', 'Kim'],
+  [`<g opacity=".62">${rz('bekliyor')}</g>`, 'Bekliyor', 'Silik gemi, kum saati: başkasının işini bekliyor', undefined, 'Kim'],
+  [`<g opacity=".42">${rz('gelecek')}</g>`, 'Sırası gelecek', 'Silik gemi; kaç gün sonra başlayacağı yazar', undefined, 'Kim'],
+  [`<g opacity=".6">${rz('bitti')}</g>`, 'İşi bitti', 'Küçük gemi, tik: bu akışta açık işi kalmadı', undefined, 'Kim'],
+  [rz('calisiyor', 'insan', 2), 'Geç kalıyor', 'Kırmızı gün sayısı: açık işinin tarihi geçti', undefined, 'Kim'],
+  [rz('engel'), 'Takıldı', 'Kırmızı çerçeve: işi engelli', undefined, 'Kim'],
+  [rz('ai_sirada', 'agent'), 'AI sırada', 'Saat: AI yapsın açık, iş robotun sırasını bekliyor', undefined, 'Kim'],
+  [rz('ai_calisiyor', 'agent'), 'AI çalışıyor', 'Robotun çevresinde nabız atan halka', 'ai', 'Kim'],
+  [planet(22, 22, 9, 'dark', { life: false, halka: acik(SEN), agentIsi: true }), 'Agent’ın işi', 'Gezegenin halkası kesik', undefined, 'Kim'],
+  [planet(22, 22, 9, 'dark', { life: false, halka: [SEN, O] }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak', 'Kim'],
+];
+const SPIRAL_BAG: Satir[] = [
+  [yol(SEN), 'Kişinin şeridi', 'Herkes aynı spiral yolda kendi renkli şeridinde; yol boyu tarih', undefined, 'Yol'],
+  [ip(false), 'Bekleme ipi', 'Noktalı, kişinin renginde: bekleyen gemiden onu tutan işe', undefined, 'Yol'],
+  [ip(true), 'Onay ipi', 'Kesik: onay bekleyen robottan sahibinin gemisine', 'ai_onay', 'Yol'],
+  [`<path d="M10,34 L34,10" stroke="#FFC9A3" stroke-width="2.4" stroke-linecap="round"/>`, 'Bugün', 'Yolun enine şeftali çentik; geride kalan bant aydınlık', undefined, 'Yol'],
+];
+const SPIRAL_SATIRLAR: Satir[] = [
+  ...SATIRLAR.filter(([, , , , g]) => g === 'Hamle' || g === 'Işık'),
+  ...SPIRAL_KIM, ...SPIRAL_BAG,
+  ...SATIRLAR.filter(([, ad, , , g]) => g === 'Yol' && !['Geride kalan yol'].includes(ad)),
+];
+const GRUP_AD_SPIRAL: Record<Grup, string> = { Kim: 'Kim nerede', Işık: 'İş', Hamle: 'Hamle', Yol: 'Bağ ve zaman' };
+const GRUP_ALT_SPIRAL: Record<Grup, string> = { Kim: 'Gemi kişiyi, rozeti durumunu söyler', Işık: 'Gezegenin ışığı işin durumu', Hamle: 'Damlanın rengi kimin, simgesi hangi düğme', Yol: 'Kim kimi bekliyor, zaman nerede' };
 const GRUPLAR: Grup[] = ['Hamle', 'Işık', 'Kim', 'Yol'];
 const GRUP_ALT: Record<Grup, string> = { Hamle: 'Damlanın rengi kimin, simgesi hangi düğme', Işık: 'Durum renksizdir, ışıkla okunur', Kim: 'Renk yalnız kişiyi söyler', Yol: 'Zaman ve bağlar' };
 
@@ -89,7 +124,8 @@ function OdakSecici({ o, b, setB }: { o: OdakAyar; b: Bekleyen; setB: (b: Bekley
 export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vurgula }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar; vurgula?: (an: LejantAnahtar) => void }) {
   // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
   const K = yuzeyKodlamalari(yuzey).filter((k) => k.durum === 'var');
-  const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SATIRLAR;
+  const SP = haritaBicimi() === 'spiral';
+  const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SP ? SPIRAL_SATIRLAR : SATIRLAR;
   const baslik = yuzey === 'evren' ? 'Evren dili' : 'Harita dili';
   const y0 = Math.max(60, 844 - (SATIRLAR_.length * 52 + K.length * 40 + 150 + (odak ? 150 : 0)));
   // seçim kutuda bekler; Uygula haritaya geçirir, Vazgeç bırakır
@@ -102,8 +138,8 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
       <div className="lejant">
         {odak && <OdakSecici o={odak} b={b} setB={setB} />}
         <h2 className="lejant-baslik">{baslik}</h2>
-        {(yuzey === 'evren' ? [null] : GRUPLAR).map((gr) => <div key={gr || 'evren'}>
-        {gr && <h3 className="lejant-alt-baslik">{gr}<small> · {GRUP_ALT[gr]}</small></h3>}
+        {(yuzey === 'evren' ? [null] : SP ? (['Kim', 'Işık', 'Hamle', 'Yol'] as Grup[]) : GRUPLAR).map((gr) => <div key={gr || 'evren'}>
+        {gr && <h3 className="lejant-alt-baslik">{SP ? GRUP_AD_SPIRAL[gr] : gr}<small> · {(SP ? GRUP_ALT_SPIRAL : GRUP_ALT)[gr]}</small></h3>}
         <ul aria-label={gr ? `${gr} işaretleri` : 'Harita işaretleri'}>
           {/* yalnız bu haritada olan işaretler (plan 27 Eki, 3.32): sayısı 0 olan satır gösterilmez */}
           {SATIRLAR_.filter(([, , , an, g]) => (!gr || g === gr) && !(an && sayilar && sayilar[an] === 0)).map(([svg, ad, alt, an]) => {
@@ -128,7 +164,7 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
             ) : <li key={ad} title={`${ad}: ${alt}`}>{ic}</li>;
           })}
         </ul></div>)}
-        {yuzey === 'galaksi' && <p className="lejant-not">Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.</p>}
+        {yuzey === 'galaksi' && <p className="lejant-not">{SP ? 'Merkez akışın başlangıcı, spiralin sonu hedef tarih. Yol boyunca günler eşit aralıklı; pazartesiler tarihli.' : 'Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.'}</p>}
         <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
         <dl className="lejant-kodlama">
           {K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k[yuzey]}</dd></div>)}

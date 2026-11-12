@@ -1,5 +1,5 @@
 /**
- * Kişi durumu (12 Kas, harita durum denetimi P1 taslağı): bir üyenin (insan, dış, agent) belli bir andaki tek durumu.
+ * Kişi durumu (12 Kas, harita durum denetimi P1): bir üyenin (insan, dış, agent) belli bir andaki tek durumu.
  * Gemi = kişi: harita, lejant ve panel bu işlevden okur. Sıra: engel, hamle, çalışıyor, bekliyor, gelecek, bitti.
  */
 export type KisiDurum = 'gelecek' | 'bekliyor' | 'sira' | 'calisiyor' | 'karar' | 'engel' | 'bitti'
@@ -35,3 +35,9 @@ export function kisiDurumu(kendi: number[], byNo: Record<number, Adim>, gorsel: 
   const tutan = tutanlar.sort((a, b) => t(b) - t(a))[0] ?? null;
   return { durum: an < t0 && tutan == null ? 'gelecek' : tutan != null ? 'bekliyor' : 'gelecek', no: sonraki, tutan, gecGun: 0 };
 }
+
+/** Kişiler listesi ve lejant için kısa ad (harita rozetleriyle aynı sözlük). */
+export const KISI_DURUM_AD: Record<KisiDurum, string> = {
+  gelecek: 'sırası gelecek', bekliyor: 'bekliyor', sira: 'sırası geldi', calisiyor: 'çalışıyor', karar: 'karar verecek',
+  engel: 'takıldı', bitti: 'işi bitti', ai_sirada: 'AI sırada', ai_calisiyor: 'AI çalışıyor', ai_onay: 'onay bekliyor', ai_hata: 'AI yapamadı',
+};

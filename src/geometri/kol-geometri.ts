@@ -39,7 +39,7 @@ export const SPIRAL = Object.freeze({
 
 /** sy: spiral dikeyde bu kadar uzar (telefonda boş kalan dikey alanı doldurur; 1 = daire) */
 export interface KolSecenek extends KurSecenek { ajanSahibi?: Record<string, string>; bicim?: 'kol' | 'spiral'; sy?: number }
-export interface SpiralBilgi { spiral: true; bant: number; seritAra: number; tBas: number; tBit: number; pT: (t: number, kay?: number) => { x: number; y: number; yon: number } }
+export interface SpiralBilgi { spiral: true; sy: number; bant: number; seritAra: number; tBas: number; tBit: number; pT: (t: number, kay?: number) => { x: number; y: number; yon: number } }
 
 export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol?: true; rT: (t: number) => number; RH: number; RS: number } & Partial<SpiralBilgi> {
   const cx = o.cx ?? 0, cy = o.cy ?? 0, R = o.R ?? 100, ps = o.ps ?? 1, simdi = o.simdi ?? Date.now();
@@ -182,6 +182,6 @@ export function kurKol(akis: GirdiAkis, o: KolSecenek = {}): Galaksi & { kol?: t
   const seritX = (t: number, x0: number, pxGun: number) => x0 + (t - T0) / GUN * pxGun;
   // aynı ana düşen gezegenler kol yönünde aralanır (kur() ile aynı kural)
   ayrikla(gezegen, R / (o.R0 ?? R), (no) => { const p = nokta(byNo[no].sahip, gezegen[no].t); return [Math.cos(p.yon), Math.sin(p.yon)]; });
-  const ek = SP ? { spiral: true as const, bant, seritAra, tBas: T0, tBit, pT } : { kol: true as const };
+  const ek = SP ? { spiral: true as const, bant, seritAra, tBas: T0, tBit, pT, sy } : { kol: true as const };
   return { ...ek, rT, RH, RS, cx, cy, R, ps, k, b: 0, T0, tSon, payGun, hedef: akis.hedef, kapandi: akis.kapandi, simdi, uyeler, uyeOf, gezegen, ipler, kule, kuyruk, gec, kuleUye, byNo, konumAn, kesit, durumAn, kumeler, seritX, haric };
 }
