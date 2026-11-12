@@ -7,11 +7,12 @@ import { api, ApiHatasi } from '../../api/istemci';
 import { simdi } from '../../api/ortam';
 import { GorevKart } from '../../bilesen/GorevKart';
 import { UstDugmeler, useOlaylar } from '../../bilesen/Zil';
-import { hamle } from '../../cizim/hamle';
-import { saat } from '../../cizim/yol.js';
-import { akisAdi as akisAdiMetni } from '../../metin/turkce';
-import { arama, git } from '../../yonlendirme';
+import { hamle, kisiRengi } from '../../cizim/hamle';
+import { gunAy, kisaAd, saat } from '../../cizim/yol.js';
+import { adimAdi, akisAdi as akisAdiMetni } from '../../metin/turkce';
+import { arama, git, useSorgu } from '../../yonlendirme';
 import { usePanelIcinde } from '../../bilesen/Kabuk';
+import { useOzet } from '../../api/sorgular';
 import { Sahne } from '../../bilesen/Sahne';
 import { AltGezinme } from '../../bilesen/AltGezinme';
 import { takvimIhlali } from '../akis/Adim';
@@ -50,6 +51,49 @@ export function panoBolumleri(L: any[], olaylar: any[], o: { ben: string; now: n
   ];
 }
 
+
+/** Zaman görünümü (12 Kas, K1): açık görevler tek tarih sırasında; alt görev üst görevinin hemen altında. */
+export interface ZamanGrup { baslik: string; satirlar: { a: any; alt: boolean; key: string }[] }
+export function zamanSirasi(L: any[], now: number): ZamanGrup[] {
+  const acik = L.filter((a) => !BITTI(a.durum));
+  const t = (a: any) => (a.son_tarih ? tarihMs(a.son_tarih) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : Infinity);
+  const sira = (x: any[]) => x.slice().sort((p, r) => t(p) - t(r) || String(p.akis).localeCompare(String(r.akis)) || p.no - r.no);
+  const var_ = new Set(acik.map(anahtar));
+  const ustler = sira(acik.filter((a) => a.ust_adim == null || !var_.has(`${a.akis}:${a.ust_adim}`)));
+  const altlar = (u: any) => sira(acik.filter((a) => a.ust_adim != null && a.akis === u.akis && a.ust_adim === u.no));
+  const bugun = new Date(now); bugun.setHours(0, 0, 0, 0);
+  const grupAdi = (a: any) => { const x = t(a); if (!Number.isFinite(x)) return 'TARİHSİZ'; if (x < bugun.getTime()) return 'GECİKMİŞ'; if (x < bugun.getTime() + GUN) return 'BUGÜN'; return gunAy(x).toLocaleUpperCase('tr'); };
+  const G: ZamanGrup[] = [];
+  for (const u of ustler) {
+    const b = grupAdi(u);
+    let g = G[G.length - 1];
+    if (!g || g.baslik !== b) { g = { baslik: b, satirlar: [] }; G.push(g); }
+    g.satirlar.push({ a: u, alt: false, key: anahtar(u) });
+    for (const c of altlar(u)) g.satirlar.push({ a: c, alt: true, key: anahtar(c) });
+  }
+  return G;
+}
+
+/** Kartın altındaki bağımlılık satırı (12 Kas): beklediği açık görevler (kişi renginde nokta) ve onu bekleyenler. */
+export function bagBilgisi(a: any, d: any): { bekledigi: { ad: string; sahip: string; renk: string }[]; bekleyen: number; kritik: boolean } | null {
+  if (!d?.adimlar || BITTI(a.durum)) return null;
+  const by = new Map<number, any>((d.adimlar as any[]).map((x) => [x.no, x]));
+  const bekledigi = ((a.bagimli || by.get(a.no)?.bagimli || []) as number[]).map((n) => by.get(n)).filter((x) => x && !BITTI(x.durum))
+    .map((x) => ({ ad: adimAdi(x), sahip: x.sahip, renk: kisiRengi(x.sahip, { tip: x.sahip_tip, sahibi: x.agent_sahibi }) }));
+  const bekleyen = ((a.bekleyenler || by.get(a.no)?.bekleyenler || []) as number[]).filter((n) => { const x = by.get(n); return x && !BITTI(x.durum); }).length;
+  if (!bekledigi.length && !bekleyen) return null;
+  return { bekledigi, bekleyen, kritik: (d.kritik_yol || []).includes(a.no) };
+}
+function BagSatiri({ b, ben }: { b: NonNullable<ReturnType<typeof bagBilgisi>>; ben: string }) {
+  const ilk = b.bekledigi[0];
+  return (
+    <small className={`tek-pano-bag${b.kritik ? ' kritik' : ''}`}>
+      {ilk && <span><i className="kisi-nokta" style={{ background: ilk.renk }} aria-hidden />{`← ${ilk.ad} bekleniyor (${ilk.sahip === ben ? 'sen' : kisaAd(ilk.sahip)})${b.bekledigi.length > 1 ? ` +${b.bekledigi.length - 1}` : ''}`}</span>}
+      {b.bekleyen > 0 && <span>{`→ ${b.bekleyen} görev bunu bekliyor`}</span>}
+    </small>
+  );
+}
+
 /** Tek Pano içeriği; `akis` verilirse yalnız o akış. */
 export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: string | null; akisAdi?: string | null; kapat?: () => void }) {
   const NOW = simdi();
@@ -59,7 +103,9 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   const qc = useQueryClient();
   const O: any[] = useMemo(() => (Q.data?.olaylar || []).filter((e: any) => !akis || e.akis === akis), [Q.data, akis]);
   const L: any[] = G.data?.gorevler || [];
-  const kodlar = useMemo(() => [...new Set<string>([...L.map((a) => a.akis), ...O.slice(0, 12).map((e) => e.akis)])], [L, O]);
+  // Zaman bütün açık görevleri (sıradakiler dahil) akışların detayından okur: kapsamdaki bütün etkin akışlar
+  const OZ = useOzet(!akis);
+  const kodlar = useMemo(() => akis ? [akis] : [...new Set<string>([...L.map((a) => a.akis), ...O.slice(0, 12).map((e) => e.akis), ...((OZ.data?.akislar || []) as any[]).map((k) => k.kod)])], [L, O, OZ.data, akis]);
   const detay = useDetaylar(kodlar);
   // açılışta okundu (Bildirimler'deki gibi); bu açılışın yenileri işaretli kalır
   const yeni = useRef<Set<number> | null>(null);
@@ -77,25 +123,42 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   const tam = (a: any) => ({ ...a, ...(adimBul(a.akis, a.no) || {}), akis: a.akis });
   const B = panoBolumleri(L.map(tam), O, { ben, now: NOW, yeniler: yeni.current || undefined, adimBul });
   const yukleniyor = G.isPending && !G.isError;
+  // Liste / Zaman yerinde (12 Kas): sayfa değişmez, adrese yalnız gorunum=zaman yazılır; geri tuşu Liste'ye döner
+  const [gorunum, setGorunum] = useSorgu('gorunum');
+  const zaman = gorunum === 'zaman';
+  const kart = (a: any, not?: string | null, yeniMi?: boolean, altMi?: boolean) => {
+    const bag = bagBilgisi(a, detay[a.akis]);
+    return <>
+      {not && <small className="tek-pano-not">{yeniMi && <i className="okunmamis-nokta" aria-label="Yeni" />}{not}</small>}
+      <GorevKart a={a} d={detay[a.akis]} ben={ben} now={NOW} akisAdi={akis ? null : detay[a.akis]?.akis ? akisAdiMetni(detay[a.akis].akis) : a.akis_kisa_ad || null}
+        className={altMi ? 'alt-girinti' : ''} ac={() => git(`/akis/${enc(a.akis)}/adim/${a.no}`)} />
+      {bag && <BagSatiri b={bag} ben={ben} />}
+    </>;
+  };
   return (
     <div className="tek-pano">
       <div className="tek-pano-ust">
         <h2>{akis && akisAdi ? akisAdi : 'Pano'}</h2>
         <div className="tek-pano-gorunum" role="group" aria-label="Görünüm">
-          <button type="button" aria-pressed="true">Liste</button>
-          <button type="button" aria-pressed="false" onClick={() => git(akis ? `/gorevler?akis=${enc(akis)}&kisi=hepsi` : '/gorevler')}>Zaman</button>
+          <button type="button" aria-pressed={!zaman} onClick={() => zaman && setGorunum(null)}>Liste</button>
+          <button type="button" aria-pressed={zaman} onClick={() => !zaman && setGorunum('zaman')}>Zaman</button>
         </div>
         {akis && kapat && <button type="button" className="filtre-cip tek-pano-suzgec" aria-pressed="true" aria-label="Akış süzgecini kaldır" onClick={kapat}>Yalnız bu akış ×</button>}
       </div>
-      {yukleniyor ? <div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div> : B.map((b) => (
+      {yukleniyor ? <div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div> : zaman ? (() => {
+        const tum = kodlar.flatMap((k) => ((detay[k]?.adimlar || []) as any[]).map((x) => ({ ...x, akis: k })));
+        const Z = zamanSirasi(tum.length ? tum : L.map(tam), NOW);
+        return Z.length ? Z.map((g) => (
+          <section key={g.baslik} className={`tek-pano-bolum z-${g.baslik === 'GECİKMİŞ' ? 'gec' : 'gun'}`} aria-label={g.baslik}>
+            <h3 className="gd-bolum-baslik">{g.baslik}</h3>
+            <ul className="gd-kartlar">{g.satirlar.map((x) => <li key={x.key} className={x.alt ? 'alt' : undefined}>{kart(x.a, null, false, x.alt)}</li>)}</ul>
+          </section>
+        )) : <p className="gd-satir">Açık görev yok.</p>;
+      })() : B.map((b) => (
         <section key={b.id} className={`tek-pano-bolum b-${b.id}`} aria-label={b.baslik}>
           <h3 className="gd-bolum-baslik">{b.baslik}{b.satirlar.length ? ` · ${b.satirlar.length}` : ''}</h3>
           {b.satirlar.length ? <ul className="gd-kartlar">{b.satirlar.map((x) => (
-            <li key={x.key} className={x.yeni ? 'yeni' : undefined}>
-              {x.not && <small className="tek-pano-not">{x.yeni && <i className="okunmamis-nokta" aria-label="Yeni" />}{x.not}</small>}
-              <GorevKart a={x.a} d={detay[x.a.akis]} ben={ben} now={NOW} akisAdi={akis ? null : detay[x.a.akis]?.akis ? akisAdiMetni(detay[x.a.akis].akis) : x.a.akis_kisa_ad || null}
-                ac={() => git(`/akis/${enc(x.a.akis)}/adim/${x.a.no}`)} />
-            </li>))}</ul>
+            <li key={x.key} className={x.yeni ? 'yeni' : undefined}>{kart(x.a, x.not, x.yeni)}</li>))}</ul>
           : <p className="gd-satir">{b.bos}</p>}
         </section>
       ))}

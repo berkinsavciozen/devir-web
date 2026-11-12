@@ -120,3 +120,22 @@ export function eslestir(kalip: string, yol: string): Record<string, string> | n
   }
   return p;
 }
+
+/**
+ * Sayfayı değiştirmeden adres sorgusundaki tek bir değeri okur ve yazar (12 Kas, Tek Pano Liste/Zaman): yazınca geçmişe
+ * kayıt düşer, geri tuşu önceki değere döner; yol aynı kaldığından sayfa yeniden kurulmaz.
+ */
+export function useSorgu(ad: string): [string | null, (deger: string | null) => void] {
+  const [v, setV] = useState(() => arama().get(ad));
+  useEffect(() => {
+    const d = () => setV(arama().get(ad));
+    window.addEventListener('popstate', d); window.addEventListener('hashchange', d); window.addEventListener('devir:yol', d);
+    return () => { window.removeEventListener('popstate', d); window.removeEventListener('hashchange', d); window.removeEventListener('devir:yol', d); };
+  }, [ad]);
+  const yaz = (deger: string | null) => {
+    const q = arama();
+    if (deger == null) q.delete(ad); else q.set(ad, deger);
+    git(yolAl() + (q.toString() ? '?' + q : ''), { gecissiz: true });
+  };
+  return [v, yaz];
+}
