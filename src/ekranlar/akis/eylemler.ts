@@ -7,7 +7,7 @@ import { ozelEk } from '../../metin/turkce';
 export type Eylem =
   | 'bitti' | 'cikti_ekle' | 'ciktisiz_bitir' | 'claude' | 'claude_basla' | 'claude_dusun' | 'basladim' | 'karar_ver' | 'engel_bildir' | 'engel_kaldir'
   | 'oto_ac' | 'oto_kur' | 'oto_kapat' | 'kendim_bitir' | 'oturum' | 'onayla' | 'geri_gonder' | 'reddet' | 'duzelt' | 'kendim_yapacagim'
-  | 'yeniden_dene' | 'yeniden_ac' | 'baglanti' | 'onizle' | 'hatirlat';
+  | 'yeniden_dene' | 'yeniden_ac' | 'baglanti' | 'onizle' | 'hatirlat' | 'tarih_degistir';
 
 /** Sunucudaki INCELEME_TUR_SINIRI ile aynı (sunucu/yurutme.ts). */
 export const INCELEME_TUR_SINIRI = 4;
@@ -88,16 +88,18 @@ export function eylemPlani({ a, ben, acikAlt, tetikYok, akisSahibi = false, alt 
     return yap(tetikYok ? 'oto_kur' : null, claude, ['oto_kapat']);
   }
 
+  // 1. satır önerisi (12 Kas): kendi açık işinde son tarih ⋯ içinden değişir; alt görevin tarihi kendi satırında
+  const tarih: Eylem | null = alt ? null : 'tarih_degistir';
   // 6–7: senin kararın; ana düğme seçenek şeridini açar (karar 2)
   if (a.karar_adimi) {
-    if (a.durum === 'sirada') return BOS;
-    if (a.durum === 'engelli') return yap('engel_kaldir', claude && 'claude_dusun');
-    return yap('karar_ver', claude && 'claude_dusun', ['engel_bildir']);
+    if (a.durum === 'sirada') return yap(null, null, ['engel_bildir', tarih]);
+    if (a.durum === 'engelli') return yap('engel_kaldir', claude && 'claude_dusun', [tarih]);
+    return yap('karar_ver', claude && 'claude_dusun', ['engel_bildir', tarih]);
   }
-  // 1: sırada (öncüller bitmedi): hazırlık için Claude
-  if (a.durum === 'sirada') return yap(null, claude);
+  // 1: sırada (öncüller bitmedi): hazırlık için Claude; engel önceden bildirilir, tarih kaydırılır (1. satır önerisi)
+  if (a.durum === 'sirada') return yap(null, claude, ['engel_bildir', tarih]);
   // 5: engelli
-  if (a.durum === 'engelli') return yap('engel_kaldir', claude);
+  if (a.durum === 'engelli') return yap('engel_kaldir', claude, [tarih]);
   // 2–4: hazır ya da sürüyor. Sırası gelmiş ama başlanmamış işte ikincil "Başladım" (karar 1); Claude bağlantısı varsa
   // "Claude’da başla" hem sohbeti açar hem işi başlatır, "Başladım" ⋯ içinde kalır
   const hazir = a.durum === 'hazir';
@@ -105,9 +107,9 @@ export function eylemPlani({ a, ben, acikAlt, tetikYok, akisSahibi = false, alt 
   const bas = hazir && claude ? 'basladim' : null;
   const bekleniyor = a.cikti_bekleniyor === true || !!a.beklenen_cikti;
   const ciktiVar = (a.ciktilar || []).length > 0 || a.cikti_sayisi > 0;
-  if (ciktiVar) return yap('bitti', 'cikti_ekle', [yan, hazir && claude && 'basladim', 'engel_bildir']);
-  if (bekleniyor) return yap('cikti_ekle', yan, [bas, 'ciktisiz_bitir', 'engel_bildir']);
-  return yap('bitti', yan, [bas, 'engel_bildir']);
+  if (ciktiVar) return yap('bitti', 'cikti_ekle', [yan, hazir && claude && 'basladim', 'engel_bildir', tarih]);
+  if (bekleniyor) return yap('cikti_ekle', yan, [bas, 'ciktisiz_bitir', 'engel_bildir', tarih]);
+  return yap('bitti', yan, [bas, 'engel_bildir', tarih]);
 }
 
 /** Düğme adları; sohbet düğmeleri kişinin bağlı uygulamasının adıyla (9 Kas). */
@@ -133,6 +135,7 @@ export const EYLEM_AD: Record<Eylem, string> = {
   basladim: 'Başladım',
   karar_ver: 'Karar ver',
   engel_bildir: 'Engel bildir',
+  tarih_degistir: 'Tarihi değiştir',
   engel_kaldir: 'Engeli kaldır',
   oto_ac: 'AI yapsın',
   oto_kur: 'AI yapsın’ı kur',

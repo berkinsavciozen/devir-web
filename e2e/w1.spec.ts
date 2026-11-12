@@ -17,7 +17,7 @@ test('W1 · çıktı beklenen iş: ana düğme Çıktı ekle; engel bildirilir v
   await expect(cubuk(page).getByRole('button', { name: 'Çıktı ekle' })).toBeVisible();
   await expect(cubuk(page).getByRole('button', { name: 'Bitti', exact: true })).toHaveCount(0);
   await cubuk(page).getByRole('button', { name: 'Diğer eylemler' }).click();
-  await expect(page.getByRole('menuitem')).toHaveText(['Başladım', 'Çıktısız bitir', 'Engel bildir']);
+  await expect(page.getByRole('menuitem')).toHaveText(['Başladım', 'Çıktısız bitir', 'Engel bildir', 'Tarihi değiştir']);
   await cek(page, 'W1-menu-390');
   await page.getByRole('menuitem', { name: 'Engel bildir' }).click();
   await cubuk(page).getByRole('textbox', { name: 'Neye takıldın' }).fill('Apple geliştirici hesabı onayı');
@@ -27,6 +27,17 @@ test('W1 · çıktı beklenen iş: ana düğme Çıktı ekle; engel bildirilir v
   await cubuk(page).getByRole('button', { name: 'Engeli kaldır' }).click();
   await expect(page.locator('.gd-haplar')).not.toContainText('Engelli');
   await expect(cubuk(page).getByRole('button', { name: 'Çıktı ekle' })).toBeVisible();
+});
+
+test('Düğme tablosu 1. satır: ⋯ Tarihi değiştir son tarihi yazar, takvim yeniden kurulur', async ({ page }) => {
+  await ac(page, '/akis/RTD5/adim/3?senaryo=berkin&hal=w1');
+  await menu(page, 'Tarihi değiştir');
+  const t = cubuk(page).getByLabel('Yeni son tarih');
+  await expect(cubuk(page).getByRole('button', { name: 'Kaydet' })).toBeDisabled();
+  await t.fill('2026-12-15');
+  await cubuk(page).getByRole('button', { name: 'Kaydet' }).click();
+  await expect(cubuk(page).getByRole('status')).toHaveText('Son tarih 15 Ara’ya alındı; takvim buna göre yeniden kuruldu.');
+  await expect(t).toHaveCount(0);
 });
 
 test('W1 · çıktı beklenen iş ⋯ Çıktısız bitir görevi tamamlar; bitmiş görev yeniden açılır', async ({ page }) => {

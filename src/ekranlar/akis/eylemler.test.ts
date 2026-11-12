@@ -8,17 +8,17 @@ const insan = { sahip: ben, sahip_tip: 'insan', ad: 'Rakip listesini çıkar' };
 const agent = { sahip: 'Berkin’in Claude’u', sahip_tip: 'agent', agent_sahibi: ben, ad: 'Rakip tablosunu hazırla' };
 
 describe('W1 düğme matrisi', () => {
-  it('1 · senin işin, sırada: yalnız Claude (hazırlık)', () => expect(p({ ...insan, durum: 'sirada' })).toEqual({ ana: null, ikincil: 'claude', menu: [] }));
-  it('2 · çıktı beklenmiyor: Bitti, Claude’da başla, ⋯ Başladım, Engel bildir', () => expect(p({ ...insan, durum: 'hazir', cikti_bekleniyor: false })).toEqual({ ana: 'bitti', ikincil: 'claude_basla', menu: ['basladim', 'engel_bildir'] }));
+  it('1 · senin işin, sırada: Claude (hazırlık); ⋯ Engel bildir, Tarihi değiştir', () => expect(p({ ...insan, durum: 'sirada' })).toEqual({ ana: null, ikincil: 'claude', menu: ['engel_bildir', 'tarih_degistir'] }));
+  it('2 · çıktı beklenmiyor: Bitti, Claude’da başla, ⋯ Başladım, Engel bildir', () => expect(p({ ...insan, durum: 'hazir', cikti_bekleniyor: false })).toEqual({ ana: 'bitti', ikincil: 'claude_basla', menu: ['basladim', 'engel_bildir', 'tarih_degistir'] }));
   it('2b · karar 1: Claude bağlantısı yoksa ikincil Başladım; sürüyorken Başladım yok', () => {
-    expect(eylemPlani({ a: { ...insan, durum: 'hazir', cikti_bekleniyor: false }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: 'bitti', ikincil: 'basladim', menu: ['engel_bildir'] });
-    expect(p({ ...insan, durum: 'suruyor', cikti_bekleniyor: false })).toEqual({ ana: 'bitti', ikincil: 'claude', menu: ['engel_bildir'] });
+    expect(eylemPlani({ a: { ...insan, durum: 'hazir', cikti_bekleniyor: false }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: 'bitti', ikincil: 'basladim', menu: ['engel_bildir', 'tarih_degistir'] });
+    expect(p({ ...insan, durum: 'suruyor', cikti_bekleniyor: false })).toEqual({ ana: 'bitti', ikincil: 'claude', menu: ['engel_bildir', 'tarih_degistir'] });
   });
-  it('3 · çıktı bekleniyor, yok: Çıktı ekle; Çıktısız bitir ⋯ içinde', () => expect(p({ ...insan, durum: 'suruyor', beklenen_cikti: 'Rapor PDF’i' })).toEqual({ ana: 'cikti_ekle', ikincil: 'claude', menu: ['ciktisiz_bitir', 'engel_bildir'] }));
-  it('4 · çıktı var: Bitti, Çıktı ekle, ⋯ Claude ve Engel', () => expect(p({ ...insan, durum: 'hazir', beklenen_cikti: 'x', ciktilar: [{ id: 1 }] })).toEqual({ ana: 'bitti', ikincil: 'cikti_ekle', menu: ['claude_basla', 'basladim', 'engel_bildir'] }));
-  it('5 · engelli: Engeli kaldır', () => expect(p({ ...insan, durum: 'engelli' })).toEqual({ ana: 'engel_kaldir', ikincil: 'claude', menu: [] }));
-  it('6 · karar 2: senin kararın, hazır: Karar ver; Claude’la düşün', () => expect(p({ ...insan, karar_adimi: true, durum: 'hazir' })).toEqual({ ana: 'karar_ver', ikincil: 'claude_dusun', menu: ['engel_bildir'] }));
-  it('7 · senin kararın, sırada: düğme yok', () => expect(p({ ...insan, karar_adimi: true, durum: 'sirada' })).toEqual({ ana: null, ikincil: null, menu: [] }));
+  it('3 · çıktı bekleniyor, yok: Çıktı ekle; Çıktısız bitir ⋯ içinde', () => expect(p({ ...insan, durum: 'suruyor', beklenen_cikti: 'Rapor PDF’i' })).toEqual({ ana: 'cikti_ekle', ikincil: 'claude', menu: ['ciktisiz_bitir', 'engel_bildir', 'tarih_degistir'] }));
+  it('4 · çıktı var: Bitti, Çıktı ekle, ⋯ Claude ve Engel', () => expect(p({ ...insan, durum: 'hazir', beklenen_cikti: 'x', ciktilar: [{ id: 1 }] })).toEqual({ ana: 'bitti', ikincil: 'cikti_ekle', menu: ['claude_basla', 'basladim', 'engel_bildir', 'tarih_degistir'] }));
+  it('5 · engelli: Engeli kaldır', () => expect(p({ ...insan, durum: 'engelli' })).toEqual({ ana: 'engel_kaldir', ikincil: 'claude', menu: ['tarih_degistir'] }));
+  it('6 · karar 2: senin kararın, hazır: Karar ver; Claude’la düşün', () => expect(p({ ...insan, karar_adimi: true, durum: 'hazir' })).toEqual({ ana: 'karar_ver', ikincil: 'claude_dusun', menu: ['engel_bildir', 'tarih_degistir'] }));
+  it('7 · senin kararın, sırada: yalnız ⋯ Engel bildir, Tarihi değiştir', () => expect(p({ ...insan, karar_adimi: true, durum: 'sirada' })).toEqual({ ana: null, ikincil: null, menu: ['engel_bildir', 'tarih_degistir'] }));
   it('8 · agent işi, AI kapalı: AI yapsın; rutin yoksa kur', () => {
     expect(p({ ...agent, durum: 'hazir', oto: false })).toEqual({ ana: 'oto_ac', ikincil: 'claude', menu: ['kendim_bitir'] });
     expect(p({ ...agent, durum: 'hazir', oto: false }, { tetikYok: true }).ana).toBe('oto_kur');
@@ -65,7 +65,8 @@ describe('W1 düğme matrisi', () => {
   });
   it('dışarıya gönderen agent işi AI yapsın olmaz; kişi kendisi bitirir', () => expect(p({ ...agent, ad: 'Teklifi müşteriye gönder', durum: 'hazir' }).ana).toBe('bitti'));
   it('"Gönderi" gönderme sayılmaz', () => expect(p({ ...agent, ad: 'Gönderi 3’ü hazırla', durum: 'hazir' }).ana).toBe('oto_ac'));
-  it('Claude bağlantısı yoksa Claude düğmesi yok', () => expect(eylemPlani({ a: { ...insan, durum: 'sirada' }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: null, ikincil: null, menu: [] }));
+  it('Claude bağlantısı yoksa Claude düğmesi yok', () => expect(eylemPlani({ a: { ...insan, durum: 'sirada' }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: null, ikincil: null, menu: ['engel_bildir', 'tarih_degistir'] }));
+  it('alt görevde Tarihi değiştir yok (tarih satırı kendi alanında)', () => expect(p({ ...insan, durum: 'sirada' }, { alt: true }).menu).toEqual(['engel_bildir']));
 });
 
 describe('W1 cümleler', () => {
