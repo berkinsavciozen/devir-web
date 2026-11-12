@@ -258,7 +258,7 @@ function Tesekkur({ v, no, kapat, bak }: { v: any; no: number; kapat: () => void
   const ilk = kisiAdi(v.kisi).split(' ')[0];
   const sahip = v.akis?.sahip;
   const gelir = sonraki ? sirasiGelir(v.harita, sonraki.no) : null;
-  const sonrakiAlt = sonraki ? (sonraki.eylemler?.includes('tamam') ? 'Sırası geldi' : gelir ? `Sırası ${tarihEk(gunAy(gelir), 'de')} gelir` : 'Sırası gelince açılır') + (sonraki.son_tarih ? ` · son ${gunAy(Date.parse(sonraki.son_tarih + 'T12:00:00+03:00'))}` : '') : '';
+  const sonrakiAlt = sonraki ? (sonraki.eylemler?.includes('tamam') ? 'Sırası geldi' : gelir ? `Sırası ${tarihEk(gunAy(gelir), 'de')} gelecek` : 'Sırası gelince açılacak') + (sonraki.son_tarih ? ` · son ${gunAy(Date.parse(sonraki.son_tarih + 'T12:00:00+03:00'))}` : '') : '';
   return (
     <Sahne gok={{ tohum: 47, yildiz: 260, bulutsu: [[195, 300, 300, 'neb1']] }} cizim={cizim} etiket="Teşekkürler">
       <UstSatir kisi={v.kisi} />

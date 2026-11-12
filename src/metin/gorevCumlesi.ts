@@ -20,7 +20,7 @@ const ikili = (s: string) => (KALIN.includes(sonUnlu(s)) ? 'a' : 'e');
 /** Tek heceli düzensizler: et → ed-, git → gid-, tat → tad- (ünlüyle başlayan ekten önce). */
 const yumusak = (k: string) => (/^(et|git|tat|güt)$/.test(k) ? k.slice(0, -1) + 'd' : k);
 
-/** "netleştir" → "netleştirmeli" */
+/** "netleştir" → "netleştirmeli" (eski kip; görev cümlesi artık gelecek zamanla kurulur, bkz. gelecek) */
 export const gereklilik = (k: string) => k + 'm' + ikili(k) + 'l' + (ikili(k) === 'a' ? 'ı' : 'i');
 /** "netleştir" → "netleştiriyor", "hazırla" → "hazırlıyor", "et" → "ediyor" */
 export function simdiki(k: string): string {
