@@ -87,7 +87,7 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
 export function kartCumlesi(a: any, ben: string): string {
   const bitis = BITTI(a.durum) ? null : a.son_tarih || a.en_erken_bitis || null;
   const G = gorevCumlesi({ ...a, bitis }, { gun: (x) => gunAy(tarihMs(x)), kisa: (x) => (x === ben ? 'Sen' : kisaAd(x)) });
-  // "Sen" ile çekim: 2. tekil kişi eki ("netleştirmelisin", "netleştiriyorsun", "netleştirdin")
+  // "Sen" ile çekim: 2. tekil kişi eki ("netleştireceksin", "netleştiriyorsun", "netleştirdin")
   const c0 = G.cumle.replace(', Sen onaylayacak', ', sen onaylayacaksın').replace('Sen’in onayını bekliyor', 'onayını bekliyor').replace('Sen’in onayını', 'onayını');
   const c1 = c0.startsWith('Sen ') ? senEki(c0) : c0.replace(/: Sen(,|$| ·)/, ': sende$1').replace(/: Sen bitirdi$/, ': bitirdin');
   // Berkin 16:55: satır sonu tarih ortasından bölünmesin ("2 Kas’a kadar" bir arada)

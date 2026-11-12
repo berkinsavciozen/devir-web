@@ -77,7 +77,7 @@ export function tarihSayisi(a: any): [string, string] {
   if (!a.son_tarih) return a.en_erken_bitis ? [gunAy(Date.parse(a.en_erken_bitis)), 'en erken'] : ['–', 'son tarih'];
   return [gunAy(Date.parse(a.son_tarih + 'T12:00:00+03:00')), takvimIhlali(a) ? `en erken ${gunAy(Date.parse(a.en_erken_bitis))}` : 'son tarih'];
 }
-export const IHLAL_IPUCU = 'Takvim ihlali: bekledikleri ve süresiyle bu adım son tarihinden sonra biter.';
+export const IHLAL_IPUCU = 'Takvim ihlali: bekledikleri ve süresiyle bu adım son tarihinden sonra bitecek.';
 
 export function tuttuklari(adimlar: any[], no: number): number[] {
   const g: number[] = [], q = [no];
@@ -274,8 +274,8 @@ export function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; ko
   const sonraki = (a.bekleyen_adimlar || []).map((b: any) => by.get(b.no)).filter(Boolean)[0];
   const sirada: ReactNode[] = [];
   if (ist) sirada.push(<Satir key="sen" ikon={ship(0, 0, 0, 'insan', (ben[0] || 'S').toLocaleUpperCase('tr'), C.peach, .62, { flame: false })} ust={`Senden bekleniyor · ${sureKisa(a.bekleme_saat)}`} baslik={ist.emir} cizgi="kesik" />);
-  else if (!BITTI(a.durum)) sirada.push(<Satir key="sahip" ikon={IKON.gelecek} ust={`${kisaAd(a.sahip)} · ${a.durum_etiket || a.durum}`} baslik={a.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(a.en_erken_bitis))} biter` : 'Tarihi belli değil'} cizgi="kesik" />);
-  if (sonraki && !BITTI(a.durum)) sirada.push(<Satir key="sonraki" ikon={IKON.gelecek} ust={sonraki.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(sonraki.en_erken_bitis))} ${saat(Date.parse(sonraki.en_erken_bitis))}` : 'Sonra'} baslik={`${sonraki.ad} ${sonraki.sahip === ben ? 'sana' : ozelEk(kisaAd(sonraki.sahip), 'e')} gelir`} git={adimaGit(sonraki.no)} />);
+  else if (!BITTI(a.durum)) sirada.push(<Satir key="sahip" ikon={IKON.gelecek} ust={`${kisaAd(a.sahip)} · ${a.durum_etiket || a.durum}`} baslik={a.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(a.en_erken_bitis))} bitecek` : 'Tarihi belli değil'} cizgi="kesik" />);
+  if (sonraki && !BITTI(a.durum)) sirada.push(<Satir key="sonraki" ikon={IKON.gelecek} ust={sonraki.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(sonraki.en_erken_bitis))} ${saat(Date.parse(sonraki.en_erken_bitis))}` : 'Sonra'} baslik={`${sonraki.ad} ${sonraki.sahip === ben ? 'sana' : ozelEk(kisaAd(sonraki.sahip), 'e')} gelecek`} git={adimaGit(sonraki.no)} />);
   // yeniden eskiye; aynı anda (2 sn) yazılan durum + ilerleme: durum önce, ilerleme yalnız çıktı taşıyorsa ayrı satır
   const ham = (a.olaylar || []).filter((e: any) => e.tip !== 'okuma').map((e: any) => ({ ...e, _t: Date.parse(e.zaman) }));
   const olaylar = ham

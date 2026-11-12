@@ -36,17 +36,17 @@ export function zamanCumlesi(d: any, M: Model, G: Galaksi, X: number, NOW: numbe
   const kalan = acik.filter((s) => !biter.includes(s));
   const tarih = `${gunAyUzun(X)} tahmini:`;
   if (!kalan.length && biter.length) {
-    // son adımdan sonra: "22 Ekim tahmini: rapor 21 Ekim’de biter; hedefe 11 gün pay kalır."
+    // son adımdan sonra: "22 Ekim tahmini: rapor 21 Ekim’de bitecek; hedefe 11 gün pay kalacak."
     const son = biter[biter.length - 1];
     const pay = hedefPayi(d.akis);
-    return [`${tarih} ${kucuk(et(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} biter;`, pay ? (pay.startsWith('hedefe') ? pay + ' kalır.' : pay + '.') : ''].filter(Boolean);
+    return [`${tarih} ${kucuk(et(son.no))} ${tarihEk(gunAyUzun(G.byNo[son.no].t), 'de')} bitecek;`, pay ? (pay.startsWith('hedefe') ? pay + ' kalacak.' : pay + '.') : ''].filter(Boolean);
   }
-  // ileri: "17 Ekim tahmini: görsel ve onay biter, sıra App Store onayında."
+  // ileri: "17 Ekim tahmini: görsel ve onay bitecek, sıra App Store onayında."
   const kritik = new Set<number>(d.kritik_yol || []);
   const sira = kalan.sort((a, b) => Number(kritik.has(b.no)) - Number(kritik.has(a.no)) || G.byNo[a.no].t - G.byNo[b.no].t)[0];
   if (!biter.length) return sira ? [`${tarih} sıra ${ek(ad(sira.no), 'de')}.`] : null;
   // x'ten önce biten en son iki adım (öncekiler zaten yanık görünür)
-  return [`${tarih} ${ve(biter.slice(-2).map((s) => kucuk(et(s.no))))} biter,`, sira ? `sıra ${ek(ad(sira.no), 'de')}.` : ''].filter(Boolean);
+  return [`${tarih} ${ve(biter.slice(-2).map((s) => kucuk(et(s.no))))} bitecek,`, sira ? `sıra ${ek(ad(sira.no), 'de')}.` : ''].filter(Boolean);
 }
 
 /** B6 kişi odağı: "{kişi}'de {n} adım hazır; {kritik adım} kritik yolda ve {m} adımı tutuyor." */
