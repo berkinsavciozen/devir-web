@@ -7,7 +7,7 @@ import { SAHTE, simdi } from '../../api/ortam';
 import { useOzet } from '../../api/sorgular';
 import type { Ben } from '../../api/turler';
 import { AltGezinme } from '../../bilesen/AltGezinme';
-import { useOlaylar, UstDugmeler } from '../../bilesen/Zil';
+import { UstDugmeler } from '../../bilesen/Zil';
 import { GenisSahne, Metin, Sahne } from '../../bilesen/Sahne';
 import { useBoyut } from '../../bilesen/Gok';
 import { KabukPanel, masaustu, PANEL_EN, YuzenGezinme, type KabukSekme } from '../../bilesen/Kabuk';
@@ -27,7 +27,7 @@ import { bos, type Daire } from '../akis/katman';
 import { evrenSayilari, Lejant, SoruIkon, type OdakAyar } from '../akis/Lejant';
 import { hareketAz } from '../../ayar/hareket';
 import { PANO_AD, pano, type Pano as PanoV, type PanoTur } from './pano';
-import { EvrenPano, panoYerlesimi, sonHareketler, usePanoListeleri } from './Pano';
+import { EvrenTekPano } from './Pano';
 import { DurumNotu, veriDurumu, type VeriDurumu } from '../../bilesen/VeriDurumu';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
@@ -408,9 +408,8 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     return new Set(kartlar.map((k) => k.kod).filter((kod) => (suz && !P.adimlar[suz].some((a) => a.kod === kod))
       || (kisiOdak && !(detay[kod]?.adimlar || []).some((a: any) => a.sahip === kisiOdak && !['tamam', 'atlandi', 'ertelendi'].includes(a.durum)))));
   }, [suz, kisiOdak, P, genis, vurgu, detay]); // eslint-disable-line react-hooks/exhaustive-deps
-  const panoRef = useRef<HTMLHeadingElement>(null);
-  const olaylar = useOlaylar();
-  const PL = usePanoListeleri(kartlar, detay, kisi);
+  const panoRef = useRef<HTMLDivElement>(null);
+  const [panoH, setPanoH] = useState(800);
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   const E = useEvrenGezinme(T.bolge, cizim && !cizim.olcek ? cizim : null, detay, kisi, NOW, undefined, soluk);
   // evren dili (madde 2, 3): "?" ile; ilk açılışta bir kez kendiliğinden tanıtılır
@@ -448,12 +447,10 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
   if (genis) return <EvrenGenis W={boy.w} H={boy.h} kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} taslak={ozet.data?.taslaklar?.length || 0} now={NOW} pano={panoOz} panel={panel} konum={konum} geri={geri} aktif={aktif} secim={secimOz} />;
   if (cizim.olcek) return <EvrenOlcek T={T} kisi={kisi} avatar={avatar} cizim={cizim} kartlar={kartlar} kapanan={kapanan} detay={detay} now={NOW} pano={panoOz} secim={secimOz} />;
   const tum = [...kartlar, ...kapanan];
-  const goster = suz ?? P.varsayilan;
-  const PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, T.panoY, sonHareketler(olaylar.data?.olaylar).length, 54, PL.katilimcilar.length, PL.akislar.length);
   const panoAc = () => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' });
 
   return (
-    <Sahne yukseklik={Math.max(PY.son + 110, T.panoY + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, T.merkez.cy, 200] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
+    <Sahne yukseklik={Math.max(T.panoY + panoH + 130, T.panoY + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, T.merkez.cy, 200] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
@@ -461,7 +458,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={T.bolge.y + 4} hep={false} />
       <EvrenCipleri o={odak} P={P} secim={secimOz} x={12} y={T.bolge.y + 4} en={390 - 82} lejant={() => setLejant(true)} />
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': T.ipucu + 'px' } as React.CSSProperties} onClick={panoAc}>Pano ve bekleyen işler</button>
-      <EvrenPano ref={panoRef} P={P} y0={T.panoY} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={panoDurum} yeniden={DD.yeniden} />
+      <EvrenTekPano ref={panoRef} P={P} ben={kisi} kartlar={kartlar} detay={detay} style={{ top: T.panoY }} boy={setPanoH} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
       <Lejant acik={lejant} kapat={lejantKapat} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
     </Sahne>
@@ -521,17 +518,15 @@ function EvrenCipleri({ o, P, secim, x, y, en, lejant }: { o: OdakAyar; P: PanoV
     </>
   );
 }
-function EvrenOlcek({ T, kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, suz, setSuz, soluk, durum, yeniden, odak }, secim }: { T: Telefon; kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz; secim: AkisSecimOz | null }) {
+function EvrenOlcek({ T, kisi, avatar, cizim, kartlar, kapanan, detay, now, pano: { P, soluk, odak }, secim }: { T: Telefon; kisi: string; avatar: () => void; cizim: any; kartlar: any[]; kapanan: any[]; detay: Record<string, any>; now: number; pano: PanoOz; secim: AkisSecimOz | null }) {
   const tum = [...kartlar, ...kapanan];
   const O = cizim.olcek;
   const E = useEvrenGezinme(T.bolge, cizim, detay, kisi, now, undefined, soluk);
-  const panoRef = useRef<HTMLHeadingElement>(null);
-  const olaylar = useOlaylar();
-  const PL = usePanoListeleri(kartlar, detay, kisi);
-  const goster = suz ?? P.varsayilan, PY = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, T.panoY, sonHareketler(olaylar.data?.olaylar).length, 54, PL.katilimcilar.length, PL.akislar.length);
+  const panoRef = useRef<HTMLDivElement>(null);
+  const [panoH, setPanoH] = useState(800);
   const [lejant, setLejant] = useState(false);
   return (
-    <Sahne yukseklik={Math.max(PY.son + 110, T.panoY + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, T.olcek.cy, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
+    <Sahne yukseklik={Math.max(T.panoY + panoH + 130, T.panoY + 844)} gok={{ tohum: 21, yildiz: 330, sakin: [195, T.olcek.cy, 190] }} cizim={E.sonuc?.svg ?? ''} etiket="Evren">
       <span className="kaydir-durak" style={{ top: 0 }} aria-hidden />
       <AvatarAd ad={kisi} ac={avatar} />
       <UstDugmeler y={36} />
@@ -539,7 +534,7 @@ function EvrenOlcek({ T, kisi, avatar, cizim, kartlar, kapanan, detay, now, pano
       <YakinDugmeleri gz={E.gz} x={390 - 62} y={T.bolge.y + 4} hep={false} />
       <EvrenCipleri o={odak} P={P} secim={secim} x={12} y={T.bolge.y + 4} en={390 - 82} lejant={() => setLejant(true)} />
       <button type="button" className="bolum-ipucu nav-ustu" style={{ '--ust': T.ipucu + 'px' } as React.CSSProperties} onClick={() => panoRef.current?.scrollIntoView({ behavior: hareketAz() ? 'auto' : 'smooth', block: 'start' })}>Pano ve bekleyen işler</button>
-      <EvrenPano ref={panoRef} P={P} y0={T.panoY} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={durum} yeniden={yeniden} />
+      <EvrenTekPano ref={panoRef} P={P} ben={kisi} kartlar={kartlar} detay={detay} style={{ top: T.panoY }} boy={setPanoH} />
       <AltGezinme aktif="evren" yeni={() => git('/yeni')} />
       <Lejant acik={lejant} kapat={() => setLejant(false)} yuzey="evren" sayilar={evrenSayilari(kartlar, detay)} odak={odak} />
     </Sahne>
@@ -548,16 +543,8 @@ function EvrenOlcek({ T, kisi, avatar, cizim, kartlar, kapanan, detay, now, pano
 
 /** M2 · Masaüstü evren (≥ 1280): solda usturlap ×1.6, iki cümle tek satır; sağda 440 px panel (§5 M2). */
 /** Masaüstü paneli (N10): telefondaki pano bölümü aynen; başlık, cümle, süzgeç, bekleyen işler, akışlar, katılımcılar. */
-function PanoPanel({ P, kisi, kartlar, detay, suz, setSuz, durum, yeniden }: { P: PanoV; kisi: string; kartlar: any[]; detay: Record<string, any>; suz: PanoTur | null; setSuz: (t: PanoTur | null) => void; durum: VeriDurumu; yeniden: () => void }) {
-  const olaylar = useOlaylar();
-  const PL = usePanoListeleri(kartlar, detay, kisi);
-  const goster = suz ?? P.varsayilan;
-  const Y = panoYerlesimi(P, goster ? P.adimlar[goster].length : 0, 8, sonHareketler(olaylar.data?.olaylar).length, 54, PL.katilimcilar.length, PL.akislar.length);
-  return (
-    <Sahne gok={{}} etiket="Pano" yukseklik={Y.son + 40}>
-      <EvrenPano P={P} y0={8} ben={kisi} kartlar={kartlar} detay={detay} goster={goster} secili={suz} sec={setSuz} durum={durum} yeniden={yeniden} />
-    </Sahne>
-  );
+function PanoPanel({ P, kisi, kartlar, detay }: { P: PanoV; kisi: string; kartlar: any[]; detay: Record<string, any> }) {
+  return <EvrenTekPano P={P} ben={kisi} kartlar={kartlar} detay={detay} />;
 }
 
 /**
@@ -616,7 +603,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
       <YuzenGezinme aktif={aktif} solEn={X} />
       {/* pano (N10): telefondaki panoyla aynı bölüm, panelde kayar */}
       {panel ? <KabukPanel X={X} H={H} geri={geri} konum={konum}>{panel}</KabukPanel>
-        : <KabukPanel X={X} H={H} konum="Pano"><PanoPanel P={P} kisi={kisi} kartlar={kartlar} detay={detay} suz={suz} setSuz={setSuz} durum={durum} yeniden={yeniden} /></KabukPanel>}
+        : <KabukPanel X={X} H={H} konum="Pano"><PanoPanel P={P} kisi={kisi} kartlar={kartlar} detay={detay} /></KabukPanel>}
     </GenisSahne>
   );
 }

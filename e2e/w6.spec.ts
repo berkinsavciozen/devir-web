@@ -9,26 +9,25 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png`, fullPage: true });
 
-test('W6 · üst cümle ve karar kuyruğu (P5): önce AI onayı, sonra karar; satır çıktıyı açar', async ({ page }) => {
+test('W6 → Tek Pano (12 Kas): Görevler Pano’yu Kişi = Ben ile açar; senden beklenen, agent’ların; kart göreve açar', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3');
-  await expect(page.getByText(/Senden 1 onay, 1 karar ve \d+ iş bekleniyor\./)).toBeVisible();
-  await expect(page.getByRole('button', { name: /Kişi: Ben \+ agent’larım/ })).toBeVisible();
-  const L = page.getByRole('list', { name: 'Kararların, işlerin ve agent’ların' });
-  await expect(L.getByRole('heading', { name: /KARARLARIN/ })).toBeVisible();
-  const satirlar = L.locator('.satir-kart');
-  await expect(satirlar.nth(0)).toContainText('Post görseli');
-  await expect(satirlar.nth(0)).toContainText('AI yazdı, onayını bekliyor');
-  await expect(satirlar.nth(1)).toContainText('karar');
-  await expect(L.getByRole('button', { name: /: Onayla$/ })).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Görevler', level: 2 })).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Kimin işleri' }).getByRole('button', { name: 'Ben' })).toHaveAttribute('aria-pressed', 'true');
+  const S = page.getByRole('region', { name: /SENDEN BEKLENEN/ });
+  await expect(S.locator('.gorev-kart', { hasText: 'Post görseli' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Agent’ların' }).getByRole('button', { name: /^Berkin’in Claude’u/ })).toBeVisible();
   await cek(page, 'W6-gorevler');
-  await satirlar.nth(0).click();
+  await S.locator('.gorev-kart', { hasText: 'Post görseli' }).getByRole('button').first().click();
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
 });
 
-test('W6 · Onayla satırdan bitirir; liste ve cümle güncellenir', async ({ page }) => {
+test('W6 → Tek Pano: Hepsi süzgeci adrese yazılır; agent’ların ve bekleyenler yalnız Ben’de', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3');
-  await page.getByRole('button', { name: /: Onayla$/ }).first().click();
-  await expect(page.getByText(/Senden 1 karar ve \d+ iş bekleniyor\./)).toBeVisible();
+  await page.getByRole('group', { name: 'Kimin işleri' }).getByRole('button', { name: 'Hepsi' }).click();
+  await expect(page).toHaveURL(/kisi=hepsi/);
+  await expect(page.getByRole('region', { name: 'Agent’ların' })).toHaveCount(0);
+  await page.goBack();
+  await expect(page.getByRole('region', { name: 'Agent’ların' })).toBeVisible();
 });
 
 test('W6 · agent’ların ve agent detayı: AI durumuna göre işler, satırda çalışma geçmişi', async ({ page }) => {
@@ -44,16 +43,14 @@ test('W6 · agent’ların ve agent detayı: AI durumuna göre işler, satırda 
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
 });
 
-test('W6 · harita sen ve agent’ların şeritleri; masaüstünde solda', async ({ page }) => {
-  await ac(page, '/gorevler?senaryo=berkin&hal=w3');
-  await expect(page.getByRole('heading', { name: 'HARİTA · SEN VE AGENT’LARIN' })).toBeVisible();
+test('W6 · harita sen ve agent’ların şeritleri masaüstünde solda', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin&hal=w3', 1440, 900);
+  await expect(page.getByRole('heading', { name: 'HARİTA · SEN VE AGENT’LARIN' })).toBeVisible();
   await expect(page.locator('.gorev-sol-ad', { hasText: 'Berkin’in Claude’u' })).toBeVisible();
   await page.screenshot({ path: 'karsilastirma/uygulama/W6-gorevler-1440.png' });
 });
 
-test('W6 · başka kişi süzgecinde eski görünüm kalır', async ({ page }) => {
-  await ac(page, '/gorevler?senaryo=berkin&hal=w3&kisi=hepsi');
-  await expect(page.getByRole('heading', { name: /KARARLARIN/ })).toHaveCount(0);
+test('W6 · Hepsi süzgecinde harita kişi şeritli (masaüstü)', async ({ page }) => {
+  await ac(page, '/gorevler?senaryo=berkin&hal=w3&kisi=hepsi', 1440, 900);
   await expect(page.getByRole('heading', { name: 'GÖREV HARİTASI · KİŞİLER' })).toBeVisible();
 });

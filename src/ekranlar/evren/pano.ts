@@ -54,7 +54,7 @@ export function pano(kartlar: any[], detay: Record<string, any>, ben: string): P
 }
 
 export type KatilimciTip = 'insan' | 'agent' | 'dis';
-export interface Katilimci { ad: string; tip: KatilimciTip; acik: number; sirasi: number; akislar: string[]; kod: string; siradaki: { kod: string; no: number; ad: string; kisa_ad?: string | null } | null }
+export interface Katilimci { ad: string; tip: KatilimciTip; sahibi?: string | null; acik: number; sirasi: number; akislar: string[]; kod: string; siradaki: { kod: string; no: number; ad: string; kisa_ad?: string | null } | null }
 const ajanMi = (ad: string, tip?: string) => tip === 'agent' || /agent|Claude/i.test(ad);
 /**
  * Panodaki katılımcılar (N5, N10): aktif akışlardaki ekip, agent ve dış katılımcılar; sen hariç.
@@ -69,7 +69,7 @@ export function katilimcilar(kartlar: any[], detay: Record<string, any>, ben: st
       if (!a.sahip || a.sahip === ben) continue;
       const anahtar = a.sahip.toLocaleLowerCase('tr');
       let p = m.get(anahtar);
-      if (!p) { p = { ad: a.sahip, tip: a.sahip_tip === 'dis' ? 'dis' : ajanMi(a.sahip, a.sahip_tip) ? 'agent' : 'insan', acik: 0, sirasi: 0, akislar: [], kod: k.kod, siradaki: null }; m.set(anahtar, p); }
+      if (!p) { p = { ad: a.sahip, tip: a.sahip_tip === 'dis' ? 'dis' : ajanMi(a.sahip, a.sahip_tip) ? 'agent' : 'insan', sahibi: a.agent_sahibi ?? null, acik: 0, sirasi: 0, akislar: [], kod: k.kod, siradaki: null }; m.set(anahtar, p); }
       if (!p.akislar.includes(k.kod)) p.akislar.push(k.kod);
       if (BITTI(a.durum)) continue;
       if (!p.acik) p.kod = k.kod;

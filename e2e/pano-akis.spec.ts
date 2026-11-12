@@ -24,7 +24,7 @@ for (const [w, h] of [[360, 780], [1440, 900]]) {
     await expect(KT.getByRole('button', { name: /^Berkin/ })).toHaveCount(0);
     await cek(page, `W4-pano-${w}`);
     // görev satırının ikonu akışın küçük haritası (N8): yörünge çizgileri var
-    expect(await page.getByRole('list', { name: 'Bekleyen işler' }).locator('.gorev-kart-harita svg').first().innerHTML()).toMatch(/<path|<circle[^>]*stroke/);
+    expect(await page.locator('.evren-tek-pano .gorev-kart-harita svg').first().innerHTML()).toMatch(/<path|<circle[^>]*stroke/);
     await KT.getByRole('button', { name: /^Selin: / }).click();
     await expect(page).toHaveURL(/\/akis\/U422\/kisi\/Selin/);
   });

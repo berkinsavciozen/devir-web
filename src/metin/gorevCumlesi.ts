@@ -42,6 +42,8 @@ export function nesneFiil(ad: string): { nesne: string; fiil: string } | null {
   if (YARDIMCI.has(son) && w.length >= 2 && ISIM_FIIL.test(w[w.length - 2])) {
     return w.length >= 3 ? { nesne: w.slice(0, -2).join(' '), fiil: w.slice(-2).join(' ') } : { nesne: '', fiil: w.slice(-2).join(' ') };
   }
+  // yardımcı fiilsiz "kontrol", "teslim" ad olarak kalır ("son kontrol" → "son kontrolacaksın" değil)
+  if (ISIM_FIIL.test(son)) return null;
   if (FIIL_DEGIL.test(son) && !/^(yaz|çiz|kur|gir|al|ver|seç|iste|bul|aç|kapa|sor|gönder|hazırla|topla|ara|yükle|ekle|düzelt|bitir)$/.test(son)) return null;
   return { nesne: w.slice(0, -1).join(' '), fiil: son };
 }

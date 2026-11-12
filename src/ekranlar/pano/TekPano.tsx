@@ -1,9 +1,10 @@
 // W6 (6 Kas, K8, B19, C29): tek Pano. Evren, Akışlar ve Görevler panoları ile Bildirimler tek sayfada, aynı görev
 // bileşeniyle dört başlık: Senden beklenen · Riskte · Son değişiklikler · Yakında. Akışa girince o akışa süzülür
 // (masaüstünde seçim yokken panelde, telefonda akış sayfasının altında). Zaman görünümü Görevler'in şerididir.
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
+import { DurumNotu } from '../../bilesen/VeriDurumu';
 import { simdi } from '../../api/ortam';
 import { GorevKart } from '../../bilesen/GorevKart';
 import { UstDugmeler, useOlaylar } from '../../bilesen/Zil';
@@ -28,16 +29,18 @@ const anahtar = (a: any) => `${a.akis}:${a.no}`;
 export interface PanoBolum { id: 'senden' | 'risk' | 'degisim' | 'yakin'; baslik: string; bos: string; satirlar: { a: any; not?: string | null; yeni?: boolean; key: string }[] }
 
 /** Görevleri dört başlığa ayırır (saf; test edilir). Bir görev yalnız ilk uyduğu başlıkta görünür (değişiklikler hariç). */
-export function panoBolumleri(L: any[], olaylar: any[], o: { ben: string; now: number; yeniler?: Set<number>; adimBul: (akis: string, no: number) => any | null; en?: number }): PanoBolum[] {
+export function panoBolumleri(L: any[], olaylar: any[], o: { ben: string; now: number; yeniler?: Set<number>; adimBul: (akis: string, no: number) => any | null; en?: number; kisi?: string | null }): PanoBolum[] {
   const en = o.en ?? 8;
+  // kişi süzgeci (12 Kas, Tek Pano): Senden beklenen süzgeçten bağımsız; diğer başlıklar yalnız o kişinin (ve agent'larının) işleri
+  const kapsam = (a: any) => !o.kisi || a.sahip === o.kisi || a.agent_sahibi === o.kisi;
   const acik = L.filter((a) => !BITTI(a.durum));
   const goruldu = new Set<string>();
   const al = (l: any[]) => l.filter((a) => !goruldu.has(anahtar(a))).map((a) => { goruldu.add(anahtar(a)); return a; });
   const tarih = (a: any) => (a.son_tarih ? tarihMs(a.son_tarih) : a.en_erken_bitis ? Date.parse(a.en_erken_bitis) : Infinity);
   const senden = al(acik.filter((a) => { const h = hamle(a); return h && h.kim === o.ben; }).sort((p, r) => tarih(p) - tarih(r)));
-  const riskte = al(acik.filter((a) => a.durum === 'engelli' || takvimIhlali(a) || (a.son_tarih && tarihMs(a.son_tarih) < o.now)).sort((p, r) => tarih(p) - tarih(r)));
-  const yakin = al(acik.filter((a) => tarih(a) - o.now < 7 * GUN).sort((p, r) => tarih(p) - tarih(r)));
-  const degisim = topla(olaylar).filter((t) => t.e.adim_no != null && !t.sira).slice(0, en).map((t) => {
+  const riskte = al(acik.filter(kapsam).filter((a) => a.durum === 'engelli' || takvimIhlali(a) || (a.son_tarih && tarihMs(a.son_tarih) < o.now)).sort((p, r) => tarih(p) - tarih(r)));
+  const yakin = al(acik.filter(kapsam).filter((a) => tarih(a) - o.now < 7 * GUN).sort((p, r) => tarih(p) - tarih(r)));
+  const degisim = topla(olaylar).filter((t) => t.e.adim_no != null && !t.sira).filter((t) => { if (!o.kisi) return true; const a = o.adimBul(t.e.akis, t.e.adim_no); return t.e.kim === o.kisi || (a ? kapsam(a) : false); }).slice(0, en).map((t) => {
     const a = o.adimBul(t.e.akis, t.e.adim_no) || { akis: t.e.akis, no: t.e.adim_no, ad: t.e.adim_ad || '', durum: 'hazir', sahip: t.e.kim };
     const acik2 = olayAciklamasi(t.e);
     return { a: { ...a, akis: t.e.akis }, key: t.ids.join('-'), yeni: t.ids.some((i) => o.yeniler?.has(i)), not: [olayFiili(t.e), acik2, t.n > 1 ? `${t.n} hareket` : null, saat(Date.parse(t.e.zaman))].filter(Boolean).join(' · ') };
@@ -95,8 +98,26 @@ function BagSatiri({ b, ben }: { b: NonNullable<ReturnType<typeof bagBilgisi>>; 
 }
 
 /** Tek Pano içeriği; `akis` verilirse yalnız o akış. */
-export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: string | null; akisAdi?: string | null; kapat?: () => void }) {
+export interface TekPanoOz {
+  ben: string; akis?: string | null; akisAdi?: string | null; kapat?: () => void;
+  /** başlık (varsayılan "Pano"; akışta akışın adı) */
+  baslik?: string;
+  /** kişi süzgeci çipleri (Görevler): adresteki ?kisi= (ben | hepsi | ad), yoksa varsayılan */
+  kisiSecimi?: { varsayilan: 'ben' | 'hepsi' };
+  /** başlığın altında (özet cümle, karar şeridi) */
+  ust?: ReactNode;
+  /** başlıkların önünde ek bölüm (Görevler'de açık sorular) */
+  once?: ReactNode;
+  /** başlıkların sonunda (Evren'de Akışlar ve Katılımcılar; Görevler'de Agent'ların ve Bekleyenler) */
+  alt?: ReactNode;
+  /** açılışta olayları okundu say (Pano sayfası, Görevler); Evren'in altındaki pano saymaz, Pano düğmesindeki sayı kalır */
+  okunduYaz?: boolean;
+}
+export function TekPano({ ben, akis, akisAdi, kapat, baslik, kisiSecimi, ust, once, alt, okunduYaz = true }: TekPanoOz) {
   const NOW = simdi();
+  const [kisiQ, setKisiQ] = useSorgu('kisi');
+  const kisiS = kisiSecimi ? (kisiQ || kisiSecimi.varsayilan) : 'hepsi';
+  const kisi = kisiS === 'hepsi' ? null : kisiS === 'ben' ? ben : kisiS;
   const qs = new URLSearchParams({ kisi: 'hepsi', durum: 'acik', ...(akis ? { akis } : {}) });
   const G = useQuery({ queryKey: ['gorevler', qs.toString()], queryFn: () => api.get<any>(`/gorevler?${qs}`), retry: (n, e) => !(e instanceof ApiHatasi && e.durum === 404) && n < 2 });
   const Q = useOlaylar();
@@ -112,7 +133,7 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   if (Q.data && !yeni.current) yeni.current = new Set(O.filter((e) => !e.okundu).map((e) => e.id));
   const yazildi = useRef(0);
   useEffect(() => {
-    const d = Q.data; if (!d || !O.length || akis) return;
+    const d = Q.data; if (!d || !O.length || akis || !okunduYaz) return;
     const son = Math.max(...O.map((e) => e.id));
     if (son <= d.son_okunan || yazildi.current >= son) return;
     yazildi.current = son;
@@ -121,7 +142,11 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   const adimBul = (k: string, no: number) => detay[k]?.adimlar?.find((x: any) => x.no === no) || null;
   // satırdaki kayıt: akışın detayındaki tam adım (mini harita, hamle), yoksa /gorevler satırı
   const tam = (a: any) => ({ ...a, ...(adimBul(a.akis, a.no) || {}), akis: a.akis });
-  const B = panoBolumleri(L.map(tam), O, { ben, now: NOW, yeniler: yeni.current || undefined, adimBul });
+  const B = panoBolumleri(L.map(tam), O, { ben, now: NOW, yeniler: yeni.current || undefined, adimBul, kisi });
+  // süzgeçteki kişiler: açık işi olan ekip üyeleri (agent'lar sahiplerinin süzgecinde, dış katılımcılar Hepsi'de)
+  const kisiler: string[] = useMemo(() => ((G.data?.kisiler || []) as any[]).filter((k) => k.tip === 'insan' && k.ad !== ben && k.acik > 0).map((k) => k.ad), [G.data, ben]);
+  // akışın kısa adı sunucudan (P1-F); yoksa detaydaki akıştan
+  const kisaAdlar = useMemo(() => new Map<string, string>(((G.data?.akislar || []) as any[]).filter((k) => k.kisa_ad).map((k) => [k.kod, k.kisa_ad])), [G.data]);
   const yukleniyor = G.isPending && !G.isError;
   // Liste / Zaman yerinde (12 Kas): sayfa değişmez, adrese yalnız gorunum=zaman yazılır; geri tuşu Liste'ye döner
   const [gorunum, setGorunum] = useSorgu('gorunum');
@@ -130,7 +155,7 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
     const bag = bagBilgisi(a, detay[a.akis]);
     return <>
       {not && <small className="tek-pano-not">{yeniMi && <i className="okunmamis-nokta" aria-label="Yeni" />}{not}</small>}
-      <GorevKart a={a} d={detay[a.akis]} ben={ben} now={NOW} akisAdi={akis ? null : detay[a.akis]?.akis ? akisAdiMetni(detay[a.akis].akis) : a.akis_kisa_ad || null}
+      <GorevKart a={a} d={detay[a.akis]} ben={ben} now={NOW} akisAdi={akis ? null : kisaAdlar.get(a.akis) || a.akis_kisa_ad || (detay[a.akis]?.akis ? akisAdiMetni(detay[a.akis].akis) : null)}
         className={altMi ? 'alt-girinti' : ''} ac={() => git(`/akis/${enc(a.akis)}/adim/${a.no}`)} />
       {bag && <BagSatiri b={bag} ben={ben} />}
     </>;
@@ -138,16 +163,25 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
   return (
     <div className="tek-pano">
       <div className="tek-pano-ust">
-        <h2>{akis && akisAdi ? akisAdi : 'Pano'}</h2>
+        <h2>{baslik || (akis && akisAdi ? akisAdi : 'Pano')}</h2>
         <div className="tek-pano-gorunum" role="group" aria-label="Görünüm">
           <button type="button" aria-pressed={!zaman} onClick={() => zaman && setGorunum(null)}>Liste</button>
           <button type="button" aria-pressed={zaman} onClick={() => !zaman && setGorunum('zaman')}>Zaman</button>
         </div>
         {akis && kapat && <button type="button" className="filtre-cip tek-pano-suzgec" aria-pressed="true" aria-label="Akış süzgecini kaldır" onClick={kapat}>Yalnız bu akış ×</button>}
       </div>
-      {yukleniyor ? <div className="adim-yukleniyor" role="status" aria-label="Yükleniyor"><span /><span /></div> : zaman ? (() => {
+      {ust}
+      {kisiSecimi && <div className="tek-pano-kisiler" role="group" aria-label="Kimin işleri">
+        {[['ben', 'Ben'], ['hepsi', 'Hepsi'], ...kisiler.map((k) => [k, kisaAd(k)])].map(([v, ad]) => (
+          <button key={v} type="button" className="filtre-cip" aria-pressed={kisiS === v} onClick={() => setKisiQ(v === kisiSecimi.varsayilan ? null : v)}>
+            {v !== 'hepsi' && <i className="kisi-nokta" style={{ background: kisiRengi(v === 'ben' ? ben : v) }} aria-hidden />}{ad}
+          </button>))}
+      </div>}
+      {once}
+      {/* M-M3: yüklenirken ve hatada boş başlıklar "iş yok" demez */}
+      {yukleniyor || (G.isError && !G.data) ? <DurumNotu durum={G.isError ? 'hata' : 'yukleniyor'} ne={baslik || 'Pano'} y={0} x={0} className="akim" yeniden={() => void G.refetch()} /> : zaman ? (() => {
         const tum = kodlar.flatMap((k) => ((detay[k]?.adimlar || []) as any[]).map((x) => ({ ...x, akis: k })));
-        const Z = zamanSirasi(tum.length ? tum : L.map(tam), NOW);
+        const Z = zamanSirasi((tum.length ? tum : L.map(tam)).filter((a) => !kisi || a.sahip === kisi || a.agent_sahibi === kisi), NOW);
         return Z.length ? Z.map((g) => (
           <section key={g.baslik} className={`tek-pano-bolum z-${g.baslik === 'GECİKMİŞ' ? 'gec' : 'gun'}`} aria-label={g.baslik}>
             <h3 className="gd-bolum-baslik">{g.baslik}</h3>
@@ -162,6 +196,7 @@ export function TekPano({ ben, akis, akisAdi, kapat }: { ben: string; akis?: str
           : <p className="gd-satir">{b.bos}</p>}
         </section>
       ))}
+      {alt}
     </div>
   );
 }

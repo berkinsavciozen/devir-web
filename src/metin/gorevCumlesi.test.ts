@@ -20,6 +20,7 @@ describe('W4 görev cümlesi (K6, C24)', () => {
   it('adı nesne + fiile ayırır; fiilsiz adı ayırmaz', () => {
     expect(nesneFiil('Kapsamı netleştir')).toEqual({ nesne: 'Kapsamı', fiil: 'netleştir' });
     expect(nesneFiil('Sözleşmeyi kontrol et')).toEqual({ nesne: 'Sözleşmeyi', fiil: 'kontrol et' });
+    expect(nesneFiil('Vitrin açılış öncesi son kontrol')).toBeNull();
     expect(nesneFiil('App Store onayı')).toBeNull();
     expect(nesneFiil('Brif')).toBeNull();
     expect(nesneFiil('Post görseli')).toBeNull();

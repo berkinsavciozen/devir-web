@@ -1250,8 +1250,8 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .tek-pano-sayfa { position: relative; padding: 104px 20px 120px; max-width: 620px; margin: 0 auto; }
 .tek-pano-ust { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
 .tek-pano-ust h2 { flex: 1; margin: 0; font: 700 24px/30px var(--font-serif); min-width: 0; overflow-wrap: anywhere; }
-.tek-pano-gorunum { display: inline-flex; padding: 3px; border-radius: 18px; background: color-mix(in srgb, var(--renk-zemin-kart) 85%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
-.tek-pano-gorunum button { min-height: 32px; padding: 0 14px; border: 0; border-radius: 15px; background: transparent; color: var(--renk-metin-ink2); font: 600 13px/1 var(--font-sans); cursor: pointer; }
+.tek-pano-gorunum { display: inline-flex; padding: 0; border-radius: 22px; background: color-mix(in srgb, var(--renk-zemin-kart) 85%, transparent); box-shadow: inset 0 0 0 1px var(--renk-vurgu-cizgi-lila); }
+.tek-pano-gorunum button { min-height: 44px; padding: 0 16px; border: 0; border-radius: 22px; background: transparent; color: var(--renk-metin-ink2); font: 600 13px/1 var(--font-sans); cursor: pointer; }
 .tek-pano-gorunum button[aria-pressed="true"] { background: var(--renk-vurgu-lila); color: #08222E; }
 .tek-pano-ust .tek-pano-suzgec { flex: 0 0 auto; padding: 0 16px; height: 36px; order: 3; }
 .tek-pano-bolum { margin-top: 22px; }
@@ -1343,3 +1343,16 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .tur-ileri { background: linear-gradient(135deg, #FFE0C2, #FFB08C); color: #2A1D4F; }
 .tur-dugmeler button:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .tur-isik, .tur-kart { transition: none; animation: none; } }
+
+/* Evren panosu Tek Pano (12 Kas, P2): haritanın altında akan bölüm; masaüstünde panelde */
+.evren-tek-pano { position: absolute; left: 20px; right: 20px; }
+.kabuk-panel .evren-tek-pano { position: relative; left: auto; right: auto; padding: 8px 24px 32px; }
+.tek-pano-cumle { margin: 10px 0 0; font: 400 17.5px/23px var(--font-serif); color: var(--renk-metin-ink); }
+.karar-seridi.akim { position: relative; margin-top: 10px; }
+.tek-pano-kisiler { display: flex; gap: 6px; margin: 12px -20px 0; padding: 0 20px 4px; overflow-x: auto; scrollbar-width: none; }
+.tek-pano-kisiler .filtre-cip { flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 0 16px; height: 44px; }
+.tek-pano-kisiler .kisi-nokta { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.pano-akim [role="list"] { display: flex; flex-direction: column; gap: 8px; }
+.pano-akim .satir-kart { position: relative; width: 100%; height: 60px; }
+.pano-akim-baglanti { display: inline-flex; align-items: center; height: 44px; font-size: 14px; font-weight: 650; }
+.veri-durumu.akim { position: relative; top: auto !important; left: auto !important; right: auto; margin-top: 22px; }

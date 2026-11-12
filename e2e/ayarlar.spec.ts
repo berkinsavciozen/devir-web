@@ -37,30 +37,28 @@ test('B1-gezinme: üç sekme (Evren · Akışlar · Görevler); yeni iş, zil ve
   await expect(nav.getByRole('button', { name: /^Görevler/ })).toHaveAttribute('aria-current', 'page');
 });
 
-test('N1-gorevler: eski /bana adresi Görevler’e döner; gruplar, harita, satır adıma açılır', async ({ page }) => {
+test('N1-gorevler: eski /bana adresi Görevler’e döner; Tek Pano başlıkları, kart adıma açılır', async ({ page }) => {
   await ac(page, '/bana?senaryo=berkin');
   await expect(page).toHaveURL(/\/gorevler/);
-  // W6: varsayılan görünüm "sen ve agent'ların"; sırası gelen işler "senden beklenenler"de
-  await expect(page.getByRole('heading', { name: /KARARLARIN/ })).toBeVisible();
-  await expect(page.locator('.gorev-harita .gezegen-hedef').first()).toBeAttached();
-  const L = page.getByRole('list', { name: 'Kararların, işlerin ve agent’ların' });
-  await L.getByRole('listitem').first().waitFor();
+  // Tek Pano (12 Kas): Görevler Pano'yu Kişi = Ben ile açar
+  const S = page.getByRole('region', { name: 'SENDEN BEKLENEN' });
+  await expect(S.locator('.gorev-kart').first()).toBeVisible();
   await page.waitForTimeout(200);
   await cek(page, 'N1-gorevler');
   await hedefler(page);
-  await L.getByRole('listitem').first().click();
+  await S.locator('.gorev-kart-ac').first().click();
   await expect(page).toHaveURL(/\/akis\/[^/]+\/(adim|karar)\/\d+/);
 });
 
-test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır, şeritler kişi başına olur', async ({ page }) => {
+test('N1-gorevler-suzgec: kişi süzgeci adrese yazılır; masaüstü haritası kişi şeritli olur', async ({ page }) => {
   await ac(page, '/gorevler?senaryo=berkin');
-  await page.getByRole('button', { name: /^Kişi: Ben/ }).click();
-  await page.getByRole('dialog').getByText('Herkes', { exact: true }).click();
+  await page.getByRole('group', { name: 'Kimin işleri' }).getByRole('button', { name: 'Hepsi' }).click();
   await expect(page).toHaveURL(/kisi=hepsi/);
-  await expect(page.getByText('GÖREV HARİTASI · KİŞİLER')).toBeVisible();
   await page.waitForTimeout(300);
   await cek(page, 'N1-gorevler-herkes');
   await hedefler(page);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.getByText('GÖREV HARİTASI · KİŞİLER')).toBeVisible();
 });
 
 // tek sayfa (plan 27 Eki, Epic 4): beş grup; adres grubu açar, eski ?bolum= / ?sekme= adresleri de aynı gruba iner
