@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, TOOLS, otoToplu, aiGecmisi, agentlarV, agentOtoAc, agentKaldir, renkYaz, rutinKapsami, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, TOOLS, otoToplu, rutinOkuyucu, aiGecmisi, agentlarV, agentOtoAc, agentKaldir, renkYaz, rutinKapsami, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, otoBekledigi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc, taslakPayi,
 } from "./core.ts";
 import { aiKullanimi, aylikSinir, kullanimYaz } from "./islem.ts";
@@ -65,6 +65,14 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   if (opts.dis) v.agent_sahibi = null;
   if (!DONE(s) && !opts.dis) v.linkler = chatLinks(akis, s);
   return v;
+}
+
+/** H5 (0.36.0): agent adımlarına rutin_var (true/false; agent değilse ya da bittiyse null). Dış katılımcıya yazılmaz. */
+async function rutinEkle(ctx: Ctx, steps: any[], V: any[], dis: boolean) {
+  if (dis) return V;
+  const oku = rutinOkuyucu(ctx);
+  await Promise.all(steps.map(async (s, i) => { V[i].rutin_var = await oku(s); }));
+  return V;
 }
 
 function akisOzeti(akis: any, steps: any[], m: any, now: number): Parca[] {
@@ -203,7 +211,7 @@ async function akisV(ctx: Ctx, kod: string) {
     akis: { ...kart, amac: akis.amac || null, iliski: akis.baglam?.iliski || null, kurallar: akis.kurallar || {} },
     olcu: { sure_saat: saat(m.sure), aktif_saat: saat(m.aktif), bekleme_saat: saat(m.bekleme), kritik_bekleme_saat: saat(m.kritikBekleme), belirsiz_saat: saat(m.belirsiz), verim: m.verim != null ? Math.round(m.verim * 100) / 100 : null, paralel: Math.round(m.paralel * 10) / 10, en_erken_bitis: gunOf(m.pl.end), pay_saat: saat(m.pay) },
     kritik_yol: dis ? [] : m.pl.chain,
-    adimlar: vis.map((s: any) => adimV(akis, s, m, steps, { dis })),
+    adimlar: await rutinEkle(ctx, vis, vis.map((s: any) => adimV(akis, s, m, steps, { dis })), dis),
     sahipler: [...sahipler.values()],
     acik_sorular: dis ? [] : Object.entries<any>(akis.baglam?.bekleyen || {}).map(([k, b]) => ({ kod: k, soru: b.soru, kisa: b.kisa || null, tip: b.tip, secenekler: b.secenekler || null, adim_no: b.adim_no || null })),
     gizli_adim_sayisi: steps.length - vis.length,
@@ -297,6 +305,7 @@ async function adimDetayV(ctx: Ctx, kod: string, no: number) {
   const m = metrics(akis, steps, ev, ctx.now);
   const v: any = adimV(akis, s, m, steps, { dis: isDis(ctx) });
   const dis = isDis(ctx);
+  await rutinEkle(ctx, [s], [v], dis);
   v.ciktilar = (await ciktilar(ctx, akis.id, [s.no])).map(ciktiV);
   v.girdiler = (await ciktilar(ctx, akis.id, s.bagimli)).filter((c: any) => !dis || c.paylasim === "dis").map(ciktiV);
   if (!dis) {
@@ -379,7 +388,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
   const durum = q.get("durum") || "acik";
   const A = await gorunenAkislar(ctx, q.get("kapali") === "1" ? ["aktif", "kapandi"] : ["aktif"]);
   const kisiler = new Map<string, { ad: string; tip: string; acik: number }>();
-  const gorevler: any[] = [], sorular: any[] = [];
+  const gorevler: any[] = [], sorular: any[] = [], gAdim: any[] = [];
   for (const { akis, steps, events } of A) {
     const m = metrics(akis, steps, events.filter((e: any) => e.tip !== "okuma"), ctx.now);
     for (const s of steps) {
@@ -394,6 +403,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
       if (durum === "acik" && !ACIK(s)) continue;
       if (durum === "bitti" && !DONE(s)) continue;
       const t = m.tl.get(s.no), ef = DONE(s) ? null : m.pl.EF.get(s.no);
+      gAdim.push(s);
       gorevler.push({
         akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akisKisaAdi(akis),
         no: s.no, ad: s.ad, kisa_ad: adimKisaAdi(akis, steps, s.no), sahip: s.sahip, sahip_tip: s.sahip_tip, durum: s.durum,
@@ -421,6 +431,7 @@ async function gorevlerV(ctx: Ctx, q: URLSearchParams) {
       sorular.push({ akis: akis.kisa_kod, akis_baslik: akis.baslik, akis_kisa_ad: akisKisaAdi(akis), kod, soru: b.soru, kisa: b.kisa || null, tip: b.tip, secenekler: b.secenekler || null, adim_no: st.no, adim_ad: st.ad, kim, etki, tarihli, durum_at: st.durum_at || null });
     }
   }
+  await rutinEkle(ctx, gAdim, gorevler, isDis(ctx));
   // önce engelli ve karar, sonra en çok tutan, sonra son tarih
   // AI'ın yaptığı ve onay bekleyen iş kararla aynı ağırlıkta: kişiden bir şey bekliyor
   const agirlik = (g: any) => (g.durum === "engelli" ? 0 : (g.karar_adimi || g.oto_durum === "bakilacak") && g.durum !== "tamam" ? 1 : g.durum === "hazir" ? 2 : g.durum === "suruyor" ? 3 : 4);

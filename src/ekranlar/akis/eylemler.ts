@@ -1,4 +1,5 @@
 import { ozelEk } from '../../metin/turkce';
+import { rutinYok } from '../../cizim/hamle';
 
 /**
  * W1 (4 Kas, düğme matrisi): görev detayının eylem çubuğu. Görevin türü, durumu ve kişinin rolü bir ana düğme,
@@ -48,7 +49,9 @@ const yap = (ana: Eylem | null, ikincil: Eylem | null, menu: (Eylem | null | fal
  * alt görevde düğmeler yalnız sahibine ve akış sahibine, agent'ın alt görevinde AI yapsın, biten alt görev yeniden açılır.
  * AI'ın sırası olan işte (AI çalışıyor, AI yapsın açık bekliyor) kimseden bir şey beklenmez.
  */
-export function eylemPlani({ a, ben, acikAlt, tetikYok, akisSahibi = false, alt = false, claudeYok = false, hatirlatildi = false }: EylemGirdisi): EylemPlani {
+export function eylemPlani({ a, ben, acikAlt, tetikYok: yerelTetikYok, akisSahibi = false, alt = false, claudeYok = false, hatirlatildi = false }: EylemGirdisi): EylemPlani {
+  // H5 (sunucu 0.36.0): adımın kendi rutin bilgisi; eski sunucuda kişinin kendi tetik listesi
+  const tetikYok = rutinYok(a, yerelTetikYok);
   const sahipAjan = ajanMi(a.sahip, a.sahip_tip);
   const sahipDis = !sahipAjan && a.sahip_tip === 'dis' && a.sahip !== ben;
   const yonetir = alt && akisSahibi;
@@ -204,7 +207,11 @@ export function otoDurumCumlesi(a: any, o: { ben: string; tetikYok: boolean; sor
     return once.length ? `${once.join(', ')}. görev bitince ${ag} başlayacak.` : `Öncüller bitince ${ag} başlayacak.`;
   }
   if (b === 'sürüyor') return `${ag} üzerinde çalışıyor.`;
-  if (o.tetikYok) return `AI yapsın açık ama Claude rutinin kurulu değil; kurunca ${ag} başlayacak.`;
+  if (rutinYok(a, o.tetikYok)) {
+    // H5: başkasının agent'ı; rutini sahibi kurar
+    const sahibi = a.agent_sahibi && a.agent_sahibi !== o.ben ? o.kisa(a.agent_sahibi) : null;
+    return sahibi ? `${sahibi} Claude rutinini kurunca ${ag} başlayacak; o zamana kadar kendiliğinden başlamaz.` : `AI yapsın açık ama Claude rutinin kurulu değil; kurunca ${ag} başlayacak.`;
+  }
   return `Hazır; ${ag} bir sonraki taramada başlayacak.`;
 }
 
