@@ -96,14 +96,10 @@ test('K3: şerit ekseninde tarih etiketleri üst üste binmez ve kesilmez', asyn
   }
 });
 
-test('K6: telefonda görev haritası ekseninde tarihler var ve bugüne binmez', async ({ page }) => {
-  await ac(page, '/gorevler?senaryo=berkin', 360, 780);
-  const bugun = page.getByText('bugün', { exact: true });
-  await expect(bugun).toBeVisible();
-  const T = (await kutular(page, '.tek-satir')).filter((t) => /^\d{1,2} (Eki|Kas|Ara)$/.test(t.t.trim()));
+test('K6: görev haritası (masaüstü sol bölme) ekseninde tarihler var ve birbirine binmez', async ({ page }) => {
+  await ac(page, '/gorevler?senaryo=berkin', 1440, 900);
+  await expect(page.locator('.gorev-sol-tarih.bugun')).toBeVisible();
+  const T = (await kutular(page, '.gorev-sol-tarih:not(.bugun)')).filter((t) => /^\d{1,2} (Eki|Kas|Ara)$/.test(t.t.trim()));
   expect(T.length).toBeGreaterThan(1);
   expect(binmez(T.sort((a, b) => a.x - b.x))).toBe(true);
-  const b = await bugun.boundingBox();
-  for (const t of T) expect(t.y + t.h).toBeLessThanOrEqual(b!.y + 1);
-  await cek(page, 'W3-gorevler-360');
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bagBilgisi, zamanSirasi } from './TekPano';
+import { bagBilgisi, panoBolumleri, zamanSirasi } from './TekPano';
 
 const NOW = Date.parse('2026-11-12T09:00:00+03:00');
 const a = (no: number, o: any = {}) => ({ akis: 'X', no, ad: `İş ${no}`, sahip: 'Ece', durum: 'sirada', ...o });
@@ -28,5 +28,16 @@ describe('bağımlılık satırı', () => {
   it('bağı olmayan ya da biten görevde satır yok', () => {
     expect(bagBilgisi(a(9, { bagimli: [], bekleyenler: [] }), { adimlar: [a(9, { bagimli: [], bekleyenler: [] })] })).toBeNull();
     expect(bagBilgisi({ ...d.adimlar[1], durum: 'tamam' }, d)).toBeNull();
+  });
+});
+
+describe('kişi süzgeci (P2)', () => {
+  const L = [a(1, { durum: 'engelli', sahip: 'Ece' }), a(2, { durum: 'engelli', sahip: 'Mert' }), a(3, { durum: 'engelli', sahip: "Ece'nin agent'ı", sahip_tip: 'agent', agent_sahibi: 'Ece' }), a(4, { durum: 'hazir', sahip: 'Ben' })];
+  const o = { ben: 'Ben', now: NOW, adimBul: () => null };
+  it('riskte yalnız o kişinin ve agent’ının işleri; senden beklenen süzgeçten bağımsız', () => {
+    const B = panoBolumleri(L, [], { ...o, kisi: 'Ece' });
+    expect(B.find((b) => b.id === 'risk')!.satirlar.map((s) => s.a.no)).toEqual([1, 3]);
+    expect(B.find((b) => b.id === 'senden')!.satirlar.map((s) => s.a.no)).toEqual([4]);
+    expect(panoBolumleri(L, [], o).find((b) => b.id === 'risk')!.satirlar).toHaveLength(3);
   });
 });

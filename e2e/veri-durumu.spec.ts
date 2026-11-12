@@ -35,22 +35,22 @@ for (const [w, h] of [[360, 800], [390, 844]] as const) {
     // tetiğin ortasına dokunulan öğe tetiğin kendisi (üstüne binen yok)
     expect(await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.textContent, [a.x + a.width / 2, a.y + a.height / 2])).toBe('Pano ve bekleyen işler');
     await t.click();
-    const cip = page.getByRole('group', { name: /Duruma göre süz/ });
-    await expect(async () => { const b = (await cip.boundingBox())!; expect(b.y).toBeLessThan(h * 0.6); expect(b.y).toBeGreaterThanOrEqual(0); }).toPass();
+    const bas = page.locator('.evren-tek-pano').getByRole('heading', { name: 'Pano', level: 2 });
+    await expect(async () => { const b = (await bas.boundingBox())!; expect(b.y).toBeLessThan(h * 0.6); expect(b.y).toBeGreaterThanOrEqual(0); }).toPass();
   });
 }
 
-test('Pano: işler gelmeden "bekleyen iş yok" denmez; yükleniyor notu 300 ms sonra', async ({ page }) => {
-  await suz(page, '/akislar/detay', 'asili');
+test('Pano: işler gelmeden "senden beklenen iş yok" denmez; yükleniyor notu 300 ms sonra', async ({ page }) => {
+  await suz(page, '/gorevler', 'asili');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/?senaryo=berkin');
   await page.getByRole('button', { name: 'Pano ve bekleyen işler' }).click();
-  const not = page.getByRole('status').filter({ hasText: 'İşler yükleniyor' });
+  const not = page.getByRole('status').filter({ hasText: 'Pano yükleniyor' });
   await expect(not).toBeVisible();
-  await expect(page.getByText('Şu an bekleyen iş yok.')).toHaveCount(0);
-  await expect(page.getByText(/işler yükleniyor\.$/)).toBeVisible();
+  await expect(page.getByText('Şu an senden beklenen bir iş yok.')).toHaveCount(0);
   await page.evaluate(() => (window as any).__devirSal());
   await expect(not).toHaveCount(0);
+  await expect(page.locator('.evren-tek-pano').getByRole('region', { name: 'SENDEN BEKLENEN' })).toBeVisible();
 });
 
 test('Görevler: yüklenirken not, hata olunca "yüklenemedi" ve yeniden dene', async ({ page }) => {

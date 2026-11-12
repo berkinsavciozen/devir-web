@@ -20,8 +20,9 @@ async function kesikler(page: import('@playwright/test').Page) {
 
 test('360 px: uzun akış ve adım adları kesilmez; satırda kısa ad, adım detayında tam ad', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 780 });
-  await page.goto('/?senaryo=berkin');
-  await expect(page.getByRole('main', { name: 'Evren' })).toBeVisible();
+  // Evren'deki pano görev listesini önbelleğe alır; adlar değişmeden önce o sorgu açılmasın diye Ayarlar'dan başlanır
+  await page.goto('/ayarlar?senaryo=berkin');
+  await expect(page.getByRole('main').first()).toBeVisible();
   await page.evaluate(async (UZUN) => {
     const s = (window as any).__devirSahte;
     const a = (await s.db.many('akis', { kisa_kod: 'XPVZ' }))[0];
@@ -30,13 +31,11 @@ test('360 px: uzun akış ve adım adları kesilmez; satırda kısa ad, adım de
   }, UZUN);
   const git = async (y: string) => { await page.evaluate((y) => { history.pushState(null, '', y); dispatchEvent(new Event('devir:yol')); }, y); };
 
-  await git('/gorevler?kisi=hepsi');
+  // Tek Pano (12 Kas): Görevler'in Zaman görünümü bütün açık işleri görev kartıyla gösterir; kartta kısa ad
+  await git('/gorevler?kisi=hepsi&gorunum=zaman');
   await expect(page.getByRole('main', { name: 'Görevler' })).toBeVisible();
-  await expect(page.getByText('Komisyon koşullarını teyit et', { exact: true }).first()).toBeVisible();
+  await expect(page.locator('.gorev-kart', { hasText: /komisyon koşullarını/i }).first()).toBeVisible();
   expect(await kesikler(page)).toEqual([]);
-  const boylar = await page.evaluate(() => [...new Set([...document.querySelectorAll('.satir-metin b')].map((e) => getComputedStyle(e).fontSize))]);
-  expect(boylar).toEqual(['14.5px']);
-  await expect(page.locator('[title="Komisyon koşullarını teyit et ve çiftçi teklif paketini hazırla"]').first()).toBeAttached();
 
   await expect(page.getByText('Hasat çiftçi kazanımı').first()).toBeVisible();
 

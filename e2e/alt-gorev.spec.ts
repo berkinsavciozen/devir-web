@@ -117,11 +117,8 @@ test('alt görev · 390: akış listesinde üst görev daraltılır, alt görevl
   await expect(liste.getByRole('button', { name: /alt görevleri aç/ })).toHaveAttribute('aria-expanded', 'false');
 });
 
-test('alt görev · 390: Görevler listesinde alt görev üst göreviyle, üst görev ilerlemesiyle', async ({ page }) => {
+test('alt görev · 390: Görevler Zaman görünümünde alt görev üst görevinin altında, girintili', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/gorevler?senaryo=berkin&hal=alt&kisi=hepsi&durum=hepsi');
-  const L = page.getByRole('list', { name: 'Görevler' });
-  await expect(L.locator('.ust-kirinti').first()).toBeVisible();
-  await expect(L.getByRole('button', { name: /^Rapor › / }).first()).toBeVisible();
-  await expect(L.getByRole('button', { name: /1\/3 alt görev/ })).toHaveCount(1);
+  await page.goto('/gorevler?senaryo=berkin&hal=alt&kisi=hepsi&gorunum=zaman');
+  await expect(page.locator('.tek-pano .gorev-kart.alt-girinti').first()).toBeVisible();
 });

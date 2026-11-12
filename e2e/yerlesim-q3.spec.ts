@@ -29,7 +29,7 @@ test('Q3 · 375×667: evrende "Pano" ipucu alt menünün üstünde, usturlap ond
   const ipucu = (await page.getByRole('button', { name: 'Pano ve bekleyen işler' }).boundingBox())!;
   const nav = (await page.getByRole('navigation').last().boundingBox())!;
   expect(ipucu.y + ipucu.height).toBeLessThanOrEqual(nav.y);
-  const gal = await page.getByRole('list', { name: 'Akışlar' }).getByRole('listitem').evaluateAll((e) => e.map((x) => x.getBoundingClientRect().bottom));
+  const gal = await page.getByRole('list', { name: 'Akışlar', exact: true }).getByRole('listitem').evaluateAll((e) => e.map((x) => x.getBoundingClientRect().bottom));
   expect(Math.max(...gal)).toBeLessThanOrEqual(ipucu.y + 2);
   await cek(page, 'Q3-evren-375x667');
 });

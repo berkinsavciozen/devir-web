@@ -24,18 +24,18 @@ export function useGecikmeli(aktif: boolean, ms = 300) {
 }
 
 /** Sahnede konumlu durum notu. Yüklenirken (300 ms sonra) nabız ve "… yükleniyor"; hatada yeniden dene. Boş ve hazırda hiçbir şey. */
-export function DurumNotu({ durum, y, x = 20, ne = 'İşler', yeniden, style }: { durum: VeriDurumu; y: number; x?: number; ne?: string; yeniden?: () => void; style?: React.CSSProperties }) {
+export function DurumNotu({ durum, y, x = 20, ne = 'İşler', yeniden, style, className = '' }: { durum: VeriDurumu; y: number; x?: number; ne?: string; yeniden?: () => void; style?: React.CSSProperties; className?: string }) {
   const yukleniyor = durum === 'yukleniyor' || durum === 'kismi';
   const goster = useGecikmeli(yukleniyor);
   const st = { top: y, left: x, ...style };
   if (durum === 'hata') return (
-    <div className="veri-durumu hata" role="alert" style={st}>
+    <div className={`veri-durumu hata ${className}`} role="alert" style={st}>
       {ne} yüklenemedi.{yeniden && <button type="button" className="metin-baglanti" onClick={yeniden}>Yeniden dene</button>}
     </div>
   );
   if (!yukleniyor) return null;
   return (
-    <div className="veri-durumu" role="status" aria-live="polite" style={st}>
+    <div className={`veri-durumu ${className}`} role="status" aria-live="polite" style={st}>
       {goster && <><span className="nabiz" aria-hidden><i /><i /><i /></span>{ne} yükleniyor…</>}
     </div>
   );
