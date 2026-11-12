@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { akisModeli, gunAy, yolCiz } from '../cizim/yol.js';
-import { hamle, hamleSimgesi, SIMGE, type Hamle } from '../cizim/hamle';
+import { hamle, hamleSimgesi, kisiRengi, SIMGE, type Hamle } from '../cizim/hamle';
 import { gorevCumlesi } from '../metin/gorevCumlesi';
 import { kisaAd } from '../cizim/yol.js';
 
@@ -62,11 +62,13 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
   const Z = 40;
   const vb = p ? `${p[0] - Z} ${p[1] - Z} ${2 * Z} ${2 * Z}` : `${-MR} ${-MR} ${2 * MR} ${2 * MR}`;
   const alt = [akisAdi, BITTI(a.durum) && a.durum_at ? gunAy(Date.parse(a.durum_at)) : null].filter(Boolean).join(' · ');
+  // 12 Kas (Tek Pano): kart, işin sahibinin renginde şerit taşır; agent işi sahibinin açık tonunda (harita ile aynı renk)
+  const sahipRengi = a.sahip ? kisiRengi(a.sahip, { tip: a.sahip_tip, sahibi: a.agent_sahibi, renkler }) : null;
   return (
-    <div className={`gorev-kart ton-${G.ton} ${className}`} style={style}>
+    <div className={`gorev-kart ton-${G.ton} ${className}`} style={sahipRengi ? { ['--sahip' as string]: sahipRengi, ...style } : style} data-sahip={a.sahip || undefined}>
       <button type="button" className="gorev-kart-ac" onClick={ac} aria-label={etiket || `${cumle}${akisAdi ? `. ${akisAdi}` : ''}`}>
         <span className="gorev-kart-harita" aria-hidden>
-          <svg width="40" height="40" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="#FFF3E8" stroke-width="1.6"/>` : '') }} />
+          <svg width="40" height="40" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="${sahipRengi || '#FFF3E8'}" stroke-width="1.8"/>` : '') }} />
           {a.ust_adim != null && <i className="gorev-kart-alt">alt</i>}
         </span>
         <span className="gorev-kart-metin">

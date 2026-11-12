@@ -64,23 +64,25 @@ export function gorevCumlesi(a: CumleGirdisi, o: { gun: (iso: string) => string;
   const kim = a.sahip_tip === 'agent' ? a.sahip : kisa(a.sahip);
   const ad = adimAdi(a);
   const nf = nesneFiil(ad);
+  // "Konaklama/ulaşımı?: sende" olmasın (12 Kas): soru işaretiyle biten ad iki noktadan önce kırpılır
+  const adB = ad.replace(/\?+$/, '');
   const nesne = nf ? kucukBas(nf.nesne) : '';
-  const govde = (f: string) => (nf ? [kim, nesne, f].filter(Boolean).join(' ') : `${ad}: ${kim}`);
+  const govde = (f: string) => (nf ? [kim, nesne, f].filter(Boolean).join(' ') : `${adB}: ${kim}`);
   const tarih = a.bitis ? o.gun(a.bitis) : null;
   const kadar = tarih ? ` ${tarihEk(tarih, 'e')} kadar` : '';
   const ai = a.oto && !['tamam', 'atlandi', 'ertelendi'].includes(a.durum) ? a.oto_durum : null;
   const onaylayan = a.agent_sahibi ? kisa(a.agent_sahibi) : null;
-  if (a.durum === 'tamam') return { cumle: nf ? govde(cek(nf.fiil, gecmis)) : `${ad}: ${kim} bitirdi`, durum: 'bitti', ton: 'bitti' };
+  if (a.durum === 'tamam') return { cumle: nf ? govde(cek(nf.fiil, gecmis)) : `${adB}: ${kim} bitirdi`, durum: 'bitti', ton: 'bitti' };
   if (a.durum === 'atlandi') return { cumle: `${ad} atlandı`, durum: 'atlandı', ton: 'bitti' };
   if (a.durum === 'ertelendi') return { cumle: `${ad} ertelendi`, durum: 'ertelendi', ton: 'bitti' };
-  if (ai === 'bakilacak') return { cumle: nf ? `${govde(cek(nf.fiil, gecmis))}, ${onaylayan ? ozelEk(onaylayan, 'in') : 'senin'} onayını bekliyor` : `${ad}: ${kim} yazdı, ${onaylayan ? ozelEk(onaylayan, 'in') + ' ' : ''}onayını bekliyor`, durum: 'onay bekliyor', ton: 'ai' };
-  if (ai === 'calisiyor') return { cumle: nf ? govde(cek(nf.fiil, simdiki)) : `${ad}: ${kim} çalışıyor`, durum: 'AI çalışıyor', ton: 'ai' };
-  if (ai === 'hata') return { cumle: nf ? `${kim} ${nesne ? nesne + ' ' : ''}${cek(nf.fiil, gelecek)}${ikili(nf.fiil) === 'a' ? 'tı' : 'ti'}; yapamadı` : `${ad}: ${kim} yapamadı`, durum: 'AI yapamadı', ton: 'risk' };
-  if (ai === 'bekliyor') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}${onaylayan ? `, ${onaylayan} onaylayacak` : ''}` : `${ad}: ${kim}`, durum: 'AI yapsın', ton: 'ai' };
-  if (a.durum === 'engelli') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}; engelde` : `${ad}: ${kim} · engelde`, durum: 'engelli', ton: 'risk' };
-  if (a.durum === 'suruyor') return { cumle: nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, simdiki)}` : `${ad}: ${kim} sürdürüyor`, durum: 'sürüyor', ton: 'surer' };
+  if (ai === 'bakilacak') return { cumle: nf ? `${govde(cek(nf.fiil, gecmis))}, ${onaylayan ? ozelEk(onaylayan, 'in') : 'senin'} onayını bekliyor` : `${adB}: ${kim} yazdı, ${onaylayan ? ozelEk(onaylayan, 'in') + ' ' : ''}onayını bekliyor`, durum: 'onay bekliyor', ton: 'ai' };
+  if (ai === 'calisiyor') return { cumle: nf ? govde(cek(nf.fiil, simdiki)) : `${adB}: ${kim} çalışıyor`, durum: 'AI çalışıyor', ton: 'ai' };
+  if (ai === 'hata') return { cumle: nf ? `${kim} ${nesne ? nesne + ' ' : ''}${cek(nf.fiil, gelecek)}${ikili(nf.fiil) === 'a' ? 'tı' : 'ti'}; yapamadı` : `${adB}: ${kim} yapamadı`, durum: 'AI yapamadı', ton: 'risk' };
+  if (ai === 'bekliyor') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}${onaylayan ? `, ${onaylayan} onaylayacak` : ''}` : `${adB}: ${kim}`, durum: 'AI yapsın', ton: 'ai' };
+  if (a.durum === 'engelli') return { cumle: nf ? `${govde(cek(nf.fiil, gelecek))}; engelde` : `${adB}: ${kim} · engelde`, durum: 'engelli', ton: 'risk' };
+  if (a.durum === 'suruyor') return { cumle: nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, simdiki)}` : `${adB}: ${kim} sürdürüyor`, durum: 'sürüyor', ton: 'surer' };
   const gec = a.gecikme_gun && a.gecikme_gun > 0 ? `; ${a.gecikme_gun} gün gecikti` : '';
   // 9 Kas (Berkin): sırası gelen ve sıradaki iş gelecek zamanla: "Berkin kapsamı 16 Eki’ye kadar netleştirecek"
-  const f = nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, gelecek)}${gec}` : `${ad}: ${kim}${tarih ? `, ${tarihEk(tarih, 'e')} kadar` : ''}${gec}`;
+  const f = nf ? `${[kim, nesne].filter(Boolean).join(' ')}${kadar} ${cek(nf.fiil, gelecek)}${gec}` : `${adB}: ${kim}${tarih ? `, ${tarihEk(tarih, 'e')} kadar` : ''}${gec}`;
   return { cumle: f, durum: a.durum === 'hazir' ? 'sırası geldi' : 'sırada', ton: gec ? 'risk' : a.durum === 'hazir' ? 'sende' : 'bekler' };
 }

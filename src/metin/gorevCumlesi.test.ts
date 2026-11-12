@@ -45,3 +45,7 @@ describe('9 Kas · sırası gelen ve sıradaki iş gelecek zamanla', () => {
     expect(gorevCumlesi({ ad: 'Afiş brifini yaz', sahip: 'Claude', sahip_tip: 'agent', durum: 'engelli', oto: true, oto_durum: 'hata' }, { gun }).cumle).toBe('Claude afiş brifini yazacaktı; yapamadı');
   });
 });
+
+describe('12 Kas: soru işaretli ad', () => {
+  it('"?:" yazılmaz', () => expect(gorevCumlesi({ no: 1, ad: 'Konaklama/ulaşımı?', sahip: 'Berkin', durum: 'hazir', bitis: '23 Kas' } as any).cumle).toBe('Konaklama/ulaşımı: Berkin, 23 Kas’a kadar'));
+});
