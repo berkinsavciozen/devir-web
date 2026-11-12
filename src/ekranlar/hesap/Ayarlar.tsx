@@ -19,7 +19,6 @@ import { AltGezinme } from '../../bilesen/AltGezinme';
 import { hareketKoy, hareketSecimi } from '../../ayar/hareket';
 import { akisErisimi, ekipOzeti, ekipSayilari, RolTablosu, ROL_TABLO_H } from './Roller';
 import { alanAdi, CikisSatiri, HesapIcerik, hesapYuksekligi, kisiGemi, rolAdi, SatirKart, Svg, useUyeler } from './Hesap';
-import { useOlaylar } from '../../bilesen/Zil';
 import { TumHaritaDili } from '../akis/Lejant';
 import { whatsappAdresi } from '../akis/BaglantiGonder';
 import { uyumDurumu } from '../../api/surum';
@@ -66,7 +65,7 @@ export const katilimciDurumu = (k: any) => (k.durum === 'iptal' ? 'bağlantı ka
 /**
  * Ayarlar (plan 27 Eki, Epic 4): tek kayan sayfa, beş grup. Ben (kişi, Agent'larım, Devir AI kullanımı) · Kişiler (ekip ve
  * dış katılımcılar; rol tablosu "?" arkasında) · Devir'i öner (referans bağlantısı, onay listesi) · Harita dili (tam lejant,
- * hareket, bildirimler) · Gelişmiş (MCP adresi, anahtarlar, agent kararları, bağlantı denetimi). Çalışma alanı tek olduğu
+ * hareket; bildirimler sağ üstteki zilde, 12 Kas) · Gelişmiş (MCP adresi, anahtarlar, agent kararları, bağlantı denetimi). Çalışma alanı tek olduğu
  * sürece gösterilmez. Yönetim satırları yalnız sahibe.
  */
 export function Ayarlar() {
@@ -76,7 +75,6 @@ export function Ayarlar() {
   const sahip = ben?.rol === 'sahip', dis = ben?.rol === 'dis', oturum = !!ben?.eposta;
   const an = useQuery({ queryKey: ['anahtarlar'], queryFn: () => api.get<any>('/anahtarlar'), enabled: sahip });
   const durum = useQuery({ queryKey: ['durum'], queryFn: () => api.get<any>('/durum'), staleTime: 300_000 });
-  const okunmamis = useOlaylar().data?.okunmamis ?? 0;
   const uy = useUyeler(sahip);
   const kt = useQuery({ queryKey: ['katilimcilar-tum'], queryFn: () => api.get<any>('/katilimcilar'), enabled: sahip, staleTime: 60_000 });
   // 0.28.0: agent bağlantıları, kullanım, referans ve onay listesi; eski sunucuda bölümler sessizce eski haline döner
@@ -144,7 +142,6 @@ export function Ayarlar() {
   const mcpY = y + 14; if (sahip) y = mcpY + 66 + 30;
   bY.gorunum = y + 46; y = bY.gorunum + 14 + 74;
   const hareketY = y + 14; y = hareketY + 100;
-  const bildirimY = y; y += 74;
   bY.gelismis = y + 46; y = bY.gelismis + 14;
   const gelAc = gelismis || hedefGrup() === 'gelismis';
   const gelY = y; y += 74;
@@ -248,8 +245,6 @@ export function Ayarlar() {
         <span className="alan-etiket" style={{ position: 'absolute', left: 22, top: hareketY - 2 }}>Hareket</span>
         <div className="ayar-secenek" style={{ top: hareketY + 20 }}><Segment secenekler={['Sistem', 'Azalt']} aktif={hareket === 'az' ? 1 : 0} sec={(i) => { const h2 = i ? 'az' : 'sistem'; hareketKoy(h2); setHareket(h2); }} /></div>
         <Metin y={hareketY + 86} x={22} fs={12.5} lh={17} renk="ink3" style={{ right: 22 }}>{hareket === 'az' ? 'Döngüler durur, geçişler anında olur; bu cihazda kalır.' : 'İşletim sisteminin hareket ayarına uyar; bu cihazda kalır.'}</Metin>
-        <SatirKart y={bildirimY} h={66} ikon={ozelIkon('<path d="M-6,4 C-5,3 -5,1 -5,-1 C-5,-4 -3,-6 0,-6 C3,-6 5,-4 5,-1 C5,1 5,3 6,4 Z" fill="none" stroke="#D9CCFF" stroke-width="1.4"/><circle cy="7" r="1.6" fill="#FFC9A3"/>')}
-          ust="Bildirimler" alt={okunmamis ? `${okunmamis} okunmamış · okundu bilgisi cihazlarında aynı` : 'Okundu bilgisi cihazlarında aynı'} onClick={() => git('/bildirimler')} />
 
         {baslik('gelismis')}
         <SatirKart y={gelY} h={60} ikon={ozelIkon(`<path d="${gelAc ? 'M-5,-2 L0,3 L5,-2' : 'M-2,-5 L3,0 L-2,5'}" fill="none" stroke="#D9CCFF" stroke-width="1.8" stroke-linecap="round"/>`)}
