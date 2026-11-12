@@ -19,6 +19,7 @@ import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { git, arama, listeyeDon } from '../../yonlendirme';
 import { haritaBicimi } from '../../geometri/kol-bayrak';
+import { KISI_DURUM_AD } from '../../cizim/kisi-durumu';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { AiEtkinligi, aiCipYazisi } from './AiEtkinligi';
@@ -443,7 +444,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         ai={aiYazi ? { yazi: aiYazi, onay: /onay/.test(aiYazi), ac: () => setAiAcik(true) } : null}
         cipler={[odak && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }].filter(Boolean) as HaritaCipi[]} />
       <AiEtkinligi acik={aiAcik} kapat={() => setAiAcik(false)} kod={kod} d={d} />
-      <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d)} secili={odak}
+      <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d).map((k) => { const x = temel?.KD && Object.entries(temel.KD).find(([ad]) => ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'))?.[1]; return x ? { ...k, durum: KISI_DURUM_AD[x.durum] } : k; })} secili={odak}
         uygula={(k) => { setKisiKarti(null); setOdak(k); }} kisiSayfasi={(ad) => git(`/akis/${encodeURIComponent(kod)}/kisi/${encodeURIComponent(ad)}`)} />
       {/* geçmişe ya da tahmine bakarken haritanın üstünde şerit ve "Bugüne dön" (plan 27 Eki, 3.25) */}
       {Math.abs(X - NOW) >= 36e5 && <div className="zaman-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60 }}>

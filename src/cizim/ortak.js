@@ -169,7 +169,8 @@ const ALARM_R = '#FF5A5A', KREM = '#FFF6E0';
 function kisiHalkasi(r, h, o = {}) {
   if (!h) return '';
   const R = r + (o.mini ? 2.2 : 3.2), w = o.mini ? 1.4 : 2.2, L = Array.isArray(h) ? h : [h];
-  if (L.length === 1) return `<circle r="${f(R)}" fill="none" stroke="${L[0]}" stroke-width="${w}" opacity="${o.sonuk ? .5 : 1}"/>`;
+  // 12 Kas (B7): agent'ın işi kesik halka; insan işi dolu
+  if (L.length === 1) return `<circle r="${f(R)}" fill="none" stroke="${L[0]}" stroke-width="${w}" opacity="${o.sonuk ? .5 : 1}"${o.kesik ? ` stroke-dasharray="${f(R * .45)} ${f(R * .3)}"` : ''}/>`;
   const n = L.length, bos = .28;
   return L.map((c, i) => {
     const a0 = -Math.PI / 2 + i * 2 * Math.PI / n + bos / 2, a1 = a0 + 2 * Math.PI / n - bos;
@@ -190,7 +191,7 @@ function tik(r, mini) { return sonucRozeti(r, 'tik', mini); }
 function krater(r) { return `<ellipse cx="${f(r * .25)}" cy="${f(r * .3)}" rx="${f(r * .2)}" ry="${f(r * .13)}" fill="#1E1946" opacity=".7"/><ellipse cx="${f(-r * .35)}" cy="${f(r * .05)}" rx="${f(r * .12)}" ry="${f(r * .08)}" fill="#1E1946" opacity=".7"/>`; }
 function planetGovde(x, y, r, state, o = {}) {
   let s = `<g transform="translate(${f(x)},${f(y)})">`;
-  const hk = (sonuk) => kisiHalkasi(r, o.halka, { mini: o.mini, sonuk });
+  const hk = (sonuk) => kisiHalkasi(r, o.halka, { mini: o.mini, sonuk, kesik: o.agentIsi });
   if (state === 'ertele') {
     const rr = r * .78;
     s += `<circle r="${f(rr)}" fill="#3B4258" stroke="#9AA3B5" stroke-width="1" opacity=".8"/>`;

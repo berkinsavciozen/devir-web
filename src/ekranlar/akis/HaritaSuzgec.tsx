@@ -32,7 +32,7 @@ export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Hari
   );
 }
 
-export type KisiSatiri = { ad: string; tip: 'insan' | 'agent' | 'dis'; acik: number; adim: number };
+export type KisiSatiri = { ad: string; tip: 'insan' | 'agent' | 'dis'; acik: number; adim: number; durum?: string };
 const TIP: Record<KisiSatiri['tip'], string> = { insan: 'insan', agent: 'agent', dis: 'dış katılımcı' };
 
 /** Kişi süzgeci kutusu: bir kişi seçilir, Uygula haritaya geçirir; satırın oku kişi sayfasına gider. */
@@ -61,7 +61,7 @@ export function KisiSuzgec({ acik, kapat, kisiler, secili, uygula, kisiSayfasi }
         <p className="lejant-not">Seçtiğin kişinin yolu haritada öne çıkar.</p>
         <ul role="radiogroup" aria-label="Haritada göster">
           {satir(null, 'Herkes')}
-          {kisiler.map((k) => satir(k.ad, k.ad.replace(/\s*\(.*\)$/, ''), `${TIP[k.tip]} · ${k.acik} açık · ${k.adim} görev`))}
+          {kisiler.map((k) => satir(k.ad, k.ad.replace(/\s*\(.*\)$/, ''), `${TIP[k.tip]}${k.durum ? ' · ' + k.durum : ''} · ${k.acik} açık · ${k.adim} görev`))}
         </ul>
       </div>
     </AltSayfa>

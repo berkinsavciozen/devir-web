@@ -50,12 +50,19 @@ test('W2 · AI işi olmayan akışta AI çipi yok', async ({ page }) => {
   await expect(page.getByRole('button', { name: /^AI etkinliği/ })).toHaveCount(0);
 });
 
-test('W2 · 390: destek agent kendi sarmalında gider, sahibinin gemisine iple bağlı', async ({ page }) => {
-  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
+// 12 Kas (D5): zaman spirali varsayılan; destek ipi eski haritanın dili, orada aynen kalır
+test('W2 · 390: eski haritada destek agent kendi sarmalında gider, sahibinin gemisine iple bağlı', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai&harita=eski');
   const ip = page.locator('path.destek-ip').first();
   await expect(ip).toBeAttached();
   const d = await ip.getAttribute('d');
   const [, x0, y0, x1, y1] = /^M([\d.-]+),([\d.-]+) Q[\d.-]+,[\d.-]+ ([\d.-]+),([\d.-]+)$/.exec(d || '') || [];
   expect(Math.hypot(+x1 - +x0, +y1 - +y0)).toBeGreaterThan(19);
   await cek(page, 'W2-destek-ip-390');
+});
+
+test('W2 · 390: zaman spiralinde agent kendi işinin yanında ayrı robot, sahibine ip yok', async ({ page }) => {
+  await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
+  await page.getByRole('button', { name: 'Harita dili' }).waitFor();
+  await expect(page.locator('path.destek-ip')).toHaveCount(0);
 });
