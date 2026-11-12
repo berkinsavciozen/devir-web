@@ -21,14 +21,17 @@ test('B11/B16: çıktı görev detayında üstte; adına basınca okunur sayfa y
   await ac(page, '/akis/XPVZ/adim/1?senaryo=berkin&hal=karar');
   const cikti = page.getByRole('region', { name: 'Çıktılar' });
   await expect(cikti).toBeVisible();
-  // W5: NE ZAMAN kartının altında, geçmişten önce
-  const [yc, yz, yg] = await Promise.all([cikti.boundingBox(), page.getByRole('region', { name: 'NE ZAMAN' }).boundingBox(), page.locator('details.gd-gecmis').boundingBox()]);
-  expect(yc!.y).toBeGreaterThan(yz!.y);
-  expect(yc!.y).toBeLessThan(yg!.y);
+  // 12 Kas (Berkin): eylemlerin hemen altında, NE YAPILACAK'tan önce
+  const [yc, yn] = await Promise.all([cikti.boundingBox(), page.getByRole('region', { name: 'NE YAPILACAK' }).boundingBox()]);
+  expect(yc!.y).toBeLessThan(yn!.y);
   const [yeni] = await Promise.all([context.waitForEvent('page'), cikti.getByRole('button', { name: 'Önizle: Teklif paketi' }).click()]);
   await yeni.waitForLoadState();
   await expect(yeni).toHaveURL(/\/akis\/XPVZ\/cikti\/\d+/);
   await expect(yeni.getByRole('heading', { name: 'Teklif paketi', level: 1 })).toBeVisible();
   await expect(yeni.getByText('teslimden sonra 7 gün')).toBeVisible();
+  // 12 Kas: GFM tablo tablo olarak okunur
+  const tablo = yeni.getByRole('table');
+  await expect(tablo.getByRole('columnheader', { name: 'Oran' })).toBeVisible();
+  await expect(tablo.getByRole('row')).toHaveCount(4);
   await expect(yeni.getByRole('button', { name: 'Göreve git' })).toBeVisible();
 });
