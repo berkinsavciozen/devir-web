@@ -37,6 +37,11 @@ export function kisiRengi(ad: string, o: { tip?: string; sahibi?: string | null;
 }
 
 export type HamleTur = 'bitir' | 'karar' | 'onayla' | 'engel' | 'kur';
+/**
+ * H5 (sunucu 0.36.0): agent adımının işini alacak Claude rutini yok mu? Sunucu `rutin_var` yazdıysa o, yazmadıysa (eski sunucu)
+ * yalnız kendi rutinlerinden bilinen `yerel` değer.
+ */
+export const rutinYok = (a: any, yerel = false) => (typeof a?.rutin_var === 'boolean' ? !a.rutin_var : yerel);
 export interface Hamle { tur: HamleTur; kim: string; renk: string; etiket: string }
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const ETIKET: Record<HamleTur, string> = { bitir: 'Bitir', karar: 'Karar ver', onayla: 'Onayla', engel: 'Engeli kaldır', kur: 'AI yapsın’ı kur' };
@@ -45,7 +50,7 @@ const ETIKET: Record<HamleTur, string> = { bitir: 'Bitir', karar: 'Karar ver', o
  * Hamle kimde ve ne? Sıradaki (henüz başlayamayan) ve biten işte hamle yok.
  * 9 Kas (harita denetimi A1, A2): AI yapsın açık işte sıra AI'dadır; AI çalışırken ya da sırasını beklerken kimseden bir şey
  * beklenmez. Bakan kişi agent'ın sahibiyse ve Claude rutini yoksa (`rutinYok`) iş kendiliğinden başlamaz: hamle "kur",
- * sahibinin renginde.
+ * sahibinin renginde. H5 (sunucu 0.36.0): adımda `rutin_var` varsa o geçer; başkasının agent'ında rutin yoksa da hamle sahibindedir.
  */
 export function hamle(a: any, o: { renkler?: Record<string, string>; ben?: string; rutinYok?: boolean } = {}): Hamle | null {
   if (BITTI(a.durum) || a.durum === 'sirada') return null;
@@ -55,7 +60,7 @@ export function hamle(a: any, o: { renkler?: Record<string, string>; ben?: strin
   let tur: HamleTur | null = null;
   if (ai === 'bakilacak') tur = 'onayla';
   else if (a.durum === 'engelli' || ai === 'hata') tur = 'engel';
-  else if (ai) tur = o.rutinYok && o.ben && insan === o.ben && a.durum === 'hazir' && ai === 'sirada' ? 'kur' : null;
+  else if (ai) tur = rutinYok(a, !!(o.rutinYok && o.ben && insan === o.ben)) && a.durum === 'hazir' && ai === 'sirada' ? 'kur' : null;
   else if (a.karar_adimi) tur = 'karar';
   else if (a.durum === 'hazir' || a.durum === 'suruyor') tur = 'bitir';
   if (!tur) return null;

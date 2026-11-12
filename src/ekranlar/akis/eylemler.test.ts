@@ -79,6 +79,16 @@ describe('W1 cümleler', () => {
       .toBe('Bütçe sorusu cevaplanınca Claude başlayacak. Cevabı 3. görevde vereceksin.');
   });
   it('öncül bekleyen AI işi', () => expect(otoDurumCumlesi({ ...agent, durum: 'sirada', oto: true, oto_bekledigi: 'öncüller', bekledigi: [{ no: 2, durum: 'hazir' }] }, o)).toBe('2. görev bitince Claude başlayacak.'));
+  it('H5: başkasının agent’ında rutin yok; rutini sahibi kurar', () => {
+    const k = { ...o, ben: 'Ece', kisa: (x: string) => (x === ben ? 'Berkin' : 'Claude') };
+    expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false }, k)).toBe('Berkin Claude rutinini kurunca Claude başlayacak; o zamana kadar kendiliğinden başlamaz.');
+    expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false }, o)).toBe('AI yapsın açık ama Claude rutinin kurulu değil; kurunca Claude başlayacak.');
+    expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: true }, { ...o, tetikYok: true })).toBe('Hazır; Claude bir sonraki taramada başlayacak.');
+  });
+  it('H5: sunucu rutin var diyorsa kendi işinde "kur" yok', () => {
+    expect(eylemPlani({ a: { ...agent, durum: 'hazir', oto: true, rutin_var: true }, ben, acikAlt: 0, tetikYok: true }).ana).not.toBe('oto_kur');
+    expect(eylemPlani({ a: { ...agent, durum: 'hazir', oto: true, rutin_var: false }, ben, acikAlt: 0, tetikYok: false }).ana).toBe('oto_kur');
+  });
   it('çıktı bekleniyor', () => expect(ciktiCumlesi({ ...insan, durum: 'hazir', beklenen_cikti: 'Rapor PDF’i' }, ben)).toBe('Rapor PDF’i bekleniyor. Ekleyince bitirebilirsin.'));
 });
 

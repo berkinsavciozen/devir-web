@@ -18,7 +18,7 @@ import { useAkis } from './Galaksi';
 import { KararBolumu } from './Karar';
 import { TarihNedenIcerik } from './TarihNeden';
 import { GorevKart, kartCumlesi, kartTonu } from '../../bilesen/GorevKart';
-import { damla, hamle } from '../../cizim/hamle';
+import { damla, hamle, rutinYok } from '../../cizim/hamle';
 
 const GUN = 864e5;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
@@ -329,7 +329,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         <p className="gd-satir" role="status">{otoSatiri(A)}</p>
         {A.oto && <label className="gd-oto-sec"><input type="checkbox" checked={!!A.oto_tarih_bekle} disabled={otoYaz.isPending} onChange={(e) => otoYaz.mutate({ oto_tarih_bekle: e.target.checked })} /><span>Planlanan başlangıç gününü beklesin</span></label>}
         {claudeYok && tetikYok && <p className="gd-satir">AI yapsın şimdilik yalnız Claude’la çalışır; sende {U.ad} bağlı. Kendiliğinden yapılsın istersen Claude’u da bağlayıp rutini kur, o zamana kadar {U.da} açıp birlikte yap. <button type="button" className="metin-baglanti" onClick={() => git('/bagla?uygulama=claude')}>Claude’u bağla</button></p>}
-        {A.oto && tetikYok && !claudeYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
+        {A.oto && !BITTI(A.durum) && rutinYok(A, tetikYok) && (!A.agent_sahibi || A.agent_sahibi === ben) && !claudeYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
         {otoYaz.isError && <p className="canli-hata-satir" role="alert">{(otoYaz.error as Error).message}</p>}
       </Bolum>}
 

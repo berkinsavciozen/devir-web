@@ -673,8 +673,25 @@ export async function tetikBul(ctx: Ctx, kisi: string | null, agentAd?: string |
 export async function rutinVar(ctx: Ctx, kisi: string | null, agentAd?: string | null) {
   if (!kisi) return false;
   const t = rutinSec(await kisiRutinleri(ctx, kisi), agentAd, await kisiAgentAdlari(ctx, kisi));
-  if (!t) return false;
-  return t.url !== ZAMANLI || (!!t.son_tetik_at && ctx.now - Date.parse(t.son_tetik_at) < 3 * 864e5);
+  return rutinCanli(t, ctx.now);
+}
+/** Rutin işi alır mı: API tetiği her zaman, zamanlanmış rutin son 3 günde Devir'e uğradıysa. */
+const rutinCanli = (t: any, now: number) => !!t && (t.url !== ZAMANLI || (!!t.son_tetik_at && now - Date.parse(t.son_tetik_at) < 3 * 864e5));
+/**
+ * H5 (0.36.0): açık agent adımının işini alacak bir Claude rutini var mı (agent sahibinin rutinleri). Herkes görür: başkasının
+ * agent'ında rutin yoksa hamle sahibindedir. Agent olmayan ya da biten adımda null. Rutinler kişi başına bir kez okunur.
+ */
+export function rutinOkuyucu(ctx: Ctx) {
+  const kisiler = new Map<string, Promise<{ L: any[]; adlar: string[] }>>();
+  return async (s: any): Promise<boolean | null> => {
+    if (s.sahip_tip !== "agent" || DONE(s)) return null;
+    const kisi = String(s.agent_sahibi || "").trim();
+    if (!kisi) return false;
+    const k = norm(kisi);
+    if (!kisiler.has(k)) kisiler.set(k, Promise.all([kisiRutinleri(ctx, kisi), kisiAgentAdlari(ctx, kisi)]).then(([L, adlar]) => ({ L, adlar })));
+    const { L, adlar } = await kisiler.get(k)!;
+    return rutinCanli(rutinSec(L, s.sahip, adlar), ctx.now);
+  };
 }
 /** Zamanlanmış rutin satırının url işareti: jetonsuz, Devir tetiklemez; rutin kendisi saatte bir devir_ai_isler'i çağırır. */
 export const ZAMANLI = "zamanli";

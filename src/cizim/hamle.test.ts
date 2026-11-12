@@ -19,6 +19,14 @@ describe('9 Kas · hamle AI yapsın (harita denetimi A1, A2)', () => {
     expect(hamle({ ...ag, durum: 'hazir', oto: true }, { ben: 'Berkin', rutinYok: true })).toMatchObject({ tur: 'kur', kim: 'Berkin' });
     expect(hamle({ ...ag, durum: 'hazir', oto: true }, { ben: 'Ece', rutinYok: true })).toBe(null);
   });
+  it('H5 (sunucu 0.36.0): rutin_var sunucudan gelirse başkası da görür; hamle agent sahibinde', () => {
+    expect(hamle({ ...ag, durum: 'hazir', oto: true, rutin_var: false })).toMatchObject({ tur: 'kur', kim: 'Berkin' });
+    expect(hamle({ ...ag, durum: 'hazir', oto: true, rutin_var: false }, { ben: 'Ece' })).toMatchObject({ tur: 'kur', kim: 'Berkin' });
+    // sunucu rutin var diyorsa yerel tetik listesi boş olsa da kur yok
+    expect(hamle({ ...ag, durum: 'hazir', oto: true, rutin_var: true }, { ben: 'Berkin', rutinYok: true })).toBe(null);
+    // sırasını bekleyen işte hamle yok
+    expect(hamle({ ...ag, durum: 'sirada', oto: true, rutin_var: false })).toBe(null);
+  });
 });
 
 describe('9 Kas · sohbet bağlı uygulamada', () => {
