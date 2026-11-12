@@ -1062,6 +1062,26 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .cikti-metin ul, .cikti-metin ol { padding-left: 22px; display: grid; gap: 6px; }
 .cikti-metin code { font-size: 13px; padding: 1px 5px; border-radius: 6px; background: color-mix(in srgb, #FFFFFF 8%, transparent); }
 .cikti-metin a { color: var(--renk-vurgu-altin); }
+.cikti-metin h4, .cikti-metin h5, .cikti-metin h6 { font: 650 15px/22px var(--font-sans); }
+.cikti-metin li > ul, .cikti-metin li > ol, .cikti-metin li > p { margin-top: 6px; }
+.cikti-metin li.gorev-maddesi { list-style: none; margin-left: -22px; }
+.cikti-metin li.gorev-maddesi > input { margin: 0 8px 0 0; vertical-align: -2px; accent-color: var(--renk-vurgu-altin); }
+.cikti-metin blockquote { padding-left: 14px; border-left: 3px solid color-mix(in srgb, #FFFFFF 18%, transparent); color: var(--renk-metin-ink2); }
+.cikti-metin blockquote > * + * { margin-top: 8px; }
+.cikti-metin pre { padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, #000000 28%, transparent); overflow-x: auto; }
+.cikti-metin pre code { padding: 0; background: none; font-size: 13px; line-height: 19px; white-space: pre; }
+.cikti-metin hr { border: 0; border-top: 1px solid color-mix(in srgb, #FFFFFF 12%, transparent); }
+.cikti-metin del { opacity: .7; }
+/* GFM tablo: dar ekranda kendi içinde yatay kayar */
+.cikti-metin .md-tablo { overflow-x: auto; margin-left: -4px; margin-right: -4px; border-radius: 12px; box-shadow: inset 0 0 0 1px color-mix(in srgb, #FFFFFF 10%, transparent); }
+.cikti-metin .md-tablo:focus-visible { outline: 2px solid var(--renk-vurgu-altin); outline-offset: 2px; }
+.cikti-metin table { width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px; overflow-wrap: normal; }
+.cikti-metin th, .cikti-metin td { padding: 8px 12px; text-align: left; vertical-align: top; min-width: 96px; }
+.cikti-metin th { font-weight: 650; color: var(--renk-metin-ink); background: color-mix(in srgb, #FFFFFF 6%, transparent); white-space: nowrap; }
+.cikti-metin td { color: var(--renk-metin-ink2); }
+.cikti-metin tr + tr td, .cikti-metin tbody tr:first-child td { border-top: 1px solid color-mix(in srgb, #FFFFFF 8%, transparent); }
+.cikti-baglanti { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
+.cikti-baglanti span { font-size: 13px; color: var(--renk-metin-ink2); overflow-wrap: anywhere; }
 .cikti-metin hr { border: 0; height: 1px; background: color-mix(in srgb, #FFFFFF 12%, transparent); }
 .cikti-sayfa .metin-baglanti { margin-top: 18px; display: inline-block; }
 /* W1 (4 Kas) · eylem çubuğu: ana düğme, ikincil + "⋯" menüsü; KİM ve NE ZAMAN geniş panelde yan yana */

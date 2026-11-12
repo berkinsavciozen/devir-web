@@ -170,12 +170,14 @@ export function Ciktilar({ a, kod, claudeGizle }: { a: any; kod: string; claudeG
               eylemler={[{ ad: `İndir: ${c.ad}`, ikon: <IndirIkon />, tikla: () => void dosyaIndir(c.dosya_id).catch((e) => setHata(e.message)) }, { ad: `Sil: ${c.ad}`, ikon: <CopIkon />, ton: 'mercan', tikla: () => setSilinecek({ ...c, d }) }]} />
           );
           if (/silindi/.test(c.kaynak || '')) return <DosyaSatiri key={c.id} ad={c.ad} hal="silindi" alt={`Dosya silindi · ${gunAy(Date.parse(c.tarih))}`} />;
-          if (c.url) return (
-            <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} ac={() => window.open(c.url, '_blank', 'noopener')} alt={['bağlantı', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
-              eylemler={[{ ad: `Aç: ${c.ad}`, ikon: <DisAcIkon />, tikla: () => window.open(c.url, '_blank', 'noopener') }]} />
-          );
           // metin çıktısı (AI rutininin yazdığı): ayrı sekmede okunur sayfa
           const oku = () => window.open(tamAdres(`/akis/${encodeURIComponent(kod)}/cikti/${c.id}`) + location.search, '_blank', 'noopener');
+          const linkAc = () => window.open(c.url, '_blank', 'noopener');
+          // 12 Kas (Berkin): bağlantısı olan çıktı doğrudan bağlantıya gider; metni de varsa metin satırdaki ayrı düğmede
+          if (c.url) return (
+            <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} ac={linkAc} alt={['bağlantı', alanAdi(c.url), c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
+              eylemler={[...(c.icerik ? [{ ad: `Metni oku: ${c.ad}`, ikon: <MetinIkon />, tikla: oku }] : []), { ad: `Bağlantıyı aç: ${c.ad} (${alanAdi(c.url) || 'bağlantı'})`, ikon: <DisAcIkon />, tikla: linkAc }]} />
+          );
           return <DosyaSatiri key={c.id} ad={c.ad} ikon={<BaglantiIkon />} ac={c.icerik || c.ozet ? oku : undefined} alt={['metin', c.arac || c.kim, gunAy(Date.parse(c.tarih))].filter(Boolean).join(' · ')}
             eylemler={c.icerik || c.ozet ? [{ ad: `Aç: ${c.ad}`, ikon: <DisAcIkon />, tikla: oku }] : []} />;
         })}
@@ -189,6 +191,12 @@ export function Ciktilar({ a, kod, claudeGizle }: { a: any; kod: string; claudeG
     </section>
   );
 }
+
+function MetinIkon() {
+  return <svg aria-hidden width="18" height="18" viewBox="0 0 18 18"><path d="M4,2.5 H11 L14.5,6 V15.5 H4Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" /><path d="M6.5,9 H12 M6.5,12 H10.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>;
+}
+
+const alanAdi = (u: string) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return null; } };
 
 /** En çok 3 eşzamanlı yükleme. */
 const sira = (() => {

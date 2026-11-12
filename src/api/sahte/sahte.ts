@@ -370,7 +370,7 @@ function halOtuz(T: Record<string, any[]>) {
 /** C1 · 7 Kas: Karadeniz'de çiftçi kabul kararının sırası geldi; Claude 5 çiftçi önerdi. */
 async function halKarar(yaz: Yaz) {
   const a = (no: number) => `/api/v1/akis/XPVZ/adim/${no}`;
-  await yaz('2026-10-15T11:00:00+03:00', a(1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme', icerik: '## Teklif paketi\n\n- **Komisyon:** %12\n- **Ödeme:** teslimden sonra 7 gün\n\nÇiftçiye gidecek metin hazır; gönderme kararı sende.' } });
+  await yaz('2026-10-15T11:00:00+03:00', a(1), { durum: 'tamam', ...AJAN, cikti: { ad: 'Teklif paketi', ozet: '%12 komisyon, 7 gün ödeme', icerik: '## Teklif paketi\n\n- **Komisyon:** %12\n- **Ödeme:** teslimden sonra 7 gün\n\n### Kalemler\n\n| Kalem | Oran | Not |\n|---|:---:|---|\n| Komisyon | %12 | Pilotta sabit |\n| Ödeme süresi | 7 gün | Teslimden sonra |\n| Lojistik | – | Çiftçide, `kargo` hariç |\n\nÇiftçiye gidecek metin hazır; gönderme kararı sende.' } });
   await yaz('2026-10-16T15:00:00+03:00', a(16), { durum: 'tamam', not: 'Kargo: Rize ve Trabzon toplama noktası' });
   await yaz('2026-10-17T10:00:00+03:00', a(4), { durum: 'suruyor' });
   await yaz('2026-10-21T17:00:00+03:00', a(4), { durum: 'tamam', not: '4 kooperatif yönetimiyle görüşüldü' });
@@ -462,7 +462,7 @@ async function halRk8rFaz(yaz: Yaz, T: Record<string, any[]>, hal: string) {
   if (f < 1) return;
   const al = (no: number, an: string) => Object.assign(adim(no), { oto_durum: 'tetiklendi', oto_at: new Date(an).toISOString(), oto_deneme: 1 });
   // gün 1-4: AI özeti → onay, karar B, SSS AI'da onay bekliyor, Ece'nin agent'ı rutinsiz bekliyor, Selin başladı
-  await yaz('2026-11-10T10:00:00+03:00', a(2), { ...AJAN, cikti: { ad: 'Rakip özeti', ozet: '3 rakip: biri hız, biri fiyat, biri güven anlatıyor.', icerik: '## Rakip özeti\n\n- A: hız\n- B: fiyat\n- C: güven' } });
+  await yaz('2026-11-10T10:00:00+03:00', a(2), { ...AJAN, cikti: { ad: 'Rakip özeti', ozet: '3 rakip: biri hız, biri fiyat, biri güven anlatıyor.', icerik: '## Rakip özeti\n\n- A: hız\n- B: fiyat\n- C: güven', url: 'https://docs.google.com/document/d/sahte-rakip', kaynak: 'Google Docs' } });
   await yaz('2026-11-10T14:00:00+03:00', a(2), { durum: 'tamam' });
   await yaz('2026-11-11T09:00:00+03:00', a(3), { durum: 'tamam', karar_secimi: ['B · Sadelik'] });
   al(5, '2026-11-11T10:00:00+03:00');

@@ -179,7 +179,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   const aiArdil = aiArdilCumlesi(A, d.adimlar, ben, (x) => (ajanMi(x) ? x : kisaAd(x)));
 
   // W5 ikinci tur (Berkin 20:26): bölüm bölüm, hepsi aynı kart bileşeni; ilk bakışta NE yapılacak, NEDEN ve NE ZAMAN.
-  // Başlık kartı (kim, durum) · eylem · NE YAPILACAK · NEDEN (bunu bekleyenler) · NE ZAMAN (zaman çizgisi, önce bitmesi
+  // Başlık kartı (kim, durum) · eylem · ÇIKTILAR · NE YAPILACAK · NEDEN (bunu bekleyenler) · NE ZAMAN (zaman çizgisi, önce bitmesi
   // gerekenler) · karar / çıktı / AI yapsın / alt görevler / kalemler · geçmiş. Alt sayfa yok: tarih nedeni ve bağlantı satır içinde.
   // tek ipucu cümlesi: AI durumu ya da beklenen çıktı ("…bekleniyor. Ekleyince bitirebilirsin.")
   const ipucu = otoC || ciktiCumlesi(A, ben);
@@ -292,6 +292,9 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
       {/* karar görevinde karar formu eylemin kendisi: eylemlerin hemen altında (W1) */}
       {A.karar_adimi && <Bolum baslik="KARAR" id="gd-karar"><KararBolumu a={A} kod={kod} ben={ben} /></Bolum>}
 
+      {/* 12 Kas (Berkin): çıktılar eylemlerin (karar görevinde karar formunun) hemen altında */}
+      {ciktiVar && ciktiBolumu}
+
       {/* NE · NEDEN · NE ZAMAN */}
       <Bolum baslik="NE YAPILACAK" ikon="ne">
         {ne.length ? satirlar(ne) : <p className="gd-satir">{adimAdi(A)}. Ayrıntı yazılmamış.</p>}
@@ -321,7 +324,6 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         </>}
       </Bolum>
 
-      {ciktiVar && ciktiBolumu}
 
       {otoGoster && <Bolum baslik="AI YAPSIN" id="gd-oto">
         <p className="gd-satir" role="status">{otoSatiri(A)}</p>
