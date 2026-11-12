@@ -9,22 +9,28 @@ const ac = async (p: Page, yol: string, w = 390, h = 844) => {
 };
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
-test('N2-zil → W6 Pano: Evren’deki Pano düğmesi yeni değişiklikleri sayar, Pano açılınca söner', async ({ page }) => {
+test('N2-zil → K3: sağ üstte Pano ve Bildirimler ayrı düğme; sayı zilde, Bildirimler açılınca söner', async ({ page }) => {
   await ac(page, '/?senaryo=berkin');
-  const zil = page.getByRole('button', { name: /^Pano: \d+ yeni değişiklik/ });
+  const zil = page.getByRole('button', { name: /^Bildirimler: \d+ yeni hareket/ });
   await expect(zil).toBeVisible();
   const r = await zil.boundingBox();
   expect(Math.min(r!.width, r!.height)).toBeGreaterThanOrEqual(44);
-  await zil.click();
+  // Evren'in altındaki pano olayları okundu saymaz
+  await page.getByRole('button', { name: 'Pano ve bekleyen işler' }).click();
+  await expect(zil).toBeVisible();
+  await page.getByRole('button', { name: 'Pano', exact: true }).click();
   await expect(page).toHaveURL(/\/pano/);
   for (const b of ['SENDEN BEKLENEN', 'RİSKTE', 'SON DEĞİŞİKLİKLER', 'YAKINDA']) await expect(page.getByRole('region', { name: b })).toBeVisible();
-  // bu açılışın yenileri işaretli kalır
-  await expect(page.getByRole('region', { name: 'SON DEĞİŞİKLİKLER' }).getByLabel('Yeni').first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'SON DEĞİŞİKLİKLER' })).toContainText('Selin çıktı ekledi');
+  // bu açılışın yenileri işaretli kalır; son birkaç hareket, tamamı Bildirimler'de
+  const S = page.getByRole('region', { name: 'SON DEĞİŞİKLİKLER' });
+  await expect(S.getByLabel('Yeni').first()).toBeVisible();
+  await expect(S).toContainText('Selin çıktı ekledi');
+  await expect(S.locator('.gorev-kart')).toHaveCount(5);
   await page.waitForTimeout(300);
   await cek(page, 'W6-pano');
-  await page.goBack();
-  await expect(page.getByRole('button', { name: 'Pano', exact: true })).toBeVisible();
+  await S.getByRole('button', { name: 'Bildirimler’de tümü' }).click();
+  await expect(page).toHaveURL(/\/bildirimler\?sekme=tum/);
+  await expect(page.getByRole('button', { name: 'Bildirimler', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('N2-tum: Tüm etkinlik güne göre; art arda olaylar tek satır, satır adıma gider', async ({ page }) => {
@@ -37,7 +43,9 @@ test('N2-tum: Tüm etkinlik güne göre; art arda olaylar tek satır, satır ad�
   await expect(L.getByText(/adımın sırası geldi/).first()).toBeVisible();
   await page.waitForTimeout(300);
   await cek(page, 'N2-bildirimler-tum');
-  await ilk.getByRole('button').click();
+  // K3: göreve ait olay görev kartıyla
+  await expect(ilk.locator('.gorev-kart')).toBeVisible();
+  await ilk.locator('.gorev-kart-ac').click();
   await expect(page).toHaveURL(/\/akis\/U422\/adim\/15/);
 });
 

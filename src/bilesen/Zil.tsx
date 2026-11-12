@@ -22,17 +22,36 @@ export function Zil({ x, y, stil, kabukta, aktif }: { x?: number; y: number; sti
   const n = useOlaylar().data?.okunmamis ?? 0;
   // masaüstü panelinde düğme üst çubukta bir kez (sayfanın kendisininki çizilmez)
   if (panelde && !kabukta) return null;
-  // W6 (K8): zil yerine Pano: dört kartlık pano simgesi; okunmamış değişiklik varsa altın ve sayı
+  // W6 (K8): Pano düğmesi dört kartlık pano simgesi. K3 (12 Kas): okunmamış sayısı yanındaki Bildirimler zilinde
+  const r = 'var(--renk-vurgu-lila)';
+  const pano = /^\/pano/.test(location.pathname), bil = /^\/bildirimler/.test(location.pathname);
+  const st = { ...(x == null ? { right: 8 } : { left: x }), top: y, ...stil };
+  return (
+    <>
+      <button type="button" className={`zil-dugme pano-dugme${aktif && pano ? ' secili' : ''}`} style={st} aria-pressed={(aktif && pano) || undefined}
+        aria-label="Pano" onClick={() => git('/pano')}>
+        <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26">
+          <rect x="-8" y="-8" width="7" height="9" rx="2" fill={aktif && pano ? r : 'var(--renk-zemin-kart)'} stroke={r} strokeWidth="1.5" />
+          <rect x="1" y="-8" width="7" height="5" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
+          <rect x="-8" y="3" width="7" height="5" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
+          <rect x="1" y="-1" width="7" height="9" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
+        </svg>
+      </button>
+      <ZilDugme n={n} secili={!!aktif && bil} stil={st} />
+    </>
+  );
+}
+
+/** Bildirimler zili (K3, 12 Kas): okunmamış hareket varsa altın ve sayı; Bildirimler sayfasını açar. */
+function ZilDugme({ n, secili, stil }: { n: number; secili: boolean; stil: React.CSSProperties }) {
   const r = n ? 'var(--renk-vurgu-altin)' : 'var(--renk-vurgu-lila)';
   return (
-    <button type="button" className={`zil-dugme pano-dugme${aktif ? ' secili' : ''}`} style={{ ...(x == null ? { right: 8 } : { left: x }), top: y, ...stil }} aria-pressed={aktif || undefined}
-      aria-label={n ? `Pano: ${n} yeni değişiklik` : 'Pano'} onClick={() => git('/pano')}>
+    <button type="button" className={`zil-dugme bildirim-dugme${secili ? ' secili' : ''}`} style={stil} aria-pressed={secili || undefined}
+      aria-label={n ? `Bildirimler: ${n} yeni hareket` : 'Bildirimler'} onClick={() => git('/bildirimler')}>
       <svg aria-hidden width="26" height="26" viewBox="-13 -13 26 26">
         {n > 0 && <circle r="13" fill="url(#glowGold)" opacity=".45" />}
-        <rect x="-8" y="-8" width="7" height="9" rx="2" fill={aktif ? r : 'var(--renk-zemin-kart)'} stroke={r} strokeWidth="1.5" />
-        <rect x="1" y="-8" width="7" height="5" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
-        <rect x="-8" y="3" width="7" height="5" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
-        <rect x="1" y="-1" width="7" height="9" rx="2" fill="var(--renk-zemin-kart)" stroke={r} strokeWidth="1.5" />
+        <path d="M-6.5,4 L-6.5,-1.5 A6.5,6.5 0 0 1 6.5,-1.5 L6.5,4 L8,6 L-8,6 Z" fill={secili ? r : 'var(--renk-zemin-kart)'} stroke={r} strokeWidth="1.5" strokeLinejoin="round" />
+        <path d="M-2.2,8.5 A2.4,2.4 0 0 0 2.2,8.5" fill="none" stroke={r} strokeWidth="1.5" strokeLinecap="round" />
       </svg>
       {n > 0 && <b className="zil-sayi" aria-hidden>{n > 99 ? '99+' : n}</b>}
     </button>
