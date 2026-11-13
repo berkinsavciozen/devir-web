@@ -63,14 +63,17 @@ test('kişi şeridi: dokununca yalnız o kişi öne çıkar, çip ve Herkes ile 
   for (const d of await serit.getByRole('button').all()) { const b = await d.boundingBox(); if (b) { expect(b.height).toBeGreaterThanOrEqual(44); expect(b.width).toBeGreaterThanOrEqual(44); } }
 });
 
-test('telefon: işe dokununca kutu açılır, iş kutunun üstünde kalır; ikinci dokunuş görevi açar', async ({ page }) => {
+test('telefon: işe dokununca kutu açılır, işi örtmez, harita yerinde kalır; ikinci dokunuş görevi açar', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
+  const kam0 = await page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform');
   await dokun(page, '.ky-svg .gz[data-no="6"]');
   const k = page.getByRole('dialog', { name: /^6\. Post görseli/ });
   await expect(k).toBeVisible();
   await expect(k.getByRole('button', { name: 'Onayla, bitir' })).toBeVisible();
-  const kb = (await k.boundingBox())!, gb = (await page.locator('.ky-svg .gz[data-no="6"]').boundingBox())!;
-  expect(gb.y + gb.height / 2).toBeLessThan(kb.y);
+  // kutu işi örtmez (iş alttaysa kutu üstte açılır) ve harita yerinden oynamaz
+  const kb = (await k.boundingBox())!, gb = (await page.locator('.ky-svg .gz[data-no="6"]').boundingBox())!, gy = gb.y + gb.height / 2;
+  expect(gy < kb.y || gy > kb.y + kb.height).toBe(true);
+  expect(await page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform')).toBe(kam0);
   await dokun(page, '.ky-svg .gz[data-no="6"]');
   await expect(page).toHaveURL(/\/akis\/RTD5\/adim\/6/);
 });
@@ -106,7 +109,7 @@ test('harita dokunuşu sayfayı kaydırmaz; gösterge ve şerit 360 px’te ekra
 
 // U6: zaman yörüngesi sabit çerçeve. Yakınlaşma kamerayı oynatmaz, zaman ölçeğini açar; küçük yüzen sürgüyle de yapılır.
 for (const [w, h] of [[390, 844], [1440, 900]] as const) {
-  test(`yakınlaşma · ${w}: sürgü sağa çekilince işler aralanır, çerçeve yerinde kalır; çift tık açılış ölçeği`, async ({ page }) => {
+  test(`yakınlaşma · ${w}: sürgü yukarı çekilince işler aralanır, çerçeve yerinde kalır; çift tık açılış ölçeği`, async ({ page }) => {
     await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0', w, h);
     const surgu = page.getByRole('slider', { name: /^Yakınlaştırma/ });
     await expect(surgu).toBeVisible();
@@ -114,15 +117,15 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     const kamera = () => page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform');
     const yer = async () => { const b = (await page.locator('.ky-svg .gz[data-no="10"]').boundingBox())!; return b.x + b.width / 2; };
     const k0 = await kamera(), x0 = await yer();
-    const b = (await surgu.boundingBox())!;
-    await page.mouse.move(b.x + b.width * .34, b.y + b.height / 2); await page.mouse.down();
-    await page.mouse.move(b.x + b.width * .62, b.y + b.height / 2, { steps: 5 }); await page.mouse.up();
+    const b = (await surgu.boundingBox())!, tb = (await page.locator('.ky-zoom-top').boundingBox())!;
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2); await page.mouse.down();
+    await page.mouse.move(tb.x + tb.width / 2, b.y + b.height * .38, { steps: 5 }); await page.mouse.up();
     expect(Number(await surgu.getAttribute('aria-valuenow'))).toBeGreaterThan(150);
     expect(await kamera()).toBe(k0); // çerçeve kıpırdamaz
     expect(await yer()).toBeGreaterThan(x0 + 12); // ileri tarihli iş iğneden uzaklaşır
-    await surgu.focus(); await page.keyboard.press('ArrowLeft');
+    await surgu.focus(); await page.keyboard.press('ArrowDown');
     expect(Number(await surgu.getAttribute('aria-valuenow'))).toBeLessThan(200);
-    await surgu.dblclick();
+    await page.locator('.ky-zoom-top').dblclick();
     await expect(surgu).toHaveAttribute('aria-valuenow', '100');
     expect(Math.abs((await yer()) - x0)).toBeLessThan(2);
   });
@@ -140,4 +143,21 @@ test('işaretler: aynı yörüngede gezegenler birbirine binmez (390 ve 1440)', 
     });
     expect(binen, `${w}: binen gezegenler`).toEqual([]);
   }
+});
+
+test('araca dokununca kişi kutusu: durum, iş ve hamle; işe dokununca görev kutusu açılır; telefonda sığdır haritayı bozmaz', async ({ page }) => {
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0');
+  const kam0 = await page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform');
+  await dokun(page, '.ky-svg .arac-g[data-kisi="Mert"] .arac-alan');
+  const k = page.getByRole('dialog', { name: /^Mert: durum ve hamleler/ });
+  await expect(k).toBeVisible();
+  await expect(k).toContainText('çalışıyor');
+  await expect(k.getByRole('button', { name: /Şimdiki işi/ })).toContainText('8.');
+  await expect(k.getByRole('group', { name: 'Bekleyen hamleler' }).getByRole('button').first()).toContainText('Bitir');
+  await k.getByRole('button', { name: /Şimdiki işi/ }).click();
+  await expect(k).toHaveCount(0);
+  await expect(page.getByRole('dialog', { name: /^8\. / })).toBeVisible();
+  await page.getByRole('button', { name: 'Haritayı sığdır' }).click();
+  expect(await page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform')).toBe(kam0);
+  expect(await page.locator('.ky-kap').evaluate((e) => getComputedStyle(e).touchAction)).toBe('none');
 });

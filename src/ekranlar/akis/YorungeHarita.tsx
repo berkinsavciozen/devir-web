@@ -1,5 +1,6 @@
 import { useState, useEffect, useImperativeHandle, useMemo, useRef, forwardRef } from 'react';
 import { hareketAz } from '../../ayar/hareket';
+import { adimAdi } from '../../metin/turkce';
 import { anYaz, arac, durumAn, durumRenk, kur, KISI_DURUM_AD, yorungeHaritasi, type YorungeOrnegi } from '../../cizim/yorunge/index.js';
 
 /**
@@ -11,14 +12,12 @@ import { anYaz, arac, durumAn, durumRenk, kur, KISI_DURUM_AD, yorungeHaritasi, t
  * dokununca yalnız o kişi, agent'ı ve işleri öne çıkar.
  */
 const SA = 36e5, GUN = 864e5, CEYREK = 15 * 60e3;
-export interface YorungeTutamak { yakinlas: (kat: number) => void; sigdir: () => void }
+export interface YorungeTutamak { yakinlas: (kat: number) => void; sigdir: () => void; /** işin harita kutusu içindeki dikey yeri (px), yoksa null */ adimY: (no: number) => number | null }
 interface Oz {
   d: any; bakan: string; simdi: number; an: number; cihaz: 'tel' | 'mas';
   x: number; y: number; w: number; h: number; ust?: number;
   secili?: number | null; kisi?: string | null; vurgu?: string | null;
   adim: (no: number) => void; kisiSec: (ad: string) => void; bos?: () => void; etiket: string;
-  /** altta açılan kutunun payı (telefon): seçilen iş kutunun altında kalıyorsa harita yukarı kayar */
-  altPay?: number;
   /** zaman göstergesi çekilince / tuşla */
   anDegis?: (t: number) => void;
   /** alt kişi şeridi: yeri, seçim ve oynat düğmesi */
@@ -28,7 +27,7 @@ interface Oz {
 /** API akış detayı → harita modelinin girdisi. */
 export const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toISOString(), akis: { ...d.akis, bitis: d.bitis || d.akis?.bitis, kritik_yol: d.kritik_yol || d.akis?.kritik_yol || [], adimlar: d.adimlar || [], sahipler: d.sahipler || [], katilimcilar: d.katilimcilar || [], olaylar: d.olaylar || [] } });
 
-export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit, altPay = 0 }, ref) {
+export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit }, ref) {
   const svg = useRef<SVGSVGElement>(null);
   const hr = useRef<YorungeOrnegi | null>(null);
   const [zk, setZk] = useState(1);
@@ -59,12 +58,17 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   }, [an, secili, kisi, M, D, simdi]);
   useEffect(() => { hr.current?.vurgu(vurgu); }, [vurgu, M]);
   // seçilen iş alttaki kutunun arkasında kalmasın
+  // dokunma: sayfa kaymasın. iOS, çizim öğesindeki touch-action'ı saymaz; kilit sarmalayıcı kutuda (stil) ve burada.
   useEffect(() => {
-    const H = hr.current, e = svg.current; if (!H || !e || secili == null || !altPay) return;
-    const g = e.querySelector(`.gz[data-no="${secili}"]`); if (!g) return;
-    const r = g.getBoundingClientRect(), R = e.getBoundingClientRect(), tasma = r.bottom + 14 - (R.bottom - altPay * (R.height / (e.clientHeight || R.height)));
-    if (tasma > 0) H.kaydir(0, -tasma * oran());
-  }, [secili, altPay]); // eslint-disable-line react-hooks/exhaustive-deps
+    const k = svg.current?.parentElement; if (!k) return;
+    const dur = (ev: TouchEvent) => { if (ev.cancelable) ev.preventDefault(); };
+    k.addEventListener('touchmove', dur, { passive: false });
+    return () => k.removeEventListener('touchmove', dur);
+  }, []);
+  // araca dokununca açılan kişi kutusu: yalnız o kişi seçiliyken durur
+  const [kisiKutu, setKisiKutu] = useState<{ ad: string; ust: boolean } | null>(null);
+  useEffect(() => { setKisiKutu((q) => (q && q.ad === kisi ? q : null)); }, [kisi]);
+  useEffect(() => { if (secili != null) setKisiKutu(null); }, [secili]);
 
   // ekran → svg yerel koordinatı (sahne ölçeklenmiş olabilir)
   const yerel = (cx: number, cy: number): [number, number] => {
@@ -86,10 +90,12 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
     // sığdır: yakınlaşma varsa önce açılış ölçeği; telefonda sonra bütün tarihler (uzak görünüm) ile açılış arasında gider
     sigdir: () => {
       const H = hr.current; if (!H) return; cancelAnimationFrame(anim.current);
-      if (Math.abs(H.zoom - 1) > .02) { H.zoomAt(1, 0, 0); return; }
-      const T = H.hedefTam(), S = H.H, tamda = Math.abs(S.k - T.k) < .02 && Math.abs(S.tx - T.tx) < 4;
-      const Z = tamda || !S.tam ? { k: 1, tx: 0, ty: 0 } : T;
-      S.k = Z.k; S.tx = Z.tx; S.ty = Z.ty; H.kamera();
+      const S = H.H; S.k = 1; S.tx = 0; S.ty = 0; H.zoomAt(1, 0, 0);
+    },
+    adimY: (no) => {
+      const e = svg.current, g = e?.querySelector(`.gz[data-no="${no}"]`); if (!e || !g) return null;
+      const r = g.getBoundingClientRect(), R = e.getBoundingClientRect();
+      return (r.top + r.height / 2 - R.top) * ((e.clientHeight || R.height) / (R.height || 1));
     },
   }), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -107,7 +113,11 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
     const g = document.elementFromPoint(cx, cy) as Element | null;
     const gz = g?.closest('.gz, .pay') as SVGElement | null, ar = g?.closest('.arac-g') as SVGElement | null;
     if (gz?.dataset.no) geri.current.adim(+gz.dataset.no);
-    else if (ar?.dataset.kisi) geri.current.kisiSec(ar.dataset.kisi);
+    else if (ar?.dataset.kisi) {
+      const e = svg.current!, r = ar.getBoundingClientRect(), R = e.getBoundingClientRect(), ad = ar.dataset.kisi;
+      setKisiKutu(durum.current.kisi === ad ? null : { ad, ust: r.bottom - R.top > R.height - 236 * (R.height / (e.clientHeight || R.height)) });
+      geri.current.bos?.(); geri.current.kisiSec(ad);
+    }
     else geri.current.bos?.();
   };
   // zaman göstergesi: çekme durumu
@@ -128,12 +138,13 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   // yüzen yakınlaştırma sürgüsü: sağa çek yakınlaş, sola çek uzaklaş (logaritmik; çift tık / Home açılış ölçeği)
   const ZMIN = Math.log(.4), ZMAX = Math.log(6);
   const zYer = (Math.log(zk) - ZMIN) / (ZMAX - ZMIN);
-  const zCek = (cx: number) => { const r = zr.current?.getBoundingClientRect(), H = hr.current; if (!r || !H) return; cancelAnimationFrame(anim.current); const u = Math.max(0, Math.min(1, (cx - r.left) / (r.width || 1))); const z = Math.exp(ZMIN + (ZMAX - ZMIN) * u); H.zoomAt(Math.abs(z - 1) < .06 ? 1 : z, 0, 0); };
+  const zCek = (cx: number) => { const r = zr.current?.getBoundingClientRect(), H = hr.current; if (!r || !H) return; cancelAnimationFrame(anim.current); const u = Math.max(0, Math.min(1, (r.bottom - cx) / (r.height || 1))); const z = Math.exp(ZMIN + (ZMAX - ZMIN) * u); H.zoomAt(Math.abs(z - 1) < .06 ? 1 : z, 0, 0); };
   const zTus = (e: React.KeyboardEvent) => {
     const H = hr.current; if (!H) return;
-    const kat = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1.15 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? 1 / 1.15 : 0;
+    const kat = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1.15 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? 1 / 1.15 : 0;
     if (kat) { e.preventDefault(); e.stopPropagation(); H.zoomAt(H.zoom * kat, 0, 0); } else if (e.key === 'Home' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); H.zoomAt(1, 0, 0); }
   };
+  const kutuKisi = kisiKutu && kisiKutu.ad === kisi ? M.kisi[kisiKutu.ad] : null;
   const kisiler = useMemo(() => { const dis = M.bakanTip === 'dis'; return (M.kisiler as any[]).filter((k) => !(dis && k.ad !== bakan)).sort((a, b) => (a.ad === bakan ? -1 : b.ad === bakan ? 1 : 0)); }, [M, bakan]);
   const kisa = (s: string) => String(s || '').replace(/\s*\(.*\)$/, '');
   const kisiAd = (k: any) => (k.tip === 'agent' ? (k.sahibi ? `${k.sahibi === bakan ? 'Senin' : kisa(k.sahibi) + '’in'} agent’ı` : kisa(k.ad)) : k.ad === bakan ? 'Sen' : kisa(k.ad));
@@ -164,17 +175,42 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
           const J = jest.current, t = J.tasindi; ptr.current.delete(e.pointerId); if (ptr.current.size < 2) J.kistir = null; if (!ptr.current.size) { J.surukle = null; if (!t) tikla(e.clientX, e.clientY); } }}
         onPointerCancel={(e) => { if (zs.current?.id === e.pointerId) { zs.current = null; hr.current?.H.ig?.classList.remove('cekiliyor'); return; } ptr.current.delete(e.pointerId); jest.current.kistir = null; if (!ptr.current.size) jest.current.surukle = null; }} />
     </div>
-    <div className="ky-zoom" style={cihaz === 'tel' ? { right: x + 8, top: y + h - 46 } : { left: x + w - 172, top: y + h - 44 }}>
-      <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4" /></svg>
-      <div ref={zr} className="ky-zoom-ray" role="slider" tabIndex={0} aria-label="Yakınlaştırma: sağa sola çek" aria-valuemin={40} aria-valuemax={600} aria-valuenow={Math.round(zk * 100)} aria-valuetext={`yüzde ${Math.round(zk * 100)}`}
-        onKeyDown={zTus} onDoubleClick={() => hr.current?.zoomAt(1, 0, 0)}
-        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); zCek(e.clientX); }}
-        onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) zCek(e.clientX); }}>
-        <i className="ky-zoom-bir" style={{ left: `${((0 - ZMIN) / (ZMAX - ZMIN)) * 100}%` }} />
-        <i className="ky-zoom-top" style={{ left: `${zYer * 100}%` }} />
-      </div>
+    <div className="ky-zoom" style={cihaz === 'tel' ? { right: x + 6, top: y + h / 2 - 66 } : { left: x + w - 50, top: y + h / 2 - 74 }}>
       <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4 M0,-4 V4" /></svg>
+      <div ref={zr} className="ky-zoom-ray" role="slider" tabIndex={0} aria-orientation="vertical" aria-label="Yakınlaştırma: yukarı aşağı çek" aria-valuemin={40} aria-valuemax={600} aria-valuenow={Math.round(zk * 100)} aria-valuetext={`yüzde ${Math.round(zk * 100)}`}
+        onKeyDown={zTus} onDoubleClick={() => hr.current?.zoomAt(1, 0, 0)}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); }}
+        onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) zCek(e.clientY); }}>
+        <i className="ky-zoom-bir" style={{ bottom: `${((0 - ZMIN) / (ZMAX - ZMIN)) * 100}%` }} />
+        <i className="ky-zoom-top" style={{ bottom: `${zYer * 100}%` }} />
+      </div>
+      <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4" /></svg>
     </div>
+    {kutuKisi && (() => {
+      const k = kutuKisi, kd = D.K[k.ad] || { durum: 'bekliyor' }, is = kd.no != null ? M.byNo[kd.no] : null, tutan = kd.tutan != null ? M.byNo[kd.tutan] : null;
+      const isAc = (no: number) => { setKisiKutu(null); geri.current.adim(no); };
+      const yer: React.CSSProperties = cihaz === 'tel'
+        ? (kisiKutu!.ust ? { left: x + 8, right: x + 8, top: y + 50 } : { left: x + 8, right: x + 8, top: y + h - 8, transform: 'translateY(-100%)' })
+        : { left: x + 12, width: 330, top: y + h - 10, transform: 'translateY(-100%)' };
+      return (
+        <section className="harita-kutu ky-kisi-kutu" role="dialog" aria-label={`${kisiAd(k)}: durum ve hamleler`} style={yer}>
+          <div className="harita-kutu-ust">
+            <svg className="ky-svg" viewBox="-22 -15 44 30" width="52" height="36" aria-hidden dangerouslySetInnerHTML={{ __html: arac(k, { ...kd, hamleler: [] }, {}).svg }} />
+            <div className="harita-kutu-ad">
+              <b>{kisiAd(k)}</b>
+              <small><i className="ky-kk-nokta" style={{ background: durumRenk(kd.durum) }} />{KISI_DURUM_AD[kd.durum] || kd.durum}{kd.gecGun ? ` · ${kd.gecGun} gün gecikti` : ''}{(kd.acik || []).length > 1 ? ` · ${(kd.acik || []).length} açık iş` : ''}</small>
+            </div>
+            <button type="button" className="harita-kutu-kapat" aria-label="Kutuyu kapat" onClick={() => setKisiKutu(null)}><svg aria-hidden viewBox="-8 -8 16 16"><path d="M-4,-4 L4,4 M4,-4 L-4,4" /></svg></button>
+          </div>
+          {is && <button type="button" className="ky-kk-satir" onClick={() => isAc(is.no)}><small>{kd.durum === 'bitti' ? 'Son işi' : ['bekliyor', 'gelecek'].includes(kd.durum) ? 'Sıradaki işi' : 'Şimdiki işi'}</small><span>{is.no}. {adimAdi(is)}</span></button>}
+          {tutan && <button type="button" className="ky-kk-satir" onClick={() => isAc(tutan.no)}><small>Beklediği iş</small><span>{tutan.no}. {adimAdi(tutan)} · {tutan.sahip === bakan ? 'sende' : kisiAd(M.kisi[tutan.sahip] || { ad: tutan.sahip })}</span></button>}
+          {(kd.hamleler || []).length > 0 && <div className="ky-kk-hamle" role="group" aria-label="Bekleyen hamleler">
+            {(kd.hamleler as any[]).slice(0, 4).map((hm) => <button key={hm.tur + hm.no} type="button" className="ky-kk-h" onClick={() => isAc(hm.no)}><b>{hm.etiket}</b><span>{hm.no}. {adimAdi(M.byNo[hm.no])}</span></button>)}
+          </div>}
+          {(kd.rutinsiz || []).length > 0 && <small className="ky-kk-not">{(kd.rutinsiz || []).length} işte AI yapsın kurulmamış</small>}
+        </section>
+      );
+    })()}
     {serit && <div className="ky-serit" style={cihaz === 'tel' ? { left: serit.x, right: serit.x, top: serit.y } : { left: serit.x, top: serit.y, width: serit.w }}>
       <button type="button" className="ky-oynat" aria-label={serit.oynuyor ? 'Durdur' : 'Oynat'} onClick={serit.oynat}>
         <svg aria-hidden viewBox="-10 -10 20 20" width="18" height="18">{serit.oynuyor ? <path d="M-5,-6 V6 M5,-6 V6" /> : <path className="dolu" d="M-4,-7 L7,0 L-4,7 Z" />}</svg>
