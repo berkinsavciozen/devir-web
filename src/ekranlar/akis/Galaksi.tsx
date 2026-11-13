@@ -289,7 +289,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (kuleAcik && Y.G.kule) ek += kuleKarti(d, Y.G.kule, bolge);
     // telefonda haritanın ince çerçevesi (plan 28 Eki, B8): harita alanı sürgüden ve sayfadan ayrılır
     const cerceve = GD ? '' : `<rect class="harita-cerceve" x="8" y="${bolge.y - 6}" width="374" height="${bolge.h + 14}" rx="22" fill="none" stroke="#8E80D6" stroke-opacity=".26"/>`;
-    let svg = YOR ? cerceve + Z.svg : cerceve + (yak
+    let svg = YOR ? cerceve : cerceve + (yak
       ? `${haritaCercevesi('harita-kirp', bolge)}${Y.svg + SK.svg + ust + ek}</g>` + Z.svg
       : Y.svg + SK.svg + Z.svg + ust + ek);
     return { svg, Y, Z, SK };
@@ -424,8 +424,10 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kontroller = (
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yakınlaşır), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
-      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
-        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={durumOdak ? YOR_VURGU[durumOdak] : null} etiket={`${ad} haritası`}
+      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD && !durumOdak ? 64 : 108}
+        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
+        anDegis={(t) => { setOynuyor(false); setX(t); }}
+        serit={{ x: GD ? SU.x - 20 : 12, y: SU.y - (GD ? 30 : 46), w: GD ? SU.w + 40 : 366, sec: (k) => { setKisiKarti(null); setOdak(k); }, oynuyor, oynat: () => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); } }} etiket={`${ad} haritası`}
         adim={(no) => { if (!GD && kutuNo !== no) { setKutuNo(no); return; } ac(no); }}
         kisiSec={(k) => { setKisiKarti(null); kisiSec(k); }} bos={() => { if (kutuNo != null) setKutuNo(null); }} />}
       {!YOR && <div ref={gz.ref} className="harita-gezinme" style={{ left: bolge.x, top: bolge.y, width: bolge.w, height: bolge.h }} {...gz.olaylar}>
@@ -440,25 +442,25 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         {(GD || yak || YOR) && <button type="button" aria-label="Haritayı sığdır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.sigdir() : gz.sigdir())}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
       </div>
 
-      {/* zaman sürgüsü */}
-      <button className="surgu-oynat" style={{ left: SU.x, top: SU.y - 22 }} aria-label={oynuyor ? 'Durdur' : 'Oynat'} onClick={() => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); }} />
+      {/* zaman sürgüsü (Kişi Yörüngeleri'nde yok: zaman üstteki göstergeden çekilir, altta kişi şeridi) */}
+      {!YOR && <><button className="surgu-oynat" style={{ left: SU.x, top: SU.y - 22 }} aria-label={oynuyor ? 'Durdur' : 'Oynat'} onClick={() => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); }} />
       <div className="surgu-ray" role="slider" tabIndex={0} aria-label="Zaman" aria-valuemin={Z.t0} aria-valuemax={Z.t1} aria-valuenow={Math.round(X)}
         aria-valuetext={`${surguEtiket}. ${gunAyUzun(Z.t0)} ile ${gunAyUzun(Y.G.hedef)} arası.`}
         style={{ left: Math.max(Z.x0 - 22, SU.x + 46), top: SU.y - 22, width: Z.x1 + 22 - Math.max(Z.x0 - 22, SU.x + 46) }}
         onKeyDown={surguTus}
         onPointerDown={(e) => { setOynuyor(false); e.currentTarget.setPointerCapture(e.pointerId); surguTasi(e); }}
         onPointerMove={(e) => { if (e.buttons) surguTasi(e); }} />
-      <button className="surgu-hap" style={{ left: Math.min(Math.max(Z.xOf(X), Z.x0 + 40), Z.x1 - 40) - 48, top: SU.y - 22 * SU.ps - 22 }} aria-label="Bugüne dön" onClick={() => { setOynuyor(false); setX(NOW); }} />
+      <button className="surgu-hap" style={{ left: Math.min(Math.max(Z.xOf(X), Z.x0 + 40), Z.x1 - 40) - 48, top: SU.y - 22 * SU.ps - 22 }} aria-label="Bugüne dön" onClick={() => { setOynuyor(false); setX(NOW); }} /></>}
 
       {/* süzgeç satırı: Kişiler ▾, harita dili, seçili süzgeç çipleri (plan 28 Eki, B6, B10) */}
       <HaritaCipleri x={bolge.x + 12} y={bolge.y + 8} en={bolge.w - (GD ? 88 : 82)} secici={{ yazi: 'Kişiler', ikon: true, ac: () => setKisiKutu(true) }} lejantAc={() => setLejant(true)}
         ai={aiYazi ? { yazi: aiYazi, onay: /onay/.test(aiYazi), ac: () => setAiAcik(true) } : null}
-        cipler={[odak && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }].filter(Boolean) as HaritaCipi[]} />
+        cipler={[odak && !YOR && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }].filter(Boolean) as HaritaCipi[]} />
       <AiEtkinligi acik={aiAcik} kapat={() => setAiAcik(false)} kod={kod} d={d} />
       <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d).map((k) => { const x = temel?.KD && Object.entries(temel.KD).find(([ad]) => ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'))?.[1]; return x ? { ...k, durum: KISI_DURUM_AD[x.durum] } : k; })} secili={odak}
         uygula={(k) => { setKisiKarti(null); setOdak(k); }} kisiSayfasi={(ad) => git(`/akis/${encodeURIComponent(kod)}/kisi/${encodeURIComponent(ad)}`)} />
-      {/* geçmişe ya da tahmine bakarken haritanın üstünde şerit ve "Bugüne dön" (plan 27 Eki, 3.25) */}
-      {Math.abs(X - NOW) >= 36e5 && <div className="zaman-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60 }}>
+      {/* geçmişe ya da tahmine bakarken haritanın üstünde şerit ve "Bugüne dön" (plan 27 Eki, 3.25); Kişi Yörüngeleri'nde gösterge tarihi yazar, dokunuş bugüne döner */}
+      {!YOR && Math.abs(X - NOW) >= 36e5 && <div className="zaman-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60 }}>
         <span>{X < NOW ? 'Geçmişe bakıyorsun' : 'Tahmine bakıyorsun'} · {gunAy(X)}</span>
         <button type="button" onClick={() => { setOynuyor(false); setX(NOW); }}>Bugüne dön</button>
       </div>}
