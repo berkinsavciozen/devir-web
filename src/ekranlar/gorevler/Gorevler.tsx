@@ -10,6 +10,7 @@ import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { useBoyut } from '../../bilesen/Gok';
 import { Sahne } from '../../bilesen/Sahne';
 import { planet, ship, sparkle } from '../../cizim/ortak.js';
+import { kisiRengi } from '../../cizim/hamle';
 import { belge, elmas, uyduSistemi } from '../../cizim/yol.js';
 import { gunAy, kisaAd, otoRozet } from '../../cizim/yol.js';
 import { arama, git, useSorgu } from '../../yonlendirme';
@@ -34,8 +35,8 @@ const soruIkon = `<g transform="translate(28,29)"><circle r="12" fill="#FFC9A3" 
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean, destek = false) => destek
   ? destekGemisi(x, y, 1, -.35, '#FFC9A3', k * 1.6)
   : tip === 'dis'
-  ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
-  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), ben ? '#FFC9A3' : tip === 'agent' ? '#B9A6F2' : '#8EC5FF', k, { flame: false });
+  ? ship(x, y + 1, 0, 'dis', '', kisiRengi(ad, { tip: 'dis' }), k)
+  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : kisiRengi(ad), k, { flame: false });
 /**
  * W6 (Berkin 4 Kas 11:39): haritadaki görev akış haritasındaki gibi çizilir: durum gövdesi (sürüyor mavi), karar bayrağı,
  * AI rozeti ya da onay flaması, alt görev uydu halkası, kritik yol elması, çıktı belgesi (lejanttaki işaretler).

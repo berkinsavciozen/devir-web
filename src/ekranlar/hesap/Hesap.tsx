@@ -5,15 +5,16 @@ import { kimlik } from '../../api/kimlik';
 import { oturumDegisti, sorguIstemcisi, useBen } from '../../api/sorgular';
 import type { Ben, Davet, Uyelik } from '../../api/turler';
 import { galaxy, ship } from '../../cizim/ortak.js';
+import { kisiRengi } from '../../cizim/hamle';
 import { git } from '../../yonlendirme';
 
 /** Alanın görünen adı: sahibin adıyla başlayan ön ek düşer ("Berkin · test çalışma alanı" → "test çalışma alanı"). */
 export const alanAdi = (ad: string, kisi?: string | null) => (kisi && ad.startsWith(`${kisi} · `) ? ad.slice(kisi.length + 3) : ad);
 export const rolAdi = (r: string) => (r === 'dis' ? 'dış' : r);
 
-/** Kişi gemisi (insan: baş harfli kapsül; dış: balon). */
+/** Kişi aracı (ekip: baş harfli roket; dış: disk), haritadaki kendi renginde (13 Kas, U4). */
 export function kisiGemi(ad: string, rol: string, sahip: boolean, x: number, y: number, sc = .85) {
-  return rol === 'dis' ? ship(x, y + 2, 0, 'dis', '', '#F2B8D8', sc * .96) : ship(x, y, -12, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), sahip ? '#FFC9A3' : '#9EE6CF', sc, { flame: false });
+  return rol === 'dis' ? ship(x, y + 2, 0, 'dis', '', kisiRengi(ad, { tip: 'dis' }), sc * .96) : ship(x, y, -12, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), kisiRengi(ad), sc, { flame: false });
 }
 export const Svg = ({ w, h, x, y, svg, sinif }: { w: number; h: number; x: number; y: number; svg: string; sinif?: string }) => (
   <svg aria-hidden className={sinif} width={w} height={h} viewBox={`${x} ${y} ${w} ${h}`} style={{ position: 'absolute', left: x, top: y, overflow: 'visible', pointerEvents: 'none' }} dangerouslySetInnerHTML={{ __html: svg }} />

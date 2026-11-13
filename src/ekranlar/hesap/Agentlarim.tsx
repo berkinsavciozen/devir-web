@@ -6,6 +6,7 @@ import { sorguIstemcisi } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
 import { destekGemisi } from '../../cizim/ortak.js';
+import { PALET, paletRengi } from '../../cizim/hamle';
 import { gunAy, saat } from '../../cizim/yol.js';
 import { git } from '../../yonlendirme';
 import { AgentIsleri } from './AgentIsleri';
@@ -148,9 +149,9 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
         {kip === 'yonetim' && <section className="ai-grup" aria-label="Renk">
           <h3 className="gd-bolum-baslik">RENK</h3>
           <div className="ag-renkler" role="radiogroup" aria-label={`${a.ad} rengi`}>
-            {PALET.map((r) => <button key={r} type="button" role="radio" aria-checked={(renk.variables ?? a.renk) === r} aria-label={r} className="ag-renk" style={{ background: r }} onClick={() => renk.mutate(r)} />)}
+            {PALET.map((r) => <button key={r} type="button" role="radio" aria-checked={paletRengi(renk.variables ?? a.renk ?? '') === r} aria-label={r} className="ag-renk" style={{ background: r }} onClick={() => renk.mutate(r)} />)}
           </div>
-          <p className="gd-satir">Haritada spiral, gemi ve görev düğmeleri bu renkte görünür.</p>
+          <p className="gd-satir">Gövde, hat ve görev düğmeleri bu renkte görünür. Kırmızı, kehribar, mavi, gri ve yeşil durumu söylediği için kişi renklerinde yok.</p>
           {renk.isError && <p className="canli-hata-satir" role="alert">{(renk.error as Error).message}</p>}
         </section>}
 
@@ -228,8 +229,8 @@ export function RutinDetay({ t, agentlar, kapat, kaldir }: { t: AgentRutin; agen
   );
 }
 
-/** Kişi ve agent paleti (K5, lejant "Kimin Hamlesi": renk yalnız kişiyi gösterir, palet serbest). */
-export const PALET = ['#FFC9A3', '#E86FA0', '#F2D16B', '#9EE6CF', '#7FC8F8', '#B9A6F2', '#F28C6B', '#C7E07A'];
+/** Kişi ve agent paleti: tek kaynak `cizim/hamle` (13 Kas: durum renklerinden uzak tonlar). */
+export { PALET };
 
 /** Agent'ı kaldır (K4): açık işleri sahibine ya da başka bir agent'a devreder. */
 export function AgentKaldirSayfa({ a, adaylar, ben, kapat, bitti }: { a: Agent; adaylar: string[]; ben: string; kapat: () => void; bitti: () => void }) {

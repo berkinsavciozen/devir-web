@@ -15,8 +15,14 @@ export const SIMGE = {
   terazi: (s: number, c: string) => `<path d="M0,${-3 * s} V${2.6 * s} M${-2.4 * s},${2.6 * s} H${2.4 * s} M${-3 * s},${-1.6 * s} H${3 * s}" stroke="${c}" stroke-width="${0.8 * s}" stroke-linecap="round"/><path d="M${-3 * s},${-1.6 * s} L${-3.6 * s},${0.4 * s} H${-2.4 * s}Z M${3 * s},${-1.6 * s} L${2.4 * s},${0.4 * s} H${3.6 * s}Z" fill="${c}"/>`,
 };
 export const ALARM = '#FF5A5A';
-/** Kişi paleti (K5; Agent'larım'daki seçimle aynı). */
-export const PALET = ['#FFC9A3', '#E86FA0', '#F2D16B', '#9EE6CF', '#7FC8F8', '#B9A6F2', '#F28C6B', '#C7E07A'];
+/**
+ * Kişi paleti (K5; Agent'larım'daki seçimle aynı). 13 Kas (sentez, U4): durum beş sabit renkte okunduğu için kişi tonları
+ * onlardan uzak seçilir; sarı, turuncu, gök mavisi, nane ve fıstık yeşili paletten çıktı (aynı sıradaki yeni ton geldi).
+ */
+export const PALET = ['#FFC9A3', '#E86FA0', '#D8F26B', '#2FB5A8', '#7D8CFF', '#B9A6F2', '#A170FB', '#D46BD1'];
+/** Eski paletten kayıtlı renk, aynı sıradaki yeni tona çevrilir (kayıt değişmez). */
+const ESKI_PALET: Record<string, string> = { '#F2D16B': '#D8F26B', '#9EE6CF': '#2FB5A8', '#7FC8F8': '#7D8CFF', '#F28C6B': '#A170FB', '#C7E07A': '#D46BD1' };
+export const paletRengi = (r: string) => ESKI_PALET[r.toUpperCase()] || r;
 
 const hash = (s: string) => { let h = 0; for (const c of s.toLocaleLowerCase('tr')) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h; };
 /** İki rengi karıştırır (agent: sahibinin açık tonu). */
@@ -31,8 +37,8 @@ export function acik(hex: string, k = .45) {
  */
 export function kisiRengi(ad: string, o: { tip?: string; sahibi?: string | null; renkler?: Record<string, string> } = {}): string {
   const R = o.renkler || {};
-  if (R[ad]) return R[ad];
-  if (o.tip === 'agent' && o.sahibi) return acik(R[o.sahibi] || PALET[hash(o.sahibi) % PALET.length]);
+  if (R[ad]) return paletRengi(R[ad]);
+  if (o.tip === 'agent' && o.sahibi) return acik(R[o.sahibi] ? paletRengi(R[o.sahibi]) : PALET[hash(o.sahibi) % PALET.length]);
   return PALET[hash(ad) % PALET.length];
 }
 
