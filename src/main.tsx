@@ -6,6 +6,7 @@ import { yaziTipleriHazir } from './metin/turkce';
 import './stil/tokens.css';
 import './stil/temel.css';
 import './stil/bilesen.css';
+import './stil/yorunge.css';
 
 hareketUygula();
 // Satır kırma canvas ile ölçülür; font (latin + latin-ext) yüklenmeden ölçülen satır taşar (W9). En çok 1,5 sn bekler.
