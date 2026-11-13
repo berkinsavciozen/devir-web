@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// Bu dosya önceki zaman spirali haritasını sınar (13 Kas'tan beri `?harita=spiral` ile açılır); varsayılan harita yorunge.spec.ts'te.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('devir:harita', 'spiral')); });
+
 // Q2 (plan 28 Eki): akış bilgi kartı (B1), uydu sarmalına yakınlaşma (B4), seçimde harita yerinde kalır ve kayar (B9),
 // merkez ışığı yakınlaşmada büyümez (K6).
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {

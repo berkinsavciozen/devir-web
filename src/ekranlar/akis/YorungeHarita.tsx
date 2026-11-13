@@ -17,6 +17,8 @@ interface Oz {
   x: number; y: number; w: number; h: number; ust?: number;
   secili?: number | null; kisi?: string | null; vurgu?: string | null;
   adim: (no: number) => void; kisiSec: (ad: string) => void; bos?: () => void; etiket: string;
+  /** altta açılan kutunun payı (telefon): seçilen iş kutunun altında kalıyorsa harita yukarı kayar */
+  altPay?: number;
   /** zaman göstergesi çekilince / tuşla */
   anDegis?: (t: number) => void;
   /** alt kişi şeridi: yeri, seçim ve oynat düğmesi */
@@ -26,7 +28,7 @@ interface Oz {
 /** API akış detayı → harita modelinin girdisi. */
 export const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toISOString(), akis: { ...d.akis, bitis: d.bitis || d.akis?.bitis, kritik_yol: d.kritik_yol || d.akis?.kritik_yol || [], adimlar: d.adimlar || [], sahipler: d.sahipler || [], katilimcilar: d.katilimcilar || [], olaylar: d.olaylar || [] } });
 
-export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit }, ref) {
+export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit, altPay = 0 }, ref) {
   const svg = useRef<SVGSVGElement>(null);
   const hr = useRef<YorungeOrnegi | null>(null);
   const M = useMemo(() => kur(hamVeri(d, simdi), bakan), [d, simdi, bakan]);
@@ -54,6 +56,13 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
     if (tut) { tut.setAttribute('aria-valuenow', String(Math.round(an))); tut.setAttribute('aria-valuetext', `${Math.abs(an - simdi) < SA ? 'Bugün, ' : an > simdi ? 'Tahmin, ' : 'Geçmiş, '}${anYaz(an)}`); }
   }, [an, secili, kisi, M, D, simdi]);
   useEffect(() => { hr.current?.vurgu(vurgu); }, [vurgu, M]);
+  // seçilen iş alttaki kutunun arkasında kalmasın
+  useEffect(() => {
+    const H = hr.current, e = svg.current; if (!H || !e || secili == null || !altPay) return;
+    const g = e.querySelector(`.gz[data-no="${secili}"]`); if (!g) return;
+    const r = g.getBoundingClientRect(), R = e.getBoundingClientRect(), tasma = r.bottom + 14 - (R.bottom - altPay * (R.height / (e.clientHeight || R.height)));
+    if (tasma > 0) H.kaydir(0, -tasma * oran());
+  }, [secili, altPay]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ekran → svg yerel koordinatı (sahne ölçeklenmiş olabilir)
   const yerel = (cx: number, cy: number): [number, number] => {
@@ -119,7 +128,8 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
 
   return (
     <>
-    <div className="ky-kap" style={{ left: x, top: y, width: w, height: h }}>
+    {/* telefonda sahne ekran eninde: sağ kenar da sabitlenir (360 px'te taşmasın) */}
+    <div className="ky-kap" style={cihaz === 'tel' ? { left: x, right: x, top: y, height: h } : { left: x, top: y, width: w, height: h }}>
       <svg ref={svg} className="ky-svg kd0" role="group" aria-label={etiket} onKeyDown={tus}
         onPointerDown={(e) => {
           if (geri.current.anDegis && (e.target as Element).closest?.('.igne-tut')) {
@@ -142,7 +152,7 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
           const J = jest.current, t = J.tasindi; ptr.current.delete(e.pointerId); if (ptr.current.size < 2) J.kistir = null; if (!ptr.current.size) { J.surukle = null; if (!t) tikla(e.clientX, e.clientY); } }}
         onPointerCancel={(e) => { if (zs.current?.id === e.pointerId) { zs.current = null; hr.current?.H.ig?.classList.remove('cekiliyor'); return; } ptr.current.delete(e.pointerId); jest.current.kistir = null; if (!ptr.current.size) jest.current.surukle = null; }} />
     </div>
-    {serit && <div className="ky-serit" style={{ left: serit.x, top: serit.y, width: serit.w }}>
+    {serit && <div className="ky-serit" style={cihaz === 'tel' ? { left: serit.x, right: serit.x, top: serit.y } : { left: serit.x, top: serit.y, width: serit.w }}>
       <button type="button" className="ky-oynat" aria-label={serit.oynuyor ? 'Durdur' : 'Oynat'} onClick={serit.oynat}>
         <svg aria-hidden viewBox="-10 -10 20 20" width="18" height="18">{serit.oynuyor ? <path d="M-5,-6 V6 M5,-6 V6" /> : <path className="dolu" d="M-4,-7 L7,0 L-4,7 Z" />}</svg>
       </button>

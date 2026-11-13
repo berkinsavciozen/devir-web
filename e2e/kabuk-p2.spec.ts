@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// Bu dosya önceki zaman spirali haritasını sınar (13 Kas'tan beri `?harita=spiral` ile açılır); varsayılan harita yorunge.spec.ts'te.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('devir:harita', 'spiral')); });
+
 // P2 (plan 27 Eki, Epic 2): ortak harita çerçevesi, haritada sayfa kaymaz, yatay taşma yok, görev yol izi, "?" altında odak.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
   await p.setViewportSize({ width: w, height: h });

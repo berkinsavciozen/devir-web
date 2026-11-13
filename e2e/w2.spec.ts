@@ -40,7 +40,8 @@ test('W2 · 390: harita dilinde AI satırları; onay satırı haritada gösterir
   await ac(page, '/akis/RTD5?senaryo=berkin&hal=ai');
   await page.getByRole('button', { name: 'Harita dili' }).click();
   await expect(page.getByRole('button', { name: /AI yazdı, onayla: 1\./ })).toBeVisible();
-  await expect(page.getByText('Agent', { exact: true }).first()).toBeVisible();
+  // Kişi Yörüngeleri: agent kendi durumuyla listelenir
+  await expect(page.getByRole('button', { name: /^Onay bekliyor: 1\./ })).toBeVisible();
   await cek(page, 'W2-lejant-390');
 });
 

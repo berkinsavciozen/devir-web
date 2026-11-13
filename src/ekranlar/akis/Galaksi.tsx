@@ -23,7 +23,7 @@ import { YorungeHarita, hamVeri, type YorungeTutamak } from './YorungeHarita';
 import { durumAn as yorDurum, kur as yorKur } from '../../cizim/yorunge/index.js';
 import { KISI_DURUM_AD } from '../../cizim/kisi-durumu';
 import { tekrarAsamasi, uydular } from './cumleler';
-import { dalHaric, soruCumlesi, soruKatmani } from './soru';
+import { acikDallar, dalHaric, soruCumlesi, soruKatmani, tarihBekleyenler } from './soru';
 import { AiEtkinligi, aiCipYazisi } from './AiEtkinligi';
 import { BaglantiGonder } from './BaglantiGonder';
 import { galaksiSayilari, lejantGezegenleri, Lejant, SoruIkon, yorungeLejanti, type OdakAyar } from './Lejant';
@@ -419,6 +419,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const isaretli = lejantGezegenleri(d, temel?.G);
   const lejantSayilari = { ...galaksiSayilari(d.adimlar, d), ortak: isaretli.ortak.length, ip: temel?.G.ipler.length ?? 0, darbogaz: isaretli.darbogaz.length || undefined };
   const aiYazi = aiCipYazisi(d.adimlar);
+  // açık sorular (E1, E2): Kişi Yörüngeleri'nde ikiz gezegen yok; üstte çip, dokununca sorunun sayfası
+  const sorular = YOR ? [...new Set([...acikDallar(d).map((x) => x.kod as string), ...tarihBekleyenler(d).map((x) => x.soru.kod as string)])] : [];
   const vurgula = (an: string) => { const n = (isaretli as Record<string, number[]>)[an]; if (n?.length) setParla(new Set(n)); };
   // kişi süzgeci ayrı kutuda (Kişiler ▾); lejant yalnız durum süzer (plan 28 Eki, B6)
   const odakAyar: OdakAyar = {
@@ -430,7 +432,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yakınlaşır), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
       {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
-        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={yorVurgu ? yorVurgu.v : durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
+        secili={GD ? selNo : kutuNo} altPay={GD ? 0 : 190} kisi={odak} vurgu={yorVurgu ? yorVurgu.v : durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
         anDegis={(t) => { setOynuyor(false); setX(t); }}
         serit={{ x: GD ? SU.x - 20 : 12, y: SU.y - (GD ? 30 : 46), w: GD ? SU.w + 40 : 366, sec: (k) => { setKisiKarti(null); setOdak(k); }, oynuyor, oynat: () => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); } }} etiket={`${ad} haritası`}
         adim={(no) => { if (!GD && kutuNo !== no) { setKutuNo(no); return; } ac(no); }}
@@ -459,8 +461,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
 
       {/* süzgeç satırı: Kişiler ▾, harita dili, seçili süzgeç çipleri (plan 28 Eki, B6, B10) */}
       <HaritaCipleri x={bolge.x + 12} y={bolge.y + 8} en={YOR && GD ? bolge.w / 2 - 108 : bolge.w - (GD ? 88 : 82)} secici={{ yazi: 'Kişiler', ikon: true, ac: () => setKisiKutu(true) }} lejantAc={() => setLejant(true)}
+        soru={sorular.length ? { yazi: sorular.length === 1 ? 'Açık soru' : `${sorular.length} açık soru`, ipucu: soruCumlesi(d) || undefined, ac: () => git(`/akis/${encodeURIComponent(kod)}/soru/${encodeURIComponent(sorular[0])}`) } : null}
         ai={aiYazi ? { yazi: aiYazi, onay: /onay/.test(aiYazi), ac: () => setAiAcik(true) } : null}
-        cipler={[odak && !YOR && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }, YOR && yorVurgu && { ad: yorVurgu.ad, etiket: 'İşaret', kaldir: () => setYorVurgu(null) }].filter(Boolean) as HaritaCipi[]} />
+        cipler={[odak && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }, YOR && yorVurgu && { ad: yorVurgu.ad, etiket: 'İşaret', kaldir: () => setYorVurgu(null) }].filter(Boolean) as HaritaCipi[]} />
       <AiEtkinligi acik={aiAcik} kapat={() => setAiAcik(false)} kod={kod} d={d} />
       <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d).map((k) => { const x = temel?.KD && Object.entries(temel.KD).find(([ad]) => ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'))?.[1]; return x ? { ...k, durum: KISI_DURUM_AD[x.durum] } : k; })} secili={odak}
         uygula={(k) => { setKisiKarti(null); setOdak(k); }} kisiSayfasi={(ad) => git(`/akis/${encodeURIComponent(kod)}/kisi/${encodeURIComponent(ad)}`)} />

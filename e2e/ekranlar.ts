@@ -54,9 +54,9 @@ export const EKRANLAR: EkranTanim[] = [
       await p.getByText('%6', { exact: false }).waitFor();
     },
   },
-  { ad: 'D1-galaksi-uydular', yol: '/akis/XPVZ?senaryo=berkin&hal=uydu', hazirla: async (p) => { await p.locator('.harita-gezinme .gezegen-hedef').first().waitFor(); await p.waitForTimeout(400); } },
-  { ad: 'E1-cevapsiz-tarih', yol: '/akis/XPVZ?senaryo=berkin&hal=tarih', hazirla: async (p) => { await p.getByRole('listitem', { name: /Tarih bekliyor/ }).waitFor(); await p.waitForTimeout(400); } },
-  { ad: 'E2-kosullu-dal', yol: '/akis/XPVZ?senaryo=berkin&hal=dal', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Açık soru:/ }).first().waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'D1-galaksi-uydular', yol: '/akis/XPVZ?senaryo=berkin&hal=uydu', hazirla: async (p) => { await p.locator('.ky-svg .gz').first().waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'E1-cevapsiz-tarih', yol: '/akis/XPVZ?senaryo=berkin&hal=tarih', hazirla: async (p) => { await p.getByRole('button', { name: /^Açık soru\./ }).waitFor(); await p.waitForTimeout(400); } },
+  { ad: 'E2-kosullu-dal', yol: '/akis/XPVZ?senaryo=berkin&hal=dal', hazirla: async (p) => { await p.getByRole('button', { name: /^Açık soru\./ }).waitFor(); await p.waitForTimeout(400); } },
   { ad: 'E3-cevapla', yol: '/akis/XPVZ/soru/fatura?senaryo=berkin&hal=dal', hazirla: async (p) => { await p.getByText('Henüz bilmiyorum').waitFor(); await p.waitForTimeout(500); } },
   { ad: 'F1-sayfa', yol: '/l/k7Q2emreTestBank00wP9?senaryo=berkin', hazirla: async (p) => { await p.getByText('Başladım').waitFor(); await p.waitForTimeout(400); } },
   { ad: 'F2-cikti-ekle', yol: '/l/k7Q2emreTestBank00wP9?senaryo=berkin', hazirla: async (p) => { await p.getByRole('button', { name: 'Tamam' }).click(); await p.getByText('Dosya seç').waitFor(); await p.waitForTimeout(600); } },
@@ -90,9 +90,9 @@ export const EKRANLAR: EkranTanim[] = [
     ad: 'B9-dosya-sil', yol: '/akis/RTD5/adim/6?senaryo=berkin&bolum=ciktilar',
     hazirla: async (p) => { await p.waitForTimeout(300); await p.getByRole('button', { name: 'Sil: tarif-kapak-2.jpg' }).click(); await p.getByText('Bu dosya silinsin mi?').first().waitFor(); await p.waitForTimeout(400); },
   },
-  { ad: 'B6-filtre', yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('listitem', { name: /^Berkin \(insan\)/ }).click(); } },
+  { ad: 'B6-filtre', yol: '/akis/RTD5?senaryo=berkin', hazirla: async (p) => { await p.getByRole('button', { name: /^Sen: / }).click(); } },
   {
-    ad: 'B7-tarih-basili-tut', yol: '/akis/RTD5?senaryo=berkin',
+    ad: 'B7-tarih-basili-tut', yol: '/akis/RTD5?senaryo=berkin&harita=spiral', // basılı tut tarih kartı önceki haritada
     hazirla: async (p) => { const b = await p.getByRole('listitem', { name: /^6\. adım/ }).boundingBox(); await p.mouse.move(b!.x + b!.width / 2, b!.y + b!.height / 2); await p.mouse.down(); await p.waitForTimeout(600); },
   },
   // S · Zaman sürgüsü

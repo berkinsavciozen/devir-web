@@ -15,20 +15,21 @@ test.describe('işlev', () => {
   });
   test('soru: dalı cevapla → seçilmeyen dal söner', async ({ page }) => {
     await page.goto('/akis/XPVZ?senaryo=berkin&hal=dal');
-    const soru = page.getByRole('listitem', { name: /^Açık soru:/ });
+    // Kişi Yörüngeleri: açık soru üstte çip; dokununca sorunun sayfası
+    const soru = page.getByRole('button', { name: /^Açık soru\./ });
     await soru.first().click();
     await page.getByRole('radio', { name: /Her çiftçi kendi adına/ }).click();
     await page.getByRole('button', { name: 'Cevapla' }).click();
-    await page.locator('.harita-gezinme .gezegen-hedef').first().waitFor();
+    await page.locator('.ky-svg .gz').first().waitFor();
     await expect(soru).toHaveCount(0);
   });
   test('soru: tarih bekleyen adıma tarih ver', async ({ page }) => {
     await page.goto('/akis/XPVZ?senaryo=berkin&hal=tarih');
-    const soru = page.getByRole('listitem', { name: /Tarih bekliyor/ });
+    const soru = page.getByRole('button', { name: /^Açık soru\./ });
     await soru.click();
     await page.locator('input[type=date]').fill('2026-10-20');
     await page.getByRole('button', { name: 'Cevapla' }).click();
-    await page.locator('.harita-gezinme .gezegen-hedef').first().waitFor();
+    await page.locator('.ky-svg .gz').first().waitFor();
     await expect(soru).toHaveCount(0);
   });
   test('dış katılımcı: başladım, bağlantıyla teslim, teşekkür', async ({ page }) => {

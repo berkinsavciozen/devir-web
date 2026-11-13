@@ -59,7 +59,9 @@ test.describe('360 telefon (K1)', () => {
       await page.waitForTimeout(400);
       const tasan = await page.evaluate(() => {
         const W = document.documentElement.clientWidth;
-        return [...document.querySelectorAll('button,a,h1,h2,p,li')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.right > W + 1 && b.left < W; }).map((e) => (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30));
+        // yatay kayan şeridin (kişi şeridi) içindeki öğe taşma sayılmaz: şerit kendisi ekranda kalıyorsa içi onun içinde kayar
+        const kayan = (e: Element) => { for (let x = e.parentElement; x; x = x.parentElement) { const s = getComputedStyle(x).overflowX; if ((s === 'auto' || s === 'scroll') && x.getBoundingClientRect().right <= W + 1) return true; } return false; };
+        return [...document.querySelectorAll('button,a,h1,h2,p,li')].filter((e) => { const b = e.getBoundingClientRect(); return b.width > 0 && b.right > W + 1 && b.left < W && !kayan(e); }).map((e) => (e.getAttribute('aria-label') || e.textContent || '').trim().slice(0, 30));
       });
       expect(tasan).toEqual([]);
     });

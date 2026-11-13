@@ -11,9 +11,13 @@ const ac = async (p: Page, yol: string, w: number, h: number) => {
 const cek = (p: Page, ad: string) => p.screenshot({ path: `karsilastirma/uygulama/${ad}.png` });
 
 for (const [w, h] of [[375, 667], [390, 844], [1280, 720], [1440, 900]] as const) {
-  test(`Q3 · ${w}×${h}: zaman sürgüsü ilk ekranda`, async ({ page }) => {
+  test(`Q3 · ${w}×${h}: zaman göstergesi ve kişi şeridi ilk ekranda`, async ({ page }) => {
     await ac(page, '/akis/RTD5?senaryo=berkin', w, h);
-    const s = (await page.getByRole('slider', { name: 'Zaman' }).boundingBox())!;
+    // Kişi Yörüngeleri (13 Kas): zaman üstteki göstergede; alttaki sürgünün yerinde kişi şeridi
+    await page.locator('.ky-svg .igne-tut').waitFor();
+    const g = (await page.getByRole('slider', { name: /^Zaman/ }).boundingBox())!;
+    expect(g.y).toBeGreaterThan(0); expect(g.y + g.height).toBeLessThanOrEqual(h);
+    const s = (await page.locator('.ky-serit').boundingBox())!;
     expect(s.y + s.height).toBeLessThanOrEqual(h);
     if (w < 1024) {
       const ipucu = (await page.getByRole('button', { name: /ve ayrıntılar$/ }).boundingBox())!;

@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// Bu dosya önceki zaman spirali haritasını sınar (13 Kas'tan beri `?harita=spiral` ile açılır); varsayılan harita yorunge.spec.ts'te.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('devir:harita', 'spiral')); });
+
 // W5 (4 Kas, K4, K5): telefonda gezegene dokununca harita ona yakınlaşır ve altta küçük kutu açılır (ad, durum, AI durumu,
 // tek ana eylem, Ayrıntılar); ikinci dokunuş görevi açar. Kutu açıkken harita etiketsizdir.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {

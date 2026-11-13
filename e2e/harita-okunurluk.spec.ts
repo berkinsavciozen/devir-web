@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// Bu dosya önceki zaman spirali haritasını sınar (13 Kas'tan beri `?harita=spiral` ile açılır); varsayılan harita yorunge.spec.ts'te.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('devir:harita', 'spiral')); });
+
 // W3 (23 Eki test bulguları): galaksi çerçevesi ve adı (N1, N3), cümle alanı (N7), sayılı ve tıklanabilir lejant (N2, N6),
 // bildirimlerde tür süzgeci (K9), haritada üzerine gelince ad ve durum (K10), şerit ve görev haritası eksenleri (K3, K6).
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
