@@ -9,6 +9,7 @@ import { iconCloud, iconRings, bayrak } from '../../cizim/ekran';
 import { yuzeyKodlamalari, type Yuzey } from '../../geometri/kodlama';
 import { bSuzgecAdresi, type OlayTuru } from '../bildirimler/model';
 import { git } from '../../yonlendirme';
+import { arac, type YorungeDurum, type YorungeModel } from '../../cizim/yorunge/index.js';
 
 /** Lejant satırının anahtarı: sayı bu anahtarla gelir; olay türü olan satır o türün bildirimlerine gider (N2). */
 export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'ortak' | 'ip' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi' | 'ai' | 'ai_onay';
@@ -88,6 +89,46 @@ const GRUP_ALT_SPIRAL: Record<Grup, string> = { Kim: 'Gövde kim, pencere ne dur
 const GRUPLAR: Grup[] = ['Hamle', 'Işık', 'Kim', 'Yol'];
 const GRUP_ALT: Record<Grup, string> = { Hamle: 'Düğmenin rengi kimin, simgesi hangi düğme', Işık: 'İç ışık durumu söyler; aynı beş renk', Kim: 'Gövde ve hat kişinin rengi', Yol: 'Zaman ve bağlar' };
 
+/**
+ * Kişi Yörüngeleri haritasının dili (13 Kas, sentez; U5): satırlar haritanın o anki durumundan çıkar, yalnız haritada olan
+ * işaretler sayılarıyla. Satıra dokununca harita o işaretli kişi ve işleri öne çıkarır (`v` = motorun vurgu anahtarı).
+ */
+export interface YorungeSatiri { svg: string; ad: string; alt: string; v: string; n: number; grup: Grup; tur?: OlayTuru }
+const KD_SIRA = ['engel', 'ai_hata', 'karar', 'ai_onay', 'ai_rutinsiz', 'calisiyor', 'ai_calisiyor', 'sira', 'ai_sirada', 'bekliyor', 'gelecek', 'bitti'];
+const KD_YAZI: Record<string, [string, string]> = {
+  engel: ['Takıldı', 'Kırmızı kenar, pencerede çizgi: işi engelli'], ai_hata: ['AI yapamadı', 'Kırmızı kenar, pencerede çarpı: sahibi bakmalı'],
+  karar: ['Karar verecek', 'Kehribar kenar, pencerede karar karosu'], ai_onay: ['Onay bekliyor', 'Kehribar, yukarı ok: AI yazdı, sahibinin onayına sundu'],
+  ai_rutinsiz: ['Rutin yok', 'İçi boş, pencerede fiş: işi alacak rutin kurulmamış'], calisiyor: ['Çalışıyor', 'Mavi pencere, dönen ok; arkasında mavi iz'],
+  ai_calisiyor: ['AI çalışıyor', 'Mavi pencere, dönen ok; arkasında kare ışıklar'], sira: ['Sırası geldi', 'Kehribar kenar, pencerede oynat'],
+  ai_sirada: ['AI sırada', 'Gri pencere, saat: iş agent’ın sırasını bekliyor'], bekliyor: ['Bekliyor', 'Gri pencere, kum saati: başkasının işini bekliyor'],
+  gelecek: ['Sırası gelecek', 'İçi boş; pencerede kaç gün sonra başlayacağı'], bitti: ['İşi bitti', 'Yeşil pencere, tik: bu akışta açık işi kalmadı'],
+};
+const G_YAZI: [string, string, string, string, OlayTuru?][] = [
+  ['block', 'block', 'Takıldı', 'Kırmızı halka, şimşek', 'engel'], ['run', 'run', 'Sürüyor', 'Mavi; ışık doluyor'], ['wait', 'wait', 'Sırası geldi', 'Kehribar nabız halkası', 'sira'],
+  ['dark', 'dark', 'Sırada', 'Karanlık; önündeki iş bitince yanar'], ['lit', 'lit', 'Bitti', 'Yeşil, tam yanık', 'bitti'], ['tahmin', 'lit', 'Bitmiş sayılır', 'İleri bakarken: o güne dek bitmesi beklenen iş'],
+  ['ertele', 'ertele', 'Ertelendi', 'Gri, saatli; açık iş olarak kalır'], ['ghost', 'ghost', 'Atlandı', 'Silik, üstü çizik', 'atlandi'],
+];
+const H_YAZI: [HamleTur, string, string][] = [['engel', 'Engeli kaldır', 'Şimşek'], ['karar', 'Karar ver', 'Soru işareti'], ['onayla', 'AI yazdı, onayla', 'Göz; agent’ın işini sahibi onaylar'], ['bitir', 'Bitir', 'Ünlem'], ['kur', 'AI yapsın’ı kur', 'Kıvılcım; rutin kurulana dek iş başlamaz']];
+export function yorungeLejanti(M: YorungeModel, D: YorungeDurum): YorungeSatiri[] {
+  const L: YorungeSatiri[] = [], say = <T,>(a: T[], f: (x: T) => boolean) => a.filter(f).length;
+  const K = M.kisiler as any[], S = Object.entries(D.S) as [string, any][], HM = Object.values(D.H) as any[];
+  const ornek = (durum: string) => K.find((k) => D.K[k.ad]?.durum === durum);
+  const gemi = (k: any, kd: any) => `<g class="ky-svg" transform="translate(${k.tip === 'insan' ? 25 : 22},22) scale(1.05)">${arac(k, { ...kd, hamleler: [] }, {}).svg}</g>`;
+  for (const kd of KD_SIRA) { const k = ornek(kd); if (k) L.push({ svg: gemi(k, D.K[k.ad]), ad: KD_YAZI[kd][0], alt: KD_YAZI[kd][1], v: 'kd:' + kd, n: say(K, (x) => D.K[x.ad]?.durum === kd), grup: 'Kim' }); }
+  const gec = K.filter((k) => D.K[k.ad]?.gecGun);
+  if (gec.length) L.push({ svg: gemi(gec[0], D.K[gec[0].ad]), ad: 'Geç kalıyor', alt: 'Kırmızı gün etiketi: açık işinin tarihi geçti', v: 'gec', n: gec.length, grup: 'Kim' });
+  for (const [g, cz, ad, alt, tur] of G_YAZI) { const n = say(S, ([, s]) => s.g === g); if (n) L.push({ svg: planet(22, 22, 9, cz, { life: false, halka: SEN }), ad, alt, v: 'g:' + g, n, grup: 'Işık', tur }); }
+  for (const [t, ad, alt] of H_YAZI) { const n = say(HM, (h) => h.tur === t); if (n) L.push({ svg: dm(t, HM.find((h) => h.tur === t)?.kim === M.bakan ? SEN : O, HM.some((h) => h.tur === t && h.kim === M.bakan)), ad, alt: `${alt}. Düğme, hamleyi yapacak kişinin renginde`, v: 'h:' + t, n, grup: 'Hamle' }); }
+  const A = M.adimlar as any[], acikIs = (a: any) => !['lit', 'ghost', 'ertele', 'tahmin'].includes(D.S[a.no]?.g);
+  const ek = (n: number, svg: string, ad: string, alt: string, v: string, tur?: OlayTuru) => { if (n) L.push({ svg, ad, alt, v, n, grup: 'Yol', tur }); };
+  ek(say(A, (a) => M.kritik.has(a.no) && acikIs(a)), `<path d="M4,30 Q22,6 40,24" fill="none" stroke="#FFF6E0" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/>`, 'Kritik yol', 'Gecikirse hedef tarih kayar', 'kritik');
+  ek(say(A, (a) => !!a.karar_adimi && acikIs(a)), bayrak(22, 22, .9), 'Karar', 'Karar bekleyen iş', 'karar', 'karar');
+  ek(say(A, (a) => (a.ortak || []).length > 0), planet(22, 22, 9, 'dark', { life: false, halka: [SEN, O] }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak');
+  ek(say(A, (a) => (a.altlar || []).length > 0), planet(22, 22, 8, 'dark', { life: false, halka: SEN }) + `<circle cx="34" cy="14" r="2.6" fill="#FFF6E0"/><circle cx="36" cy="24" r="2.6" fill="none" stroke="#FFF6E0"/>`, 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler', 'alt');
+  ek(say(A, (a) => a.rutin_var === false && acikIs(a)), planet(22, 22, 9, 'dark', { life: false, halka: acik(SEN), agentIsi: true }), 'Rutini olmayan AI işi', 'AI yapsın açık ama işi alacak rutin yok', 'rutin');
+  return L;
+}
+
 /** Evren dili (el notu 2): usturlap, yörünge ve işaretler (ip, plan 27 Eki 3.27 ile kalktı). */
 const EVREN_SATIRLAR: Satir[] = [
   [`<circle cx="22" cy="22" r="19" fill="none" stroke="#061A24" stroke-width="6"/><path d="M22,3 A19,19 0 0 1 39,14" fill="none" stroke="#FFC9A3" stroke-width="4" stroke-linecap="round"/><path d="M22,22 L37,12" stroke="#FFD9B8" stroke-width="1.8" stroke-linecap="round"/><circle cx="22" cy="22" r="2.6" fill="#FFD27A"/>`, 'Takvim halkası ve ibre', 'Halka aylar; ibre bugün, dolan yay geçen zaman'],
@@ -146,7 +187,9 @@ function OdakSecici({ o, b, setB }: { o: OdakAyar; b: Bekleyen; setB: (b: Bekley
  * Harita dili. sayilar verilirse her işaretin yanında bu haritada kaç tane olduğu yazar; olay türü olan işaret
  * (bitti, sırası geldi, engel, atlandı, karar) o türün bildirimlerine gider (N2). akis: galaksinin kodu (bildirimler o akışa süzülür).
  */
-export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vurgula }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar; vurgula?: (an: LejantAnahtar) => void }) {
+export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vurgula, yorunge }: {
+  /** Kişi Yörüngeleri haritası: satırlar o anki durumdan; dokununca harita o işareti öne çıkarır */
+  yorunge?: { satirlar: YorungeSatiri[]; vurgu: (s: YorungeSatiri) => void }; acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar; vurgula?: (an: LejantAnahtar) => void }) {
   // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
   const K = yuzeyKodlamalari(yuzey).filter((k) => k.durum === 'var');
   const SP = haritaBicimi() === 'spiral' || haritaBicimi() === 'yorunge';
@@ -164,7 +207,19 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
         {odak && <OdakSecici o={odak} b={b} setB={setB} />}
         <h2 className="lejant-baslik">{baslik}</h2>
         {yuzey === 'galaksi' && <RenkKurali />}
-        {(yuzey === 'evren' ? [null] : SP ? (['Kim', 'Işık', 'Hamle', 'Yol'] as Grup[]) : GRUPLAR).map((gr) => <div key={gr || 'evren'}>
+        {yorunge && (['Kim', 'Işık', 'Hamle', 'Yol'] as Grup[]).filter((gr) => yorunge.satirlar.some((x) => x.grup === gr)).map((gr) => <div key={gr}>
+          <h3 className="lejant-alt-baslik">{GRUP_AD_SPIRAL[gr]}<small> · {gr === 'Yol' ? 'Zincir, karar ve ortak işler' : GRUP_ALT_SPIRAL[gr]}</small></h3>
+          <ul aria-label={`${GRUP_AD_SPIRAL[gr]} işaretleri`}>
+            {yorunge.satirlar.filter((x) => x.grup === gr).map((x) => <li key={x.v} className="lejant-cift">
+              <button type="button" className="lejant-satir" aria-label={`${x.ad}: ${x.n}. ${x.alt}. Haritada göster.`} onClick={() => { kapat(); yorunge.vurgu(x); }}>
+                <svg aria-hidden width="44" height="44" viewBox="0 0 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: x.svg }} />
+                <span><b>{x.ad}</b><small>{x.alt}</small></span><em className="lejant-sayi">{x.n}</em>
+              </button>
+              {x.tur && <button type="button" className="lejant-bildirim" aria-label={`${x.ad}: bildirimlerde göster`} title="Bildirimlerde göster" onClick={() => { kapat(); git(bSuzgecAdresi({ sekme: 'tum', kisi: null, akis: akis || null, tur: x.tur })); }}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,3 V-1 A5,5 0 0 1 5,-1 V3 L6.5,5 H-6.5Z M-1.8,6.5 A1.8,1.8 0 0 0 1.8,6.5" /></svg></button>}
+            </li>)}
+          </ul>
+        </div>)}
+        {!yorunge && (yuzey === 'evren' ? [null] : SP ? (['Kim', 'Işık', 'Hamle', 'Yol'] as Grup[]) : GRUPLAR).map((gr) => <div key={gr || 'evren'}>
         {gr && <h3 className="lejant-alt-baslik">{SP ? GRUP_AD_SPIRAL[gr] : gr}<small> · {(SP ? GRUP_ALT_SPIRAL : GRUP_ALT)[gr]}</small></h3>}
         <ul aria-label={gr ? `${gr} işaretleri` : 'Harita işaretleri'}>
           {/* yalnız bu haritada olan işaretler (plan 27 Eki, 3.32): sayısı 0 olan satır gösterilmez */}
@@ -190,11 +245,12 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
             ) : <li key={ad} title={`${ad}: ${alt}`}>{ic}</li>;
           })}
         </ul></div>)}
-        {yuzey === 'galaksi' && <p className="lejant-not">{SP ? 'Merkez akışın başlangıcı, spiralin sonu hedef tarih. Yol boyunca günler eşit aralıklı; pazartesiler tarihli.' : 'Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.'}</p>}
-        <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>
-        <dl className="lejant-kodlama">
+        {yorunge && <p className="lejant-not">Her kişi kendi yörüngesinde; bugün tepedeki göstergenin altında, gelecek saat yönünde. Merkez hedef tarih. Göstergeyi çekince harita o günü gösterir.</p>}
+        {yuzey === 'galaksi' && !yorunge && <p className="lejant-not">{SP ? 'Merkez akışın başlangıcı, spiralin sonu hedef tarih. Yol boyunca günler eşit aralıklı; pazartesiler tarihli.' : 'Yol üzerindeki sıra zamandır: soldan sağa, saat yönünde ilerler. Gezegenler aynı boydadır; çok yolun buluştuğu ortak gezegen yollar sığsın diye biraz büyür.'}</p>}
+        {!yorunge && <h3 className="lejant-alt-baslik">Ne neyi gösterir</h3>}
+        {!yorunge && <dl className="lejant-kodlama">
           {K.map((k) => <div key={k.kod}><dt>{k.veri}</dt><dd>{k[yuzey]}</dd></div>)}
-        </dl>
+        </dl>}
       </div>
     </AltSayfa>
   );

@@ -24,7 +24,7 @@ interface Oz {
 }
 
 /** API akış detayı → harita modelinin girdisi. */
-const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toISOString(), akis: { ...d.akis, bitis: d.bitis || d.akis?.bitis, kritik_yol: d.kritik_yol || d.akis?.kritik_yol || [], adimlar: d.adimlar || [], sahipler: d.sahipler || [], katilimcilar: d.katilimcilar || [], olaylar: d.olaylar || [] } });
+export const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toISOString(), akis: { ...d.akis, bitis: d.bitis || d.akis?.bitis, kritik_yol: d.kritik_yol || d.akis?.kritik_yol || [], adimlar: d.adimlar || [], sahipler: d.sahipler || [], katilimcilar: d.katilimcilar || [], olaylar: d.olaylar || [] } });
 
 export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit }, ref) {
   const svg = useRef<SVGSVGElement>(null);
