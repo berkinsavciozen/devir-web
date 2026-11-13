@@ -1391,3 +1391,14 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .bildirim-liste { margin-top: 4px; }
 .bildirim-sayfa .gd-kartlar > li > .satir-kart { position: relative; width: 100%; height: 60px; }
 .bildirim-sayfa .satir-metin b .okunmamis-nokta { margin-right: 6px; }
+
+/* Renk kuralı (13 Kas, sentez): harita lejantı ve Bildirimler'in başında aynı blok */
+.renk-kurali { margin: 8px 0 10px; padding: 8px 10px; border-radius: 14px; background: color-mix(in srgb, #FFF6E0 4%, transparent); border: 1px solid color-mix(in srgb, #FFF6E0 12%, transparent); }
+.renk-kurali-uc { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+.renk-kurali-uc > div { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.renk-kurali-uc span { display: grid; line-height: 1.15; }
+.renk-kurali-uc b { font-size: 12.5px; color: var(--renk-metin-ink); }
+.renk-kurali-uc small { font-size: 11px; color: var(--renk-metin-ink); opacity: .66; }
+.renk-kurali-renkler { margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 12px; font-weight: 700; }
+.renk-kurali-renkler span { display: inline-flex; align-items: center; gap: 5px; color: var(--gr); }
+.renk-kurali-renkler i { width: 9px; height: 9px; border-radius: 50%; background: var(--gr); box-shadow: 0 0 6px var(--gr); }

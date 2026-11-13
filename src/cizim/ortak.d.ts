@@ -27,3 +27,9 @@ export function page(w: number, h: number, body: string, extraCss?: string): str
 export function destekGemisi(x: number, y: number, dx: number, dy: number, col?: string, sc?: number, o?: { ip?: boolean; yon?: number; alev?: boolean }): string;
 export function onayFlamasi(r: number, mini?: boolean): string;
 export const ONAY_RENK: string;
+export type DurumGrubu = 'alarm' | 'eylem' | 'calisma' | 'bekleme' | 'bitti';
+export const DURUM_RENK: Record<DurumGrubu, string>;
+export const DURUM_GRUP: Record<string, DurumGrubu>;
+export const DURUM_GRUP_AD: Record<DurumGrubu, string>;
+export const DURUM_SIMGE: Record<string, (s: number, c: string) => string>;
+export function durumRengi(durum: string): string;

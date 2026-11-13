@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
-import { destekGemisi, planet, ship, kapi } from '../../cizim/ortak.js';
+import { destekGemisi, planet, ship, kapi, DURUM_RENK, DURUM_GRUP_AD, DURUM_SIMGE, type DurumGrubu } from '../../cizim/ortak.js';
 import { otoRozet, kisiRozeti } from '../../cizim/yol.js';
 import { haritaBicimi } from '../../geometri/kol-bayrak';
 import { acik, damla, type HamleTur } from '../../cizim/hamle';
@@ -14,31 +14,31 @@ import { git } from '../../yonlendirme';
 export type LejantAnahtar = 'bitti' | 'suruyor' | 'sira' | 'engel' | 'ertele' | 'kritik' | 'cikti' | 'darbogaz' | 'ortak' | 'ip' | 'sirada' | 'atlandi' | 'karar' | 'insan' | 'agent' | 'dis' | 'galaksi' | 'ai' | 'ai_onay';
 const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 'sira', engel: 'engel', atlandi: 'atlandi', karar: 'karar' };
 
-// Harita dili (W7, 6 Kas, "Kimin Hamlesi"): dört grup. Renk yalnız kişiyi söyler; durum ışıkla; kırmızı tek alarm.
-// Damla hamlenin düştüğü kişinin renginde, simgesi görev kartındaki düğme.
+// Harita dili (13 Kas, sentez): gövde ve hat = kim (kişinin rengi) · pencere ve ışık = durum (beş sabit renk) · yuvarlak düğme = hamle
+// (yapacak kişinin renginde, simgesi görev kartındaki düğme). 6 Kas'taki "durum renksiz" kuralının yerini aldı.
 type Satir = [string, string, string, LejantAnahtar?, Grup?];
 type Grup = 'Hamle' | 'Işık' | 'Kim' | 'Yol';
 const SEN = '#7FC8F8', O = '#F2D16B';
 const dm = (tur: HamleTur, renk: string, ben = false) => `<g transform="translate(22,31)">${planet(0, 0, 7, tur === 'engel' ? 'block' : tur === 'bitir' ? 'wait' : 'dark', { life: false, halka: renk })}${ben ? `<circle r="13" fill="none" stroke="${renk}" stroke-width="1" opacity=".55"/>` : ''}${damla({ tur, kim: '', renk, etiket: '' }, 0, ben ? -21 : -19, ben ? 1.15 : .95)}</g>`;
 const yol = (c: string, o: { kesik?: boolean; isik?: string } = {}) => `${o.isik ? `<path d="M2,32 Q22,4 42,26" fill="none" stroke="${o.isik}" stroke-width="7" opacity=".45" filter="url(#blur2)"/>` : ''}<path d="M2,32 Q22,4 42,26" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"${o.kesik ? ' stroke-dasharray="5 4"' : ''}/>`;
 const SATIRLAR: Satir[] = [
-  [dm('bitir', SEN, true), 'Senin hamlen', 'Senin renginde, büyük ve zıplayan damla; çevresinde nabız. Ünlem: “Bitir”', undefined, 'Hamle'],
-  [dm('karar', O), 'Karar ver', 'Soru işareti. Damla, kararı verecek kişinin renginde', 'karar', 'Hamle'],
-  [dm('onayla', SEN), 'AI yazdı, onayla', 'Göz. Agent’ın işini sahibi onaylar; damla sahibinin renginde', 'ai_onay', 'Hamle'],
+  [dm('bitir', SEN, true), 'Senin hamlen', 'Senin renginde, büyük ve zıplayan düğme; çevresinde nabız. Ünlem: “Bitir”', undefined, 'Hamle'],
+  [dm('karar', O), 'Karar ver', 'Soru işareti. Düğme, kararı verecek kişinin renginde', 'karar', 'Hamle'],
+  [dm('onayla', SEN), 'AI yazdı, onayla', 'Göz. Agent’ın işini sahibi onaylar; düğme sahibinin renginde', 'ai_onay', 'Hamle'],
   [dm('engel', O), 'Engeli kaldır', 'Şimşek; gezegende kırmızı çatlak', 'engel', 'Hamle'],
-  [dm('kur', SEN), 'AI yapsın’ı kur', 'Kıvılcım. AI yapsın açık ama Claude rutinin yok; kurana kadar iş kendiliğinden başlamaz. AI çalışırken damla yoktur', undefined, 'Hamle'],
-  [planet(22, 22, 9, 'lit', { life: false, halka: SEN }), 'Bitti', 'Tam yanık beyaz; sağ altta ne çıktığı: tik, belge, terazi', 'bitti', 'Işık'],
-  [planet(22, 22, 9, 'run', { life: false, halka: SEN }), 'Sürüyor', 'Yarısı yanık, ışık döner', 'suruyor', 'Işık'],
-  [planet(22, 22, 9, 'wait', { life: false, halka: SEN }), 'Sırası geldi', 'Karanlık, nabız atan beyaz halka', 'sira', 'Işık'],
+  [dm('kur', SEN), 'AI yapsın’ı kur', 'Kıvılcım. AI yapsın açık ama Claude rutinin yok; kurana kadar iş kendiliğinden başlamaz. AI çalışırken düğme yoktur', undefined, 'Hamle'],
+  [planet(22, 22, 9, 'lit', { life: false, halka: SEN }), 'Bitti', 'Yeşil, tam yanık; sağ altta ne çıktığı: tik, belge, terazi', 'bitti', 'Işık'],
+  [planet(22, 22, 9, 'run', { life: false, halka: SEN }), 'Sürüyor', 'Mavi; yarısı yanık, ışık döner', 'suruyor', 'Işık'],
+  [planet(22, 22, 9, 'wait', { life: false, halka: SEN }), 'Sırası geldi', 'Kehribar: nabız atan halka ve iç ışık', 'sira', 'Işık'],
   [planet(22, 22, 9, 'dark', { life: false, halka: SEN }), 'Sırada', 'Karanlık; önündeki iş bitince yanar', 'sirada', 'Işık'],
   [planet(22, 22, 9, 'ertele', { life: false, halka: SEN }), 'Ertelendi', 'Küçük, gri, saatli; açık iş olarak kalır', 'ertele', 'Işık'],
   [planet(22, 22, 9, 'ghost', { life: false }), 'Atlandı', 'Silik, üstü çizik', 'atlandi', 'Işık'],
   [yol(SEN), 'Kişinin yolu ve halkası', 'Kişinin renginde dolu çizgi; renk Ayarlar’dan seçilir', undefined, 'Kim'],
   [yol(acik(SEN), { kesik: true }), 'Agent’ın yolu', 'Sahibinin renginin açık tonu, kesik çizgi', undefined, 'Kim'],
   [planet(22, 22, 9, 'dark', { life: false, halka: [SEN, O] }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak', 'Kim'],
-  [ship(22, 22, -12, 'insan', 'B', SEN, .62, { flame: false }), 'İnsan', 'Kapsül; penceresinde baş harfi', 'insan', 'Kim'],
-  [destekGemisi(30, 30, -18, -14, acik(SEN), .62, { ip: true, yon: -.5 }) + ship(30, 30, -12, 'insan', 'B', SEN, .62, { flame: false }), 'Agent', 'Robot; sahibinin gemisine iple bağlı, kendi yolunda gider', 'agent', 'Kim'],
-  [ship(22, 24, 0, 'dis', '', O, .6), 'Dış katılımcı', 'Balon; yalnız kendi işlerini görür', 'dis', 'Kim'],
+  [ship(22, 22, -12, 'insan', 'B', SEN, 1.15, { flame: false }), 'Ekip üyesi', 'Oklu, kanatlı roket; penceresinde baş harfi', 'insan', 'Kim'],
+  [destekGemisi(30, 30, -18, -14, acik(SEN), .62, { ip: true, yon: -.5 }) + ship(30, 30, -12, 'insan', 'B', SEN, .62, { flame: false }), 'Agent', 'Köşeli, iki antenli; sahibinin gemisine iple bağlı, kendi yolunda gider', 'agent', 'Kim'],
+  [ship(22, 22, 0, 'dis', '', O, 1.1), 'Dış katılımcı', 'Kubbeli disk; yalnız kendi işlerini görür', 'dis', 'Kim'],
   [yol(SEN, { isik: '#FFF6E0' }), 'Geride kalan yol', 'Beyaz parlar; gecikince kırmızı', undefined, 'Yol'],
   [`<path d="M4,30 Q22,6 40,24" fill="none" stroke="#FFF6E0" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/>`, 'Kritik yol', 'Beyaz noktalı zincir: gecikirse hedef tarih kayar', 'kritik', 'Yol'],
   [planet(22, 18, 8, 'dark', { life: false, halka: O }) + `<g transform="translate(22,36)"><rect x="-7" y="-6.5" width="14" height="13" rx="6.5" fill="#08222E" stroke="#FFF6E0"/><text y="3.4" text-anchor="middle" font-family="Bricolage" font-size="8.5" font-weight="800" fill="#FFF6E0">3</text></g>`, 'Darboğaz', 'Altındaki sayı: onu bekleyen iş; yakınlaşınca yazıyla', 'darbogaz', 'Yol'],
@@ -49,20 +49,26 @@ const SATIRLAR: Satir[] = [
  * Zaman spiralinin dili (12 Kas, harita durum denetimi D1–D4): gemi = kişi. Gemi o anki ya da sıradaki işinin yanında durur,
  * rozeti durumunu söyler; bekleme ipi onu tutan işe, onay ipi robottan sahibine gider. Eski haritada eski satırlar kalır.
  */
-const rz = (durum: string, kind: 'insan' | 'agent' = 'insan', gecGun = 0) => (kind === 'agent' ? ship(18, 26, 0, 'agent', 'B', SEN, .55, { flame: false }) : ship(18, 26, -12, 'insan', 'B', SEN, .55, { flame: false }))
-  + kisiRozeti({ durum, gecGun }, { x: 18, y: 26 }, .55 * 1.25, SEN, kind, 0, { t0: 3 * 864e5 });
+const rz = (durum: string, kind: 'insan' | 'agent' = 'insan', gecGun = 0) => (kind === 'agent' ? ship(22, 22, 0, 'agent', 'B', acik(SEN), 1.2, { durum }) : ship(22, 22, -12, 'insan', 'B', SEN, 1.2, { durum, gun: 3 }))
+  + kisiRozeti({ durum, gecGun }, { x: 22, y: 24 }, .8, SEN, kind, 0, { t0: 3 * 864e5 });
 const ip = (kesik: boolean) => `<path d="M6,34 L36,12" stroke="${SEN}" stroke-width="1.5" ${kesik ? 'stroke-dasharray="5 3"' : 'stroke-dasharray="1 3.5" stroke-linecap="round"'}/>${kesik ? '' : '<path d="M36,12 L30,13.5 L33,18Z" fill="' + SEN + '"/>'}`;
 const SPIRAL_KIM: Satir[] = [
-  [ship(22, 22, -12, 'insan', 'B', SEN, .62, { flame: false }), 'Kişi', 'Kapsül, penceresinde baş harfi. O an yaptığı ya da sıradaki işinin yanında durur', 'insan', 'Kim'],
-  [ship(22, 22, 0, 'agent', 'B', acik(SEN), .62, { flame: false }), 'Agent', 'Robot, sahibinin renginin açık tonu; kendi işinin yanında durur', 'agent', 'Kim'],
-  [ship(22, 24, 0, 'dis', '', O, .6), 'Dış katılımcı', 'Balon; yalnız kendi işlerini görür', 'dis', 'Kim'],
-  [`<g opacity=".62">${rz('bekliyor')}</g>`, 'Bekliyor', 'Silik gemi, kum saati: başkasının işini bekliyor', undefined, 'Kim'],
-  [`<g opacity=".42">${rz('gelecek')}</g>`, 'Sırası gelecek', 'Silik gemi; kaç gün sonra başlayacağı yazar', undefined, 'Kim'],
-  [`<g opacity=".6">${rz('bitti')}</g>`, 'İşi bitti', 'Küçük gemi, tik: bu akışta açık işi kalmadı', undefined, 'Kim'],
-  [rz('calisiyor', 'insan', 2), 'Geç kalıyor', 'Kırmızı gün sayısı: açık işinin tarihi geçti', undefined, 'Kim'],
-  [rz('engel'), 'Takıldı', 'Kırmızı çerçeve: işi engelli', undefined, 'Kim'],
-  [rz('ai_sirada', 'agent'), 'AI sırada', 'Saat: AI yapsın açık, iş robotun sırasını bekliyor', undefined, 'Kim'],
-  [rz('ai_calisiyor', 'agent'), 'AI çalışıyor', 'Robotun çevresinde nabız atan halka', 'ai', 'Kim'],
+  [ship(22, 22, -12, 'insan', 'B', SEN, 1.15, { flame: false }), 'Kişi', 'Roket; gövdesi kendi renginde. O anki ya da sıradaki işinin yanında durur', 'insan', 'Kim'],
+  [ship(22, 22, 0, 'agent', 'B', acik(SEN), 1.15, { flame: false }), 'Agent', 'İki antenli küp; sahibinin açık tonu, kendi işinin yanında durur', 'agent', 'Kim'],
+  [ship(22, 22, 0, 'dis', '', O, 1.1), 'Dış katılımcı', 'Kubbeli disk; yalnız kendi işlerini görür', 'dis', 'Kim'],
+  [`<g opacity=".8">${rz('bekliyor')}</g>`, 'Bekliyor', 'Gri pencere, kum saati: başkasının işini bekliyor', undefined, 'Kim'],
+  [rz('gelecek'), 'Sırası gelecek', 'İçi boş, kesik çerçeve; pencerede kaç gün sonra başlayacağı', undefined, 'Kim'],
+  [`<g opacity=".8">${rz('bitti')}</g>`, 'İşi bitti', 'Yeşil pencere, tik: bu akışta açık işi kalmadı', undefined, 'Kim'],
+  [rz('calisiyor', 'insan', 2), 'Geç kalıyor', 'Kırmızı gün etiketi: açık işinin tarihi geçti', undefined, 'Kim'],
+  [rz('engel'), 'Takıldı', 'Kırmızı kenar, pencerede çizgi: işi engelli', undefined, 'Kim'],
+  [rz('karar'), 'Karar verecek', 'Kehribar kenar, pencerede karar karosu', undefined, 'Kim'],
+  [rz('sira'), 'Sırası geldi', 'Kehribar kenar, pencerede oynat', undefined, 'Kim'],
+  [rz('calisiyor'), 'Çalışıyor', 'Mavi pencere, dönen ok; arkasında mavi iz', undefined, 'Kim'],
+  [rz('ai_onay', 'agent'), 'Onay bekliyor', 'Kehribar, yukarı ok: AI yazdı, sahibinin onayına sundu', 'ai_onay', 'Kim'],
+  [rz('ai_hata', 'agent'), 'AI yapamadı', 'Kırmızı kenar, pencerede çarpı: sahibi bakmalı', undefined, 'Kim'],
+  [rz('ai_rutinsiz', 'agent'), 'Rutin yok', 'İçi boş, pencerede fiş: işi alacak rutin kurulmamış', undefined, 'Kim'],
+  [rz('ai_sirada', 'agent'), 'AI sırada', 'Gri pencere, saat: AI yapsın açık, iş agent’ın sırasını bekliyor', undefined, 'Kim'],
+  [rz('ai_calisiyor', 'agent'), 'AI çalışıyor', 'Mavi pencere, dönen ok; arkasında kare ışıklar', 'ai', 'Kim'],
   [planet(22, 22, 9, 'dark', { life: false, halka: acik(SEN), agentIsi: true }), 'Agent’ın işi', 'Gezegenin halkası kesik', undefined, 'Kim'],
   [planet(22, 22, 9, 'dark', { life: false, halka: [SEN, O] }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak', 'Kim'],
 ];
@@ -78,9 +84,9 @@ const SPIRAL_SATIRLAR: Satir[] = [
   ...SATIRLAR.filter(([, ad, , , g]) => g === 'Yol' && !['Geride kalan yol'].includes(ad)),
 ];
 const GRUP_AD_SPIRAL: Record<Grup, string> = { Kim: 'Kim nerede', Işık: 'İş', Hamle: 'Hamle', Yol: 'Bağ ve zaman' };
-const GRUP_ALT_SPIRAL: Record<Grup, string> = { Kim: 'Gemi kişiyi, rozeti durumunu söyler', Işık: 'Gezegenin ışığı işin durumu', Hamle: 'Damlanın rengi kimin, simgesi hangi düğme', Yol: 'Kim kimi bekliyor, zaman nerede' };
+const GRUP_ALT_SPIRAL: Record<Grup, string> = { Kim: 'Gövde kim, pencere ne durumda', Işık: 'Gezegenin iç ışığı işin durumu; aynı beş renk', Hamle: 'Düğmenin rengi kimin, simgesi hangi düğme', Yol: 'Kim kimi bekliyor, zaman nerede' };
 const GRUPLAR: Grup[] = ['Hamle', 'Işık', 'Kim', 'Yol'];
-const GRUP_ALT: Record<Grup, string> = { Hamle: 'Damlanın rengi kimin, simgesi hangi düğme', Işık: 'Durum renksizdir, ışıkla okunur', Kim: 'Renk yalnız kişiyi söyler', Yol: 'Zaman ve bağlar' };
+const GRUP_ALT: Record<Grup, string> = { Hamle: 'Düğmenin rengi kimin, simgesi hangi düğme', Işık: 'İç ışık durumu söyler; aynı beş renk', Kim: 'Gövde ve hat kişinin rengi', Yol: 'Zaman ve bağlar' };
 
 /** Evren dili (el notu 2): usturlap, yörünge ve işaretler (ip, plan 27 Eki 3.27 ile kalktı). */
 const EVREN_SATIRLAR: Satir[] = [
@@ -93,6 +99,25 @@ const EVREN_SATIRLAR: Satir[] = [
   [`<g transform="translate(22,22)">${iconRings(0, 0, .8)}</g>`, 'Bekleyen iş', 'Sırası gelmiş, sahibini bekliyor', 'sira'],
   [bayrak(22, 22, .9), 'Karar', 'Karar bekleyen adımı var', 'karar'],
 ];
+
+const GRUP_SIRA: DurumGrubu[] = ['alarm', 'eylem', 'calisma', 'bekleme', 'bitti'];
+/**
+ * Renk kuralı (13 Kas, sentez): harita lejantının ve Bildirimler'in başında aynı blok. Gövde ve hat kim olduğunu (kişinin rengi),
+ * pencere ve ışık durumu (beş sabit renk), yuvarlak düğme kime ne düştüğünü söyler.
+ */
+export function RenkKurali({ renk = SEN }: { renk?: string }) {
+  const kutu = (ic: string, vb = '-12 -12 24 24', w = 26) => <svg aria-hidden width={w} height="26" viewBox={vb} style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ic }} />;
+  return (
+    <section className="renk-kurali" aria-label="Renk kuralı">
+      <div className="renk-kurali-uc">
+        <div>{kutu(ship(0, 0, 0, 'insan', 'E', renk, .8, { flame: false }), '-17 -13 34 26', 34)}<span><b>Gövde, hat</b><small>kim</small></span></div>
+        <div>{kutu(`<circle r="8" fill="#08222E" stroke="${DURUM_RENK.eylem}" stroke-width="1.5"/>${DURUM_SIMGE.sira(1.5, DURUM_RENK.eylem)}`)}<span><b>Pencere, ışık</b><small>durum</small></span></div>
+        <div>{kutu(`<circle r="10" fill="${renk}" opacity=".26"/><circle r="8" fill="${renk}" stroke="#08222E" stroke-width="1.2"/><rect x="-.9" y="-3.8" width="1.8" height="4.7" rx=".8" fill="#08222E"/><circle cy="2.9" r="1" fill="#08222E"/>`)}<span><b>Düğme</b><small>hamle</small></span></div>
+      </div>
+      <p className="renk-kurali-renkler" aria-label="Durum renkleri">{GRUP_SIRA.map((g) => <span key={g} style={{ ['--gr' as string]: DURUM_RENK[g] }}><i aria-hidden />{DURUM_GRUP_AD[g]}</span>)}</p>
+    </section>
+  );
+}
 
 /** Haritada odak (plan 27 Eki, 2.C): kişi ve durum; "?" kutusunun başında. Seçim Uygula ile haritaya geçer (plan 28 Eki, Q1). */
 export interface OdakAyar {
@@ -138,6 +163,7 @@ export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vu
       <div className="lejant">
         {odak && <OdakSecici o={odak} b={b} setB={setB} />}
         <h2 className="lejant-baslik">{baslik}</h2>
+        {yuzey === 'galaksi' && <RenkKurali />}
         {(yuzey === 'evren' ? [null] : SP ? (['Kim', 'Işık', 'Hamle', 'Yol'] as Grup[]) : GRUPLAR).map((gr) => <div key={gr || 'evren'}>
         {gr && <h3 className="lejant-alt-baslik">{SP ? GRUP_AD_SPIRAL[gr] : gr}<small> · {(SP ? GRUP_ALT_SPIRAL : GRUP_ALT)[gr]}</small></h3>}
         <ul aria-label={gr ? `${gr} işaretleri` : 'Harita işaretleri'}>
@@ -221,6 +247,7 @@ export function TumHaritaDili({ acik, kapat }: { acik: boolean; kapat: () => voi
     <AltSayfa acik={acik} kapat={kapat} baslik="Tüm harita dili" yukseklik={60} duraklar={['yuksek']}>
       <div className="lejant">
         <h2 className="lejant-baslik">Tüm harita dili</h2>
+        <RenkKurali />
         <h3 className="lejant-alt-baslik">Evren: bütün akışlar</h3>
         <ul aria-label="Evren işaretleri">{EVREN_SATIRLAR.map(satir)}</ul>
         {GRUPLAR.map((gr) => <div key={gr}><h3 className="lejant-alt-baslik">Akış haritası · {gr}<small> · {GRUP_ALT[gr]}</small></h3>

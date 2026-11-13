@@ -11,6 +11,8 @@ import { useOlaylar, UstDugmeler } from '../../bilesen/Zil';
 import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { GorevKart } from '../../bilesen/GorevKart';
 import { planet, ship } from '../../cizim/ortak.js';
+import { kisiRengi } from '../../cizim/hamle';
+import { RenkKurali } from '../akis/Lejant';
 import { gunAy, kisaAd, saat } from '../../cizim/yol.js';
 import { yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
@@ -24,9 +26,12 @@ import { adimAdi, bSuzgecAdresi, gecmistenOlaylar, bSuzgecOku, gunlere, kisa, ol
 // olaylar tek satır. Sayfa açılınca okundu işareti sunucuda ilerler (cihazlar arası aynı).
 const GOK = { tohum: 77, yildiz: 230 };
 const enc = encodeURIComponent;
-const gemi = (ad: string, tip: string, x: number, y: number, k: number) => tip === 'dis'
-  ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', k)
-  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : '#9EE6CF', k, { flame: false });
+// 13 Kas (sentez): gövde kişinin kendi renginde (harita ile aynı palet); agent sahibinin açık tonunda
+const gemi = (ad: string, tip: string, x: number, y: number, k: number, sahibi?: string | null) => {
+  const renk = kisiRengi(ad, { tip, sahibi });
+  return tip === 'dis' ? ship(x, y + 1, 0, 'dis', '', renk, k)
+    : ship(x, y, tip === 'agent' ? 0 : -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), renk, k, { flame: false });
+};
 /** Tür seçiminde haritadaki işaret (lejantla aynı). */
 const TUR_GEZEGEN: Partial<Record<OlayTuru, string>> = { bitti: 'lit', basladi: 'wait', engel: 'block', sira: 'wait', karar: 'wait', atlandi: 'ghost', cikti: 'lit' };
 
@@ -119,6 +124,8 @@ export function Bildirimler({ ben }: { ben: Ben }) {
         <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={!!S.akis} onClick={() => setSec('akis')}>Akış: {akisAd}</button>
         <button type="button" className="filtre-cip" aria-haspopup="dialog" aria-pressed={!!S.tur} onClick={() => setSec('tur')}>Tür: {S.tur ? TUR_AD[S.tur] : 'Hepsi'}</button>
       </div>
+      {/* 13 Kas (sentez): haritadaki renk kuralı burada da aynı blok */}
+      <RenkKurali />
       {/* tek liste: gün başlıkları liste öğesi sayılmaz */}
       <ul aria-label="Bildirimler" className="gd-kartlar bildirim-liste">
         {gunlere(T, NOW, gunAy).flatMap(([gun, G]) => [
