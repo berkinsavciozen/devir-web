@@ -544,6 +544,7 @@ export function yorungeHaritasi() {
       else if (tur === 'kopru') v = Object.values(H.D.K).some((x) => x.durum === 'bekliyor' && (x.tutan === +n || x.no === +n));
       else if (tur === 'kenet') v = !!(H.D.H[n] && H.M.byNo[n].sahip_tip === 'agent');
       else if (tur === 'h') v = !!(H.D.H[n] && H.D.H[n].tur === deger); else if (tur === 'tip') v = p.h.k.tip === deger;
+      else if (tur === 'nos') v = deger.split(',').includes(String(n));
       else if (tur === 'kisi') { const sa = H.M.kisi[p.a.sahip]; v = p.a.sahip === deger || (sa && sa.sahibi === deger) || (p.a.ortak || []).includes(deger) || !!(H.D.H[n] && H.D.H[n].kim === deger); }
       p.v = v; p.g.classList.toggle('v', v); }
     for (const ad in H.A) { const kd = H.D.K[ad]; const k = H.A[ad].k; let v = false;

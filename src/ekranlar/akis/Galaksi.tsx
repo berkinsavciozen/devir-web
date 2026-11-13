@@ -19,13 +19,14 @@ import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { git, arama, listeyeDon } from '../../yonlendirme';
 import { haritaBicimi, yorungeHarita } from '../../geometri/kol-bayrak';
-import { YorungeHarita, type YorungeTutamak } from './YorungeHarita';
+import { YorungeHarita, hamVeri, type YorungeTutamak } from './YorungeHarita';
+import { durumAn as yorDurum, kur as yorKur } from '../../cizim/yorunge/index.js';
 import { KISI_DURUM_AD } from '../../cizim/kisi-durumu';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
 import { AiEtkinligi, aiCipYazisi } from './AiEtkinligi';
 import { BaglantiGonder } from './BaglantiGonder';
-import { galaksiSayilari, lejantGezegenleri, Lejant, SoruIkon, type OdakAyar } from './Lejant';
+import { galaksiSayilari, lejantGezegenleri, Lejant, SoruIkon, yorungeLejanti, type OdakAyar } from './Lejant';
 import { BaglantiKopyala, akisKisileri, useAkisBolumu, type AkisSuzgec } from './Bilgi';
 import { HaritaCipleri, KisiSuzgec, type HaritaCipi } from './HaritaSuzgec';
 import { AltSayfa } from '../../bilesen/AltSayfa';
@@ -157,6 +158,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   // durum odağı (plan 27 Eki, 2.C): "?" sayfasından; uymayan gezegenler söner
   const [durumOdak, setDurumOdak] = useState<GDurum | null>(null);
   const [lejant, setLejant] = useState(false);
+  // Kişi Yörüngeleri: lejant satırı ya da "Göster" → haritada öne çıkan işaret (çipten kalkar)
+  const [yorVurgu, setYorVurgu] = useState<{ v: string; ad: string } | null>(null);
   const [aiAcik, setAiAcik] = useState(false);
   // lejant satırı → o işaretli gezegenler kısa süre yanıp söner (plan 27 Eki, 3.G)
   const [parla, setParla] = useState<Set<number> | null>(null);
@@ -213,6 +216,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   useEffect(() => { document.documentElement.classList.add('kaydir-otur'); return () => document.documentElement.classList.remove('kaydir-otur'); }, []);
   // adımsız akış (4 Kas, TMPH: kurulum yarıda kaldı) haritayı kırmaz; açıklama gösterilir
   const adimsiz = !!d && !(d.adimlar || []).length;
+  const YM = useMemo(() => (yorungeHarita() && d && !adimsiz ? yorKur(hamVeri(d, NOW), sahip) : null), [d, sahip, adimsiz, NOW]);
+  const yorSatirlar = useMemo(() => (YM && lejant ? yorungeLejanti(YM, yorDurum(YM, X)) : []), [YM, lejant, X]);
   const M = useMemo(() => (d && !adimsiz ? akisModeli(d, { sahip, haric: dalHaric(d) }) : null), [d, sahip, adimsiz]);
   const geo = useMemo(() => (GD ? GD.harita : TD.harita), [GD, TD]);
   const SU = GD ? GD.surgu : TD.surgu;
@@ -424,8 +429,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kontroller = (
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yakınlaşır), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
-      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD && !durumOdak ? 64 : 108}
-        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
+      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
+        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={yorVurgu ? yorVurgu.v : durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
         anDegis={(t) => { setOynuyor(false); setX(t); }}
         serit={{ x: GD ? SU.x - 20 : 12, y: SU.y - (GD ? 30 : 46), w: GD ? SU.w + 40 : 366, sec: (k) => { setKisiKarti(null); setOdak(k); }, oynuyor, oynat: () => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); } }} etiket={`${ad} haritası`}
         adim={(no) => { if (!GD && kutuNo !== no) { setKutuNo(no); return; } ac(no); }}
@@ -453,9 +458,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       <button className="surgu-hap" style={{ left: Math.min(Math.max(Z.xOf(X), Z.x0 + 40), Z.x1 - 40) - 48, top: SU.y - 22 * SU.ps - 22 }} aria-label="Bugüne dön" onClick={() => { setOynuyor(false); setX(NOW); }} /></>}
 
       {/* süzgeç satırı: Kişiler ▾, harita dili, seçili süzgeç çipleri (plan 28 Eki, B6, B10) */}
-      <HaritaCipleri x={bolge.x + 12} y={bolge.y + 8} en={bolge.w - (GD ? 88 : 82)} secici={{ yazi: 'Kişiler', ikon: true, ac: () => setKisiKutu(true) }} lejantAc={() => setLejant(true)}
+      <HaritaCipleri x={bolge.x + 12} y={bolge.y + 8} en={YOR && GD ? bolge.w / 2 - 108 : bolge.w - (GD ? 88 : 82)} secici={{ yazi: 'Kişiler', ikon: true, ac: () => setKisiKutu(true) }} lejantAc={() => setLejant(true)}
         ai={aiYazi ? { yazi: aiYazi, onay: /onay/.test(aiYazi), ac: () => setAiAcik(true) } : null}
-        cipler={[odak && !YOR && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }].filter(Boolean) as HaritaCipi[]} />
+        cipler={[odak && !YOR && { ad: odak.replace(/\s*\(.*\)$/, ''), etiket: 'Kişi', kaldir: () => { setOdak(null); setKisiKarti(null); } }, durumOdak && { ad: GDURUM[durumOdak].ad, etiket: 'Durum', kaldir: () => setDurumOdak(null) }, YOR && yorVurgu && { ad: yorVurgu.ad, etiket: 'İşaret', kaldir: () => setYorVurgu(null) }].filter(Boolean) as HaritaCipi[]} />
       <AiEtkinligi acik={aiAcik} kapat={() => setAiAcik(false)} kod={kod} d={d} />
       <KisiSuzgec acik={kisiKutu} kapat={() => setKisiKutu(false)} kisiler={akisKisileri(d).map((k) => { const x = temel?.KD && Object.entries(temel.KD).find(([ad]) => ad.toLocaleLowerCase('tr') === k.ad.toLocaleLowerCase('tr'))?.[1]; return x ? { ...k, durum: KISI_DURUM_AD[x.durum] } : k; })} secili={odak}
         uygula={(k) => { setKisiKarti(null); setOdak(k); }} kisiSayfasi={(ad) => git(`/akis/${encodeURIComponent(kod)}/kisi/${encodeURIComponent(ad)}`)} />
@@ -466,7 +471,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </div>}
       {degisim && Math.abs(X - NOW) < 36e5 && <div className="zaman-seridi degisim-seridi" role="status" style={{ left: bolge.x + 16, top: bolge.y + 60, maxWidth: bolge.w - 32 }}>
         <span>{degisim.cumle}</span>
-        <button type="button" onClick={() => setParla(new Set(degisim.gezegen))}>Göster</button>
+        <button type="button" onClick={() => (YOR ? setYorVurgu({ v: 'nos:' + degisim.gezegen.join(','), ad: 'Değişenler' }) : setParla(new Set(degisim.gezegen)))}>Göster</button>
         <button type="button" className="degisim-kapat" aria-label="Kapat" onClick={() => setDegisim(null)}>×</button>
       </div>}
       {gonder && <><BaglantiGonder kod={kod} kisi={gonder} kisiId={(d.sahipler || []).find((x: any) => x.ad === gonder)?.kisi_id} adimSayisi={d.adimlar.filter((a: any) => a.sahip === gonder).length} kapat={() => { setGonder(null); setOdak(null); }} /></>}
@@ -482,7 +487,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
         <button type="button" className="genis-geri" style={{ left: U.geriX - 22, top: U.geriY - 22 }} aria-label="Geri" onClick={() => (secim != null ? git(`/akis/${encodeURIComponent(kod)}`, { yerine: true }) : listeyeDon())} />
         <h1 className="genis-baslik" style={{ left: U.baslikX, top: U.baslikY - U.fs * 1.02, fontSize: U.fs, lineHeight: `${Math.round(U.fs * 1.25)}px` }}>{ad}</h1>
         <BaglantiKopyala kod={kod} ikon style={{ position: 'absolute', left: GD.PX - 64, top: U.geriY - 22 }} />
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} yorunge={YOR ? { satirlar: yorSatirlar, vurgu: (x) => setYorVurgu({ v: x.v, ad: x.ad }) } : undefined} />
         <div className="galaksi-ust" style={{ left: U.cumleX, top: U.cumleY - 14, width: GD.PX - U.cumleX - 80 }}>
           <KararSeridi oz={d.akis.karar_ozeti} className="statik" adimaGit={ac} neden={d.bitis ? () => setNeden(true) : undefined} />
         </div>
@@ -530,7 +535,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       {kutuNo != null && byNo.get(kutuNo) && <HaritaKutusu key={kutuNo} a={byNo.get(kutuNo)} d={d} kod={kod} ben={sahip}
         acikAlt={(d.adimlar as any[]).filter((z) => z.ust_adim === kutuNo && !['tamam', 'atlandi', 'ertelendi'].includes(z.durum)).length}
         ayrinti={() => ac(kutuNo)} kapat={() => setKutuNo(null)} style={{ left: 16, right: 16, top: bolge.y + bolge.h + 6, transform: 'translateY(-100%)' }} />}
-      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} />
+      <Lejant acik={lejant} kapat={() => setLejant(false)} sayilar={lejantSayilari} akis={kod} odak={odakAyar} vurgula={vurgula} yorunge={YOR ? { satirlar: yorSatirlar, vurgu: (x) => setYorVurgu({ v: x.v, ad: x.ad }) } : undefined} />
       <TarihNeden acik={neden} kapat={() => setNeden(false)} d={d} adimaGit={ac} />
       <IlkTur ad="harita" />
     </Sahne>
