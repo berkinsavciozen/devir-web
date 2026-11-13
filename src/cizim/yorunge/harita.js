@@ -50,8 +50,16 @@ export function yorungeHaritasi() {
   /** Kurulum. M: model, o: {cihaz, svg, bakan, sonBakis, yeni (adım→renk), renkOf} */
   function kur(M, o) {
     const svg = o.svg; svg.innerHTML = '';
-    const geo = GEO[o.cihaz];
-    TF = 150 / geo.gun; TP = 120 / (geo.gunP || geo.gun);
+    const geo = { ...GEO[o.cihaz] };
+    // çerçeve (zaman yörüngesi) alanı doldurur: geniş düzende alan dikse elips dikleşir, alt kenar yerinde kalır (U6)
+    if (!geo.acilis) {
+      const W0 = svg.clientWidth || 700, H0 = svg.clientHeight || 600, en = Math.max(1, W0 - 110), boy = Math.max(1, H0 - 72);
+      const ry = Math.max(geo.ryOut, Math.min(430, geo.rxOut * boy / en)); // alan dik: elips dikleşir
+      geo.cOut += geo.ryOut - ry; geo.ryOut = ry;
+      geo.rxOut = Math.max(geo.rxOut, Math.min(440, geo.ryOut * en / boy)); // alan yatık: elips genişler
+    }
+    const TF0 = 150 / geo.gun, TP0 = 120 / (geo.gunP || geo.gun);
+    TF = TF0; TP = TP0;
     const gor = (a) => !M.gorunur || M.gorunur.has(a.no);
     // bakan kişi (ve agent'ı) en dış, en geniş yörüngede: kendi şeridi en uzun, "bana düşen" en kolay okunur
     const benim = (k) => k.ad === M.bakan || (k.tip === 'agent' && k.sahibi === M.bakan);
@@ -59,6 +67,9 @@ export function yorungeHaritasi() {
     const kisiler = [...kisiler0.filter((k) => !benim(k)), ...kisiler0.filter(benim)];
     const { R, sinir } = halkalar(M, geo, kisiler);
     const halkaOf = Object.fromEntries(R.map((h) => [h.k.ad, h]));
+    // öğe boyu (U6): araç ve işler komşu yörüngeye binmeyecek kadar büyür (en dar bant belirler), en çok 1,7 kat
+    R.forEach((h) => { h.ob = Math.max(1, Math.min(1.7, h.bant * .84 / (h.k.tip === 'agent' ? 24 : 28))); });
+    const OB = 1.6; // işler: yerel bant ve aynı yörüngedeki komşu ayrıca sınırlar (guncelle)
     const disBakan = M.bakanTip === 'dis';
     svg.appendChild(el('defs', {}, DEFS + R.map((h) => {
       const off = h.k.tip === 'agent' ? 8.2 : 10.8;
@@ -131,14 +142,15 @@ export function yorungeHaritasi() {
     R.forEach((h) => {
       const k = h.k, y = h.ust;
       const g = el('g', { class: 'arac-g', 'data-kisi': k.ad, transform: `translate(0,${f(y)})`, tabindex: 0, role: 'button', 'aria-label': k.ad });
+      g.style.setProperty('--ob', h.ob.toFixed(3));
       // dokunma alanı: gövdenin çevresi (44 px'e yakın), çizimden bağımsız
-      g.appendChild(el('rect', { class: 'arac-alan', x: -22, y: -20, width: 44, height: 40, fill: 'transparent' }));
+      g.appendChild(el('rect', { class: 'arac-alan', x: -22 * h.ob, y: -20 * h.ob, width: 44 * h.ob, height: 40 * h.ob, fill: 'transparent' }));
       const ol = el('g', { class: 'ol' + (k.ad === M.bakan ? ' ben' : '') }); g.appendChild(ol); kat.arac.appendChild(g);
       // sabit yer ayırma (dock): etiketler hiç kaymaz
       const sahipMi = M.kisiler.some((x) => x.tip === 'agent' && x.sahibi === k.ad);
       const onPx = (k.tip === 'agent' ? 10 + 4 + 16 + 4 : (k.tip === 'dis' ? 17 : 14) + 4 + 19 + (sahipMi ? 11 : 0)) + (k.ad === M.bakan ? 6 : 0); // bakanın plakası büyük
       const arkaPx = k.tip === 'agent' ? 22 : 31;
-      h.dockR = onPx / h.rx; h.dockL = arkaPx / h.rx;
+      h.dockR = onPx * h.ob / h.rx; h.dockL = arkaPx * h.ob / h.rx;
       const off = k.tip === 'agent' ? 8.2 : 10.8;
       const sL = yayBoy(h, -85 * RAD, -h.dockL - 3 / h.rx, off), sR = yayBoy(h, 0, h.dockR + 3 / h.rx, off);
       const darAg = k.tip === 'agent' && h.bant < 24; // dar ay bandı: agent yazısı yok, durum aracın rozetinde
@@ -175,7 +187,7 @@ export function yorungeHaritasi() {
     kat.igne.appendChild(ig);
 
     H = { M, o, svg, kam, kat, geo, R, sinir, halkaOf, P, A, gunler, dilim, dilimKenar, dilimYazi, hedefYol, hedefBayrak, bugunIsaret, ck, cr, ig, igneUst, disBakan,
-      kam0: { s: 1, cx: 0, cy: 0 }, k: 1, tx: 0, ty: 0, kademe: 0, sec: null, secKisi: null, kritik: false, vurgu: null, bagG: null };
+      kam0: { s: 1, cx: 0, cy: 0 }, k: 1, zk: 1, TF0, TP0, OB, tx: 0, ty: 0, kademe: 0, sec: null, secKisi: null, kritik: false, vurgu: null, bagG: null };
     H.bagG = kat.bag;
     H.kritikYol = el('g', { class: 'kritik-yol' }); kat.bag.appendChild(H.kritikYol);
     H.kritikYol.innerHTML = `<path class="ky-alt" fill="none" stroke="#06192A" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path class="ky-ust" fill="none" stroke="#FFF6E0" stroke-width="1.6" stroke-dasharray="4 2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -188,6 +200,7 @@ export function yorungeHaritasi() {
   function sigdir() {
     const g = H.geo;
     const W = H.svg.clientWidth || 390, Hh = H.svg.clientHeight || 600;
+    TF = H.TF0 / H.zk; TP = H.TP0 / H.zk;
     const ust = g.cOut - g.ryOut - 46, alt = g.cOut + g.ryOut + 26;
     if (g.acilis) {
       // açılış: 1:1 (390 genişlikte), iğne ortada, en dış yörüngenin tepesi ve iğne etiketi üstte
@@ -202,7 +215,7 @@ export function yorungeHaritasi() {
       H.tam = { k: sT / s, wx: (x0 + x1) / 2, wy: (y0 + y1) / 2, y0 };
       H.kMin = H.tam.k;
     } else {
-      const s = Math.min(W / (2 * g.rxOut + 64), Hh / (alt - ust));
+      const s = Math.min(W / (2 * g.rxOut + 36), Hh / (alt - ust));
       H.kam0 = { s, cx: W / 2, cy: (Hh - (alt - ust) * s) / 2 - ust * s, W, H: Hh };
       H.kMin = 1; H.tam = null;
     }
@@ -212,13 +225,14 @@ export function yorungeHaritasi() {
   function tamGorunum() { const T = hedefTam(); H.k = T.k; H.tx = T.tx; H.ty = T.ty; kamera(); }
   function hedefTam() { if (!H.tam) return { k: 1, tx: 0, ty: 0 }; const { s, cx, cy, W } = H.kam0, k = H.tam.k; return { k, tx: W / 2 - cx - H.tam.wx * s * k, ty: (H.o.ust ?? 10) + 24 - cy - H.tam.y0 * s * k }; }
   function kamera() {
-    const { s, cx, cy } = H.kam0, k = H.k;
-    H.kam.setAttribute('transform', `translate(${f(cx + H.tx)},${f(cy + H.ty)}) scale(${(s * k).toFixed(4)})`);
+    const { s, cx, cy } = H.kam0, kk = H.k;
+    H.kam.setAttribute('transform', `translate(${f(cx + H.tx)},${f(cy + H.ty)}) scale(${(s * kk).toFixed(4)})`);
     // öğe boyu: yakınlaşınca k^0,4, uzaklaşınca k^0,7 oranında (uzakta öğeler çok küçülmez ama komşusuna da binmez)
-    H.svg.style.setProperty('--ik', (k >= 1 ? Math.pow(k, -.6) : Math.pow(k, -.3)).toFixed(4));
+    H.svg.style.setProperty('--ik', (kk >= 1 ? Math.pow(kk, -.6) : Math.pow(kk, -.3)).toFixed(4));
     // gün yazıları uzaklaşınca ekranda sabit boyda kalır: bütün tarihler okunur
-    H.svg.style.setProperty('--ig', (k >= 1 ? Math.pow(k, -.6) : 1 / k).toFixed(4));
+    H.svg.style.setProperty('--ig', (kk >= 1 ? Math.pow(kk, -.6) : 1 / kk).toFixed(4));
     let kd = H.kademe;
+    const k = H.k < 1 ? H.k : H.zk; // ayrıntı kademesi: uzak görünümde kamera, yakınlaşmada zaman ölçeği
     for (let i = 0; i < 4; i++) { // eşikler histerezisli; büyük sıçramada (sığdır) birkaç kademe birden geçilir
       const k0 = kd;
       if (kd === 0 && k < .62) kd = -1; else if (kd === -1 && k >= .74) kd = 0;
@@ -230,16 +244,19 @@ export function yorungeHaritasi() {
     if (kd !== H.kademe) { H.svg.classList.remove('kdU', 'kd0', 'kd1', 'kd2'); H.svg.classList.add(ad(kd)); H.kademe = kd; }
     else if (!H.svg.classList.contains(ad(kd))) H.svg.classList.add(ad(kd));
   }
-  /** (px,py) ekran noktası sabit kalacak şekilde k'yi değiştirir. */
-  function zoomAt(k2, px, py) {
-    k2 = Math.max(H.kMin, Math.min(6, k2));
-    const { s, cx, cy } = H.kam0;
-    const wx = (px - cx - H.tx) / (s * H.k), wy = (py - cy - H.ty) / (s * H.k);
-    H.k = k2; H.tx = px - cx - wx * s * k2; H.ty = py - cy - wy * s * k2;
-    if (!H.tam && k2 === 1) { H.tx = 0; H.ty = 0; }
+  /**
+   * Yakınlaşma (U6): çerçeve (zaman yörüngesi) yerinde kalır; yakınlaşınca zaman ölçeği açılır (yörüngede bir gün daha uzun yer
+   * tutar, işler aralanır), uzaklaşınca daha çok gün sığar. Kamera ölçeği değişmez; uzak görünümdeyken (telefon, sığdır) önce ona dönülür.
+   */
+  function zoomAt(k2) {
+    if (H.k !== 1) { H.k = 1; H.tx = 0; H.ty = 0; }
+    H.zk = Math.max(.4, Math.min(6, k2));
     kamera();
+    if (H.D) guncelle(H.an, H.D);
+    if (H.o.zoomDegis) H.o.zoomDegis(H.zk);
   }
-  function kaydir(dx, dy) { if (!H.tam && H.k <= 1) return; H.tx += dx; H.ty += dy; kamera(); }
+  /** kaydırma: telefonda kadran ekrandan büyük, gezilir; geniş düzende çerçeve sabit */
+  function kaydir(dx, dy) { if (!H.tam) return; H.tx += dx; H.ty += dy; kamera(); }
   /** Dünya noktasını ekrana taşı (yakınlaşmış görüntüler için). */
   function odakla(wx, wy, k2) { const { s, cx, cy, W, H: Hh } = H.kam0; H.k = k2; H.tx = W / 2 - cx - wx * s * k2; H.ty = Hh * .45 - cy - wy * s * k2; kamera(); }
 
@@ -297,13 +314,14 @@ export function yorungeHaritasi() {
   function guncelle(an, D) {
     const { M, P, A, R } = H;
     H.an = an; H.D = D;
+    TF = H.TF0 / H.zk; TP = H.TP0 / H.zk; // zaman ölçeği bu örneğin (modül değişkeni paylaşılır)
     // 1) gezegen açıları
     const halkaItem = new Map(R.map((h) => [h, []]));
     for (const no in P) {
       const p = P[no], a = p.a, s = D.S[no], h = p.h;
       const bitik = ['lit', 'ghost', 'ertele', 'tahmin'].includes(s.g);
       let t, transit = false;
-      const base = (a.ust_adim ? .8 : 1) * (a.altlar.length ? 1.12 : 1) * (h.k.tip === 'agent' ? .78 : 1);
+      const base = H.OB * (a.ust_adim ? .8 : 1) * (a.altlar.length ? 1.12 : 1) * (h.k.tip === 'agent' ? .78 : 1);
       let boy = bitik ? base * .58 : base;
       if (a.tarihsiz) t = AF + .1;
       else if (bitik) {
@@ -322,10 +340,10 @@ export function yorungeHaritasi() {
     for (const [h, list] of halkaItem) {
       const ileri = list.filter((p) => p.t >= 0).sort((x, y) => x.t - y.t || x.a.no - y.a.no);
       let pt = h.dockR, pr = 0;
-      ileri.forEach((p, j) => { const r = 8 * p.boy; const min = j ? pt + (pr + r + 2.5) / hiz(h, pt) : h.dockR; p.t = Math.max(p.t, min); pt = p.t; pr = r; });
+      ileri.forEach((p, j) => { const r = 9.6 * p.boy; const min = j ? pt + (pr + r + 5) / hiz(h, pt) : h.dockR + Math.max(0, r - 9.6) / h.rx; p.t = Math.max(p.t, min); pt = p.t; pr = r; });
       const geri = list.filter((p) => p.t < 0).sort((x, y) => y.t - x.t || x.a.no - y.a.no);
       pt = -h.dockL; pr = 0;
-      geri.forEach((p, j) => { const r = 8 * p.boy; const min = j ? pt - (pr + r + 2) / hiz(h, pt) : -h.dockL; p.t = Math.min(p.t, min); pt = p.t; pr = r; });
+      geri.forEach((p, j) => { const r = 9.6 * p.boy; const min = j ? pt - (pr + r + 2) / hiz(h, pt) : -h.dockL - Math.max(0, r - 9.6) / h.rx; p.t = Math.min(p.t, min); pt = p.t; pr = r; });
       // geçmiş kümesi: çok eski bitmiş işler solup ✓n kümesine katılır (opaklık sürekli)
       let n = 0; geri.forEach((p) => { p.op = sstep((p.t + AP + .02) / .16); if (p.op < .5) n++; });
       ileri.forEach((p) => { p.op = 1 - sstep((p.t - AF - .02) / .14); });
@@ -397,9 +415,16 @@ export function yorungeHaritasi() {
         if (Math.abs(mx - (v.sRmax || 0)) > 1) { v.sRmax = mx; v.sagYazi = ''; }
         v.tT.style.display = yok ? 'none' : '';
       } else if (v.tT && v.sRmax !== Math.min(170, v.sRfull)) { v.sRmax = v.sRfull <= 0 ? 0 : Math.min(170, v.sRfull); v.sagYazi = ''; }
+      { // büyük gezegen yazı şeridine değer (U6): sağ yazı, yörüngedeki ilk gezegenin önünde biter; yer yoksa susar
+        let mx = v.sRmax || 0;
+        for (const no in P) { const p = P[no]; if (p.h !== v.h || p.gizli || p.t <= 0 || p.t > 1.6 || 9.6 * p.boy < v.tOff - 3) continue;
+          const izin = yayBoy(v.h, 0, p.t, v.tOff) - v.sR0 - 9.6 * p.boy - 6; mx = Math.min(mx, izin < 34 ? 0 : izin); }
+        mx = Math.round(mx / 6) * 6;
+        if (mx !== v.sRgz) { v.sRgz = mx; v.sagYazi = ''; }
+      }
       const s2 = sag(k, kd, an, gizli);
       const s2k = s2.join('|');
-      if (s2k !== v.sagYazi) { v.sagYazi = s2k; sigdirYazi(v.tR, s2, v.sRmax); }
+      if (s2k !== v.sagYazi) { v.sagYazi = s2k; sigdirYazi(v.tR, s2, Math.min(v.sRmax || 0, v.sRgz ?? 999)); }
       // rota: araçtan şu anki / sıradaki işine yörünge boyunca yay (uzaklık = ne kadar zaman var)
       if (p && p.h === h && !gizli && kd.durum !== 'bitti' && p.t > 0) { v.rota.setAttribute('d', yay(h, h.dockR * .55, Math.max(h.dockR * .55, p.t - 8 * p.boy / hiz(h, p.t)))); v.rota.style.display = ''; v.rota.setAttribute('stroke-dasharray', ['bekliyor', 'gelecek', 'ai_sirada', 'ai_rutinsiz'].includes(kd.durum) ? '2 4' : ''); }
       else v.rota.style.display = 'none';
@@ -557,5 +582,5 @@ export function yorungeHaritasi() {
   }
 
 
-  return { kur, guncelle, sigdir, tamGorunum, kamera, hedefTam, zoomAt, kaydir, odakla, sec, vurgu, aci, nokta, get H() { return H; } };
+  return { kur, guncelle, sigdir, tamGorunum, kamera, hedefTam, zoomAt, kaydir, odakla, sec, vurgu, aci, nokta, get H() { return H; }, get zoom() { return H ? H.zk : 1; } };
 }

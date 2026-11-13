@@ -14,6 +14,7 @@
 .ky-svg .serit.sag{fill:var(--ink)}
 .ky-svg .serit .sonk{fill:var(--ink3)}
 .ky-svg .ol{transform:scale(var(--ik,1))}
+.ky-svg .arac-g .ol{transform:scale(calc(var(--ik,1) * var(--ob,1)))}
 .ky-svg .bas{font-size:7.6px;font-weight:800;text-anchor:middle}
 .ky-svg .bas.ag{font-size:7px}
 .ky-svg .arti{font-size:9px;font-weight:700;fill:var(--ink)}
@@ -155,3 +156,13 @@
 .ky-serit .kc svg.ky-svg{position:static;inset:auto;width:44px;height:30px;pointer-events:none;overflow:visible}
 .ky-serit button:focus-visible,.ky-svg .igne-tut:focus-visible{outline:2px solid var(--renk-vurgu-altin);outline-offset:2px}
 .harita-cip.soru-cip b{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border-radius:50%;background:#FFF1DC;color:#2A1D4F;font-size:12px;font-weight:800}
+
+/* yüzen yakınlaştırma sürgüsü (U6): küçük hap; sağa çek yakınlaş, sola çek uzaklaş */
+.ky-zoom{position:absolute;z-index:2;display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:16px;background:color-mix(in srgb,#0B2233 86%,transparent);box-shadow:inset 0 0 0 1px rgba(191,176,224,.45),0 4px 14px rgba(0,0,0,.28);backdrop-filter:blur(6px)}
+.ky-zoom>svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--ink2,#E2D6F5);stroke-width:1.6;stroke-linecap:round}
+.ky-zoom-ray{position:relative;width:104px;height:32px;cursor:ew-resize;touch-action:none;outline:none}
+.ky-zoom-ray::before{content:"";position:absolute;left:0;right:0;top:15px;height:2px;border-radius:1px;background:rgba(226,214,245,.35)}
+.ky-zoom-bir{position:absolute;top:11px;width:2px;height:10px;margin-left:-1px;border-radius:1px;background:rgba(226,214,245,.55)}
+.ky-zoom-top{position:absolute;top:8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--seftali,#FFC9A3);box-shadow:0 0 0 3px rgba(255,201,163,.22),0 0 10px rgba(255,201,163,.5)}
+.ky-zoom-ray:focus-visible .ky-zoom-top{box-shadow:0 0 0 2px #0B2233,0 0 0 4px #FFD98A}
+@media (pointer:coarse){.ky-zoom{height:40px;border-radius:20px}.ky-zoom-ray{height:40px;width:84px}.ky-zoom-ray::before{top:19px}.ky-zoom-bir{top:15px}.ky-zoom-top{top:10px;width:20px;height:20px;margin-left:-10px}}

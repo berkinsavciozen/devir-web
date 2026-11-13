@@ -444,8 +444,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
       </div>}
       {/* yakınlaşma düğmeleri: geniş düzende her zaman; telefonda yalnız yakınken "sığdır" (tekerlek ve iki parmak yeter) */}
       <div className="harita-yakin" style={{ left: bolge.x + bolge.w - (GD ? 64 : 58), top: bolge.y + 6 }}>
-        {GD && <button type="button" aria-label="Yakınlaştır" disabled={!YOR && zk >= 3.999} onClick={() => (YOR ? yor.current?.yakinlas(1.5) : gz.yakinlas(1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
-        {GD && <button type="button" aria-label="Uzaklaştır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.yakinlas(1 / 1.5) : gz.yakinlas(1 / 1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
+        {GD && !YOR && <button type="button" aria-label="Yakınlaştır" disabled={!YOR && zk >= 3.999} onClick={() => (YOR ? yor.current?.yakinlas(1.5) : gz.yakinlas(1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
+        {GD && !YOR && <button type="button" aria-label="Uzaklaştır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.yakinlas(1 / 1.5) : gz.yakinlas(1 / 1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
         {(GD || yak || YOR) && <button type="button" aria-label="Haritayı sığdır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.sigdir() : gz.sigdir())}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
       </div>
 
