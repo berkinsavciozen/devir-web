@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SAHTE } from '../api/ortam';
 import { arama } from '../yonlendirme';
+import { yorungeHarita } from '../geometri/kol-bayrak';
 
 /**
  * W8 (6 Kas, B3): etkileşimli tanıtım turu. Sayfadaki gerçek öğe ışıkla çevrilir, yanında kısa kart: ne işe yarar ve
@@ -43,6 +44,16 @@ export const TURLAR: Record<TurAdi, TurAdimi[]> = {
   ],
 };
 
+/** Kişi Yörüngeleri haritasının turu (13 Kas, sentez): zaman göstergesi, pencere, hamle düğmesi, kişi şeridi. */
+export const YORUNGE_TURU: TurAdimi[] = [
+  { hedef: '.ky-svg .igne-tut', baslik: 'Zamanı göstergeden çek', metin: 'Sarı göstergeyi sağa çek: ileriye, sola çek: geriye gidersin. Bir kez dokun: bugüne döner. Harita o anda kimin nerede olduğunu gösterir.' },
+  { hedef: '.ky-svg .k-arac .arac-g', baslik: 'Pencere durumu söyler', metin: 'Her kişinin penceresindeki simge ve ışığın rengi durumudur: kırmızı takıldı, kehribar sıra onda, mavi çalışıyor, gri bekliyor, yeşil bitti. Gövdenin rengi ve biçimi kim olduğunu söyler.' },
+  { hedef: '.ky-svg .plaka.ben, .ky-svg .plaka', baslik: 'Yuvarlak düğme: yapılacak hamle', metin: 'Görev kartındaki ve bildirimdeki düğmenin aynısı; rengi hamleyi yapacak kişinin. Büyük ve çerçeveli olan senin.' },
+  { hedef: '.ky-serit', baslik: 'Bir kişiye dokun, yalnız onu gör', metin: 'Alttaki şeritte herkes şu anki durumuyla durur; dokununca o kişi, agent’ı ve işleri öne çıkar. Oynat düğmesi takvimi baştan oynatır.' },
+  { hedef: '[aria-label="Harita dili"]', baslik: 'Harita dili', metin: 'Bütün işaretlerin anlamı ve bu haritada kaç tane olduğu burada.' },
+];
+const turAdimlari = (ad: TurAdi): TurAdimi[] => (ad === 'harita' && yorungeHarita() ? YORUNGE_TURU : TURLAR[ad]);
+
 type Kutu = { x: number; y: number; w: number; h: number } | null;
 const bul = (s?: string): Element | null => {
   if (!s) return null;
@@ -58,7 +69,7 @@ export function Tur({ ad, bitti }: { ad: TurAdi; bitti: () => void }) {
   // hedefi olmayan adım (bu düzende yok) atlanır; hedefsiz adım ortada
   const [adimlar, setAdimlar] = useState<TurAdimi[]>([]);
   useEffect(() => {
-    const t = setTimeout(() => { setAdimlar(TURLAR[ad].filter((a) => !a.hedef || bul(a.hedef))); setHazir(true); }, 600);
+    const t = setTimeout(() => { setAdimlar(turAdimlari(ad).filter((a) => !a.hedef || bul(a.hedef))); setHazir(true); }, 600);
     return () => clearTimeout(t);
   }, [ad]);
   const a = adimlar[i];

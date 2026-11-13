@@ -137,3 +137,20 @@
 .ky-svg .igne .cekiliyor .igne-kutu,.ky-svg .igne.cekiliyor .igne-kutu{fill:#FFD9BC;filter:drop-shadow(0 0 6px #FFC9A3)}
 /* dokunma yalnız işte, araçta ve zaman göstergesinde: çizgiler ve yazılar araya girmez */
 .ky-svg .k-igne line,.ky-svg .k-igne>.igne>path,.ky-svg .k-serit,.ky-svg .k-kenet,.ky-svg .k-rota,.ky-svg .k-halka,.ky-svg .k-gun,.ky-svg .k-bag,.ky-svg .k-kopru,.ky-svg .k-kuyruk,.ky-svg .k-hedef,.ky-svg .k-dilim,.ky-svg .k-cekirdek{pointer-events:none}
+
+/* U3 · alt kişi şeridi: oynat + herkes + kişi/agent araçları (şu anki durumlarıyla) */
+.ky-serit{position:absolute;display:flex;align-items:stretch;gap:6px;height:62px;z-index:2}
+.ky-oynat{flex:none;width:44px;height:44px;align-self:center;border-radius:50%;border:1px solid #2A5770;background:#0A2736;display:grid;place-items:center}
+.ky-oynat path{fill:none;stroke:#FFF6E0;stroke-width:2.4;stroke-linecap:round}
+.ky-oynat path.dolu{fill:#FFF6E0;stroke:none}
+.ky-kisiler{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:none;padding:1px}
+.ky-kisiler::-webkit-scrollbar{display:none}
+.ky-serit .kc{position:relative;flex:none;min-width:62px;min-height:60px;display:grid;justify-items:center;align-content:center;gap:1px;border-radius:14px;border:1px solid #2A5770;background:#0A2736;padding:3px 6px}
+.ky-serit .kc small{font-size:10.5px;line-height:1.1;color:var(--renk-metin-ink2);max-width:76px;text-align:center}
+.ky-serit .kc.ag small{max-width:58px}
+.ky-serit .kc.secili{border-color:var(--kr,#FFF6E0);box-shadow:0 0 0 1.5px var(--kr,#FFF6E0) inset;background:#12405A}
+.ky-serit .kc.secili small{color:var(--renk-metin-ink)}
+.ky-serit .kc.hepsi .kc-r{font-weight:800;font-size:13px;color:var(--renk-metin-ink)}
+.ky-serit .kc-n{position:absolute;top:3px;right:4px;min-width:16px;height:16px;border-radius:8px;font-size:10px;line-height:16px;text-align:center;color:#08222E;font-weight:800}
+.ky-serit .kc svg.ky-svg{position:static;inset:auto;width:44px;height:30px;pointer-events:none;overflow:visible}
+.ky-serit button:focus-visible,.ky-svg .igne-tut:focus-visible{outline:2px solid var(--renk-vurgu-altin);outline-offset:2px}
