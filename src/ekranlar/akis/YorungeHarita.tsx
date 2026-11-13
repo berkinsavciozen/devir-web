@@ -1,4 +1,4 @@
-import { useEffect, useImperativeHandle, useMemo, useRef, forwardRef } from 'react';
+import { useState, useEffect, useImperativeHandle, useMemo, useRef, forwardRef } from 'react';
 import { hareketAz } from '../../ayar/hareket';
 import { anYaz, arac, durumAn, durumRenk, kur, KISI_DURUM_AD, yorungeHaritasi, type YorungeOrnegi } from '../../cizim/yorunge/index.js';
 
@@ -31,6 +31,8 @@ export const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toIS
 export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHarita({ d, bakan, simdi, an, cihaz, x, y, w, h, ust = 10, secili = null, kisi = null, vurgu = null, adim, kisiSec, bos, etiket, anDegis, serit, altPay = 0 }, ref) {
   const svg = useRef<SVGSVGElement>(null);
   const hr = useRef<YorungeOrnegi | null>(null);
+  const [zk, setZk] = useState(1);
+  const zr = useRef<HTMLDivElement>(null);
   const M = useMemo(() => kur(hamVeri(d, simdi), bakan), [d, simdi, bakan]);
   const geri = useRef({ adim, kisiSec, bos, anDegis }); geri.current = { adim, kisiSec, bos, anDegis };
   const D = useMemo(() => durumAn(M, an), [M, an]);
@@ -41,7 +43,7 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   useEffect(() => {
     const e = svg.current; if (!e) return;
     const H = yorungeHaritasi(); hr.current = H;
-    H.kur(M, { svg: e, cihaz, ust });
+    H.kur(M, { svg: e, cihaz, ust, zoomDegis: (z: number) => setZk(z) }); setZk(1);
     const s = durum.current;
     H.sec(s.secili, s.kisi); H.guncelle(s.an, durumAn(M, s.an)); H.vurgu(s.vurgu);
     // zaman göstergesi klavyeyle de kullanılır
@@ -73,17 +75,18 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   const anim = useRef(0);
   const zoomGit = (k2: number) => {
     const H = hr.current, e = svg.current; if (!H || !e) return;
-    const k0 = H.H.k, px = e.clientWidth / 2, py = e.clientHeight / 2; cancelAnimationFrame(anim.current);
+    const k0 = H.zoom, px = e.clientWidth / 2, py = e.clientHeight / 2; cancelAnimationFrame(anim.current);
     if (hareketAz()) { H.zoomAt(k2, px, py); return; }
     const t0 = performance.now();
     const kare = (t: number) => { const u = Math.min(1, (t - t0) / 260); H.zoomAt(k0 * Math.pow(k2 / k0, u), px, py); if (u < 1) anim.current = requestAnimationFrame(kare); };
     anim.current = requestAnimationFrame(kare);
   };
   useImperativeHandle(ref, () => ({
-    yakinlas: (kat) => { const H = hr.current; if (H) zoomGit(H.H.k * kat); },
-    // sığdır: bütün tarihler; zaten oradaysa açılış görünümü
+    yakinlas: (kat) => { const H = hr.current; if (H) zoomGit(H.zoom * kat); },
+    // sığdır: yakınlaşma varsa önce açılış ölçeği; telefonda sonra bütün tarihler (uzak görünüm) ile açılış arasında gider
     sigdir: () => {
       const H = hr.current; if (!H) return; cancelAnimationFrame(anim.current);
+      if (Math.abs(H.zoom - 1) > .02) { H.zoomAt(1, 0, 0); return; }
       const T = H.hedefTam(), S = H.H, tamda = Math.abs(S.k - T.k) < .02 && Math.abs(S.tx - T.tx) < 4;
       const Z = tamda || !S.tam ? { k: 1, tx: 0, ty: 0 } : T;
       S.k = Z.k; S.tx = Z.tx; S.ty = Z.ty; H.kamera();
@@ -93,7 +96,7 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   // tekerlek: edilgen olmayan dinleyici (sayfa kaymasın)
   useEffect(() => {
     const e = svg.current; if (!e) return;
-    const t = (ev: WheelEvent) => { const H = hr.current; if (!H) return; ev.preventDefault(); const [px, py] = yerel(ev.clientX, ev.clientY); H.zoomAt(H.H.k * Math.exp(-ev.deltaY * .0016), px, py); };
+    const t = (ev: WheelEvent) => { const H = hr.current; if (!H) return; ev.preventDefault(); const [px, py] = yerel(ev.clientX, ev.clientY); H.zoomAt(H.zoom * Math.exp(-ev.deltaY * .0016), px, py); };
     e.addEventListener('wheel', t, { passive: false });
     return () => e.removeEventListener('wheel', t);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -122,6 +125,15 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
   };
 
   // kişi şeridi: bakan başta; dış bakan yalnız kendini görür
+  // yüzen yakınlaştırma sürgüsü: sağa çek yakınlaş, sola çek uzaklaş (logaritmik; çift tık / Home açılış ölçeği)
+  const ZMIN = Math.log(.4), ZMAX = Math.log(6);
+  const zYer = (Math.log(zk) - ZMIN) / (ZMAX - ZMIN);
+  const zCek = (cx: number) => { const r = zr.current?.getBoundingClientRect(), H = hr.current; if (!r || !H) return; cancelAnimationFrame(anim.current); const u = Math.max(0, Math.min(1, (cx - r.left) / (r.width || 1))); const z = Math.exp(ZMIN + (ZMAX - ZMIN) * u); H.zoomAt(Math.abs(z - 1) < .06 ? 1 : z, 0, 0); };
+  const zTus = (e: React.KeyboardEvent) => {
+    const H = hr.current; if (!H) return;
+    const kat = e.key === 'ArrowRight' || e.key === 'ArrowUp' ? 1.15 : e.key === 'ArrowLeft' || e.key === 'ArrowDown' ? 1 / 1.15 : 0;
+    if (kat) { e.preventDefault(); e.stopPropagation(); H.zoomAt(H.zoom * kat, 0, 0); } else if (e.key === 'Home' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); H.zoomAt(1, 0, 0); }
+  };
   const kisiler = useMemo(() => { const dis = M.bakanTip === 'dis'; return (M.kisiler as any[]).filter((k) => !(dis && k.ad !== bakan)).sort((a, b) => (a.ad === bakan ? -1 : b.ad === bakan ? 1 : 0)); }, [M, bakan]);
   const kisa = (s: string) => String(s || '').replace(/\s*\(.*\)$/, '');
   const kisiAd = (k: any) => (k.tip === 'agent' ? (k.sahibi ? `${k.sahibi === bakan ? 'Senin' : kisa(k.sahibi) + '’in'} agent’ı` : kisa(k.ad)) : k.ad === bakan ? 'Sen' : kisa(k.ad));
@@ -137,7 +149,7 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
             zs.current = { x: e.clientX, an: durum.current.an, id: e.pointerId, oynadi: false }; hr.current?.H.ig?.classList.add('cekiliyor'); return;
           }
           e.currentTarget.setPointerCapture(e.pointerId); ptr.current.set(e.pointerId, [e.clientX, e.clientY]); jest.current.tasindi = false; cancelAnimationFrame(anim.current);
-          if (ptr.current.size === 2) { const [a, b] = [...ptr.current.values()]; jest.current.kistir = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: hr.current?.H.k ?? 1 }; } else jest.current.surukle = [e.clientX, e.clientY];
+          if (ptr.current.size === 2) { const [a, b] = [...ptr.current.values()]; jest.current.kistir = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), k: hr.current?.zoom ?? 1 }; } else jest.current.surukle = [e.clientX, e.clientY];
         }}
         onPointerMove={(e) => {
           const z = zs.current;
@@ -151,6 +163,17 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
           if (z) { if (e.pointerId !== z.id) return; zs.current = null; hr.current?.H.ig?.classList.remove('cekiliyor'); geri.current.anDegis?.(z.oynadi ? sinirla(Math.round(durum.current.an / CEYREK) * CEYREK) : simdi); return; }
           const J = jest.current, t = J.tasindi; ptr.current.delete(e.pointerId); if (ptr.current.size < 2) J.kistir = null; if (!ptr.current.size) { J.surukle = null; if (!t) tikla(e.clientX, e.clientY); } }}
         onPointerCancel={(e) => { if (zs.current?.id === e.pointerId) { zs.current = null; hr.current?.H.ig?.classList.remove('cekiliyor'); return; } ptr.current.delete(e.pointerId); jest.current.kistir = null; if (!ptr.current.size) jest.current.surukle = null; }} />
+    </div>
+    <div className="ky-zoom" style={cihaz === 'tel' ? { right: x + 8, top: y + h - 46 } : { left: x + w - 172, top: y + h - 44 }}>
+      <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4" /></svg>
+      <div ref={zr} className="ky-zoom-ray" role="slider" tabIndex={0} aria-label="Yakınlaştırma: sağa sola çek" aria-valuemin={40} aria-valuemax={600} aria-valuenow={Math.round(zk * 100)} aria-valuetext={`yüzde ${Math.round(zk * 100)}`}
+        onKeyDown={zTus} onDoubleClick={() => hr.current?.zoomAt(1, 0, 0)}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); zCek(e.clientX); }}
+        onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) zCek(e.clientX); }}>
+        <i className="ky-zoom-bir" style={{ left: `${((0 - ZMIN) / (ZMAX - ZMIN)) * 100}%` }} />
+        <i className="ky-zoom-top" style={{ left: `${zYer * 100}%` }} />
+      </div>
+      <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4 M0,-4 V4" /></svg>
     </div>
     {serit && <div className="ky-serit" style={cihaz === 'tel' ? { left: serit.x, right: serit.x, top: serit.y } : { left: serit.x, top: serit.y, width: serit.w }}>
       <button type="button" className="ky-oynat" aria-label={serit.oynuyor ? 'Durdur' : 'Oynat'} onClick={serit.oynat}>
