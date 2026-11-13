@@ -1,11 +1,12 @@
 /**
  * Kişi durumu (12 Kas, harita durum denetimi P1): bir üyenin (insan, dış, agent) belli bir andaki tek durumu.
  * Gemi = kişi: harita, lejant ve panel bu işlevden okur. Sıra: engel, hamle, çalışıyor, bekliyor, gelecek, bitti.
+ * 13 Kas (sentez): AI sırada ama işi alacak rutin yoksa (sunucu 0.36.0 `rutin_var === false`) durum `ai_rutinsiz`.
  */
 export type KisiDurum = 'gelecek' | 'bekliyor' | 'sira' | 'calisiyor' | 'karar' | 'engel' | 'bitti'
-  | 'ai_sirada' | 'ai_calisiyor' | 'ai_onay' | 'ai_hata';
+  | 'ai_sirada' | 'ai_calisiyor' | 'ai_onay' | 'ai_hata' | 'ai_rutinsiz';
 export interface KisiDurumu { durum: KisiDurum; no: number | null; tutan: number | null; gecGun: number }
-interface Adim { no: number; sahip: string; tip?: string; durum: string; dep?: number[]; karar?: boolean; oto?: string | null }
+interface Adim { no: number; sahip: string; tip?: string; durum: string; dep?: number[]; karar?: boolean; oto?: string | null; rutinYok?: boolean }
 const GUN = 864e5;
 
 /**
@@ -24,7 +25,7 @@ export function kisiDurumu(kendi: number[], byNo: Record<number, Adim>, gorsel: 
   if (aktif != null) {
     const a = byNo[aktif], k = gorsel(aktif);
     let durum: KisiDurum;
-    if (a.oto) durum = a.oto === 'hata' ? 'ai_hata' : a.oto === 'bakilacak' ? 'ai_onay' : a.oto === 'calisiyor' ? 'ai_calisiyor' : k === 'block' ? 'engel' : 'ai_sirada';
+    if (a.oto) durum = a.oto === 'hata' ? 'ai_hata' : a.oto === 'bakilacak' ? 'ai_onay' : a.oto === 'calisiyor' ? 'ai_calisiyor' : k === 'block' ? 'engel' : a.rutinYok ? 'ai_rutinsiz' : 'ai_sirada';
     else durum = k === 'block' ? 'engel' : a.karar ? 'karar' : k === 'run' ? 'calisiyor' : 'sira';
     return { durum, no: aktif, tutan: null, gecGun: gec(aktif) };
   }
@@ -39,5 +40,5 @@ export function kisiDurumu(kendi: number[], byNo: Record<number, Adim>, gorsel: 
 /** Kişiler listesi ve lejant için kısa ad (harita rozetleriyle aynı sözlük). */
 export const KISI_DURUM_AD: Record<KisiDurum, string> = {
   gelecek: 'sırası gelecek', bekliyor: 'bekliyor', sira: 'sırası geldi', calisiyor: 'çalışıyor', karar: 'karar verecek',
-  engel: 'takıldı', bitti: 'işi bitti', ai_sirada: 'AI sırada', ai_calisiyor: 'AI çalışıyor', ai_onay: 'onay bekliyor', ai_hata: 'AI yapamadı',
+  engel: 'takıldı', bitti: 'işi bitti', ai_sirada: 'AI sırada', ai_calisiyor: 'AI çalışıyor', ai_onay: 'onay bekliyor', ai_hata: 'AI yapamadı', ai_rutinsiz: 'rutin yok',
 };

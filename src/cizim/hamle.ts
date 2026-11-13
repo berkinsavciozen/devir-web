@@ -70,6 +70,10 @@ export function hamle(a: any, o: { renkler?: Record<string, string>; ben?: strin
 const IC: Record<HamleTur, (s: number, c: string) => string> = { bitir: SIMGE.unlem, karar: SIMGE.soru, onayla: SIMGE.goz, engel: SIMGE.simsek, kur: SIMGE.kivilcim };
 /** Düğmenin ve damlanın simgesi. */
 export const hamleSimgesi = (t: HamleTur, s = 1.15, c = '#08222E') => IC[t](s, c);
-/** Haritadaki damla: gezegenin tam üstünde. */
+/**
+ * Haritadaki hamle düğmesi (13 Kas, sentez): görev kartındaki düğmenin aynısı. Kişinin renginde dolu daire, koyu simge, dış halka;
+ * kuyruğu ait olduğu işe (aşağıya) bakar. Durum işaretiyle (koyu pencere, renkli simge) biçimi ve yeri ayrıdır.
+ */
 export const damla = (h: Hamle, x: number, y: number, sc = 1) =>
-  `<g transform="translate(${x},${y}) scale(${sc})"><path d="M0,9.5 C-2,6 -7,3.5 -7,-1 A7,7 0 1 1 7,-1 C7,3.5 2,6 0,9.5Z" fill="${h.renk}" stroke="#08222E" stroke-width="1.2"/><g transform="translate(0,-1)">${hamleSimgesi(h.tur)}</g></g>`;
+  `<g transform="translate(${x},${y}) scale(${sc})"><circle cy="-1" r="9.6" fill="${h.renk}" opacity=".26"/><path d="M-3.4,4.6 L0,10 L3.4,4.6Z" fill="${h.renk}" stroke="#08222E" stroke-width="1.1" stroke-linejoin="round"/><circle cy="-1" r="7.3" fill="${h.renk}" stroke="#08222E" stroke-width="1.2"/><g transform="translate(0,-1)">${hamleSimgesi(h.tur)}</g></g>`;
+export { DURUM_RENK, DURUM_GRUP, DURUM_GRUP_AD, DURUM_SIMGE, durumRengi } from './ortak.js';

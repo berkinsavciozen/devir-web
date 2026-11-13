@@ -23,11 +23,12 @@ describe('kişi renkleri (W7, Kimin Hamlesi)', () => {
 
 describe('gezegen ışığı (W7)', async () => {
   const { planet } = await import('./ortak.js');
-  it('durum renksiz: bitti krem ve beyaz ışık; yeşil, mavi, kehribar yok; kırmızı yalnız engel', () => {
-    const L = ['lit', 'run', 'wait', 'dark', 'ertele', 'ghost'].map((k) => planet(0, 0, 9, k, { halka: '#7FC8F8' }));
-    for (const g of L) expect(g).not.toMatch(/pGreen|pRun|pAmber|glowMint|glowBlue|#FFB547|#FF5A5A/);
-    expect(planet(0, 0, 9, 'lit')).toContain('pKrem');
+  it('durum beş sabit renkte (13 Kas): bitti yeşil, sürüyor mavi, sırası geldi kehribar, engel kırmızı; sırası gelmemiş renksiz', () => {
+    expect(planet(0, 0, 9, 'lit')).toMatch(/pGreen/);
+    expect(planet(0, 0, 9, 'run')).toContain('#5AB8FF');
+    expect(planet(0, 0, 9, 'wait')).toContain('#FFB547');
     expect(planet(0, 0, 9, 'block')).toContain('#FF5A5A');
+    for (const k of ['dark', 'ertele', 'ghost']) expect(planet(0, 0, 9, k, { halka: '#7FC8F8' })).not.toMatch(/pGreen|#5AB8FF|#FFB547|#FF5A5A|#6EE39A/);
   });
   it('halka kişinin renginde; ortakta bölünür; bayrak ve AI rozeti çizilmez', () => {
     expect(planet(0, 0, 9, 'dark', { halka: '#7FC8F8' })).toContain('stroke="#7FC8F8"');
@@ -57,14 +58,19 @@ describe('galaksi sayıları', () => {
 describe('P4b işaretleri', async () => {
   const { planet, ship, kapi, yildiz } = await import('./ortak.js');
   const { lejantGezegenleri } = await import('../ekranlar/akis/Lejant');
-  it('atlandı üstü çizik; gemiler (Q6 · C): insan kapsül, agent robot, dış balon', () => {
+  it('atlandı üstü çizik; araçlar (13 Kas): ekip roket, agent antenli küp, dış kubbeli disk; gövde kişinin renginde', () => {
     expect(planet(0, 0, 8, 'ghost')).toMatch(/M-4\.59,4\.59 L4\.59,-4\.59/);
     const insan = ship(0, 0, 0, 'insan', 'A', '#8EC5FF'), agent = ship(0, 0, 0, 'agent', 'C', '#B9A6F2'), dis = ship(0, 0, 0, 'dis', '', '#F2B8D8');
     expect(new Set([insan, agent, dis]).size).toBe(3);
-    expect(insan).toContain('rx="7.5"'); expect(agent).toContain('<circle cx="0" cy="0" r="9"'); expect(agent).toContain('V-14');
-    expect(dis).toContain('M0,-15 C10,-15'); expect(dis).not.toContain('r="9"');
-    // ortak 1,5 çizgi
-    for (const g of [insan, agent, dis]) expect(g).toContain('stroke-width="1.5"');
+    expect(insan).toContain('fill="#8EC5FF"'); expect(agent).toContain('fill="#B9A6F2"'); expect(dis).toContain('fill="#F2B8D8"');
+    expect(insan).toContain('>A</text>');
+  });
+  it('pencere durumu söyler: grup rengi ve simge; durum verilmezse baş harfi', () => {
+    const s = (d: string) => ship(0, 0, 0, 'insan', 'A', '#8EC5FF', 1, { durum: d });
+    expect(s('engel')).toContain('#FF5A5A'); expect(s('sira')).toContain('#FFB547'); expect(s('karar')).toContain('#FFB547');
+    expect(s('calisiyor')).toContain('#5AB8FF'); expect(s('bekliyor')).toContain('#A9C3D6'); expect(s('bitti')).toContain('#6EE39A');
+    expect(new Set(['engel', 'karar', 'sira', 'calisiyor', 'bekliyor', 'bitti'].map(s)).size).toBe(6);
+    expect(ship(0, 0, 0, 'insan', 'A', '#8EC5FF')).not.toMatch(/#FF5A5A|#FFB547|#5AB8FF|#6EE39A/);
   });
   it('varış kapısı ve merkez yıldızı çizilir', () => {
     expect(kapi(0, 0, 1, false)).toContain('r="22"');

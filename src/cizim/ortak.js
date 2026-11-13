@@ -59,6 +59,7 @@ function defs() {
   <radialGradient id="pKrem" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".45" stop-color="#FFF6E0"/><stop offset=".85" stop-color="#E8DCC6"/><stop offset="1" stop-color="#B9AE9E"/></radialGradient>
   <radialGradient id="pBlock" cx=".36" cy=".3" r=".85"><stop offset="0" stop-color="#FFB7A3"/><stop offset=".45" stop-color="#E26F72"/><stop offset="1" stop-color="#6A2754"/></radialGradient>
   <radialGradient id="shade" cx=".78" cy=".8" r=".75"><stop offset="0" stop-color="#1A0F3A" stop-opacity=".55"/><stop offset=".6" stop-color="#1A0F3A" stop-opacity=".12"/><stop offset="1" stop-color="#1A0F3A" stop-opacity="0"/></radialGradient>
+  <linearGradient id="alevMavi" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".3" stop-color="#5AB8FF" stop-opacity=".95"/><stop offset="1" stop-color="#5AB8FF" stop-opacity="0"/></linearGradient>
   <linearGradient id="flame" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#FFE6A0"/><stop offset=".5" stop-color="#FF9F7A" stop-opacity=".8"/><stop offset="1" stop-color="#FF7A8A" stop-opacity="0"/></linearGradient>
   <linearGradient id="todayG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD9B8" stop-opacity=".95"/><stop offset=".85" stop-color="#FFB48F" stop-opacity=".45"/><stop offset="1" stop-color="#FFB48F" stop-opacity="0"/></linearGradient>
   <linearGradient id="btn" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE0C2"/><stop offset="1" stop-color="#FFB08C"/></linearGradient>
@@ -206,9 +207,9 @@ function planetGovde(x, y, r, state, o = {}) {
   }
   if (state === 'lit') {
     // bitti: tam yanık beyaz ışık; sağ altta sonuç rozeti
-    s += `<circle r="${f(r * 2.5)}" fill="url(#glowBeyaz)" opacity=".85"/>`;
+    s += `<circle r="${f(r * 2.5)}" fill="url(#glowMint)" opacity=".8"/>`;
     s += hk();
-    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pKrem'})"/>`;
+    s += `<circle r="${f(r)}" fill="url(#${o.grad || 'pGreen'})"/>`;
     s += `<circle r="${f(r)}" fill="url(#shade)" opacity=".35"/>`;
     if (!o.mini && o.life !== false) { s += house(r, -18, true) + tree(r, 16, true) + lamp(r, 38, true); if (r > 18) s += house(r, -48, true, .8); }
     if (o.sonuc !== false) s += sonucRozeti(r, o.sonuc || 'tik', o.mini);
@@ -216,19 +217,19 @@ function planetGovde(x, y, r, state, o = {}) {
   }
   if (state === 'run') {
     // sürüyor: yarısı yanık, ışık döner
-    s += `<circle r="${f(r * 1.9)}" fill="url(#glowBeyaz)" opacity=".4"/>`;
+    s += `<circle r="${f(r * 1.9)}" fill="url(#glowBlue)" opacity=".55"/>`;
     s += hk();
     s += `<circle r="${f(r)}" fill="url(#pDark)"/>`;
-    s += `<g class="dongu-don"><path d="M0,${f(-r)} A${f(r)},${f(r)} 0 0 1 0,${f(r)} A${f(r * .45)},${f(r)} 0 0 0 0,${f(-r)}Z" fill="${KREM}"/></g>`;
+    s += `<g class="dongu-don"><path d="M0,${f(-r)} A${f(r)},${f(r)} 0 0 1 0,${f(r)} A${f(r * .45)},${f(r)} 0 0 0 0,${f(-r)}Z" fill="${DURUM_RENK.calisma}"/></g>`;
     if (!o.mini && o.life !== false) s += house(r, -15, true);
     return s + '</g>';
   }
   if (state === 'wait') {
     // sırası geldi: karanlık gövde, nabız atan beyaz halka, içte küçük ışık
-    s += `<circle r="${f(r + (o.mini ? 4 : 6.5))}" fill="none" stroke="${KREM}" stroke-width="${o.mini ? .9 : 1.3}" class="dongu-nabiz" opacity=".85"/>`;
+    s += `<circle r="${f(r + (o.mini ? 4 : 6.5))}" fill="none" stroke="${DURUM_RENK.eylem}" stroke-width="${o.mini ? 1 : 1.5}" class="dongu-nabiz" opacity=".9"/>`;
     s += hk();
     s += `<circle r="${f(r)}" fill="url(#pDark)"/>`;
-    s += `<circle r="${f(r * .42)}" fill="${KREM}" opacity=".9"/>`;
+    s += `<circle r="${f(r * .42)}" fill="${DURUM_RENK.eylem}" opacity=".95"/>`;
     if (!o.mini && o.life !== false) s += house(r, -15, false) + tree(r, 24, false);
     return s + '</g>';
   }
@@ -252,40 +253,67 @@ function planetGovde(x, y, r, state, o = {}) {
 
 // --- gemiler ---
 // kind: insan | agent | dis
-// gemiler (plan 28 Eki, Q6 · C "sevimli"): ortak 1,5 çizgi, krem gövde, sahibin rengi.
-// insan: yuvarlak kapsül, baş harfi pencerede (yöne döner); agent: antenli, vizörlü küçük robot, ışığı sahibinin renginde;
-// dış katılımcı: sıcak hava balonu. Robot ve balon yöne dönmez, dik durur.
+/**
+ * Durum dili (13 Kas, sentez): beş sabit renk grubu; kişide (pencere, simge, kenar ışığı) ve işte (gezegenin iç ışığı) aynı.
+ * Kural: gövde ve hat = KİM (kişinin rengi) · pencere ve ışık = DURUM (grup rengi) · yuvarlak düğme = HAMLE (yapacak kişinin rengi).
+ */
+const DURUM_RENK = { alarm: '#FF5A5A', eylem: '#FFB547', calisma: '#5AB8FF', bekleme: '#A9C3D6', bitti: '#6EE39A' };
+const DURUM_GRUP = { engel: 'alarm', ai_hata: 'alarm', karar: 'eylem', sira: 'eylem', ai_onay: 'eylem', calisiyor: 'calisma', ai_calisiyor: 'calisma',
+  bekliyor: 'bekleme', ai_sirada: 'bekleme', gelecek: 'bekleme', ai_rutinsiz: 'bekleme', bitti: 'bitti' };
+const DURUM_GRUP_AD = { alarm: 'Takıldı', eylem: 'Sıra onda', calisma: 'Çalışıyor', bekleme: 'Bekliyor', bitti: 'Bitti' };
+const durumRengi = (d) => DURUM_RENK[DURUM_GRUP[d]] || KREM;
+/** Durum simgeleri (pencerede, durağan). Hamle simgeleriyle (! ? göz şimşek kıvılcım) hiçbiri ortak değil. */
+const DURUM_SIMGE = {
+  engel: (s, c) => `<rect x="${f(-3 * s)}" y="${f(-1.15 * s)}" width="${f(6 * s)}" height="${f(2.3 * s)}" rx="${f(.6 * s)}" fill="${c}"/>`,
+  ai_hata: (s, c) => `<path d="M${f(-2.5 * s)},${f(-2.5 * s)} L${f(2.5 * s)},${f(2.5 * s)} M${f(2.5 * s)},${f(-2.5 * s)} L${f(-2.5 * s)},${f(2.5 * s)}" stroke="${c}" stroke-width="${f(1.35 * s)}" stroke-linecap="round"/>`,
+  karar: (s, c) => `<path d="M0,${f(-3.4 * s)} L${f(3.4 * s)},0 L0,${f(3.4 * s)} L${f(-3.4 * s)},0Z" fill="none" stroke="${c}" stroke-width="${f(1.1 * s)}" stroke-linejoin="round"/><circle r="${f(1 * s)}" fill="${c}"/>`,
+  sira: (s, c) => `<path d="M${f(-1.7 * s)},${f(-3 * s)} L${f(3.1 * s)},0 L${f(-1.7 * s)},${f(3 * s)}Z" fill="${c}" stroke="${c}" stroke-width="${f(.6 * s)}" stroke-linejoin="round"/>`,
+  ai_onay: (s, c) => `<path d="M${f(-3 * s)},${f(.6 * s)} V${f(2.9 * s)} H${f(3 * s)} V${f(.6 * s)} M0,${f(1.3 * s)} V${f(-3 * s)} M${f(-1.8 * s)},${f(-1.2 * s)} L0,${f(-3.1 * s)} L${f(1.8 * s)},${f(-1.2 * s)}" fill="none" stroke="${c}" stroke-width="${f(1.05 * s)}" stroke-linecap="round" stroke-linejoin="round"/>`,
+  calisiyor: (s, c) => `<path d="M${f(3 * s)},${f(.2 * s)} A${f(3 * s)},${f(3 * s)} 0 1 1 ${f(.3 * s)},${f(-3 * s)}" fill="none" stroke="${c}" stroke-width="${f(1.1 * s)}" stroke-linecap="round"/><path d="M${f(-.2 * s)},${f(-4.7 * s)} L${f(2.3 * s)},${f(-3 * s)} L${f(-.2 * s)},${f(-1.3 * s)}Z" fill="${c}"/>`,
+  ai_sirada: (s, c) => `<circle r="${f(3 * s)}" fill="none" stroke="${c}" stroke-width="${f(.95 * s)}"/><path d="M0,${f(-1.9 * s)} V0 H${f(1.6 * s)}" fill="none" stroke="${c}" stroke-width="${f(.95 * s)}" stroke-linecap="round" stroke-linejoin="round"/>`,
+  ai_rutinsiz: (s, c) => `<path d="M${f(-2.6 * s)},${f(-3 * s)} C${f(-2.6 * s)},0 ${f(.4 * s)},${f(-1.6 * s)} ${f(.4 * s)},${f(.6 * s)}" fill="none" stroke="${c}" stroke-width="${f(.9 * s)}" stroke-linecap="round"/><rect x="${f(-.9 * s)}" y="${f(.6 * s)}" width="${f(2.6 * s)}" height="${f(1.8 * s)}" rx="${f(.4 * s)}" fill="${c}"/><path d="M${f(-.2 * s)},${f(2.4 * s)} V${f(3.5 * s)} M${f(1 * s)},${f(2.4 * s)} V${f(3.5 * s)}" stroke="${c}" stroke-width="${f(.6 * s)}" stroke-linecap="round"/>`,
+  bekliyor: (s, c) => `<path d="M${f(-2.3 * s)},${f(-3 * s)} H${f(2.3 * s)} L${f(.5 * s)},0 L${f(2.3 * s)},${f(3 * s)} H${f(-2.3 * s)} L${f(-.5 * s)},0Z" fill="${c}" fill-opacity=".35" stroke="${c}" stroke-width="${f(.85 * s)}" stroke-linejoin="round"/>`,
+  bitti: (s, c) => `<path d="M${f(-2.3 * s)},${f(.1 * s)} L${f(-.6 * s)},${f(1.9 * s)} L${f(2.5 * s)},${f(-1.9 * s)}" fill="none" stroke="${c}" stroke-width="${f(1.3 * s)}" stroke-linecap="round" stroke-linejoin="round"/>`,
+};
+DURUM_SIMGE.ai_calisiyor = DURUM_SIMGE.calisiyor;
+
+// gemiler (13 Kas, sentez · "Işık İmzası"): siluet türü söyler, dolgu kişinin rengi, pencere durumu.
+// insan (ekip): ok başlı roket, iki geriye yatık kanat (yöne döner) · dış katılımcı: kubbeli disk · agent: köşeli küp, iki anten.
+// o.durum (KisiDurum) verilirse pencerede durum simgesi ve grup rengi, baş harf gövdede; verilmezse pencerede baş harf.
+// o.gun: 'gelecek' durumunda pencerede kalan gün ("3g"). o.flame: motor izi (durum verilmişse yalnız çalışırken).
+const GEMI = {
+  insan: { yol: 'M15,0 C11,-5 5,-6.5 -5,-6.5 L-12,-6.5 Q-14.5,-6.5 -14.5,-4 L-14.5,4 Q-14.5,6.5 -12,6.5 L-5,6.5 C5,6.5 11,5 15,0Z', ek: 'M-2.5,-6 L-10.5,-12.5 L-14.5,-12.5 L-12.5,-6Z M-2.5,6 L-10.5,12.5 L-14.5,12.5 L-12.5,6Z', kic: -14.5, kicY: 0, pen: [3.2, 0], penR: 4.7 },
+  dis: { yol: 'M-16.5,2.6 Q-16,-.6 -8.2,-1.2 A8.4,8.4 0 0 1 8.2,-1.2 Q16,-.6 16.5,2.6 Q15.5,6.8 0,7 Q-15.5,6.8 -16.5,2.6Z', ek: '', kic: -16.5, kicY: 2.6, pen: [0, -2.6], penR: 4.6 },
+  agent: { yol: 'M-7.5,-8 H7.5 L9,-6.5 V6.5 L7.5,8 H-7.5 L-9,6.5 V-6.5Z', ek: 'M-9,-3.6 H-11.6 V3.6 H-9Z', kic: -11.6, kicY: 0, pen: [0, .4], penR: 4.4 },
+};
 function ship(x, y, ang, kind, initial, col = C.peach, sc = 1, o = {}) {
-  const K = 1.5, KREM = '#FFF1E2', GECE = '#2B2160';
-  const dik = kind === 'dis' || kind === 'agent';
-  let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(dik ? 0 : ang)}) scale(${sc})">`;
+  const MUR = '#08222E', ZEM = '#0B2231';
+  const g = GEMI[kind] || GEMI.insan, d = o.durum || null, L = d ? durumRengi(d) : KREM;
+  const dik = kind === 'dis' || kind === 'agent', aci = dik ? 0 : ang;
+  let s = `<g transform="translate(${f(x)},${f(y)})"><g class="dongu-gemi"><g transform="rotate(${f(aci)}) scale(${sc})">`;
   const son = '</g></g></g>';
-  if (kind === 'dis') {
-    // Devir kullanıcısıysa (o.kullanici) sepet dolu, değilse yarı saydam
-    s += `<path d="M0,-15 C10,-15 12,-5 6,2 L3,6 H-3 L-6,2 C-12,-5 -10,-15 0,-15Z" fill="${KREM}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
-    s += `<path d="M0,-15 C4,-11 4,-1 2,6 M0,-15 C-4,-11 -4,-1 -2,6" fill="none" stroke="${col}" stroke-width="1"/>`;
-    s += `<path d="M-3,6 L-3,9 M3,6 L3,9" stroke="${col}" stroke-width="1"/>`;
-    s += `<rect x="-4" y="9" width="8" height="5" rx="1" fill="${col}" fill-opacity="${o.kullanici ? 1 : .5}" stroke="${col}" stroke-width="${K}"/>`;
-    return s + son;
-  }
-  if (kind === 'agent') {
-    if (o.flame !== false) s += `<path d="M-5,8 L-9,18 L9,18 L5,8Z" fill="${col}" opacity=".16"/>`;
-    s += `<path d="M0,-9 V-14" stroke="${col}" stroke-width="${K}" stroke-linecap="round"/><circle cx="0" cy="-15" r="2" fill="${col}"/>`;
-    s += `<path d="M-12,2 H-9 M9,2 H12" stroke="${col}" stroke-width="${K}" stroke-linecap="round"/>`;
-    s += `<circle cx="0" cy="0" r="9" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
-    s += `<rect x="-6.5" y="-3.5" width="13" height="7" rx="3" fill="${GECE}" stroke="${col}" stroke-width="${K}"/>`;
-    // vizörde baş harf (sahibinin renginde); harf yoksa iki göz
-    if (initial) s += `<text x="0" y="2.2" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6" fill="${col}">${initial}</text>`;
-    else s += `<circle cx="-2.6" cy="0" r="1.2" fill="${col}"/><circle cx="2.6" cy="0" r="1.2" fill="${col}"/>`;
-    if (o.sira) s += `<text x="13" y="-7" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
-    return s + son;
-  }
-  if (o.flame !== false) s += `<path d="M-12,-3.5 Q-25,0 -12,3.5Z" fill="url(#flame)"/>`;
-  s += `<path d="M-6,-7 L-12,-12 L-12,-5Z M-6,7 L-12,12 L-12,5Z" fill="${col}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
-  s += `<rect x="-13" y="-7.5" width="24" height="15" rx="7.5" fill="${KREM}" stroke="${col}" stroke-width="${K}"/>`;
-  s += `<path d="M11,-5 Q18,0 11,5Z" fill="${col}" stroke="${col}" stroke-width="${K}" stroke-linejoin="round"/>`;
-  s += `<circle cx="0" cy="0" r="5.6" fill="${GECE}" stroke="${col}" stroke-width="${K}"/>`;
-  s += `<text x="0" y="2.7" transform="rotate(${f(-ang)} 0 0)" text-anchor="middle" font-family="Bricolage" font-weight="700" font-size="7.5" fill="#FFF3E8">${initial}</text>`;
+  const alarm = d === 'engel' || d === 'ai_hata', bos = d === 'gelecek' || d === 'ai_rutinsiz';
+  const sil = `${g.yol} ${g.ek}`, kic = g.kic, ky = g.kicY;
+  // arkada: alarm halesi, kenar ışığı, motor izi
+  if (alarm) s += `<path class="dongu-nabiz" d="${sil}" fill="${L}" fill-opacity=".3" stroke="${L}" stroke-width="9" stroke-linejoin="round" opacity=".5"/>`;
+  else if (d === 'sira' || d === 'karar' || d === 'ai_onay') s += `<path${d === 'sira' ? ' class="dongu-nabiz"' : ''} d="${sil}" fill="${L}" fill-opacity=".12" stroke="${L}" stroke-width="6" stroke-linejoin="round" opacity=".32"/>`;
+  if (d ? d === 'calisiyor' : o.flame !== false && kind !== 'dis') s += `<path d="M${kic + 1},${ky - 3.8} Q${kic - 9},${ky - 3} ${kic - 17},${ky} Q${kic - 9},${ky + 3} ${kic + 1},${ky + 3.8}Z" fill="url(#${d ? 'alevMavi' : 'flame'})"/>`;
+  if (d === 'ai_calisiyor') s += [0, 1, 2].map((i) => `<rect x="${f(kic - 4.4 - i * 5.2)}" y="${f(ky - 1.5)}" width="3" height="3" fill="${L}" opacity="${f(1 - i * .3)}"/>`).join('');
+  // gövde: kişinin rengi; sırası gelecek ve rutin yok içi boş
+  if (kind === 'agent') s += `<path d="M-3.4,-8 L-5.6,-12.2 M3.4,-8 L5.6,-12.2" stroke="${alarm ? L : col}" stroke-width="1.5" stroke-linecap="round"/>${o.sira ? '' : `<circle cx="-5.6" cy="-12.6" r="1.2" fill="${alarm ? L : col}"/><circle cx="5.6" cy="-12.6" r="1.2" fill="${alarm ? L : col}"/>`}`;
+  s += `<path d="${sil}" fill="${bos ? ZEM : col}"${bos ? ` stroke="${col}" stroke-width="1.6"${d === 'gelecek' ? ' stroke-dasharray="3 2.2"' : ''}` : ` stroke="${MUR}" stroke-width=".8"`} stroke-linejoin="round"${kind === 'dis' && o.kullanici === false ? ' fill-opacity=".8"' : ''}/>`;
+  if (alarm || d === 'sira' || d === 'karar' || d === 'ai_onay') s += `<path d="${sil}" fill="none" stroke="${L}" stroke-width="${alarm ? 2.2 : 1.4}" stroke-linejoin="round"/>`;
+  // pencere: durum simgesi (grup renginde) ya da baş harf
+  const [px, py] = g.pen, R = g.penR * (d ? 1.3 : 1), gs = R / 4.4;
+  s += `<circle cx="${px}" cy="${py}" r="${f(R)}" fill="${MUR}" stroke="${d ? L : MUR}" stroke-width="${d ? 1.2 : .8}"/>`;
+  const don = dik ? '' : ` transform="rotate(${f(-aci)} ${px} ${py})"`;
+  if (d === 'gelecek') s += `<text x="${px}" y="${f(py + 2.2)}"${don} text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6" fill="${L}">${o.gun != null ? o.gun + 'g' : '…'}</text>`;
+  else if (d && DURUM_SIMGE[d]) s += `<g transform="translate(${px},${py})${dik ? '' : ` rotate(${f(-aci)})`}">${DURUM_SIMGE[d](gs, L)}</g>`;
+  else if (initial) s += `<text x="${px}" y="${f(py + 2.7)}"${don} text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="${kind === 'agent' ? 7 : 7.6}" fill="${KREM}">${initial}</text>`;
+  else if (kind === 'agent') s += `<circle cx="-1.8" cy="${py}" r="1" fill="${KREM}"/><circle cx="1.8" cy="${py}" r="1" fill="${KREM}"/>`;
+  // durum penceredeyken baş harf gövdede (ekip: kıçta; dış: diskin altında)
+  if (d && initial && kind === 'insan') s += `<text x="-8.6" y="2.6" transform="rotate(${f(-aci)} -8.6 0)" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="7" fill="${bos ? col : MUR}">${initial}</text>`;
+  if (kind === 'agent' && o.sira) s += `<text x="13" y="-7" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="6.5" fill="${col}">#${o.sira}</text>`;
   return s + son;
 }
 
@@ -515,4 +543,4 @@ function onayFlamasi(r, mini) {
 function planet(x, y, r, state, o = {}) {
   return planetGovde(x, y, r, state, o);
 }
-export { sonucRozeti, kisiHalkasi, onayFlamasi, ONAY_RENK, destekGemisi, kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };
+export { DURUM_RENK, DURUM_GRUP, DURUM_GRUP_AD, DURUM_SIMGE, durumRengi, sonucRozeti, kisiHalkasi, onayFlamasi, ONAY_RENK, destekGemisi, kapi, yildiz, vignette, shareRing, brackets, C, rng, f, defs, sky, sparkle, grain, planet, ship, pill, tower, route, onRoute, bez, bAt, galaxy, galaxyPos, page, flag };

@@ -35,7 +35,7 @@ export function akisModeli(detay0, o = {}) {
   const k = detay.akis;
   const F = {
     kod: k.kod, baslik: k.baslik, kapandi: k.kapandi_at ? Date.parse(k.kapandi_at) : null,
-    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0, agentSahibi: a.agent_sahibi || null, oto: otoRozet(a), sahipKisiId: a.sahip_kisi_id || null })),
+    steps: detay.adimlar.map((a) => ({ no: a.no, ad: a.ad, sahip: a.sahip, tip: a.sahip_tip, durum: a.durum, dep: a.bagimli || [], karar: !!a.karar_adimi, cikti: (a.cikti_sayisi || 0) > 0, agentSahibi: a.agent_sahibi || null, oto: otoRozet(a), rutinYok: a.rutin_var === false, sahipKisiId: a.sahip_kisi_id || null })),
     // sunucunun darboğazı (R11): haritadaki taç en az ışıklı
     darbogaz: k.karar_ozeti?.darbogaz?.no ?? null,
   };
@@ -248,21 +248,15 @@ function spiralYolu(G, now, m, yk, kapali) {
 }
 
 /**
- * 12 Kas (D4): gemi rozeti kişinin durumunu söyler. Kum saati bekliyor, "3g" gelecek (kaç gün sonra), tik işi bitti,
- * "+2g" geç, kırmızı çerçeve engel ya da AI hatası, saat AI sırada, yanıp sönen halka AI çalışıyor.
+ * 12 Kas (D4) gemi rozeti; 13 Kas (sentez) ile durum geminin kendisine taşındı (ortak.js ship o.durum).
+ * Rozet yalnız gecikmeyi yazar: "+2g".
  */
 export function kisiRozeti(d, p, sc, renk, kind, X, u) {
   const k = sc / .78, bx = p.x + 11 * k, by = p.y - 12 * k, R = 6 * k;
-  const daire = (ic, bg = '#08222E', st = renk) => `<g transform="translate(${f(bx)},${f(by)})"><circle r="${f(R)}" fill="${bg}" stroke="${st}" stroke-width="${f(1.1 * k)}"/>${ic}</g>`;
   const yazi = (t, bg, col) => { const w = (t.length * 4.6 + 6) * k; return `<g transform="translate(${f(bx)},${f(by)})"><rect x="${f(-w / 2)}" y="${f(-R)}" width="${f(w)}" height="${f(2 * R)}" rx="${f(R)}" fill="${bg}"/><text y="${f(2.6 * k)}" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="${f(7.5 * k)}" fill="${col}">${t}</text></g>`; };
+  // 13 Kas (sentez): durum geminin penceresinde ve ışığında; rozet yalnız gecikmeyi yazar
   let s = '';
-  if (d.durum === 'engel' || d.durum === 'ai_hata') s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(15 * k)}" fill="none" stroke="#FF5A5A" stroke-width="${f(1.8 * k)}"/>`;
-  if (d.durum === 'ai_calisiyor') s += `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(15 * k)}" fill="none" stroke="${renk}" stroke-width="${f(1.4 * k)}" class="dongu-nabiz"/>`;
-  if (d.gecGun > 0 && !['bitti', 'gelecek', 'bekliyor'].includes(d.durum)) return s + yazi(`+${d.gecGun}g`, '#FF5A5A', '#FFF6E0');
-  if (d.durum === 'bekliyor') s += daire(`<path d="M${f(-2.4 * k)},${f(-3.2 * k)} H${f(2.4 * k)} L${f(-2.4 * k)},${f(3.2 * k)} H${f(2.4 * k)}Z" fill="none" stroke="${renk}" stroke-width="${f(1 * k)}" stroke-linejoin="round"/>`);
-  else if (d.durum === 'gelecek') { const g = Math.max(1, Math.ceil((u.t0 - X) / GUN)); s += yazi(`${g}g`, '#08222E', renk); }
-  else if (d.durum === 'bitti') s += daire(SIMGE.tik(1.1 * k, '#08222E'), renk, '#08222E');
-  else if (d.durum === 'ai_sirada') s += daire(SIMGE.saat(1.05 * k, renk));
+  if (d.gecGun > 0 && !['bitti', 'gelecek', 'bekliyor'].includes(d.durum)) s += yazi(`+${d.gecGun}g`, '#FF5A5A', '#FFF6E0');
   return s;
 }
 
@@ -520,7 +514,7 @@ export function yolCiz(M, o = {}) {
     const yapisik = G.spiral ? [] : G.uyeler.filter((a) => a.tip === 'agent' && destek[a.ad] === u.ad && gorunen[a.ad]);
     const renk = o.sis && o.focus !== u.ad ? '#9C8BE0' : UYE_RENK(u);
     gemiler.push({ ad: u.ad, tip: kind, x: p.x, y: p.y - (kind === 'dis' ? 6 * sc : 0), sc });
-    let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx });
+    let g = ship(p.x, p.y - (kind === 'dis' ? 6 * sc : 0), kind === 'dis' ? 0 : p.yon * 180 / Math.PI, kind, kind === 'dis' ? '' : kisaAd(u.ad)[0], renk, sc, { flame: kind !== 'dis' && X <= NOWx, durum: KD[u.ad]?.durum, gun: KD[u.ad]?.durum === 'gelecek' ? Math.max(1, Math.ceil((u.t0 - X) / GUN)) : null });
     yapisik.forEach((a, i) => {
       // 5 Kas (Berkin): agent kendi sarmalındaki yerinde gider; sahibinin gemisine iple bağlıdır. İp, ikisinin yerine göre
       // uzar, kısalır ve yön değiştirir. İkisi üst üste gelirse robot kuyruğun üst yanına (eski yapışık yer) kadar açılır.
