@@ -8,8 +8,12 @@ const kisa = (ad) => String(ad || '').replace(/\s*\(.*\)$/, '');
 let SAYAC = 0;
 const RAD = Math.PI / 180;
 // açı = zaman (balıkgözü): bugün tepede (0), gelecek saat yönünde. 1 gün ≈ 25°, 7 gün ≈ 103°, 14 gün ≈ 135°; geçmiş solda.
-const AF = 150 * RAD, AP = 120 * RAD; let TF = 6, TP = 4.5; // TF/TP cihaz geometrisinden (gün başına derece)
-const aci = (dt) => { const d = dt / GUN; return d >= 0 ? AF * (1 - Math.exp(-d / TF)) : -AP * (1 - Math.exp(d / TP)); };
+// Zaman → açı (U7b): çerçeve akışın kendisidir. Akışın başlangıcı çerçevenin geri ucuna (-AP), bitişi ileri ucuna (AF) denk gelir;
+// harita akıştan uzun bir süreyi kapsamaz. İğne (an) hep tepede. Yakınlaşma uçları oynatmaz, iğnenin çevresini açar (KZ büyür).
+// Değerler örneğe aittir; modül değişkeni paylaşıldığı için her örnek kullanmadan önce olcek() ile yazar.
+let AF = 150 * RAD, AP = 120 * RAD, DF = 7, DP = 7, KZ = 1.6;
+const balik = (x) => (KZ < 1e-3 ? x : (1 - Math.exp(-KZ * x)) / (1 - Math.exp(-KZ)));
+const aci = (dt) => { const d = dt / GUN; return d >= 0 ? AF * balik(Math.min(d / DF, 1.05)) : -AP * balik(Math.min(-d / DP, 1.05)); };
 const GEO = {
   // telefon (sentez): daireye yakın, ekrandan büyük kadran; açılışta 1:1, iğne ve kişi sütunu ortada; kaydırarak dolaşılır.
   // 1 gün ≈ 8°: dış yörüngede ≈ 125 px/gün, iç yörüngede ≈ 85 px/gün.
@@ -58,8 +62,11 @@ export function yorungeHaritasi() {
       geo.cOut += geo.ryOut - ry; geo.ryOut = ry;
       geo.rxOut = Math.max(geo.rxOut, Math.min(440, geo.ryOut * en / boy)); // alan yatık: elips genişler
     }
-    const TF0 = 150 / geo.gun, TP0 = 120 / (geo.gunP || geo.gun);
-    TF = TF0; TP = TP0;
+    // telefonda kadran ekrandan büyük: çerçevenin görünen yayı akışı taşır (uçlar ekranın iki kenarı)
+    const AF0 = geo.acilis ? Math.asin(183 / geo.rxOut) : 150 * RAD, AP0 = geo.acilis ? AF0 : 120 * RAD, K0 = geo.acilis ? 2 : 1.6;
+    AF = AF0; AP = AP0; KZ = K0;
+    DF = Math.max(2, (M.aralik[1] - M.simdi) / GUN); DP = Math.max(2, (M.simdi - M.aralik[0]) / GUN);
+    const ek = AF0 / (150 * RAD); // küçük açı payları yayın boyuna göre
     const gor = (a) => !M.gorunur || M.gorunur.has(a.no);
     // bakan kişi (ve agent'ı) en dış, en geniş yörüngede: kendi şeridi en uzun, "bana düşen" en kolay okunur
     const benim = (k) => k.ad === M.bakan || (k.tip === 'agent' && k.sahibi === M.bakan);
@@ -71,32 +78,38 @@ export function yorungeHaritasi() {
     R.forEach((h) => { h.ob = Math.max(1, Math.min(1.7, h.bant * .84 / (h.k.tip === 'agent' ? 24 : 28))); });
     const OB = 1.6; // işler: yerel bant ve aynı yörüngedeki komşu ayrıca sınırlar (guncelle)
     const disBakan = M.bakanTip === 'dis';
-    svg.appendChild(el('defs', {}, DEFS + R.map((h) => {
+    const defs = el('defs', {}, DEFS + R.map((h) => {
       const off = h.k.tip === 'agent' ? 8.2 : 10.8;
       return `<path id="${H0}serL${h.i}" d="${yay(h, -85 * RAD, 0, off, 1 * RAD)}"/><path id="${H0}serR${h.i}" d="${yay(h, 0, 115 * RAD, off, 1 * RAD)}"/>`;
-    }).join('')));
+    }).join('')); svg.appendChild(defs);
     // gök (kameranın dışında: zoomla değişmez)
     // gök uygulamanın sahnesinden gelir (Sahne); burada zemin çizilmez
     const kam = el('g', { class: 'kamera' }); svg.appendChild(kam);
-    const kat = {}; ['dilim', 'halka', 'gun', 'hedef', 'kuyruk', 'rota', 'kopru', 'bag', 'gezegen', 'serit', 'kenet', 'arac', 'cekirdek', 'igne'].forEach((n) => { kat[n] = el('g', { class: 'k-' + n }); kam.appendChild(kat[n]); });
+    // içerik (yörüngeler, işler, araçlar) yakınlaşır; çerçeve (zaman yörüngesi, günler, hedef bayrağı, iğne) yerinde kalır
+    defs.appendChild(el('clipPath', { id: H0 + 'cer' }, `<ellipse cx="0" cy="${f(sinir.cy)}" rx="${f(sinir.rx)}" ry="${f(sinir.ry)}"/>`));
+    const zkap = el('g', { class: 'k-icerik' }); kam.appendChild(zkap);
+    const zg = el('g', { class: 'k-zoom' }); zkap.appendChild(zg);
+    const kat = {};
+    ['dilim', 'halka', 'hedef', 'kuyruk', 'rota', 'kopru', 'bag', 'gezegen', 'serit', 'kenet', 'arac', 'cekirdek'].forEach((n) => { kat[n] = el('g', { class: 'k-' + n }); zg.appendChild(kat[n]); });
+    ['cerceve', 'gun', 'isaret', 'igne'].forEach((n) => { kat[n] = el('g', { class: 'k-' + n }); kam.appendChild(kat[n]); });
     // yörüngeler (statik): geçmiş yayı soluk, gelecek yayı belirgin; tür = çizgi biçimi
     R.forEach((h) => {
       const k = h.k, ben = k.ad === M.bakan;
       const dash = k.tip === 'agent' ? '1.2 3.4' : k.tip === 'dis' ? '7 3.5' : '';
       const w = ben ? 2.4 : k.tip === 'agent' ? 1.3 : 1.5;
-      kat.halka.appendChild(el('path', { d: yay(h, -AP - .12, 0), fill: 'none', stroke: k.renk, 'stroke-width': w * .8, 'stroke-dasharray': dash, 'stroke-linecap': 'round', opacity: .26, class: 'yorunge', 'data-kisi': k.ad }));
-      kat.halka.appendChild(el('path', { d: yay(h, 0, AF + .14), fill: 'none', stroke: k.renk, 'stroke-width': w, 'stroke-dasharray': dash, 'stroke-linecap': 'round', opacity: ben ? .85 : .55, class: 'yorunge', 'data-kisi': k.ad }));
+      kat.halka.appendChild(el('path', { d: yay(h, -AP - .12 * ek, 0), fill: 'none', stroke: k.renk, 'stroke-width': w * .8, 'stroke-dasharray': dash, 'stroke-linecap': 'round', opacity: .26, class: 'yorunge', 'data-kisi': k.ad }));
+      kat.halka.appendChild(el('path', { d: yay(h, 0, AF + .14 * ek), fill: 'none', stroke: k.renk, 'stroke-width': w, 'stroke-dasharray': dash, 'stroke-linecap': 'round', opacity: ben ? .85 : .55, class: 'yorunge', 'data-kisi': k.ad }));
     });
     // sınır (gün çentikleri burada)
-    kat.halka.appendChild(el('path', { d: yay(sinir, -AP - .12, AF + .14), fill: 'none', stroke: '#FFF6E0', 'stroke-width': .8, opacity: .22 }));
+    kat.cerceve.appendChild(el('path', { d: yay(sinir, -AP - .12 * ek, AF + .14 * ek), fill: 'none', stroke: '#FFF6E0', 'stroke-width': 1, opacity: .3, class: 'cerceve' }));
     // dikiş: geçmişle geleceğin buluştuğu alt bölge
-    const [dx1, dy1] = nokta(sinir, AF + .2, 8), [dx2, dy2] = nokta(sinir, -AP - .18, 8);
-    kat.halka.appendChild(el('text', { x: f(dx1), y: f(dy1 + 12), class: 'dikis', 'text-anchor': 'start' }, '→ ileri'));
-    kat.halka.appendChild(el('text', { x: f(dx2), y: f(dy2 + 12), class: 'dikis', 'text-anchor': 'end' }, 'geri ←'));
+    const [dx1, dy1] = nokta(sinir, AF + .2 * ek, 8), [dx2, dy2] = nokta(sinir, -AP - .18 * ek, 8);
+    kat.cerceve.appendChild(el('text', { x: f(dx1), y: f(dy1 + 12), class: 'dikis', 'text-anchor': 'start' }, '→ ileri'));
+    kat.cerceve.appendChild(el('text', { x: f(dx2), y: f(dy2 + 12), class: 'dikis', 'text-anchor': 'end' }, 'geri ←'));
 
     // gün çentikleri (havuz)
     const gunler = [];
-    for (let j = 0; j < 64; j++) { const g = el('g', { class: 'gun-c' }); g.innerHTML = `<line y1="0" y2="-6" stroke="#FFF6E0" stroke-width="1"/><text class="gun-t" y="-10" text-anchor="middle"></text>`; kat.gun.appendChild(g); gunler.push({ g, t: g.querySelector('text'), gun: null }); }
+    for (let j = 0, n = Math.min(240, Math.round((M.aralik[1] - M.aralik[0]) / GUN) + 2); j < n; j++) { const g = el('g', { class: 'gun-c' }); g.innerHTML = `<line y1="0" y2="-6" stroke="#FFF6E0" stroke-width="1"/><text class="gun-t" y="-10" text-anchor="middle"></text>`; kat.gun.appendChild(g); gunler.push({ g, t: g.querySelector('text'), gun: null }); }
 
     // son bakış dilimi
     const dilim = el('path', { class: 'dilim', fill: '#FFF6E0', 'fill-opacity': .055 }); kat.dilim.appendChild(dilim);
@@ -104,8 +117,8 @@ export function yorungeHaritasi() {
     const dilimYazi = el('text', { class: 'dilim-t', 'text-anchor': 'end' }, 'son bakış'); kat.dilim.appendChild(dilimYazi);
     // hedef çizgisi
     const hedefYol = el('path', { fill: 'none', stroke: '#FFF6E0', 'stroke-width': 1.4, 'stroke-dasharray': '5 3.5', opacity: .75 }); kat.hedef.appendChild(hedefYol);
-    const hedefBayrak = el('g', { class: 'bayrak' }); hedefBayrak.innerHTML = `<rect x="-2" y="-9" width="62" height="16" rx="8" fill="#0A2736" stroke="#FFF6E0" stroke-width=".9" opacity=".95"/><text x="29" y="2.6" text-anchor="middle" class="bayrak-t"></text>`; kat.hedef.appendChild(hedefBayrak);
-    const bugunIsaret = el('g', { class: 'bugun-i' }); bugunIsaret.innerHTML = `<path d="M0,0 L-5,-9 L5,-9Z" fill="#FFC9A3"/><text y="-13" text-anchor="middle" class="bugun-t">bugün</text>`; kat.hedef.appendChild(bugunIsaret);
+    const hedefBayrak = el('g', { class: 'bayrak' }); hedefBayrak.innerHTML = `<rect x="-2" y="-9" width="62" height="16" rx="8" fill="#0A2736" stroke="#FFF6E0" stroke-width=".9" opacity=".95"/><text x="29" y="2.6" text-anchor="middle" class="bayrak-t"></text>`; kat.isaret.appendChild(hedefBayrak);
+    const bugunIsaret = el('g', { class: 'bugun-i' }); bugunIsaret.innerHTML = `<path d="M0,0 L-5,-9 L5,-9Z" fill="#FFC9A3"/><text y="-13" text-anchor="middle" class="bugun-t">bugün</text>`; kat.isaret.appendChild(bugunIsaret);
 
     // gezegenler
     const P = {};
@@ -134,7 +147,7 @@ export function yorungeHaritasi() {
     // geçmiş kümesi (✓n) ve ileri taşma (+n) her yörüngede
     R.forEach((h) => {
       h.kume = el('g', { class: 'kume' }); h.kume.innerHTML = `<g class="ol"><circle r="7" fill="#10283C" stroke="${h.k.renk}" stroke-width="1"/><text class="kume-t" y="2.6"></text></g>`; kat.gezegen.appendChild(h.kume);
-      const [x, y] = nokta(h, -AP - .02); h.kume.setAttribute('transform', `translate(${f(x)},${f(y)})`);
+      const [x, y] = nokta(h, -AP - .02 * ek); h.kume.setAttribute('transform', `translate(${f(x)},${f(y)})`);
     });
 
     // araçlar (iğnede sabit) ve şerit yazıları
@@ -186,8 +199,8 @@ export function yorungeHaritasi() {
       `<g class="igne-tut" transform="translate(0,${f(igneUst - 22)})"><rect class="igne-alan" x="-104" y="-20" width="208" height="40" fill="transparent"/><rect class="igne-kutu" x="-92" y="-12" width="184" height="24" rx="12" fill="#FFC9A3"/><path class="igne-ok" d="M-80,-4.5 L-85,0 L-80,4.5 M80,-4.5 L85,0 L80,4.5" fill="none" stroke="#08222E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><text class="igne-t" y="4.4" text-anchor="middle"></text></g>`;
     kat.igne.appendChild(ig);
 
-    H = { M, o, svg, kam, kat, geo, R, sinir, halkaOf, P, A, gunler, dilim, dilimKenar, dilimYazi, hedefYol, hedefBayrak, bugunIsaret, ck, cr, ig, igneUst, disBakan,
-      kam0: { s: 1, cx: 0, cy: 0 }, k: 1, zk: 1, TF0, TP0, OB, tx: 0, ty: 0, kademe: 0, sec: null, secKisi: null, kritik: false, vurgu: null, bagG: null };
+    H = { M, o, svg, kam, zkap, zg, kat, geo, AF0, AP0, K0, ek, R, sinir, halkaOf, P, A, gunler, dilim, dilimKenar, dilimYazi, hedefYol, hedefBayrak, bugunIsaret, ck, cr, ig, igneUst, disBakan,
+      kam0: { s: 1, cx: 0, cy: 0 }, k: 1, zk: 1, fy: 0, OB, tx: 0, ty: 0, kademe: 0, sec: null, secKisi: null, kritik: false, vurgu: null, bagG: null };
     H.bagG = kat.bag;
     H.kritikYol = el('g', { class: 'kritik-yol' }); kat.bag.appendChild(H.kritikYol);
     H.kritikYol.innerHTML = `<path class="ky-alt" fill="none" stroke="#06192A" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path class="ky-ust" fill="none" stroke="#FFF6E0" stroke-width="1.6" stroke-dasharray="4 2.6" stroke-linecap="round" stroke-linejoin="round"/>`;
@@ -197,28 +210,25 @@ export function yorungeHaritasi() {
   }
 
   // ---------- kamera ----------
+  /** bu örneğin zaman ölçeğini modül değişkenlerine yazar (an: iğnedeki an) */
+  function olcek(an) {
+    const M = H.M; AF = H.AF0; AP = H.AP0;
+    DF = Math.max(2, (M.aralik[1] - an) / GUN); DP = Math.max(2, (an - M.aralik[0]) / GUN);
+    KZ = H.K0 * (H.zk > 1 ? Math.sqrt(H.zk) : H.zk);
+  }
   function sigdir() {
     const g = H.geo;
     const W = H.svg.clientWidth || 390, Hh = H.svg.clientHeight || 600;
-    TF = H.TF0 / H.zk; TP = H.TP0 / H.zk;
     const ust = g.cOut - g.ryOut - 46, alt = g.cOut + g.ryOut + 26;
     if (g.acilis) {
-      // açılış: 1:1 (390 genişlikte), iğne ortada, en dış yörüngenin tepesi ve iğne etiketi üstte
+      // telefon: 1:1 (390 genişlikte), iğne ortada, çerçevenin tepesi ve iğne etiketi üstte
       const s = W / 390;
       H.kam0 = { s, cx: W / 2, cy: (H.o.ust ?? 10) - ust * s, W, H: Hh };
-      // tam sığdırma: başlangıçtan hedef + aşıma kadar bütün tarihler
-      const M = H.M, t0 = aci(M.aralik[0] - M.simdi), t1 = aci(M.aralik[1] - M.simdi);
-      let x0 = 0, x1 = 0, y0 = ust, y1 = -H.cr + 60; // çekirdeğin üstü (hedef yazısı) dahil
-      const ic = { rx: g.rxIn, ry: g.ryIn, cy: 0 };
-      for (let j = 0; j <= 60; j++) for (const [hh, off] of [[H.sinir, 34], [ic, -10]]) { const [x, y] = nokta(hh, lerp(t0, t1, j / 60), off); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
-      const sT = Math.min((W - 40) / (x1 - x0), (Hh - 70) / (y1 - y0));
-      H.tam = { k: sT / s, wx: (x0 + x1) / 2, wy: (y0 + y1) / 2, y0 };
-      H.kMin = H.tam.k;
     } else {
       const s = Math.min(W / (2 * g.rxOut + 36), Hh / (alt - ust));
       H.kam0 = { s, cx: W / 2, cy: (Hh - (alt - ust) * s) / 2 - ust * s, W, H: Hh };
-      H.kMin = 1; H.tam = null;
     }
+    H.kMin = 1; H.tam = null;
     H.k = 1; H.tx = 0; H.ty = 0; kamera();
   }
   /** Sığdır: telefonda bütün tarihleri gösteren uzak görünüm; masaüstünde açılış. */
@@ -226,13 +236,16 @@ export function yorungeHaritasi() {
   function hedefTam() { if (!H.tam) return { k: 1, tx: 0, ty: 0 }; const { s, cx, cy, W } = H.kam0, k = H.tam.k; return { k, tx: W / 2 - cx - H.tam.wx * s * k, ty: (H.o.ust ?? 10) + 24 - cy - H.tam.y0 * s * k }; }
   function kamera() {
     const { s, cx, cy } = H.kam0, kk = H.k;
-    H.kam.setAttribute('transform', `translate(${f(cx + H.tx)},${f(cy + H.ty)}) scale(${(s * kk).toFixed(4)})`);
-    // öğe boyu: yakınlaşınca k^0,4, uzaklaşınca k^0,7 oranında (uzakta öğeler çok küçülmez ama komşusuna da binmez)
-    H.svg.style.setProperty('--ik', (kk >= 1 ? Math.pow(kk, -.6) : Math.pow(kk, -.3)).toFixed(4));
-    // gün yazıları uzaklaşınca ekranda sabit boyda kalır: bütün tarihler okunur
-    H.svg.style.setProperty('--ig', (kk >= 1 ? Math.pow(kk, -.6) : 1 / kk).toFixed(4));
+    H.kam.setAttribute('transform', `translate(${f(cx)},${f(cy)}) scale(${s.toFixed(4)})`);
+    // içerik iğne ekseninde bir odak noktasından büyür (aynı andaki iş ile çerçevedeki gün aynı açıda kalır); taşan kısım çerçevede kesilir
+    if (kk > 1.001) { H.zg.setAttribute('transform', `translate(0,${f(H.fy * (1 - kk) + H.ty)}) scale(${kk.toFixed(4)})`); H.zkap.setAttribute('clip-path', `url(#${H0}cer)`); }
+    else { H.zg.removeAttribute('transform'); H.zkap.removeAttribute('clip-path'); }
+    // işaret boyu yakınlaşmayı izler: yakınlaşınca içerikle birlikte büyür (k^0,7), uzaklaşınca küçülür
+    H.ku = H.zk < 1 ? Math.pow(H.zk, .4) : 1;
+    H.svg.style.setProperty('--ik', (kk > 1 ? Math.pow(kk, -.3) : H.ku).toFixed(4));
+    H.svg.style.setProperty('--ig', '1'); // gün yazıları çerçevede: boyu değişmez
     let kd = H.kademe;
-    const k = H.k < 1 ? H.k : H.zk; // ayrıntı kademesi: uzak görünümde kamera, yakınlaşmada zaman ölçeği
+    const k = H.zk; // ayrıntı kademesi yakınlaşma düzeyinden
     for (let i = 0; i < 4; i++) { // eşikler histerezisli; büyük sıçramada (sığdır) birkaç kademe birden geçilir
       const k0 = kd;
       if (kd === 0 && k < .62) kd = -1; else if (kd === -1 && k >= .74) kd = 0;
@@ -245,18 +258,24 @@ export function yorungeHaritasi() {
     else if (!H.svg.classList.contains(ad(kd))) H.svg.classList.add(ad(kd));
   }
   /**
-   * Yakınlaşma (U6): çerçeve (zaman yörüngesi) yerinde kalır; yakınlaşınca zaman ölçeği açılır (yörüngede bir gün daha uzun yer
-   * tutar, işler aralanır), uzaklaşınca daha çok gün sığar. Kamera ölçeği değişmez; uzak görünümdeyken (telefon, sığdır) önce ona dönülür.
+   * Yakınlaşma: çerçeve (zaman yörüngesi) yerinde kalır. Yakınlaşınca içerik iğne eksenindeki odaktan büyür (yörünge aralığı ve
+   * işaretler de büyür) ve iğnenin çevresindeki zaman açılır; akışın uçları çerçevenin uçlarında kalır. Uzaklaşınca zaman düzleşir.
    */
+  const tySinir = () => { const k = H.k, ust = H.sinir.cy - H.sinir.ry, alt = H.cr; return [-(k - 1) * (alt - H.fy), (k - 1) * (H.fy - ust)]; };
   function zoomAt(k2) {
-    if (H.k !== 1) { H.k = 1; H.tx = 0; H.ty = 0; }
-    H.zk = Math.max(.4, Math.min(6, k2));
+    const z0 = H.zk; H.zk = Math.max(.4, Math.min(6, k2));
+    if (z0 <= 1.001 && H.zk > 1.001) { // odak: seçili kişinin, yoksa bakanın yörüngesi; o da yoksa orta
+      const h = (H.secKisi && H.halkaOf[H.secKisi]) || (H.sec != null && H.P[H.sec] && H.P[H.sec].h) || H.halkaOf[H.M.bakan] || H.R[Math.floor(H.R.length / 2)];
+      H.fy = h ? h.ust : 0; H.ty = 0;
+    }
+    H.k = H.zk > 1 ? Math.sqrt(H.zk) : 1; H.tx = 0;
+    if (H.k <= 1.001) H.ty = 0; else { const [a, b] = tySinir(); H.ty = Math.max(a, Math.min(b, H.ty)); }
     kamera();
     if (H.D) guncelle(H.an, H.D);
     if (H.o.zoomDegis) H.o.zoomDegis(H.zk);
   }
-  /** kaydırma: telefonda kadran ekrandan büyük, gezilir; geniş düzende çerçeve sabit */
-  function kaydir(dx, dy) { if (!H.tam) return; H.tx += dx; H.ty += dy; kamera(); }
+  /** kaydırma: çerçeve sabit; yakınlaşmışken dikey çekiş sığmayan yörüngeleri getirir */
+  function kaydir(dx, dy) { if (H.k <= 1.001) return; const [a, b] = tySinir(); H.ty = Math.max(a, Math.min(b, H.ty + dy / H.kam0.s)); kamera(); }
   /** Dünya noktasını ekrana taşı (yakınlaşmış görüntüler için). */
   function odakla(wx, wy, k2) { const { s, cx, cy, W, H: Hh } = H.kam0; H.k = k2; H.tx = W / 2 - cx - wx * s * k2; H.ty = Hh * .45 - cy - wy * s * k2; kamera(); }
 
@@ -314,16 +333,16 @@ export function yorungeHaritasi() {
   function guncelle(an, D) {
     const { M, P, A, R } = H;
     H.an = an; H.D = D;
-    TF = H.TF0 / H.zk; TP = H.TP0 / H.zk; // zaman ölçeği bu örneğin (modül değişkeni paylaşılır)
+    olcek(an);
     // 1) gezegen açıları
     const halkaItem = new Map(R.map((h) => [h, []]));
     for (const no in P) {
       const p = P[no], a = p.a, s = D.S[no], h = p.h;
       const bitik = ['lit', 'ghost', 'ertele', 'tahmin'].includes(s.g);
       let t, transit = false;
-      const base = H.OB * (a.ust_adim ? .8 : 1) * (a.altlar.length ? 1.12 : 1) * (h.k.tip === 'agent' ? .78 : 1);
+      const base = H.OB * (H.ku || 1) * (a.ust_adim ? .8 : 1) * (a.altlar.length ? 1.12 : 1) * (h.k.tip === 'agent' ? .78 : 1);
       let boy = bitik ? base * .58 : base;
-      if (a.tarihsiz) t = AF + .1;
+      if (a.tarihsiz) t = AF + .1 * H.ek;
       else if (bitik) {
         const dt = an - a.tPlan;
         if (dt < GECIS) { transit = true; t = lerp(h.dockR, Math.min(aci(a.tPlan - an), -h.dockL), Math.max(0, dt) / GECIS); boy = lerp(base, base * .58, sstep(dt / GECIS)); }
@@ -345,8 +364,8 @@ export function yorungeHaritasi() {
       pt = -h.dockL; pr = 0;
       geri.forEach((p, j) => { const r = 9.6 * p.boy; const min = j ? pt - (pr + r + 2) / hiz(h, pt) : -h.dockL - Math.max(0, r - 9.6) / h.rx; p.t = Math.min(p.t, min); pt = p.t; pr = r; });
       // geçmiş kümesi: çok eski bitmiş işler solup ✓n kümesine katılır (opaklık sürekli)
-      let n = 0; geri.forEach((p) => { p.op = sstep((p.t + AP + .02) / .16); if (p.op < .5) n++; });
-      ileri.forEach((p) => { p.op = 1 - sstep((p.t - AF - .02) / .14); });
+      let n = 0; geri.forEach((p) => { p.op = sstep((p.t + AP + .02 * H.ek) / (.16 * H.ek)); if (p.op < .5) n++; });
+      ileri.forEach((p) => { p.op = 1 - sstep((p.t - AF - .02 * H.ek) / (.14 * H.ek)); });
       const kt = h.kume.querySelector('.kume-t'); const ky = n ? '✓' + n : '';
       if (kt.textContent !== ky) kt.textContent = ky; h.kume.style.opacity = n ? 1 : 0;
     }
@@ -431,18 +450,20 @@ export function yorungeHaritasi() {
     }
     // 5) zaman öğeleri
     const S0 = H.sinir;
-    const g0 = gunBasi(an) - 24 * GUN;
+    const g0 = H.M.aralik[0], jB = Math.round((gunBasi(an) - g0) / GUN), jS = Math.min(H.gunler.length - 1, Math.round((H.M.aralik[1] - g0) / GUN));
     H.gunler.forEach((c, j) => {
       const gun = g0 + j * GUN, t = aci(gun - an);
-      if (t < -AP - .1 || t > AF + .12 || gun < H.M.aralik[0] || gun > H.M.aralik[1]) { c.g.style.display = 'none'; return; }
+      if (j > jS) { c.g.style.display = 'none'; return; }
       c.g.style.display = '';
       const [x, y] = nokta(S0, t, 2);
       c.g.setAttribute('transform', `translate(${f(x)},${f(y)}) rotate(${f(t / RAD)})`);
       // aralık daralınca yazı söner (sürekli): iki gün arası < 22 px
       const ara = Math.abs(aci(gun + GUN - an) - t) * hiz(S0, t);
-      const d = new Date(gun + TSI); const yz = d.getUTCDate() === 1 || j === 24 ? gunAy(gun + 6 * SA) : String(d.getUTCDate());
-      if (c.gun !== gun) { c.t.textContent = yz; c.gun = gun; const dd = d.getUTCDate(), son = new Date(gun + GUN + TSI).getUTCDate() === 1; c.g.setAttribute('class', 'gun-c' + ((dd % 2 && dd !== 1) || dd === 2 || son || j === 23 || j === 25 ? ' seyrek' : '') + (j === 24 ? ' bugun-g' : '')); }
-      c.t.style.opacity = sstep((ara - 14) / 12) * (yz.length > 2 ? 1 : .9);
+      const d = new Date(gun + TSI); const yz = d.getUTCDate() === 1 || j === jB || j === 0 || j === jS ? gunAy(gun + 6 * SA) : String(d.getUTCDate());
+      if (c.gun !== gun || c.jB !== jB) { c.t.textContent = yz; c.gun = gun; const dd = d.getUTCDate(), son = new Date(gun + GUN + TSI).getUTCDate() === 1; c.g.setAttribute('class', 'gun-c' + (j !== 0 && j !== jS && ((dd % 2 && dd !== 1) || dd === 2 || son || j === jB - 1 || j === jB + 1) ? ' seyrek' : '') + (j === jB ? ' bugun-g' : '') + (j === 0 || j === jS ? ' uc' : '')); c.jB = jB; }
+      const uc = j === 0 || j === jS, hafta = new Date(gun + TSI).getUTCDay() === 1;
+      c.t.style.opacity = uc ? 1 : sstep((ara - 14) / 12) * (yz.length > 2 ? 1 : .9);
+      c.g.firstChild.style.opacity = uc || hafta ? 1 : sstep((ara - 2.5) / 3) * .8; // sıkışan günlerde yalnız hafta başları kalır
     });
     // son bakış dilimi
     const sb = H.o.sonBakis;
@@ -462,7 +483,7 @@ export function yorungeHaritasi() {
     // hedef çizgisi: her yörüngede hedef anına denk gelen noktalardan geçen eğri
     if (H.M.hedef) {
       const th = aci(H.M.hedef - an);
-      if (th > -AP && th < AF + .1) {
+      if (th > -AP && th < AF + .1 * H.ek) {
         let d = ''; const n = 24;
         const ic = { rx: H.cr * 1.05, ry: H.cr * 1.05, cy: 0 };
         for (let j = 0; j <= n; j++) { const u = j / n; const e = { rx: lerp(ic.rx, S0.rx, u), ry: lerp(ic.ry, S0.ry, u), cy: lerp(0, S0.cy, u) }; const [x, y] = nokta(e, th); d += (j ? 'L' : 'M') + f(x) + ',' + f(y); }

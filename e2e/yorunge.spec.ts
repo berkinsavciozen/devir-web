@@ -161,3 +161,49 @@ test('araca dokununca kişi kutusu: durum, iş ve hamle; işe dokununca görev k
   expect(await page.locator('.ky-kap svg.ky-svg > g').first().getAttribute('transform')).toBe(kam0);
   expect(await page.locator('.ky-kap').evaluate((e) => getComputedStyle(e).touchAction)).toBe('none');
 });
+
+// U7b: çerçeve akışın kendisi (başlangıç ve bitiş çerçevenin uçlarında). Yakınlaşınca içerik büyür (yörünge aralığı ve işaretler),
+// çerçeve ve gün çentikleri yerinde kalır; yakınlaşmışken dikey çekiş sığmayan yörüngeleri getirir.
+for (const [w, h] of [[390, 844], [1440, 900]] as const) {
+  test(`çerçeve · ${w}: harita yalnız akışın tarihlerini kapsar; yakınlaşınca yörünge aralığı ve işaretler büyür, çerçeve kıpırdamaz`, async ({ page }) => {
+    await ac(page, '/akis/XPVZ?senaryo=berkin&tanitim=0', w, h);
+    // ilk ve son gün çentiği akışın başlangıcı ve bitişi; ikisi de harita kutusunun içinde
+    const uc = page.locator('.ky-svg .gun-c.uc'), kap = (await page.locator('.ky-kap').boundingBox())!;
+    await expect(uc).toHaveCount(2);
+    for (const i of [0, 1]) { const b = (await uc.nth(i).locator('line').boundingBox())!; expect(b.x).toBeGreaterThan(kap.x - 1); expect(b.x).toBeLessThan(kap.x + kap.width + 1); }
+    const gunler = await page.locator('.ky-svg .gun-c').count();
+    expect(gunler).toBeGreaterThan(60); expect(gunler).toBeLessThan(100); // 12 Eki – 2 Oca arası, daha uzun değil
+    const olc = async () => { await page.waitForTimeout(350); return olc0(); }; // işaret boyu geçişle değişir
+    const olc0 = async () => page.evaluate(() => {
+      const y = (q: string) => { const r = document.querySelector(q)!.getBoundingClientRect(); return r.y + r.height / 2; };
+      const a = [...document.querySelectorAll('.ky-svg .arac-g .arac-alan')].map((e) => e.getBoundingClientRect());
+      const cer = document.querySelector('.ky-svg path.cerceve')!.getBoundingClientRect(), g = document.querySelector('.ky-svg .gun-c.uc line')!.getBoundingClientRect();
+      return { ara: Math.abs(a[0].y - a[1].y), boy: document.querySelector('.ky-svg .arac-g .ol .govde-a')!.getBoundingClientRect().height, igne: y('.ky-svg .igne-kutu'), cer: [cer.x, cer.y, cer.width], gun: [g.x, g.y] };
+    });
+    const o0 = await olc();
+    const tb = (await page.locator('.ky-zoom-top').boundingBox())!, rb = (await page.getByRole('slider', { name: /^Yakınlaştırma/ }).boundingBox())!;
+    await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2); await page.mouse.down();
+    await page.mouse.move(tb.x + tb.width / 2, rb.y + rb.height * .25, { steps: 5 }); await page.mouse.up();
+    const o1 = await olc();
+    expect(o1.ara).toBeGreaterThan(o0.ara * 1.25); // yörünge aralığı (dikey) büyür
+    expect(o1.boy).toBeGreaterThan(o0.boy * 1.15); // işaretler büyür
+    expect(o1.cer).toEqual(o0.cer); expect(o1.gun).toEqual(o0.gun); expect(o1.igne).toBe(o0.igne); // çerçeve, uç günler, gösterge yerinde
+    // dikey çekiş içeriği kaydırır, çerçeve yine yerinde
+    const ilk = (await page.locator('.ky-svg .arac-g .arac-alan').first().boundingBox())!;
+    await page.mouse.move(kap.x + 60, kap.y + kap.height * .7); await page.mouse.down();
+    await page.mouse.move(kap.x + 60, kap.y + kap.height * .7 - 60, { steps: 4 }); await page.mouse.up();
+    const son = (await page.locator('.ky-svg .arac-g .arac-alan').first().boundingBox())!;
+    expect(son.y).toBeLessThan(ilk.y - 20); expect(Math.abs(son.x - ilk.x)).toBeLessThan(1);
+    expect((await olc()).cer).toEqual(o0.cer);
+    // uzaklaşınca işaretler küçülür
+    await page.locator('.ky-zoom-top').dblclick();
+    await expect(page.getByRole('slider', { name: /^Yakınlaştırma/ })).toHaveAttribute('aria-valuenow', '100');
+    await page.waitForTimeout(150);
+    const t2 = (await page.locator('.ky-zoom-top').boundingBox())!;
+    await page.mouse.move(t2.x + t2.width / 2, t2.y + t2.height / 2); await page.mouse.down();
+    await page.mouse.move(t2.x + t2.width / 2, rb.y + rb.height * .98, { steps: 5 }); await page.mouse.up();
+    const o2 = await olc();
+    expect(o2.boy).toBeLessThan(o0.boy * .9); expect(o2.cer).toEqual(o0.cer);
+    await expect(page.getByRole('slider', { name: /^Zaman/ })).toBeVisible(); // uzakta da zaman göstergesi durur
+  });
+}
