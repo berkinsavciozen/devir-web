@@ -149,7 +149,7 @@ function OdakSecici({ o, b, setB }: { o: OdakAyar; b: Bekleyen; setB: (b: Bekley
 export function Lejant({ acik, kapat, yuzey = 'galaksi', sayilar, akis, odak, vurgula }: { acik: boolean; kapat: () => void; yuzey?: Extract<Yuzey, 'galaksi' | 'evren'>; sayilar?: Partial<Record<LejantAnahtar, number>>; akis?: string; odak?: OdakAyar; vurgula?: (an: LejantAnahtar) => void }) {
   // işaretlerin altında haritanın matematiği: hangi veri neyi belirliyor (geometri/kodlama.ts, madde 11)
   const K = yuzeyKodlamalari(yuzey).filter((k) => k.durum === 'var');
-  const SP = haritaBicimi() === 'spiral';
+  const SP = haritaBicimi() === 'spiral' || haritaBicimi() === 'yorunge';
   const SATIRLAR_ = yuzey === 'evren' ? EVREN_SATIRLAR : SP ? SPIRAL_SATIRLAR : SATIRLAR;
   const baslik = yuzey === 'evren' ? 'Evren dili' : 'Harita dili';
   const y0 = Math.max(60, 844 - (SATIRLAR_.length * 52 + K.length * 40 + 150 + (odak ? 150 : 0)));

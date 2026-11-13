@@ -265,7 +265,7 @@ export function yolCiz(M, o = {}) {
   // zaman ölçeği (plan 27 Eki, D): bugünü büyütür; o.tau = 0 doğrusal
   // kol haritası (9 Kas, bayrakla): kol = kişi, halka = tarih; çizim aynı, yalnız yerleşim değişir
   const geo = { cx: o.cx ?? 195, cy: o.cy ?? 312, R: o.R ?? 140, sy: o.sy, ps, simdi: NOWx, sira: o.sira, spin: o.spin, haric: o.haric || AK.haric, R0: o.R0 };
-  const bicim = o.bicim ?? (o.kol === true ? 'kol' : o.kol === false ? 'eski' : haritaBicimi());
+  const bicim = o.bicim ?? (o.kol === true ? 'kol' : o.kol === false ? 'eski' : haritaBicimi() === 'yorunge' ? 'spiral' : haritaBicimi());
   const G = bicim !== 'eski' ? kurKol(AK, { ...geo, bicim, ajanSahibi: ajanSahipleri(F.steps) }) : olcekliKur(AK, { ...geo, tau: o.tau ?? TAU });
   const RENK = uyeRenkleri(G, M.sahip, ajanSahipleri(F.steps), o.renkler || {});
   const BEN = o.ben ?? M.sahip;

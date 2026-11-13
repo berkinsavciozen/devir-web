@@ -1,0 +1,139 @@
+/* Kişi Yörüngeleri haritası (13 Kas, sentez). Prototipin harita kuralları, .ky-svg altında (lejant-arac/sentez/prototip/stil.css). */
+.ky-kap{position:absolute;overflow:hidden;border-radius:22px}
+.ky-svg{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;
+  --ink:#FFF3E8;--ink2:#E2D6F5;--ink3:#BFB0E0;--isik:#FFF6E0;--alarm:#FF5A5A;--seftali:#FFC9A3;--murekkep:#08222E;
+  --d-alarm:#FF5A5A;--d-eylem:#FFB547;--d-calisma:#5AB8FF;--d-bekleme:#A9C3D6;--d-bitti:#6EE39A}
+.ky-svg text{font-family:Bricolage,sans-serif;font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){.ky-svg *{animation:none!important;transition:none!important}}
+.ky-svg .serit{font-size:calc(11.5px * var(--ik,1));fill:var(--ink2);font-weight:500;paint-order:stroke;stroke:#06192A;stroke-width:calc(3px * var(--ik,1));stroke-linejoin:round}
+.ky-svg .serit.ag{font-size:calc(9.6px * var(--ik,1))}
+.ky-svg .serit .ad{font-weight:700;fill:var(--ink)}
+.ky-svg .serit.ben .ad{fill:var(--seftali)}
+.ky-svg .serit .alarm,.ky-svg .serit tspan.alarm{fill:#FF8A80;font-weight:700}
+.ky-svg .serit .arti{fill:var(--ink3);font-weight:700}
+.ky-svg .serit.sag{fill:var(--ink)}
+.ky-svg .serit .sonk{fill:var(--ink3)}
+.ky-svg .ol{transform:scale(var(--ik,1))}
+.ky-svg .bas{font-size:7.6px;font-weight:800;text-anchor:middle}
+.ky-svg .bas.ag{font-size:7px}
+.ky-svg .arti{font-size:9px;font-weight:700;fill:var(--ink)}
+.ky-svg .rz-t{font-size:7.4px;font-weight:800;text-anchor:middle}
+.ky-svg .gz .no{font-size:7.6px;font-weight:800;text-anchor:middle;fill:var(--ink)}
+.ky-svg .pay-no{font-size:5.6px!important}
+.ky-svg .gz.g-lit .no,.ky-svg .gz.g-tahmin .no{fill:var(--murekkep)}
+.ky-svg .gz.g-lit .no,.ky-svg .gz.g-tahmin .no,.ky-svg .gz.g-ghost .no,.ky-svg .gz.g-ertele .no{opacity:0;transition:opacity .25s}
+.ky-svg.kd1 .gz.g-lit .no,.ky-svg.kd2 .gz.g-lit .no,.ky-svg.kd1 .gz.g-tahmin .no,.ky-svg.kd2 .gz.g-tahmin .no{opacity:1}
+.ky-svg .gz .ad{font-size:6.8px;text-anchor:middle;fill:var(--ink2);font-weight:600;paint-order:stroke;stroke:#06192A;stroke-width:2.4px}
+.ky-svg .k2{opacity:0;transition:opacity .3s}
+.ky-svg.kd2 .k2{opacity:1}
+.ky-svg .k2gizle{transition:opacity .3s}
+.ky-svg.kd2 .k2gizle{opacity:0}
+.ky-svg .kume-t{font-size:6px;font-weight:800;text-anchor:middle;fill:var(--ink2)}
+.ky-svg .kume{transition:opacity .3s}
+.ky-svg .gun-t{font-size:calc(9px * var(--ig,1));fill:var(--ink3);font-weight:600}
+.ky-svg .dikis{font-size:9px;fill:var(--ink3);opacity:.7}
+.ky-svg .dilim-t{font-size:calc(9.5px * var(--ik,1));fill:var(--isik);opacity:.8;font-weight:600}
+.ky-svg .bayrak-t{font-size:9.5px;font-weight:700;fill:var(--isik)}
+.ky-svg .bugun-t{font-size:9px;fill:var(--seftali);font-weight:700}
+.ky-svg .igne-t{font-size:11.5px;font-weight:700;fill:var(--murekkep)}
+.ky-svg .ck-1{font-size:15px;font-weight:800;fill:var(--ink)}
+.ky-svg .ck-2{font-size:8.6px;font-weight:600;fill:var(--ink2)}
+.ky-svg .ck-2.alarm{fill:#FF8A80}
+.ky-svg .ck-3{font-size:7px;fill:var(--ink3)}
+.ky-svg .gz{cursor:pointer}
+.ky-svg .gz>.ol>*{display:none}
+.ky-svg .gz .govde,.ky-svg .gz .rim,.ky-svg .gz .no,.ky-svg .gz .ates,.ky-svg .gz .ray,.ky-svg .gz .bogaz,.ky-svg .gz .uydu,.ky-svg .gz .iz,.ky-svg .gz .ad,.ky-svg .gz .rutinsiz-p{display:inline}
+.ky-svg .gz .uydu{fill:#10283C;stroke:var(--isik);stroke-width:.9}
+.ky-svg .gz .uydu.dolu{fill:var(--isik)}
+.ky-svg .gz.g-wait .nabiz{display:inline;animation:ky-nabiz 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.ky-svg .gz.g-block .alarm,.ky-svg .gz.g-block .simsek-p{display:inline}
+.ky-svg .gz.g-block .no{display:none}
+.ky-svg .gz.g-tahmin .tahmin-c{display:inline}
+.ky-svg .gz.g-tahmin .ates{opacity:.78}
+.ky-svg .gz.g-ertele .govde{fill:none}
+.ky-svg .gz.g-ertele .rim{stroke-dasharray:2.4 2;opacity:.8}
+.ky-svg .gz.g-ertele .erteli{display:inline}
+.ky-svg .gz.g-ghost .govde{fill:none}
+.ky-svg .gz.g-ghost .rim{opacity:.35}
+.ky-svg .gz.g-ghost .cizik{display:inline;opacity:.45}
+.ky-svg .gz.g-lit .ates{filter:drop-shadow(0 0 2.5px #FFF6E0aa)}
+.ky-svg .gz.gec .rim{stroke:var(--alarm)!important}
+.ky-svg .gz.secili .govde{stroke:var(--isik);stroke-width:3}
+.ky-svg .iz-flas{animation:ky-flas 2.6s ease-out 1 forwards;transform-box:fill-box;transform-origin:center}
+@keyframes ky-flas{0%{opacity:1;transform:scale(.6)}100%{opacity:0;transform:scale(1.6)}}
+@keyframes ky-nabiz{0%,100%{opacity:.35;transform:scale(.92)}50%{opacity:1;transform:scale(1.08)}}
+.ky-svg .nabiz-a{animation:ky-nabiz 2.2s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.ky-svg .uydu-a{animation:ky-don 6s linear infinite;transform-box:view-box;transform-origin:0 0}
+@keyframes ky-don{to{transform:rotate(360deg)}}
+.ky-svg .alev{animation:ky-alev .5s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:right center}
+@keyframes ky-alev{from{transform:scaleX(.82)}to{transform:scaleX(1.06)}}
+.ky-svg .damla.yeni .yildiz{animation:ky-nabiz 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.ky-svg .arac-g{cursor:pointer}
+.ky-svg .arac-g .ol>*{animation:ky-gir .35s ease-out}
+@keyframes ky-gir{from{opacity:.2}to{opacity:1}}
+.ky-svg.odak .gz:not(.ilgili),.ky-svg.odak .pay:not(.ilgili){opacity:.22!important}
+.ky-svg.odak .arac-g:not(.ilgili){opacity:.4}
+.ky-svg.odak .k-rota,.ky-svg.odak .k-kopru{opacity:.3}
+.ky-svg.vurgulu .gz:not(.v),.ky-svg.vurgulu .arac-g:not(.v),.ky-svg.vurgulu .pay{opacity:.18!important}
+.ky-svg.vurgulu .serit{opacity:.5}
+.ky-svg .arac-g,.ky-svg .gz{transition:opacity .25s}
+.ky-svg .tarih-k{font-size:calc(11px * var(--ik,1));font-weight:600;fill:var(--ink);font-variant-numeric:tabular-nums;paint-order:stroke;stroke:#06192A;stroke-width:calc(3px * var(--ik,1));stroke-linejoin:round}
+.ky-svg .tarih-k.ag{font-size:calc(9.6px * var(--ik,1))}
+.ky-svg .tarih-k.tahmin{fill:var(--ink2);font-weight:500}
+.ky-svg .tarih-k.alarm{fill:#FF8A80;font-weight:700}
+.ky-svg.kdU .serit,.ky-svg.kdU .tarih-k,.ky-svg.kdU .igne-kutu,.ky-svg.kdU .igne-t{display:none}
+.ky-svg.kd2 .tarih-k{opacity:.9}
+.ky-svg .kopru{fill:none;stroke-width:1.7;stroke-linecap:round;opacity:.95}
+.ky-svg .kopru.bek{stroke-width:2;stroke-dasharray:none}
+.ky-svg .kopru.bitti{stroke-dasharray:3 3;opacity:.5}
+.ky-svg.gordum .iz,.ky-svg.gordum .k-dilim{display:none}
+.ky-svg.kdU .gun-c.seyrek text,.ky-svg.kdU .dilim-t{display:none}
+.ky-svg:not(.kdU) .gun-c.bugun-g text{display:none}
+.ky-svg .gz.sikis .ad.k2{display:none}
+.ky-svg .bas.gun{font-size:6px}
+.ky-svg .kenar.nefes{animation:ky-nefes 2.4s ease-in-out infinite}
+@keyframes ky-nefes{0%,100%{opacity:.35}50%{opacity:1}}
+.ky-svg .sira-a{animation:ky-wigwag 1.2s steps(1) infinite}
+.ky-svg .sira-b{animation:ky-wigwag 1.2s steps(1) infinite -.6s}
+@keyframes ky-wigwag{0%{opacity:1}50%{opacity:.5}}
+.ky-svg .cakar{animation:ky-cakar 1.6s linear infinite}
+@keyframes ky-cakar{0%,8%{opacity:1}12%,20%{opacity:.4}24%,32%{opacity:1}36%,100%{opacity:.55}}
+.ky-svg .paket{animation:ky-paket 1s linear infinite}
+.ky-svg .paket.p1{animation-delay:-.66s}
+.ky-svg .paket.p2{animation-delay:-.33s}
+@keyframes ky-paket{0%{opacity:1}100%{opacity:.15}}
+.ky-svg .sinyal .s0{animation:ky-sinyal 1.8s ease-out infinite}
+.ky-svg .sinyal .s1{animation:ky-sinyal 1.8s ease-out infinite -1.2s}
+@keyframes ky-sinyal{0%{opacity:.25}30%{opacity:1}100%{opacity:.25}}
+.ky-svg .bekleme{animation:ky-bekleme 3.2s ease-in-out infinite}
+@keyframes ky-bekleme{0%,70%,100%{opacity:.4}80%{opacity:1}}
+.ky-svg .kor{animation:ky-kor 4s ease-in-out infinite}
+@keyframes ky-kor{0%,100%{opacity:.1}50%{opacity:.4}}
+.ky-svg .plaka.ben .itme{animation:ky-itme 1.4s ease-in-out infinite}
+@keyframes ky-itme{0%,55%,100%{transform:translateX(0)}72%{transform:translateX(-2.6px)}}
+.ky-svg .plaka .yildiz{animation:ky-nabiz 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.ky-svg .kenet .akis{animation:ky-akis .9s linear infinite}
+@keyframes ky-akis{to{stroke-dashoffset:-7}}
+.ky-svg .secim-h{display:none}
+.ky-svg .arac-g.sec .secim-h{display:inline}
+.ky-svg .gec-t{font-size:6px;font-weight:800;fill:#FF8A80;paint-order:stroke;stroke:#06192A;stroke-width:2px}
+.ky-svg .ayrinti{font-size:6.2px;font-weight:700;fill:var(--ink);paint-order:stroke;stroke:#06192A;stroke-width:2.2px}
+.ky-svg .ayrinti.alarm{fill:#FF8A80}
+.ky-svg .k1{opacity:0;transition:opacity .3s}
+.ky-svg.kd1 .k1,.ky-svg.kd2 .k1{opacity:1}
+.ky-svg .gz .karar-p,.ky-svg .gz .cikti-p{display:inline}
+.ky-svg .arac-g .isik,.ky-svg .arac-g .ince,.ky-svg .arac-g .plaka,.ky-svg .arac-g .alarm-k,.ky-svg .kenet{transition:opacity .3s,transform .3s}
+.ky-svg.kdU .arac-g .isik,.ky-svg.kdU .arac-g .ince,.ky-svg.kdU .kenet,.ky-svg.kdU .arac-g .plaka:not(.ben),.ky-svg.kdU .gec-t{opacity:0}
+.ky-svg.kdU .arac-g .alarm-k{transform:scale(1.4)}
+.ky-svg.kdU .arac-g .plaka.ben{transform:scale(1.35)}
+.ky-svg .gz.g-lit .ates{fill:var(--d-bitti);filter:drop-shadow(0 0 2.5px #6EE39Aaa)}
+.ky-svg .gz.g-run .ates{fill:var(--d-calisma)}
+.ky-svg .gz.g-wait .nabiz{stroke:var(--d-eylem)}
+.ky-svg .gz.g-tahmin .ates{fill:var(--d-bitti)}
+.ky-svg .bas.govde-h{font-size:7px}
+.ky-svg .bas.govde-h.kucuk{font-size:5px}
+@keyframes ky-itme{0%,55%,100%{transform:translate(0,0)}72%{transform:translate(-1.6px,1.6px)}}
+.ky-svg .igne-tut{cursor:ew-resize;touch-action:none}
+.ky-svg .igne .cekiliyor .igne-kutu,.ky-svg .igne.cekiliyor .igne-kutu{fill:#FFD9BC;filter:drop-shadow(0 0 6px #FFC9A3)}
+/* dokunma yalnız işte, araçta ve zaman göstergesinde: çizgiler ve yazılar araya girmez */
+.ky-svg .k-igne line,.ky-svg .k-igne>.igne>path,.ky-svg .k-serit,.ky-svg .k-kenet,.ky-svg .k-rota,.ky-svg .k-halka,.ky-svg .k-gun,.ky-svg .k-bag,.ky-svg .k-kopru,.ky-svg .k-kuyruk,.ky-svg .k-hedef,.ky-svg .k-dilim,.ky-svg .k-cekirdek{pointer-events:none}

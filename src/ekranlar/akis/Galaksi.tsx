@@ -18,7 +18,8 @@ import { akisModeli, gunAy, gunAyHafta, sans, saat, yolCiz, zamanCubugu, GUN, ty
 import { C, f, pill, planet } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, akisAdi, gunAyUzun } from '../../metin/turkce';
 import { git, arama, listeyeDon } from '../../yonlendirme';
-import { haritaBicimi } from '../../geometri/kol-bayrak';
+import { haritaBicimi, yorungeHarita } from '../../geometri/kol-bayrak';
+import { YorungeHarita, type YorungeTutamak } from './YorungeHarita';
 import { KISI_DURUM_AD } from '../../cizim/kisi-durumu';
 import { tekrarAsamasi, uydular } from './cumleler';
 import { dalHaric, soruCumlesi, soruKatmani } from './soru';
@@ -59,6 +60,8 @@ export const HARITA = { cx: 195, cy: 420, R: 164, ps: .8 };
 const HARITA_UST = 92;
 /** Zaman spiralinde gezegenler küçük (9 Kas, Berkin): yol ve şeritler görünsün. */
 const GEZ_KUCULT = haritaBicimi() === 'spiral' ? .72 : 1;
+/** Durum odağı → yörünge haritasındaki vurgu anahtarı. */
+const YOR_VURGU: Record<string, string> = { engelli: 'g:block', karar: 'karar', sira: 'g:wait', sende: 'ben' };
 
 /**
  * Telefon düzeni ekranın gerçek boyuna göre (plan 28 Eki, B8, K5): zaman sürgüsü ve "Adımlar" ipucu ilk ekranda,
@@ -135,6 +138,9 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const boy = useBoyut();
   const GD = useMemo(() => genisDuzen(boy.w, boy.h), [boy.w, boy.h]);
   const [gelis] = useState(haritaGelisi);
+  // Kişi Yörüngeleri (13 Kas, sentez): deneme bayrağı; harita çizimi ve dokunma hedefleri YorungeHarita'dan gelir
+  const YOR = yorungeHarita();
+  const yor = useRef<YorungeTutamak>(null);
   const ben = useBen();
   const [panoAcik, setPanoAcik] = useState(true);
   const ai = useAiAcik();
@@ -283,11 +289,11 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (kuleAcik && Y.G.kule) ek += kuleKarti(d, Y.G.kule, bolge);
     // telefonda haritanın ince çerçevesi (plan 28 Eki, B8): harita alanı sürgüden ve sayfadan ayrılır
     const cerceve = GD ? '' : `<rect class="harita-cerceve" x="8" y="${bolge.y - 6}" width="374" height="${bolge.h + 14}" rx="22" fill="none" stroke="#8E80D6" stroke-opacity=".26"/>`;
-    let svg = cerceve + (yak
+    let svg = YOR ? cerceve + Z.svg : cerceve + (yak
       ? `${haritaCercevesi('harita-kirp', bolge)}${Y.svg + SK.svg + ust + ek}</g>` + Z.svg
       : Y.svg + SK.svg + Z.svg + ust + ek);
     return { svg, Y, Z, SK };
-  }, [M, temel, d, X, NOW, odak, durumOdak, sahip, oynuyor, tarihNo, geo, geoZ, zk, yak, bolge, kuleAcik, kisiKarti, GD, selNo, parla, kutuNo]);
+  }, [M, temel, d, X, NOW, odak, durumOdak, sahip, oynuyor, tarihNo, geo, geoZ, zk, yak, bolge, kuleAcik, kisiKarti, GD, selNo, parla, kutuNo, YOR]);
   // Esc: kule kartı kapanır
   useEffect(() => {
     if (!kuleAcik) return;
@@ -403,6 +409,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     if (yer) hedefler.push({ key: 'kisi' + sh.ad, ...yer, etiket: `${sh.ad} (${tur}): ${n} açık adım. Yolunu öne çıkar.`, basili: odak === sh.ad && kisiKarti === sh.ad, olay: { onClick: () => { setKisiKarti(odak === sh.ad ? null : sh.ad); kisiSec(sh.ad); } } });
   }
 
+  if (YOR) hedefler.length = 0;
   // lejant: sayılar ve satıra dokununca yanıp sönecek gezegenler (yalnız haritada çizilen ana görevler)
   const isaretli = lejantGezegenleri(d, temel?.G);
   const lejantSayilari = { ...galaksiSayilari(d.adimlar, d), ortak: isaretli.ortak.length, ip: temel?.G.ipler.length ?? 0, darbogaz: isaretli.darbogaz.length || undefined };
@@ -417,16 +424,20 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kontroller = (
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yakınlaşır), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
-      <div ref={gz.ref} className="harita-gezinme" style={{ left: bolge.x, top: bolge.y, width: bolge.w, height: bolge.h }} {...gz.olaylar}>
+      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
+        secili={GD ? selNo : kutuNo} kisi={odak} vurgu={durumOdak ? YOR_VURGU[durumOdak] : null} etiket={`${ad} haritası`}
+        adim={(no) => { if (!GD && kutuNo !== no) { setKutuNo(no); return; } ac(no); }}
+        kisiSec={(k) => { setKisiKarti(null); kisiSec(k); }} bos={() => { if (kutuNo != null) setKutuNo(null); }} />}
+      {!YOR && <div ref={gz.ref} className="harita-gezinme" style={{ left: bolge.x, top: bolge.y, width: bolge.w, height: bolge.h }} {...gz.olaylar}>
       <div role="list" aria-label="Harita" className="harita-katman" style={{ left: -bolge.x, top: -bolge.y }}>
         {hedefler.map((h) => <button key={h.key} role="listitem" className={`gezegen-hedef${h.sinif ? ' ' + h.sinif : ''}`} style={{ left: h.x - h.r, top: h.y - h.r, width: h.r * 2, height: h.r * 2 }} aria-label={h.etiket} data-ipucu={h.ipucu} aria-pressed={h.basili} {...h.olay} />)}
       </div>
-      </div>
+      </div>}
       {/* yakınlaşma düğmeleri: geniş düzende her zaman; telefonda yalnız yakınken "sığdır" (tekerlek ve iki parmak yeter) */}
       <div className="harita-yakin" style={{ left: bolge.x + bolge.w - (GD ? 64 : 58), top: bolge.y + 6 }}>
-        {GD && <button type="button" aria-label="Yakınlaştır" disabled={zk >= 3.999} onClick={() => gz.yakinlas(1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
-        {GD && <button type="button" aria-label="Uzaklaştır" disabled={!yak} onClick={() => gz.yakinlas(1 / 1.5)}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
-        {(GD || yak) && <button type="button" aria-label="Haritayı sığdır" disabled={!yak} onClick={gz.sigdir}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
+        {GD && <button type="button" aria-label="Yakınlaştır" disabled={!YOR && zk >= 3.999} onClick={() => (YOR ? yor.current?.yakinlas(1.5) : gz.yakinlas(1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5 M0,-5 V5" /></svg></button>}
+        {GD && <button type="button" aria-label="Uzaklaştır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.yakinlas(1 / 1.5) : gz.yakinlas(1 / 1.5))}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-5,0 H5" /></svg></button>}
+        {(GD || yak || YOR) && <button type="button" aria-label="Haritayı sığdır" disabled={!YOR && !yak} onClick={() => (YOR ? yor.current?.sigdir() : gz.sigdir())}><svg aria-hidden viewBox="-10 -10 20 20"><path d="M-6,-2 V-6 H-2 M2,-6 H6 V-2 M6,2 V6 H2 M-2,6 H-6 V2" /></svg></button>}
       </div>
 
       {/* zaman sürgüsü */}
