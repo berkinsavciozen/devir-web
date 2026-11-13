@@ -179,7 +179,7 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
       <svg aria-hidden viewBox="-6 -6 12 12"><path d="M-4,0 H4 M0,-4 V4" /></svg>
       <div ref={zr} className="ky-zoom-ray" role="slider" tabIndex={0} aria-orientation="vertical" aria-label="Yakınlaştırma: yukarı aşağı çek" aria-valuemin={40} aria-valuemax={600} aria-valuenow={Math.round(zk * 100)} aria-valuetext={`yüzde ${Math.round(zk * 100)}`}
         onKeyDown={zTus} onDoubleClick={() => hr.current?.zoomAt(1, 0, 0)}
-        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); }}
+        onPointerDown={(e) => { e.preventDefault(); window.getSelection()?.removeAllRanges(); e.currentTarget.setPointerCapture(e.pointerId); }}
         onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) zCek(e.clientY); }}>
         <i className="ky-zoom-bir" style={{ bottom: `${((0 - ZMIN) / (ZMAX - ZMIN)) * 100}%` }} />
         <i className="ky-zoom-top" style={{ bottom: `${zYer * 100}%` }} />
