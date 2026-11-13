@@ -8,11 +8,13 @@ export type HaritaCipi = { ad: string; etiket: string; kaldir: () => void };
  * Haritanın üstündeki süzgeç satırı (plan 28 Eki, Q1 · B6, B10, K9): seçici kutuyu açan düğme (akışta "Kişiler", evrende
  * "10/16 akış"), harita dili ("?") ve seçili süzgeçler çip olarak; çipe dokununca o süzgeç kalkar. Üç nokta menüsünün yerini alır.
  */
-export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Harita dili', cipler, ai }: {
+export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Harita dili', cipler, ai, soru }: {
   x: number; y: number; en: number; secici?: { yazi: string; etiket?: string; ikon?: boolean; ac: () => void };
   /** W2: akıştaki AI etkinliği (onay bekleyen varsa çip camgöbeği flamalı) */
   ai?: { yazi: string; onay: boolean; ac: () => void } | null;
   lejantAc: () => void; lejantEtiket?: string; cipler: HaritaCipi[];
+  /** açık soru (Kişi Yörüngeleri): dokununca sorunun sayfası */
+  soru?: { yazi: string; ipucu?: string; ac: () => void } | null;
 }) {
   return (
     <div className="harita-ciplar" role="toolbar" aria-label="Harita süzgeçleri" style={{ left: x, top: y, maxWidth: en }}>
@@ -27,6 +29,7 @@ export function HaritaCipleri({ x, y, en, secici, lejantAc, lejantEtiket = 'Hari
           : <path d="M0,-6 Q1,-1 6,0 Q1,1 0,6 Q-1,1 -6,0 Q-1,-1 0,-6Z" fill="currentColor" />}</svg>
         {ai.yazi}
       </button>}
+      {soru && <button type="button" className="harita-cip ana soru-cip" aria-label={`${soru.yazi}. ${soru.ipucu || ''} Cevapla.`} title={soru.ipucu} onClick={soru.ac}><b aria-hidden>?</b>{soru.yazi}</button>}
       {cipler.map((c) => <button key={c.etiket} type="button" className="harita-cip secili" aria-label={`${c.etiket}: ${c.ad}. Kaldır.`} onClick={c.kaldir}>{c.ad}<span aria-hidden>×</span></button>)}
     </div>
   );

@@ -62,7 +62,7 @@ test('ayar-azalt: Görünüm · Azalt sistem tercihi olmadan da döngüleri durd
   await ac(page, '/ayarlar?senaryo=berkin&sekme=gorunum', { azalt: false });
   await page.getByRole('tab', { name: 'Azalt' }).click();
   await page.goto('/akis/RTD5?senaryo=berkin');
-  await page.locator('.harita-gezinme .gezegen-hedef').first().waitFor();
+  await page.locator('.ky-svg .gz').first().waitFor();
   await page.waitForTimeout(500);
   expect((await animasyonlar(page)).dongu).toBe(0);
 });
@@ -70,10 +70,11 @@ test('ayar-azalt: Görünüm · Azalt sistem tercihi olmadan da döngüleri durd
 test('B3-lejant: "?" harita dilini açar', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin');
   await page.getByRole('button', { name: 'Harita dili' }).click();
-  // W7: dört öbek (Hamle, Işık, Kim, Yol); yalnız bu haritada olanlar
-  const L = page.getByRole('list', { name: /^(Hamle|Işık|Kim|Yol) işaretleri$/ });
+  // Kişi Yörüngeleri (13 Kas): dört öbek (Kim nerede, İş, Hamle, Bağ ve zaman); yalnız bu haritada o an olanlar, sayılarıyla
+  const L = page.getByRole('list', { name: /^(Kim nerede|İş|Hamle|Bağ ve zaman) işaretleri$/ });
   await expect(L).toHaveCount(4);
-  expect(await L.getByRole('listitem').count()).toBeGreaterThan(10);
+  expect(await L.getByRole('listitem').count()).toBeGreaterThan(5);
+  await expect(page.getByRole('region', { name: 'Renk kuralı' })).toBeVisible();
   await page.waitForTimeout(150);
   await cek(page, 'B3-lejant');
   await page.keyboard.press('Escape');
@@ -97,7 +98,7 @@ test('A0-tur: ürün turu gerçek öğeleri ışıkla çevirir, Geri/İleri, Ba�
 
 test('A0-tur-harita: harita turu Esc ile kapanır (W8)', async ({ page }) => {
   await ac(page, '/akis/RTD5?senaryo=berkin&tur=harita');
-  await expect(page.getByRole('heading', { name: 'Akışın haritası' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Zamanı göstergeden çek' })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Akışın haritası' })).toHaveCount(0);
 });

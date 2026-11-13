@@ -1,5 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 
+// Bu dosya önceki zaman spirali haritasını sınar (13 Kas'tan beri `?harita=spiral` ile açılır); varsayılan harita yorunge.spec.ts'te.
+test.beforeEach(async ({ page }) => { await page.addInitScript(() => localStorage.setItem('devir:harita', 'spiral')); });
+
 // Harita gezinme (PR A): yakınlaşma, küme yakınlaşması, kule kartı, kişi kartı, simge hedefleri.
 // Görseller karsilastirma/uygulama/<ad>.png; tasarımda karşılığı yok, kıyas önceki haliyle yapılır.
 const ac = async (p: Page, yol: string, w = 390, h = 844) => {
