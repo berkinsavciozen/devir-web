@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -28,9 +29,7 @@ const GOK = { tohum: 77, yildiz: 230 };
 const enc = encodeURIComponent;
 // 13 Kas (sentez): gövde kişinin kendi renginde (harita ile aynı palet); agent sahibinin açık tonunda
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, sahibi?: string | null) => {
-  const renk = kisiRengi(ad, { tip, sahibi });
-  return tip === 'dis' ? ship(x, y + 1, 0, 'dis', '', renk, k)
-    : ship(x, y, tip === 'agent' ? 0 : -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), renk, k, { flame: false });
+  return kisiSimge({ ad, tip, sahibi }, x, y, k);
 };
 /** Tür seçiminde haritadaki işaret (lejantla aynı). */
 const TUR_GEZEGEN: Partial<Record<OlayTuru, string>> = { bitti: 'lit', basladi: 'wait', engel: 'block', sira: 'wait', karar: 'wait', atlandi: 'ghost', cikti: 'lit' };

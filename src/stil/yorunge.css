@@ -190,3 +190,10 @@
 .ky-kk-h span{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ky-kk-not{font-size:12px;opacity:.75}
 .ky-kisi-kutu button:focus-visible{outline:2px solid #FFD98A;outline-offset:2px}
+/* Harita dışındaki araç ve gezegen simgeleri (simge.ts): harita stilini kullanır, dokunuşu ve seçimi engellemez. */
+.ky-svg.ky-simge{position:static;inset:auto;width:auto;height:auto;touch-action:auto;pointer-events:none}
+.ky-svg.ky-simge .gz{cursor:inherit}
+.ky-svg.ky-simge .gz.g-wait .nabiz{animation:none;opacity:.9}
+/* Telefonda görev detayının arkası: harita soluk, dokunulmaz; sürgü ve şerit yok. */
+.adim-arka-harita{position:absolute;transform-origin:0 0;pointer-events:none;opacity:.62}
+.adim-arka-harita .ky-zoom,.adim-arka-harita .ky-serit,.adim-arka-harita .igne-kutu,.adim-arka-harita .igne-t{display:none}

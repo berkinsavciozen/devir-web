@@ -5,7 +5,7 @@ import { simdi } from '../../api/ortam';
 import { ilerleme } from '../../api/ilerleme';
 import { sorguIstemcisi, useBen } from '../../api/sorgular';
 import { hedefPayi } from '../../bilesen/KararSeridi';
-import { C, planet, ship } from '../../cizim/ortak.js';
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { gunAy, gunAyHafta, kisaAd, otoRozet, saat } from '../../cizim/yol.js';
 import { adimAdi, akisAdi, tarihEk } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
@@ -23,7 +23,8 @@ import { damla, hamle, rutinYok } from '../../cizim/hamle';
 const GUN = 864e5;
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'hazir' || a.durum === 'suruyor' ? 'wait' : 'dark');
-const gezegen = (a: any, r: number) => planet(0, 0, r, durumGor(a), { life: false, karar: a.karar_adimi, cloudGap: r > 16 ? 6 : 2, oto: BITTI(a.durum) ? null : otoRozet(a) });
+// 13 Kas (U7c): haritadaki gezegenin aynısı (halka sahibinin renginde, ışık durum, içinde numara)
+const gezegen = (a: any, r: number) => isSimge(a, 0, 0, r * .8);
 
 /** Görevin başlangıcı: başladıysa ilk "başladı" kaydı; sırası geldiyse şimdi; değilse öncüllerin en geç en erken bitişi. */
 export function baslangic(a: any, by: Map<number, any>): { ms: number | null; etiket: string } {
@@ -231,7 +232,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
   if (hp) ne_zaman.push(['Akış', hp]);
   const acikOnce = onde.filter((z) => !BITTI(z.durum));
   const sahipAd = A.sahip === ben ? 'Sen' : sahipAjan ? A.sahip : kisaAd(A.sahip);
-  const gemiKucuk = ship(0, 0, 0, sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahipDis ? '' : kisaAd(A.sahip)[0], sahipAjan ? C.lilac : C.peach, .5, { flame: false });
+  const gemiKucuk = kisiSimge({ ad: A.sahip, tip: sahipAjan ? 'agent' : sahipDis ? 'dis' : 'insan', sahibi: A.agent_sahibi }, 0, 0, .58);
   const kartlar = (l: any[], not: (z: any) => string | null) => <ul className="gd-kartlar">{l.map((z) => { const n = not(z); return (
     <li key={z.no}><GorevKart a={z} d={d} ben={ben} now={simdiMs} ac={() => git(`/akis/${encodeURIComponent(kod)}/adim/${z.no}`)} />{n && <small className="gd-kart-not">{n}</small>}</li>); })}</ul>;
   const ardilKisa = (z: any) => {

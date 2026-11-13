@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { useState, type ReactNode } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, alanSecimi } from '../../api/istemci';
@@ -14,7 +15,7 @@ export const rolAdi = (r: string) => (r === 'dis' ? 'dış' : r);
 
 /** Kişi aracı (ekip: baş harfli roket; dış: disk), haritadaki kendi renginde (13 Kas, U4). */
 export function kisiGemi(ad: string, rol: string, sahip: boolean, x: number, y: number, sc = .85) {
-  return rol === 'dis' ? ship(x, y + 2, 0, 'dis', '', kisiRengi(ad, { tip: 'dis' }), sc * .96) : ship(x, y, -12, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), kisiRengi(ad), sc, { flame: false });
+  return kisiSimge({ ad, tip: rol === 'dis' ? 'dis' : 'insan' }, x, y, sc);
 }
 export const Svg = ({ w, h, x, y, svg, sinif }: { w: number; h: number; x: number; y: number; svg: string; sinif?: string }) => (
   <svg aria-hidden className={sinif} width={w} height={h} viewBox={`${x} ${y} ${w} ${h}`} style={{ position: 'absolute', left: x, top: y, overflow: 'visible', pointerEvents: 'none' }} dangerouslySetInnerHTML={{ __html: svg }} />

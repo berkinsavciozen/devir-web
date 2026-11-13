@@ -1,3 +1,4 @@
+import { isSimge } from '../../cizim/yorunge/simge';
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -52,8 +53,8 @@ export function AdimIsaretleri({ a }: { a: any }) {
 }
 export const adimIkon = (a: any, h = 58) => a.ust_adim != null
   // alt görev: üstüne bağlı küçük uydu (W5, N24)
-  ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${planet(37, 29, 6, durumGor(a), { life: false, waitRings: 1, cloudGap: 1, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`
-  : `<g transform="translate(0,${h / 2 - 29})">${planet(28, 29, 10, durumGor(a), { life: false, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) })}</g>`;
+  ? `<g transform="translate(0,${h / 2 - 29})"><path d="M18,-8 V29 H30" fill="none" stroke="#8E80D6" stroke-width="1.2" opacity=".7"/>${isSimge(a, 37, 29, 6)}</g>`
+  : `<g transform="translate(0,${h / 2 - 29})">${isSimge(a, 28, 29, 9.5)}</g>`;
 /** AI yapsın durumunun liste dili (W2). */
 export const AI_DURUM: Record<string, string> = { bekliyor: 'AI yapsın açık', calisiyor: 'AI çalışıyor', bakilacak: 'AI yazdı, onayını bekliyor', hata: 'AI yapamadı' };
 /** "Berkin · hazır · en erken 21 Eki" */

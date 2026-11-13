@@ -1,3 +1,4 @@
+import { isSimge } from '../../cizim/yorunge/simge';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -13,7 +14,7 @@ import { git } from '../../yonlendirme';
  */
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'suruyor' ? 'run' : a.durum === 'hazir' ? 'wait' : 'dark');
-const ikon = (a: any) => planet(0, 0, 11, durumGor(a), { life: true, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) });
+const ikon = (a: any) => isSimge(a, 0, 0, 10);
 const zaman = (t: string | null | undefined) => (t ? `${gunAy(Date.parse(t))} ${saat(Date.parse(t))}` : '');
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
 

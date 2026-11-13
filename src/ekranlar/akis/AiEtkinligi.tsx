@@ -1,3 +1,4 @@
+import { isSimge } from '../../cizim/yorunge/simge';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { planet } from '../../cizim/ortak.js';
 import { gunAy, otoRozet, saat } from '../../cizim/yol.js';
@@ -6,7 +7,7 @@ import { git } from '../../yonlendirme';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const durumGor = (a: any) => (BITTI(a.durum) ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'suruyor' ? 'run' : a.durum === 'hazir' ? 'wait' : 'dark');
-const ikon = (a: any) => planet(0, 0, 10, durumGor(a), { life: false, cloudGap: 2, oto: BITTI(a.durum) ? null : otoRozet(a) });
+const ikon = (a: any) => isSimge(a, 0, 0, 9);
 
 /** Akıştaki AI yapsın işlerinin özeti: kaç tanesi onay bekliyor, çalışıyor, yapamadı, bekliyor. */
 export function aiOzeti(adimlar: any[]) {

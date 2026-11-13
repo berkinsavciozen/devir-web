@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { useMemo, useRef, useState, type ReactNode, type KeyboardEvent as RKeyboardEvent } from 'react';
 import { boyutYaz, dosyaDenetle, dosyaAc, dosyaIndir, dosyaSil, dosyaYukle, KABUL_UZANTI, turOf } from '../../api/dosya';
 import { BaglantiIkon, CarpiIkon, CopIkon, DisAcIkon, DosyaSatiri, IndirIkon, YukleIkon } from '../../bilesen/DosyaSatiri';
@@ -15,6 +16,8 @@ import { akisModeli, gunAy, gunAyHafta, saat, yolCiz, kisaAd } from '../../cizim
 import { adimAdi, akisAdi, ozelEk } from '../../metin/turkce';
 import { git, tamAdres } from '../../yonlendirme';
 import { useAkis } from './Galaksi';
+import { YorungeHarita } from './YorungeHarita';
+import { yorungeHarita } from '../../geometri/kol-bayrak';
 import { GorevDetay } from './GorevDetay';
 
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
@@ -233,17 +236,23 @@ export function Segment({ secenekler, aktif, sec }: { secenekler: string[]; akti
   );
 }
 
-/** Arka: harita %55, %38 koyu örtü; seçili gezegen ve bağları örtünün üstünde (§3.15). */
+/** Arka: akışın haritası soluk ve dokunulmaz; seçili iş işaretli. Yeni harita varsayılan, `?harita=spiral` eski sarmalı çizer. */
 function AdimArka({ d, no, sheetY, sahip }: { d: any; no: number; sheetY: number; sahip: string }) {
+  const yeni = yorungeHarita();
   const cizim = useMemo(() => {
-    if (!d) return '';
+    if (!d || yeni) return '';
     const M = akisModeli(d, { sahip });
     const cy = sheetY > 200 ? 196 : 150, R = sheetY > 200 ? 120 : 100;
     const Y = yolCiz(M, { cx: 195, cy, R, ps: .7, now: simdi(), sel: no, selTop: true, labels: [] });
     return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".38"/>` + (Y.secim || '');
-  }, [d, no, sheetY, sahip]);
+  }, [d, no, sheetY, sahip, yeni]);
+  const NOW = useMemo(() => simdi(), [d]); // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <Sahne gok={{ tohum: 33, yildiz: 260 }} cizim={cizim} etiket={d ? akisAdi(d.akis) : 'Akış'}>
+      {/* geniş düzen küçültülmüş: bütün harita sayfanın üstündeki boşluğa sığar */}
+      {yeni && d && (d.adimlar || []).length > 0 && <div className="adim-arka-harita" aria-hidden {...{ inert: "" }} style={{ left: 8, top: 84, width: 780, height: Math.round((sheetY - 78) / .48), transform: 'scale(.48)' }}>
+        <YorungeHarita d={d} bakan={sahip} simdi={NOW} an={NOW} cihaz="mas" x={0} y={0} w={780} h={Math.round((sheetY - 78) / .48)} ust={8} secili={no} adim={() => {}} kisiSec={() => {}} etiket="" />
+      </div>}
       <div aria-hidden style={{ opacity: .55 }}>
         <Kutu x={0} y={40} style={{ right: 0 }}><Baslik baslik={d ? akisAdi(d.akis) : ''} geri={() => history.back()} sagBos={96} /></Kutu>
       </div>
@@ -281,7 +290,7 @@ export function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; ko
   const ist = a.durum === 'engelli' && a.engel ? istekBul(a.engel, ben) : null;
   const sonraki = (a.bekleyen_adimlar || []).map((b: any) => by.get(b.no)).filter(Boolean)[0];
   const sirada: ReactNode[] = [];
-  if (ist) sirada.push(<Satir key="sen" ikon={ship(0, 0, 0, 'insan', (ben[0] || 'S').toLocaleUpperCase('tr'), C.peach, .62, { flame: false })} ust={`Senden bekleniyor · ${sureKisa(a.bekleme_saat)}`} baslik={ist.emir} cizgi="kesik" />);
+  if (ist) sirada.push(<Satir key="sen" ikon={kisiSimge({ ad: ben || 'S', tip: 'insan' }, 0, 0, .6)} ust={`Senden bekleniyor · ${sureKisa(a.bekleme_saat)}`} baslik={ist.emir} cizgi="kesik" />);
   else if (!BITTI(a.durum)) sirada.push(<Satir key="sahip" ikon={IKON.gelecek} ust={`${kisaAd(a.sahip)} · ${a.durum_etiket || a.durum}`} baslik={a.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(a.en_erken_bitis))} bitecek` : 'Tarihi belli değil'} cizgi="kesik" />);
   if (sonraki && !BITTI(a.durum)) sirada.push(<Satir key="sonraki" ikon={IKON.gelecek} ust={sonraki.en_erken_bitis ? `En erken ${gunAyHafta(Date.parse(sonraki.en_erken_bitis))} ${saat(Date.parse(sonraki.en_erken_bitis))}` : 'Sonra'} baslik={`${sonraki.ad} ${sonraki.sahip === ben ? 'sana' : ozelEk(kisaAd(sonraki.sahip), 'e')} gelecek`} git={adimaGit(sonraki.no)} />);
   // yeniden eskiye; aynı anda (2 sn) yazılan durum + ilerleme: durum önce, ilerleme yalnız çıktı taşıyorsa ayrı satır
@@ -289,7 +298,7 @@ export function AdimGecmis({ a, d, ben, kod }: { a: any; d: any; ben: string; ko
   const olaylar = ham
     .filter((e: any) => !(e.tip === 'guncelleme' && !olayMetni(e).cikti && ham.some((x: any) => x.tip === 'durum' && Math.abs(x._t - e._t) < 2000)))
     .sort((x: any, y: any) => (Math.abs(x._t - y._t) < 2000 ? Number(y.tip === 'durum') - Number(x.tip === 'durum') : y._t - x._t));
-  const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#071D29" stroke="#B9A6F2" stroke-width="1.3"/>` + ship(0, 0, 0, e.kim_tip === 'agent' ? 'agent' : 'insan', (e.kim_tip === 'agent' ? e.arac || e.kim : e.kim || '?')[0], e.kim_tip === 'agent' ? C.lilac : C.peach, .42, { flame: false }) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
+  const ikonOf = (e: any) => e.tip === 'durum' ? (e.durum === 'engelli' ? IKON.engel : e.durum === 'suruyor' ? `<circle r="10" fill="#071D29" stroke="#B9A6F2" stroke-width="1.3"/>` + kisiSimge({ ad: e.kim || '?', tip: e.kim_tip === 'agent' ? 'agent' : 'insan', sahibi: e.kim_tip === 'agent' ? e.kim : null }, 0, 0, .42) : e.durum === 'tamam' ? IKON.bitti : IKON.hazir) : e.tip === 'not' ? IKON.not : IKON.ilerleme;
   // agent kaydı kimin adına yazıldığını gösterir; kanalı olmayan (0.13.0 öncesi) kayıt doğrulanmamış eski kayıttır
   const kim = (e: any) => e.kim_tip === 'agent' ? `${e.arac || 'AI'} (${kisaAd(e.kim)} adına)` : e.kim;
   const eski = (e: any) => (e.kim_tip !== 'sistem' && !e.kanal ? ' · doğrulanmamış eski kayıt' : '');

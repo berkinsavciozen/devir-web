@@ -207,3 +207,22 @@ for (const [w, h] of [[390, 844], [1440, 900]] as const) {
     await expect(page.getByRole('slider', { name: /^Zaman/ })).toBeVisible(); // uzakta da zaman göstergesi durur
   });
 }
+
+test('görev detayı: telefonda arkada yeni harita (seçili iş işaretli, dokunulmaz); detay ve kartlarda haritadaki araç ve gezegen', async ({ page }) => {
+  await ac(page, '/akis/RK8R/adim/10?senaryo=berkin&hal=rk8r-g12&tanitim=0');
+  const arka = page.locator('.adim-arka-harita');
+  await expect(arka.locator('.ky-svg .gz.secili')).toHaveCount(1);
+  await expect(arka.locator('.ky-svg .gz.secili')).toHaveAttribute('data-no', '10');
+  expect(await arka.evaluate((e) => getComputedStyle(e).pointerEvents)).toBe('none');
+  // eski sarmal çizilmez
+  expect(await page.locator('.sahne-cizim').count() ? await page.locator('.sahne-cizim').first().innerHTML() : '').toBe('');
+  // detay: sahibin aracı ve gezegenler haritadaki çizim; kartların küçük resmi de
+  const gd = page.locator('.gd');
+  await expect(gd.locator('.gd-r1-kim .ky-simge .kabuk')).toHaveCount(1);
+  await expect(gd.locator('.gd-gezegen .ky-simge .gz .no')).toHaveText('10');
+  await expect(gd.locator('.gorev-kart-harita .ky-simge .gz').first()).toBeAttached();
+  // eski haritayı seçen eski arka planı görür
+  await page.goto('/akis/RK8R/adim/10?senaryo=berkin&hal=rk8r-g12&tanitim=0&harita=spiral');
+  await expect(page.locator('.sahne-cizim circle').first()).toBeAttached();
+  await expect(page.locator('.adim-arka-harita')).toHaveCount(0);
+});

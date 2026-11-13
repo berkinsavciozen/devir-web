@@ -14,5 +14,6 @@ export function durumAn(M: YorungeModel, an: number): YorungeDurum;
 export const KISI_DURUM_AD: Record<string, string>;
 export const ADIM_DURUM_AD: Record<string, string>;
 export function arac(k: any, kd: any, o?: Record<string, any>): { svg: string; [k: string]: any };
+export function gezegen(a: any, o?: Record<string, any>): string;
 export function durumRenk(durum: string): string;
 export function anYaz(t: number): string;
