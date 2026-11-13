@@ -18,7 +18,7 @@ const TUR: Partial<Record<LejantAnahtar, OlayTuru>> = { bitti: 'bitti', sira: 's
 // (yapacak kişinin renginde, simgesi görev kartındaki düğme). 6 Kas'taki "durum renksiz" kuralının yerini aldı.
 type Satir = [string, string, string, LejantAnahtar?, Grup?];
 type Grup = 'Hamle' | 'Işık' | 'Kim' | 'Yol';
-const SEN = '#7FC8F8', O = '#F2D16B';
+const SEN = '#7D8CFF', O = '#D8F26B';
 const dm = (tur: HamleTur, renk: string, ben = false) => `<g transform="translate(22,31)">${planet(0, 0, 7, tur === 'engel' ? 'block' : tur === 'bitir' ? 'wait' : 'dark', { life: false, halka: renk })}${ben ? `<circle r="13" fill="none" stroke="${renk}" stroke-width="1" opacity=".55"/>` : ''}${damla({ tur, kim: '', renk, etiket: '' }, 0, ben ? -21 : -19, ben ? 1.15 : .95)}</g>`;
 const yol = (c: string, o: { kesik?: boolean; isik?: string } = {}) => `${o.isik ? `<path d="M2,32 Q22,4 42,26" fill="none" stroke="${o.isik}" stroke-width="7" opacity=".45" filter="url(#blur2)"/>` : ''}<path d="M2,32 Q22,4 42,26" fill="none" stroke="${c}" stroke-width="2.2" stroke-linecap="round"${o.kesik ? ' stroke-dasharray="5 4"' : ''}/>`;
 const SATIRLAR: Satir[] = [

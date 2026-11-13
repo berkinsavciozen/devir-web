@@ -18,7 +18,6 @@ export function tac(x: number, y: number, r: number, k: number, sekilVar?: boole
 export function elmas(x: number, y: number, s?: number): string;
 export function belge(x: number, y: number, s?: number): string;
 export function uyduSistemi(x: number, y: number, r: number, ks: { ad: string; durum: string; t?: number; kalem?: boolean; no?: number }[], ps?: number, o?: { yakin?: boolean; adlar?: boolean; ini?: boolean; bosluk?: number; yerler?: { no: number; ust: number; x: number; y: number; r: number }[]; ust?: number; hedef?: boolean }): string;
-export const UYE_PALET: string[];
 export const TAKIM_RENGI: string;
 export function yolD(pts: number[][]): string;
 export function clusterBadge(x: number, y: number, members: number[], radOf: (no: number) => number, stOf: (no: number) => [string, O], ps?: number): string;

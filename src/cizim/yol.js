@@ -50,7 +50,6 @@ const byNoOf = (F) => F.steps.reduce((m, s) => (m[s.no] = s, m), {});
  * (renkler; Ayarlar'dan) yoksa addan sabit bir palet rengi. Agent sahibinin açık tonudur. Görev kartındaki düğme ve
  * haritadaki damla aynı rengi kullanır (hamle.ts kisiRengi).
  */
-export const UYE_PALET = ['#8EC5FF', '#FFE08A', '#D9B3FF', '#7FD6E8', '#F5B3A3', '#C7B8FF'];
 export const TAKIM_RENGI = '#C9C2E8';
 export function uyeRenkleri(G, sahip, ajanSahibi = {}, renkler = {}) {
   const r = {};

@@ -16,8 +16,8 @@ describe('kişi renkleri (W7, Kimin Hamlesi)', () => {
   });
   it('agent sahibinin açık tonunda; sahibi kayıtlı renk seçtiyse ondan', () => {
     const G: any = { uyeler: [uye('Berkin'), uye('Claude', 'agent')] };
-    const r = uyeRenkleri(G, 'Berkin', ajanSahipleri([{ sahip: 'Claude', tip: 'agent', agentSahibi: 'Berkin' }]), { Berkin: '#7FC8F8' });
-    expect(r.Claude).toBe(acik('#7FC8F8'));
+    const r = uyeRenkleri(G, 'Berkin', ajanSahipleri([{ sahip: 'Claude', tip: 'agent', agentSahibi: 'Berkin' }]), { Berkin: '#E86FA0' });
+    expect(r.Claude).toBe(acik('#E86FA0'));
   });
 });
 
@@ -143,5 +143,26 @@ describe('evren sayımı (karar 2 Kas)', () => {
       { no: 4, durum: 'tamam', ust_adim: 2 }, { no: 5, durum: 'hazir', ust_adim: 2 }, { no: 6, durum: 'tamam', ust_adim: 2 },
     ] };
     expect(akisIlerlemesi({}, d)).toEqual({ tamam: 1, toplam: 2, atlandi: 1, ertelendi: 0 });
+  });
+});
+
+describe('kişi paleti durum renklerinden uzak (13 Kas, U4)', async () => {
+  const { PALET, paletRengi, kisiRengi } = await import('./hamle');
+  const { DURUM_RENK } = await import('./ortak.js');
+  const lab = (h: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((c) => (c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4));
+    const t = (v: number) => (v > .008856 ? Math.cbrt(v) : 7.787 * v + 16 / 116);
+    const X = t((.4124 * r + .3576 * g + .1805 * b) / .95047), Y = t(.2126 * r + .7152 * g + .0722 * b), Z = t((.0193 * r + .1192 * g + .9505 * b) / 1.08883);
+    return [116 * Y - 16, 500 * (X - Y), 200 * (Y - Z)];
+  };
+  const fark = (a: string, b: string) => Math.hypot(...lab(a).map((v, i) => v - lab(b)[i]));
+  it('her kişi tonu beş durum rengine en az 28 uzaklıkta; birbirine en az 20', () => {
+    for (const p of PALET) for (const d of Object.values(DURUM_RENK) as string[]) expect(fark(p, d), `${p} ~ ${d}`).toBeGreaterThanOrEqual(28);
+    for (const a of PALET) for (const b of PALET) if (a < b) expect(fark(a, b), `${a} ~ ${b}`).toBeGreaterThanOrEqual(20);
+  });
+  it('eski paletten kayıtlı renk yeni tona çevrilir; kayıtsız kişi palete düşer', () => {
+    expect(paletRengi('#F2D16B')).toBe('#D8F26B'); expect(paletRengi('#B9A6F2')).toBe('#B9A6F2');
+    expect(kisiRengi('Mert', { renkler: { Mert: '#F28C6B' } })).toBe('#A170FB');
+    expect(PALET).toContain(kisiRengi('Selin'));
   });
 });
