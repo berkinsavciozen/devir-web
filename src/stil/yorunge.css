@@ -69,7 +69,10 @@
 .ky-svg .alev{animation:ky-alev .5s ease-in-out infinite alternate;transform-box:fill-box;transform-origin:right center}
 @keyframes ky-alev{from{transform:scaleX(.82)}to{transform:scaleX(1.06)}}
 .ky-svg .damla.yeni .yildiz{animation:ky-nabiz 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
-.ky-svg .arac-g{cursor:pointer}
+.ky-svg .arac-g{cursor:pointer;outline:none}
+.ky-svg .arac-g:focus-visible .secim-h{display:inline}
+.ky-svg .gz{outline:none}
+.ky-svg .gz:focus-visible .govde{stroke:var(--isik);stroke-width:3}
 .ky-svg .arac-g .ol>*{animation:ky-gir .28s ease-out}
 @keyframes ky-gir{from{opacity:.2}to{opacity:1}}
 .ky-svg.odak .gz:not(.ilgili),.ky-svg.odak .pay:not(.ilgili){opacity:.22!important}
@@ -157,12 +160,33 @@
 .ky-serit button:focus-visible,.ky-svg .igne-tut:focus-visible{outline:2px solid var(--renk-vurgu-altin);outline-offset:2px}
 .harita-cip.soru-cip b{display:inline-grid;place-items:center;width:18px;height:18px;margin-right:6px;border-radius:50%;background:#FFF1DC;color:#2A1D4F;font-size:12px;font-weight:800}
 
-/* yüzen yakınlaştırma sürgüsü (U6): küçük hap; sağa çek yakınlaş, sola çek uzaklaş */
-.ky-zoom{position:absolute;z-index:2;display:flex;align-items:center;gap:6px;height:32px;padding:0 10px;border-radius:16px;background:color-mix(in srgb,#0B2233 86%,transparent);box-shadow:inset 0 0 0 1px rgba(191,176,224,.45),0 4px 14px rgba(0,0,0,.28);backdrop-filter:blur(6px)}
+/* dokunma kilidi sarmalayıcı kutuda: iOS çizim öğesindeki touch-action'ı saymaz (sayfa kayıyordu) */
+.ky-kap{touch-action:none;overscroll-behavior:contain;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* yüzen yakınlaştırma sürgüsü: dikey küçük hap, haritanın sağ ortasında; yukarı çek yakınlaş, aşağı çek uzaklaş */
+.ky-zoom{position:absolute;z-index:2;display:flex;flex-direction:column;align-items:center;gap:6px;width:32px;padding:10px 0;border-radius:16px;background:color-mix(in srgb,#0B2233 62%,transparent);box-shadow:inset 0 0 0 1px rgba(191,176,224,.4)}
 .ky-zoom>svg{width:12px;height:12px;flex:none;fill:none;stroke:var(--ink2,#E2D6F5);stroke-width:1.6;stroke-linecap:round}
-.ky-zoom-ray{position:relative;width:104px;height:32px;cursor:ew-resize;touch-action:none;outline:none}
-.ky-zoom-ray::before{content:"";position:absolute;left:0;right:0;top:15px;height:2px;border-radius:1px;background:rgba(226,214,245,.35)}
-.ky-zoom-bir{position:absolute;top:11px;width:2px;height:10px;margin-left:-1px;border-radius:1px;background:rgba(226,214,245,.55)}
-.ky-zoom-top{position:absolute;top:8px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--seftali,#FFC9A3);box-shadow:0 0 0 3px rgba(255,201,163,.22),0 0 10px rgba(255,201,163,.5)}
+.ky-zoom-ray{position:relative;height:96px;width:32px;cursor:ns-resize;touch-action:none;outline:none}
+.ky-zoom-ray::before{content:"";position:absolute;top:0;bottom:0;left:15px;width:2px;border-radius:1px;background:rgba(226,214,245,.35)}
+.ky-zoom-bir{position:absolute;left:11px;height:2px;width:10px;margin-bottom:-1px;border-radius:1px;background:rgba(226,214,245,.55)}
+.ky-zoom-top{position:absolute;left:8px;width:16px;height:16px;margin-bottom:-8px;border-radius:50%;background:var(--seftali,#FFC9A3);box-shadow:0 0 0 3px rgba(255,201,163,.22),0 0 10px rgba(255,201,163,.5)}
 .ky-zoom-ray:focus-visible .ky-zoom-top{box-shadow:0 0 0 2px #0B2233,0 0 0 4px #FFD98A}
-@media (pointer:coarse){.ky-zoom{height:40px;border-radius:20px}.ky-zoom-ray{height:40px;width:84px}.ky-zoom-ray::before{top:19px}.ky-zoom-bir{top:15px}.ky-zoom-top{top:10px;width:20px;height:20px;margin-left:-10px}}
+/* sürgü haritanın üstünde yüzer: altındaki işlere dokunulabilsin diye yalnız topuz dokunuş alır */
+.ky-zoom,.ky-zoom-ray{pointer-events:none}
+.ky-zoom-top{pointer-events:auto;cursor:ns-resize;touch-action:none}
+.ky-zoom-top::after{content:"";position:absolute;inset:-12px}
+@media (pointer:coarse){.ky-zoom{width:38px;border-radius:19px}.ky-zoom-ray{width:38px;height:88px}.ky-zoom-ray::before{left:18px}.ky-zoom-bir{left:14px}.ky-zoom-top{left:9px;width:20px;height:20px;margin-bottom:-10px}}
+/* kişi kutusu: araca dokununca durum, iş ve hamleler */
+.ky-kisi-kutu{display:flex;flex-direction:column;gap:8px}
+.ky-kisi-kutu .harita-kutu-ust{align-items:center}
+.ky-kisi-kutu .harita-kutu-ust>svg.ky-svg{position:static;flex:none;width:52px;height:36px;touch-action:auto}
+.ky-kisi-kutu .harita-kutu-ad small{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.ky-kk-nokta{width:9px;height:9px;border-radius:50%;flex:none}
+.ky-kk-satir{display:flex;flex-direction:column;gap:1px;align-items:flex-start;text-align:left;min-height:44px;padding:6px 10px;border:0;border-radius:10px;background:rgba(255,255,255,.06);color:inherit;font:inherit;cursor:pointer}
+.ky-kk-satir small{font-size:11.5px;opacity:.72}
+.ky-kk-satir span{font-size:14px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ky-kk-hamle{display:flex;flex-direction:column;gap:6px}
+.ky-kk-h{display:flex;align-items:center;gap:8px;min-height:44px;padding:6px 10px;border:0;border-radius:10px;background:rgba(255,181,71,.14);box-shadow:inset 0 0 0 1px rgba(255,181,71,.45);color:inherit;font:inherit;text-align:left;cursor:pointer}
+.ky-kk-h b{flex:none;font-size:13px;color:#FFD27A}
+.ky-kk-h span{font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ky-kk-not{font-size:12px;opacity:.75}
+.ky-kisi-kutu button:focus-visible{outline:2px solid #FFD98A;outline-offset:2px}
