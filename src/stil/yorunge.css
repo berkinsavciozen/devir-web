@@ -197,3 +197,19 @@
 /* Telefonda görev detayının arkası: harita soluk, dokunulmaz; sürgü ve şerit yok. */
 .adim-arka-harita{position:absolute;transform-origin:0 0;pointer-events:none;opacity:.62}
 .adim-arka-harita .ky-zoom,.adim-arka-harita .ky-serit,.adim-arka-harita .igne-kutu,.adim-arka-harita .igne-t{display:none}
+/* Son tarih izi (14 Kas): yörüngede çentik. Söz belirgin, hesaplanmış tarih silik; pay yayı yakın planda ya da seçiliyken. */
+.ky-svg .son-iz .iz-c{stroke-width:1.5;opacity:.62}
+.ky-svg .son-iz.soz .iz-c{stroke-width:2.4;opacity:1}
+.ky-svg .son-iz.asar .iz-c{stroke:var(--alarm);opacity:1}
+.ky-svg .son-iz.ustte:not(.soz){display:none}
+.ky-svg .son-iz.ustte.soz .iz-c{opacity:0}
+.ky-svg .son-pay{stroke-dasharray:1 3.4;transition:opacity .25s}
+.ky-svg .son-pay{opacity:.32}
+.ky-svg.kd1 .son-pay,.ky-svg.kd2 .son-pay,.ky-svg .son-pay.ilgili{opacity:.7}
+.ky-svg .son-asim{opacity:.9}
+.ky-svg.odak .son-iz:not(.ilgili){opacity:.25}
+.ky-svg.kdU .son-iz:not(.soz){display:none}
+.ky-svg .son-iz .iz-no{font-size:6.6px;font-weight:700;fill:var(--ink2);opacity:.8;paint-order:stroke;stroke:#06192A;stroke-width:2px}
+.ky-svg .son-iz.soz .iz-no{fill:var(--isik);opacity:1}
+.ky-svg .son-iz.asar .iz-no{fill:#FF8A80;opacity:1}
+.ky-svg.vurgulu .son-iz,.ky-svg.vurgulu .son-pay,.ky-svg.vurgulu .son-asim{opacity:.2}
