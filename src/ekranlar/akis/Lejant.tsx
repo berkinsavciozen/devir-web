@@ -126,6 +126,13 @@ export function yorungeLejanti(M: YorungeModel, D: YorungeDurum): YorungeSatiri[
   ek(say(A, (a) => (a.ortak || []).length > 0), planet(22, 22, 9, 'dark', { life: false, halka: [SEN, O] }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak');
   ek(say(A, (a) => (a.altlar || []).length > 0), planet(22, 22, 8, 'dark', { life: false, halka: SEN }) + `<circle cx="34" cy="14" r="2.6" fill="#FFF6E0"/><circle cx="36" cy="24" r="2.6" fill="none" stroke="#FFF6E0"/>`, 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler', 'alt');
   ek(say(A, (a) => a.rutin_var === false && acikIs(a)), planet(22, 22, 9, 'dark', { life: false, halka: acik(SEN), agentIsi: true }), 'Rutini olmayan AI işi', 'AI yapsın açık ama işi alacak rutin yok', 'rutin');
+  // son tarih izi (14 Kas): gezegen tahmini bitişte durur; son tarih yörüngede numaralı çentik
+  const izli = (f: (a: any) => boolean) => A.filter((a) => a.tSon != null && acikIs(a) && D.S[a.no] && M.simdi <= a.tSon && f(a)), nos = (l: any[]) => 'nos:' + l.map((a) => a.no).join(',');
+  const cizgi = `<path d="M4,30 Q22,6 40,24" fill="none" stroke="${SEN}" stroke-width="1.6"/>`;
+  const plan = izli((a) => !a.tarih_sabit), soz = izli((a) => !!a.tarih_sabit), asar = izli((a) => a.tPlan != null && a.tPlan > a.tSon);
+  ek(plan.length, cizgi + `<path d="M24,10 L27,20" stroke="#FFF6E0" stroke-width="1.5" stroke-linecap="round" opacity=".62"/>`, 'Son tarih (planlanan)', 'İnce çentik: Devir’in hedeften geriye hesapladığı en geç gün. İş, tahmini bitişinde durur', nos(plan));
+  ek(soz.length, cizgi + `<path d="M24,9 L27,21" stroke="#FFF6E0" stroke-width="2.4" stroke-linecap="round"/><path d="M28.4,22.6 l2.6,2.6 l-2.6,2.6 l-2.6,-2.6Z" fill="#FFF6E0"/>`, 'Son tarih (söz)', 'Kalın çentik ve elmas: elle konmuş, kaymayan tarih', nos(soz));
+  ek(asar.length, cizgi + `<path d="M24,10 L27,20" stroke="#FF5A5A" stroke-width="1.8" stroke-linecap="round"/><path d="M27,15 Q33,17 38,22" fill="none" stroke="#FF5A5A" stroke-width="2.2" stroke-dasharray="1 4.2" stroke-linecap="round"/>`, 'Son tarihi aşacak', 'Kırmızı noktalı yay: tahmini bitiş son tarihten sonra', nos(asar));
   return L;
 }
 
