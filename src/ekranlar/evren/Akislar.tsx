@@ -1,3 +1,4 @@
+import { DURUM_RENK } from '../../cizim/yorunge/mini';
 import { taslakAdresi } from '../yeni/Taslak';
 import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { useEffect, useMemo, useState } from 'react';
@@ -38,7 +39,8 @@ export function bitenOrani(k: any, d?: any) {
   return i.toplam ? i.tamam / i.toplam : 0;
 }
 // 2 Kas durum dili: tamam yeşil, sürüyor mavi, sırası geldi kehribar, engel mercan; atlanan/ertelenen silik (önceden tamamla aynı altındı)
-const boncukRenk = (d: string) => (d === 'tamam' ? ['#7BF0A0', 2.4] : d === 'atlandi' || d === 'ertelendi' ? ['#5A5090', 1.6] : d === 'engelli' ? ['#FF8A78', 1.8] : d === 'suruyor' ? ['#A8C4FF', 1.9] : d === 'hazir' ? ['#FFB547', 1.9] : ['#4B4380', 1.8]) as [string, number];
+// E2 (14 Kas): boncuklar haritanın beş durum rengiyle (bitti yeşil, sürüyor mavi, sıra kehribar, takıldı kırmızı, bekliyor buz)
+const boncukRenk = (d: string) => (d === 'tamam' ? [DURUM_RENK.lit, 2.4, 1] : d === 'atlandi' || d === 'ertelendi' ? [DURUM_RENK.ghost, 1.6, .3] : d === 'engelli' ? [DURUM_RENK.block, 2.1, 1] : d === 'suruyor' ? [DURUM_RENK.run, 2.1, 1] : d === 'hazir' ? [DURUM_RENK.wait, 2.1, 1] : [DURUM_RENK.dark, 1.8, .45]) as [string, number, number];
 
 /** "5 akış sürüyor; Test Bank’te hedef riskte." */
 export function listeCumlesi(kartlar: any[]): string {
@@ -89,8 +91,8 @@ export function Akislar({ ben }: { ben: Ben }) {
       const adimlar: any[] = d?.adimlar ? [...d.adimlar].sort((p, q) => p.no - q.no) : [];
       const ara = Math.min(7.5, 240 / Math.max(1, adimlar.length));
       adimlar.forEach((st, j) => {
-        const [renk, r] = boncukRenk(st.durum), bekl = st.durum === 'hazir' || st.durum === 'suruyor';
-        s += `<circle cx="${f(108 + j * ara)}" cy="${cy + 2}" r="${r}" fill="${renk}" ${bekl ? 'stroke="#FFD27A" stroke-width=".8"' : ''}/>`;
+        const [renk, r, op] = boncukRenk(st.durum);
+        s += `<circle cx="${f(108 + j * ara)}" cy="${cy + 2}" r="${r}" fill="${renk}"${op < 1 ? ` opacity="${op}"` : ''}/>`;
       });
       s += kapi(b, cy + 16, .17, k.durum === 'kapandi');
       s += `<rect x="${f(tx(NOW) - 1)}" y="${cy + 4}" width="2" height="16" rx="1" fill="#FFC9A3"/>`;

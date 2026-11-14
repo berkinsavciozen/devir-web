@@ -107,7 +107,7 @@ export function arac(k, kd, o = {}) {
   const bos = ['gelecek', 'gizli', 'ai_rutinsiz'].includes(d);
   const op = { bekliyor: .5, ai_sirada: .55, bitti: .62 }[d] ?? 1;
   const kontur = d === 'gelecek' ? ` stroke="${r}" stroke-width="1.6" stroke-dasharray="3 2.2"` : bos ? ` stroke="${r}" stroke-width="1.6"` : '';
-  let govde = `<path class="kabuk" d="${g.yol} ${g.ek}" fill="${bos ? ZEMIN : r}"${kontur} stroke-linejoin="round" opacity="${d === 'gizli' ? .7 : op}"/>`;
+  let govde = `<path class="kabuk" data-tip="${tip}" d="${g.yol} ${g.ek}" fill="${bos ? ZEMIN : r}"${kontur} stroke-linejoin="round" opacity="${d === 'gizli' ? .7 : op}"/>`;
   if (tip === 'agent') govde = `<g opacity="${bos ? 1 : op}">${anten(r)}</g>` + govde;
   const [px, py] = g.pen;
   const L = (d === 'gizli' || d === 'notr') ? ISIK : durumRenk(d);

@@ -1,4 +1,4 @@
-import { kisiSimge } from '../../cizim/yorunge/simge';
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -11,7 +11,6 @@ import { Sahne } from '../../bilesen/Sahne';
 import { useOlaylar, UstDugmeler } from '../../bilesen/Zil';
 import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { GorevKart } from '../../bilesen/GorevKart';
-import { planet, ship } from '../../cizim/ortak.js';
 import { kisiRengi } from '../../cizim/hamle';
 import { RenkKurali } from '../akis/Lejant';
 import { gunAy, kisaAd, saat } from '../../cizim/yol.js';
@@ -157,9 +156,9 @@ function SecimListesi({ sec, S, O, uygula }: { sec: 'kisi' | 'akis' | 'tur'; S: 
   const say = (f: (e: any) => string) => { const m = new Map<string, any>(); for (const e of O) { const k = f(e); m.set(k, { e, n: (m.get(k)?.n || 0) + 1 }); } return [...m].sort((a, b) => b[1].n - a[1].n); };
   const L = sec === 'tur'
     ? [{ key: '', ust: 'Bütün türler', alt: undefined as string | undefined, ikon: '', secili: !S.tur, sec: () => uygula({ tur: null }) },
-      ...say((e) => olayTuru(e)).map(([k, { n }]) => ({ key: k, ust: TUR_AD[k as OlayTuru], alt: `${n} hareket`, ikon: `<g transform="translate(28,29)">${planet(0, 0, 8, TUR_GEZEGEN[k as OlayTuru] || 'dark', { life: false, waitRings: 1, cloudGap: 1.5, karar: k === 'karar' })}</g>`, secili: S.tur === k, sec: () => uygula({ tur: k as OlayTuru }) }))]
+      ...say((e) => olayTuru(e)).map(([k, { n }]) => ({ key: k, ust: TUR_AD[k as OlayTuru], alt: `${n} hareket`, ikon: `<g transform="translate(28,29)">${isSimge({ karar_adimi: k === 'karar' }, 0, 0, 8, { renk: '#B9C6D3', gorunum: TUR_GEZEGEN[k as OlayTuru] || 'dark', numarasiz: true })}</g>`, secili: S.tur === k, sec: () => uygula({ tur: k as OlayTuru }) }))]
     : sec === 'kisi'
-    ? [{ key: '', ust: 'Herkes', alt: undefined as string | undefined, ikon: `<g transform="translate(28,29)">${planet(0, 0, 8, 'wait', { life: false, waitRings: 1 })}</g>`, secili: !S.kisi, sec: () => uygula({ kisi: null }) },
+    ? [{ key: '', ust: 'Herkes', alt: undefined as string | undefined, ikon: `<g transform="translate(28,29)">${isSimge(null, 0, 0, 8, { renk: '#B9C6D3', gorunum: 'wait', numarasiz: true })}</g>`, secili: !S.kisi, sec: () => uygula({ kisi: null }) },
       ...say((e) => e.kim).map(([k, { e, n }]) => ({ key: k, ust: kisa(k), alt: `${n} hareket`, ikon: e.kim_tip === 'sistem' ? '' : gemi(k, e.kim_tip, 28, 29, .8), secili: S.kisi === k, sec: () => uygula({ kisi: k }) }))]
     : [{ key: '', ust: 'Bütün akışlar', alt: undefined as string | undefined, ikon: '', secili: !S.akis, sec: () => uygula({ akis: null }) },
       ...say((e) => e.akis).map(([k, { e, n }]) => ({ key: k, ust: e.akis_kisa_ad || e.akis_baslik, alt: `${n} hareket`, ikon: '', secili: S.akis === k, sec: () => uygula({ akis: k }) }))];

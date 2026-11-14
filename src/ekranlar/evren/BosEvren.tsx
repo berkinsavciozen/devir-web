@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api/istemci';
@@ -24,7 +25,7 @@ function a2Cizim() {
 
 /** Başlıktaki avatar + ad (B1, A2). Avatar ayarları açar (yalnız sahip). */
 export function AvatarAd({ ad, ac }: { ad: string; ac?: () => void }) {
-  const ic = <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -20, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), C.peach, .9, { flame: false }) }} />;
+  const ic = <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: ad || '?', tip: 'insan' }, 0, 0, .95) }} />;
   return (
     <>
       <Kutu x={8} y={36} w={44} h={44} as={ac ? 'button' : 'div'} onClick={ac} aria-label={ac ? `${ad} · hesap ve çalışma alanı` : undefined} className="avatar-dugme">{ic}</Kutu>
@@ -98,7 +99,7 @@ export function BosEvrenGenis({ ad, avatar, panel, konum, geri, aktif }: { ad: s
   const sol = (
     <div style={{ position: 'relative', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, textAlign: 'center', padding: 24 }}>
       <button type="button" className="avatar-dugme genis-geri" style={{ position: 'absolute', left: 34, top: 36 }} onClick={avatar} aria-label={`${ad} · hesap ve çalışma alanı`}>
-        <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -20, 'insan', (ad[0] || '?').toLocaleUpperCase('tr'), C.peach, .9, { flame: false }) }} />
+        <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: ad || '?', tip: 'insan' }, 0, 0, .95) }} />
       </button>
       <span style={{ position: 'absolute', left: 84, top: 47, fontSize: 15, fontWeight: 650, color: 'var(--renk-metin-ink)' }}>{ad}</span>
       <svg aria-hidden width="300" height="300" viewBox="47 232 296 296" dangerouslySetInnerHTML={{ __html: a2Cizim() }} />

@@ -1,4 +1,4 @@
-import { kisiSimge } from '../../cizim/yorunge/simge';
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -10,12 +10,10 @@ import { UstDugmeler } from '../../bilesen/Zil';
 import { usePanelIcinde } from '../../bilesen/Kabuk';
 import { useBoyut } from '../../bilesen/Gok';
 import { Sahne } from '../../bilesen/Sahne';
-import { planet, ship, sparkle } from '../../cizim/ortak.js';
+import { sparkle } from '../../cizim/ortak.js';
 import { kisiRengi } from '../../cizim/hamle';
-import { belge, elmas, uyduSistemi } from '../../cizim/yol.js';
-import { gunAy, kisaAd, otoRozet } from '../../cizim/yol.js';
+import { gunAy, kisaAd } from '../../cizim/yol.js';
 import { arama, git, useSorgu } from '../../yonlendirme';
-import { durumGor } from '../akis/Bilgi';
 import { kucukGalaksi, useDetaylar } from '../evren/Evren';
 import { alanAdi } from '../hesap/Hesap';
 import { soruKarti, gorevHaritasi, haftaCizgileri, ozettenGorevler, suzgecOku } from './model';
@@ -41,17 +39,12 @@ const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boo
  * AI rozeti ya da onay flaması, alt görev uydu halkası, kritik yol elması, çıktı belgesi (lejanttaki işaretler).
  */
 const gorevGezegeni = (a: any, x: number, y: number, r: number, DA?: any[]) => {
-  const acik = !BITTI(a.durum);
-  const k = !acik ? (a.durum === 'atlandi' ? 'ghost' : 'lit') : a.durum === 'engelli' ? 'block' : a.durum === 'suruyor' ? 'run' : a.durum === 'hazir' ? 'wait' : 'dark';
-  let s = planet(x, y, r, k, { life: r > 10, waitRings: 1, cloudGap: 2, karar: a.karar_adimi && acik, oto: acik ? otoRozet(a) : null });
-  const altlar = (DA || []).filter((d) => d.ust_adim === a.no);
-  if (altlar.length) s += uyduSistemi(x, y, r, altlar, r / 12);
-  const sc = Math.min(1.3, Math.max(.8, r / 9));
-  if (a.kritik && acik) s += elmas(x - r * .85 - 2, y - r * .85 - 2, sc);
-  if (((DA || []).find((d) => d.no === a.no)?.cikti_sayisi || 0) > 0) s += belge(x + r * .9 + 2, y + r * .8 + 2, sc);
-  return s;
+  const altlar = (DA || []).filter((d) => d.ust_adim === a.no).map((d) => ({ no: d.no, bitti: BITTI(d.durum) }));
+  const cikti = ((DA || []).find((d) => d.no === a.no)?.cikti_sayisi || 0) > 0 ? 'belge' : undefined;
+  return isSimge({ ...a, kritik: a.kritik }, x, y, r, { ek: { altlar, cikti } });
 };
-const gezegen = (a: any, x: number, y: number, r: number) => planet(x, y, r, durumGor(a), { life: false, waitRings: 1, cloudGap: 1.5, karar: a.karar_adimi && !BITTI(a.durum), oto: BITTI(a.durum) ? null : otoRozet(a) });
+// E2 (14 Kas): Zaman görünümünde haritadaki gezegen (numara, sahip halkası, durum ışığı)
+const gezegen = (a: any, x: number, y: number, r: number) => isSimge(a, x, y, r);
 
 
 /** Görev listesi ve süzgeçleri (adresten); liste ve masaüstündeki büyük harita aynı veriyi okur. */
@@ -110,7 +103,7 @@ export function Gorevler({ ben }: { ben: Ben }) {
   const alt = (AA.length > 0 || taslaklar.length > 0 || davetler.length > 0) && <div className="pano-akim">
     {AA.length > 0 && <section className="tek-pano-bolum" aria-label="Agent’ların">
       <h3 className="gd-bolum-baslik">AGENT’LARIN · {AA.length}</h3>
-      <div role="list">{AA.map((g) => satir('ag:' + g.ad, agentIkonu(g, 28, 30, 1.15), g.ad, agentCumlesi(g, !!AG.data?.genel_rutin, true), () => setAgentAc(g.ad)))}</div>
+      <div role="list">{AA.map((g) => satir('ag:' + g.ad, agentIkonu(g, 28, 30, 1.15, AG.data?.kisi), g.ad, agentCumlesi(g, !!AG.data?.genel_rutin, true), () => setAgentAc(g.ad)))}</div>
     </section>}
     {(taslaklar.length > 0 || davetler.length > 0) && <section className="tek-pano-bolum" aria-label="Bekleyenler">
       <h3 className="gd-bolum-baslik">BEKLEYENLER</h3>
