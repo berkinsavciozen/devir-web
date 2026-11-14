@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 // Evren panosu (el notu 3–4; 12 Kas Tek Pano P2): haritanın altında, kaydırınca oturan bölüm.
 import { forwardRef, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -41,7 +42,7 @@ export function usePanoListeleri(kartlar: any[], detay: Record<string, any>, ben
 }
 
 // katılımcının gemisi kendi renginde (12 Kas, Tek Pano: başkalarının işleri kendi renklerinde); agent sahibinin açık tonunda
-const kisiIkonu = (k: Katilimci) => k.tip === 'dis' ? ship(0, 1, 0, 'dis', '', '#F2B8D8', .7) : ship(0, 0, -12, k.tip === 'agent' ? 'agent' : 'insan', (kisaAd(k.ad)[0] || '?').toLocaleUpperCase('tr'), kisiRengi(k.ad, { tip: k.tip, sahibi: k.sahibi }), .7, { flame: false });
+const kisiIkonu = (k: Katilimci) => kisiSimge({ ad: k.ad, tip: k.tip, sahibi: k.sahibi }, 0, 0, .7);
 
 /**
  * Evren panosu (12 Kas, Tek Pano P2): haritanın altında Tek Pano'nun kendisi; üstünde özet cümle ve karar şeridi,

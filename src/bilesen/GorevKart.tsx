@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { akisModeli, gunAy, yolCiz } from '../cizim/yol.js';
+import { gunAy } from '../cizim/yol.js';
+import { isSimge } from '../cizim/yorunge/simge';
 import { hamle, hamleSimgesi, kisiRengi, SIMGE, type Hamle } from '../cizim/hamle';
 import { gorevCumlesi } from '../metin/gorevCumlesi';
 import { kisaAd } from '../cizim/yol.js';
@@ -13,21 +14,6 @@ import { kisaAd } from '../cizim/yol.js';
 const enc = encodeURIComponent;
 const BITTI = (d: string) => ['tamam', 'atlandi', 'ertelendi'].includes(d);
 const tarihMs = (t: string) => Date.parse(t.length === 10 ? t + 'T12:00:00+03:00' : t);
-
-// C26: mini harita akış başına bir kez çizilir; satır yalnız kendi adımına viewBox ile yakınlaşır
-const MINI = new Map<string, { anahtar: string; svg: string; P: Record<string, [number, number]> }>();
-const MR = 100;
-export function miniHarita(d: any, ben: string, now: number) {
-  const kod = d?.akis?.kod || d?.akis?.kisa_kod; if (!kod || !(d.adimlar || []).length) return null;
-  const anahtar = (d.adimlar as any[]).map((a) => `${a.no}${a.durum}${a.oto_durum || ''}`).join(',') + '|' + Math.floor(now / 36e5);
-  const v = MINI.get(kod);
-  if (v && v.anahtar === anahtar) return v;
-  try {
-    const r = yolCiz(akisModeli(d, { sahip: ben }), { lod: 'kucuk', cx: 0, cy: 0, R: MR, now, pr: 7 });
-    const y = { anahtar, svg: r.svg, P: r.P as Record<string, [number, number]> };
-    MINI.set(kod, y); return y;
-  } catch { return null; }
-}
 
 export interface GorevKartOz {
   a: any;
@@ -56,11 +42,8 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
   const cumle = kartCumlesi(a, ben);
   const G = { ton: kartTonu(a, ben) };
   const h = hamle(a, { renkler });
-  const M = d ? miniHarita(d, ben, now) : null;
-  const odak = a.ust_adim != null ? a.ust_adim : a.no;
-  const p = M?.P[String(odak)];
-  const Z = 40;
-  const vb = p ? `${p[0] - Z} ${p[1] - Z} ${2 * Z} ${2 * Z}` : `${-MR} ${-MR} ${2 * MR} ${2 * MR}`;
+  // 13 Kas (U7c): küçük resim haritadaki gezegenin aynısı; alt görevde üst görevin gezegeni
+  const ustA = a.ust_adim != null ? (d?.adimlar || []).find((x: any) => x.no === a.ust_adim) : null;
   const alt = [akisAdi, BITTI(a.durum) && a.durum_at ? gunAy(Date.parse(a.durum_at)) : null].filter(Boolean).join(' · ');
   // 12 Kas (Tek Pano): kart, işin sahibinin renginde şerit taşır; agent işi sahibinin açık tonunda (harita ile aynı renk)
   const sahipRengi = a.sahip ? kisiRengi(a.sahip, { tip: a.sahip_tip, sahibi: a.agent_sahibi, renkler }) : null;
@@ -68,7 +51,7 @@ export function GorevKart({ a, d, ben, now, akisAdi, ac, hamleYap, renkler, haml
     <div className={`gorev-kart ton-${G.ton} ${className}`} style={sahipRengi ? { ['--sahip' as string]: sahipRengi, ...style } : style} data-sahip={a.sahip || undefined}>
       <button type="button" className="gorev-kart-ac" onClick={ac} aria-label={etiket || `${cumle}${akisAdi ? `. ${akisAdi}` : ''}`}>
         <span className="gorev-kart-harita" aria-hidden>
-          <svg width="40" height="40" viewBox={vb} dangerouslySetInnerHTML={{ __html: (M?.svg || '') + (p ? `<circle cx="${p[0]}" cy="${p[1]}" r="11" fill="none" stroke="${sahipRengi || '#FFF3E8'}" stroke-width="1.8"/>` : '') }} />
+          <svg width="40" height="40" viewBox="-20 -20 40 40" dangerouslySetInnerHTML={{ __html: isSimge(ustA || a, 0, 0, 11.5, { renkler }) }} />
           {a.ust_adim != null && <i className="gorev-kart-alt">alt</i>}
         </span>
         <span className="gorev-kart-metin">

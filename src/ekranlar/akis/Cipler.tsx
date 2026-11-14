@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { planet, ship, kapi } from '../../cizim/ortak.js';
 import { kisiRengi } from '../../cizim/hamle';
 import { kisaAd } from '../../cizim/yol.js';
@@ -9,7 +10,7 @@ const SIMGE: Record<CipTur, (ben: string) => string> = {
   karar: () => planet(11, 12, 6, 'wait', { life: false, waitRings: 1, karar: true }),
   risk: () => kapi(11, 19, .2, false),
   sira: () => planet(11, 11, 6, 'wait', { life: false, waitRings: 1 }),
-  sende: (ben) => ship(11, 11, -12, 'insan', kisaAd(ben)[0] || '', kisiRengi(ben), .4, { flame: false }),
+  sende: (ben) => kisiSimge({ ad: ben || '?', tip: 'insan' }, 11, 11, .44),
   bitti: () => planet(11, 11, 6, 'lit', { life: false }),
 };
 

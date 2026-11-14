@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { hamleSimgesi, type Hamle } from '../../cizim/hamle';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -156,7 +157,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
       {ana && <Dugme className={`statik${hamle ? ' hamle-renkli' : ''}`} mesgul={mesgul(ana)} onClick={() => calis(ana)}
         style={hamle ? { ['--hamle' as string]: hamle.renk } : undefined}
         {...(hamle && ana !== 'baglanti' ? { ikonX: 20, kayma: 8, ikon: <svg aria-hidden width="26" height="26" viewBox="-5 -5 10 10" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: `<circle r="4.6" fill="#08222E" opacity=".14"/>${hamleSimgesi(hamle.tur, 1.15, '#08222E')}` }} /> } : {})}
-        {...(ana === 'baglanti' ? { ikonX: 56, kayma: 14, ikon: <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 1, 0, 'dis', '', '#2A1D4F', .75) }} /> } : {})}>{ad(ana)}</Dugme>}
+        {...(ana === 'baglanti' ? { ikonX: 56, kayma: 14, ikon: <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: a.sahip || '?', tip: 'dis', renk: '#2A1D4F' }, 0, 0, .8) }} /> } : {})}>{ad(ana)}</Dugme>}
       {(ikincil || menu.length > 0) && <div className="gd-eylem-sira">
         {ikincil ? <Dugme className="statik" tur="ikincil" ton="lila" yukseklik={48} fs={15} mesgul={mesgul(ikincil)} onClick={() => calis(ikincil)}>{ad(ikincil)}</Dugme> : <span className="gd-eylem-bosluk" />}
         {menu.length > 0 && <div className="gd-daha" ref={menuRef}>

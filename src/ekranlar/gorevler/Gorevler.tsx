@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api, ApiHatasi } from '../../api/istemci';
@@ -34,9 +35,7 @@ const zarfIkon = `<g transform="translate(28,29)"><rect x="-11" y="-8" width="22
 const soruIkon = `<g transform="translate(28,29)"><circle r="12" fill="#FFC9A3" fill-opacity=".14" stroke="#FFC9A3" stroke-width="1.3"/><text y="5" text-anchor="middle" font-family="Bricolage, serif" font-size="15" font-weight="700" fill="#FFF1E2">?</text></g>`;
 const gemi = (ad: string, tip: string, x: number, y: number, k: number, ben: boolean, destek = false) => destek
   ? destekGemisi(x, y, 1, -.35, '#FFC9A3', k * 1.6)
-  : tip === 'dis'
-  ? ship(x, y + 1, 0, 'dis', '', kisiRengi(ad, { tip: 'dis' }), k)
-  : ship(x, y, -12, tip === 'agent' ? 'agent' : 'insan', (kisaAd(ad)[0] || '?').toLocaleUpperCase('tr'), tip === 'agent' ? '#B9A6F2' : kisiRengi(ad), k, { flame: false });
+  : kisiSimge({ ad, tip }, x, y, k);
 /**
  * W6 (Berkin 4 Kas 11:39): haritadaki görev akış haritasındaki gibi çizilir: durum gövdesi (sürüyor mavi), karar bayrağı,
  * AI rozeti ya da onay flaması, alt görev uydu halkası, kritik yol elması, çıktı belgesi (lejanttaki işaretler).
