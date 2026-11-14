@@ -238,7 +238,7 @@ export function yorungeHaritasi() {
     const { s, cx, cy } = H.kam0, kk = H.k;
     H.kam.setAttribute('transform', `translate(${f(cx)},${f(cy)}) scale(${s.toFixed(4)})`);
     // içerik iğne ekseninde bir odak noktasından büyür (aynı andaki iş ile çerçevedeki gün aynı açıda kalır); taşan kısım çerçevede kesilir
-    if (kk > 1.001) { H.zg.setAttribute('transform', `translate(0,${f(H.fy * (1 - kk) + H.ty)}) scale(${kk.toFixed(4)})`); H.zkap.setAttribute('clip-path', `url(#${H0}cer)`); }
+    if (kk > 1.001 || Math.abs(H.ty) > .01) { H.zg.setAttribute('transform', `translate(0,${f(H.fy * (1 - kk) + H.ty)}) scale(${kk.toFixed(4)})`); H.zkap.setAttribute('clip-path', `url(#${H0}cer)`); }
     else { H.zg.removeAttribute('transform'); H.zkap.removeAttribute('clip-path'); }
     // işaret boyu yakınlaşmayı izler: yakınlaşınca içerikle birlikte büyür (k^0,7), uzaklaşınca küçülür
     H.ku = H.zk < 1 ? Math.pow(H.zk, .4) : 1;
@@ -261,7 +261,13 @@ export function yorungeHaritasi() {
    * Yakınlaşma: çerçeve (zaman yörüngesi) yerinde kalır. Yakınlaşınca içerik iğne eksenindeki odaktan büyür (yörünge aralığı ve
    * işaretler de büyür) ve iğnenin çevresindeki zaman açılır; akışın uçları çerçevenin uçlarında kalır. Uzaklaşınca zaman düzleşir.
    */
-  const tySinir = () => { const k = H.k, ust = H.sinir.cy - H.sinir.ry, alt = H.cr; return [-(k - 1) * (alt - H.fy), (k - 1) * (H.fy - ust)]; };
+  // dikey kaydırma sınırı: içeriğin üstü çerçevenin tepesinden aşağı inmez; altı (çekirdek) görünür alanın altına kadar çıkar.
+  // Alan kısaysa (küçük telefon) açılış ölçeğinde de kaydırılır: en içteki yörüngeye her zaman ulaşılır.
+  const tySinir = () => {
+    const k = H.k, ust = H.sinir.cy - H.sinir.ry, alt = H.cr + 10, gor = (H.kam0.H - H.kam0.cy) / H.kam0.s - 8;
+    return [Math.min(0, Math.min(alt, gor) - H.fy * (1 - k) - k * alt), (k - 1) * (H.fy - ust)];
+  };
+  const tyKis = () => { const [a, b] = tySinir(); H.ty = Math.max(a, Math.min(b, H.ty)); };
   function zoomAt(k2) {
     const z0 = H.zk; H.zk = Math.max(.4, Math.min(6, k2));
     if (z0 <= 1.001 && H.zk > 1.001) { // odak: seçili kişinin, yoksa bakanın yörüngesi; o da yoksa orta
@@ -269,13 +275,21 @@ export function yorungeHaritasi() {
       H.fy = h ? h.ust : 0; H.ty = 0;
     }
     H.k = H.zk > 1 ? Math.sqrt(H.zk) : 1; H.tx = 0;
-    if (H.k <= 1.001) H.ty = 0; else { const [a, b] = tySinir(); H.ty = Math.max(a, Math.min(b, H.ty)); }
+    tyKis();
     kamera();
     if (H.D) guncelle(H.an, H.D);
     if (H.o.zoomDegis) H.o.zoomDegis(H.zk);
   }
   /** kaydırma: çerçeve sabit; yakınlaşmışken dikey çekiş sığmayan yörüngeleri getirir */
-  function kaydir(dx, dy) { if (H.k <= 1.001) return; const [a, b] = tySinir(); H.ty = Math.max(a, Math.min(b, H.ty + dy / H.kam0.s)); kamera(); }
+  function kaydir(dx, dy) { const t0 = H.ty; H.ty += dy / H.kam0.s; tyKis(); if (H.ty !== t0) kamera(); }
+  /** yörüngeyi (aracıyla) görünür alana getirir: şeritten ya da klavyeyle seçilen kişi alanın dışındaysa */
+  function goster(h) {
+    if (!h) return;
+    const k = H.k, y = H.fy * (1 - k) + H.ty + k * h.ust, ust = H.sinir.cy - H.sinir.ry + 40, alt = (H.kam0.H - H.kam0.cy) / H.kam0.s - 30;
+    const t0 = H.ty;
+    if (y > alt) H.ty -= y - alt; else if (y < ust) H.ty += ust - y;
+    tyKis(); if (H.ty !== t0) kamera();
+  }
   /** Dünya noktasını ekrana taşı (yakınlaşmış görüntüler için). */
   function odakla(wx, wy, k2) { const { s, cx, cy, W, H: Hh } = H.kam0; H.k = k2; H.tx = W / 2 - cx - wx * s * k2; H.ty = Hh * .45 - cy - wy * s * k2; kamera(); }
 
@@ -570,7 +584,9 @@ export function yorungeHaritasi() {
     H.bekSayi = parca.filter((x) => x.includes(' bek')).length;
   }
   function sec(no, kisi) {
+    const kisi0 = H.secKisi;
     H.sec = no; H.secKisi = kisi || null;
+    if (kisi && kisi !== kisi0) goster(H.halkaOf[kisi]);
     H.svg.classList.toggle('odak', no != null || !!kisi);
     const ilgili = new Set();
     if (no != null) { const a = H.M.byNo[no]; ilgili.add(no); (a.bagimli || []).forEach((n) => ilgili.add(n)); (a.bekleyenler || []).forEach((n) => ilgili.add(n)); a.altlar.forEach((n) => ilgili.add(n)); if (a.ust_adim) ilgili.add(a.ust_adim); }

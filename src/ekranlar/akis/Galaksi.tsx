@@ -294,7 +294,8 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
     let ek = YE.svg + kisiAdlari(d, Y, bolge, kad >= 3, kisiKarti && kisiKarti === odak ? kisiKarti : null, YE.kutular);
     if (kuleAcik && Y.G.kule) ek += kuleKarti(d, Y.G.kule, bolge);
     // telefonda haritanın ince çerçevesi (plan 28 Eki, B8): harita alanı sürgüden ve sayfadan ayrılır
-    const cerceve = GD ? '' : `<rect class="harita-cerceve" x="8" y="${bolge.y - 6}" width="374" height="${bolge.h + 14}" rx="22" fill="none" stroke="#8E80D6" stroke-opacity=".26"/>`;
+    // yeni haritada tek çerçeve zaman yörüngesidir (14 Kas): telefondaki kutu çizgisi yalnız eski sarmalda
+    const cerceve = GD || YOR ? '' : `<rect class="harita-cerceve" x="8" y="${bolge.y - 6}" width="374" height="${bolge.h + 14}" rx="22" fill="none" stroke="#8E80D6" stroke-opacity=".26"/>`;
     let svg = YOR ? cerceve : cerceve + (yak
       ? `${haritaCercevesi('harita-kirp', bolge)}${Y.svg + SK.svg + ust + ek}</g>` + Z.svg
       : Y.svg + SK.svg + Z.svg + ust + ek);
@@ -432,7 +433,7 @@ export function Galaksi({ kod, sahip, secim }: { kod: string; sahip: string; sec
   const kontroller = (
     <>
       {/* sarmal: gezegenler (dokun → adım), küme (dokun → yakınlaşır), kule, bayrak, bulut, kişiler; iki parmak yakınlaşır, bir parmak kaydırır */}
-      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x + (GD ? 0 : 8)} y={bolge.y - (GD ? 0 : 6)} w={bolge.w - (GD ? 0 : 16)} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
+      {YOR && <YorungeHarita ref={yor} d={d} bakan={sahip} simdi={NOW} an={X} cihaz={GD ? 'mas' : 'tel'} x={bolge.x} y={bolge.y - (GD ? 0 : 6)} w={bolge.w} h={bolge.h + (GD ? 0 : 14)} ust={GD ? 64 : 108}
         secili={GD ? selNo : kutuNo} kisi={odak} vurgu={yorVurgu ? yorVurgu.v : durumOdak ? YOR_VURGU[durumOdak] : odak ? 'kisi:' + odak : null}
         anDegis={(t) => { setOynuyor(false); setX(t); }}
         serit={{ x: GD ? SU.x - 20 : 12, y: SU.y - (GD ? 30 : 46), w: GD ? SU.w + 40 : 366, sec: (k) => { setKisiKarti(null); setOdak(k); }, oynuyor, oynat: () => { if (!oynuyor && X >= Z.t1 - 36e5) setX(Z.t0); setOynuyor(!oynuyor); } }} etiket={`${ad} haritası`}

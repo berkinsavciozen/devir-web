@@ -226,3 +226,31 @@ test('görev detayı: telefonda arkada yeni harita (seçili iş işaretli, dokun
   await expect(page.locator('.sahne-cizim circle').first()).toBeAttached();
   await expect(page.locator('.adim-arka-harita')).toHaveCount(0);
 });
+
+test('telefonda tek çerçeve (zaman yörüngesi); kısa ekranda harita dikey kaydırılır, en içteki yörüngeye ulaşılır; şeritten seçilen kişi görünür alana gelir', async ({ page }) => {
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0', 360, 640);
+  await expect(page.locator('.harita-cerceve')).toHaveCount(0);
+  await expect(page.locator('.ky-svg path.cerceve')).toHaveCount(1);
+  const kap = (await page.locator('.ky-kap').boundingBox())!;
+  expect(kap.width).toBe(360);
+  const altlar = () => page.evaluate(() => [...document.querySelectorAll('.ky-svg .arac-g .ol .govde-a')].map((e) => e.getBoundingClientRect().bottom));
+  const cerceveY = () => page.evaluate(() => document.querySelector('.ky-svg path.cerceve')!.getBoundingClientRect().top);
+  const a0 = await altlar(), c0 = await cerceveY();
+  // en içteki yörüngenin aracı açılışta harita kutusunun altında kalıyor
+  expect(Math.max(...a0)).toBeGreaterThan(kap.y + kap.height);
+  await page.mouse.move(120, 420); await page.mouse.down(); await page.mouse.move(120, 180, { steps: 8 }); await page.mouse.up();
+  const a1 = await altlar();
+  expect(Math.max(...a1)).toBeLessThan(kap.y + kap.height);
+  expect(Math.abs((await cerceveY()) - c0)).toBeLessThan(.5); // çerçeve yerinde
+  // geri çekince açılış yerine döner, daha aşağı inmez
+  await page.mouse.move(120, 300); await page.mouse.down(); await page.mouse.move(120, 620, { steps: 8 }); await page.mouse.up();
+  const a2 = await altlar();
+  expect(Math.abs(Math.max(...a2) - Math.max(...a0))).toBeLessThan(1);
+  // 844 px ekranda bütün araçlar sığar, harita kaymaz
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0', 390, 844);
+  const b0 = await altlar();
+  await page.mouse.move(120, 520); await page.mouse.down(); await page.mouse.move(120, 300, { steps: 8 }); await page.mouse.up();
+  const kap2 = (await page.locator('.ky-kap').boundingBox())!;
+  expect(Math.max(...(await altlar()))).toBeLessThan(kap2.y + kap2.height);
+  expect(b0.length).toBeGreaterThan(3);
+});
