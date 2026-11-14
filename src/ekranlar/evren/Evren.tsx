@@ -387,7 +387,7 @@ export function Evren({ ben, panel, konum, geri, aktif = 'evren', serbest }: { b
     });
     let s = U.svg;
     // haplar: bugün, galaksi adları, taslak
-    hap.push([U.hap.x, U.hap.y, gunAy(NOW), { fs: 11.5, fw: 700, bg: '#FFC9A3', bgo: 1, col: '#2A1D4F', w: 54 }]);
+    hap.push([U.hap.x, U.hap.y, gunAy(NOW), { fs: 11.5, fw: 700, bg: '#FFC9A3', bgo: 1, col: '#08222E', w: 54 }]);
     for (const y of U.yer) { const k = tum.find((q) => q.kod === y.kod); if (!y.etiket.w) continue; hap.push([y.etiket.x, y.etiket.y, k ? akisAdi(k) : y.kod, { fs: 11.5, fw: 650, col: C.ink, ...(k?.durum === 'kapandi' ? {} : { stroke: CERCEVE_HAP }) }]); }
     if (U.taslak) hap.push([U.taslak.x, U.taslak.y, `${ozet.data.taslaklar.length} taslak`, { fs: 11, fw: 500, col: C.ink2 }]);
     return { svg: s, U, olcek: null, konum, hap };

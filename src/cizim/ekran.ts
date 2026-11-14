@@ -157,7 +157,8 @@ export function usturlap(o: {
   for (let d = 0; d < days; d++) {
     const ms = CA + d * GUN, a = ang(ms), first = tl(ms).getUTCDate() === 1;
     const [x0, y0] = pol(a, R - (first ? 6 : 3.5)), [x1, y1] = pol(a, R + (first ? 6 : 3.5));
-    s += `<line x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}" stroke="${ms < NOW ? '#3A1F2E' : '#B9A6F2'}" stroke-width="${first ? 1.6 : .7}" opacity="${first ? .95 : .6}"/>`;
+    // E3 (14 Kas): zaman yörüngesinin çentiği: ince krem çizgi; geçen günler sönük, ay başı uzun
+    s += `<line x1="${f(x0)}" y1="${f(y0)}" x2="${f(x1)}" y2="${f(y1)}" stroke="#FFF6E0" stroke-width="${first ? 1.4 : .8}" opacity="${ms < NOW ? (first ? .45 : .22) : first ? .9 : .6}"/>`;
   }
   // ay adları: ayın 5'i; ekran dışına taşarsa ayın ilerisine kayar
   for (let m = tl(CA); m.getTime() < CB + 3 * 36e5; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
