@@ -254,3 +254,25 @@ test('telefonda tek çerçeve (zaman yörüngesi); kısa ekranda harita dikey ka
   expect(Math.max(...(await altlar()))).toBeLessThan(kap2.y + kap2.height);
   expect(b0.length).toBeGreaterThan(3);
 });
+
+test('son tarih izi: gezegen tahmini bitişte kalır; son tarih yörüngede numaralı çentik, söz belirgin, aşım kırmızı; lejantta satırları', async ({ page }) => {
+  const yer = async (no: number) => page.evaluate((n) => { const r = document.querySelector(`.ky-svg .gz[data-no="${n}"] .govde`)!.getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, no);
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0', 1440, 900);
+  const once = await yer(12);
+  const gorunen = (sec: string) => page.evaluate((s) => [...document.querySelectorAll(s)].filter((e) => getComputedStyle(e).display !== 'none').length, sec);
+  expect(await gorunen('.ky-svg .son-iz')).toBeGreaterThan(3);
+  expect(await gorunen('.ky-svg .son-iz.soz')).toBe(0);
+  expect(await gorunen('.ky-svg .son-asim')).toBe(0);
+  // sahte hal: 14. iş söz (sabit tarih), 10. işin son tarihi tahmininden önce
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-iz&tanitim=0', 1440, 900);
+  const sonra = await yer(12);
+  expect(Math.hypot(sonra[0] - once[0], sonra[1] - once[1])).toBeLessThan(1); // yer kuralı değişmedi
+  await expect(page.locator('.ky-svg .son-iz.soz')).toHaveCount(1);
+  await expect(page.locator('.ky-svg .son-iz.soz')).toHaveAttribute('data-no', '14');
+  expect(await gorunen('.ky-svg .son-asim')).toBe(1);
+  await expect(page.locator('.ky-svg .son-iz.asar')).toHaveAttribute('data-no', '10');
+  await expect(page.locator('.ky-svg .son-iz.asar .iz-no')).toHaveText('10');
+  await page.getByRole('button', { name: /Lejant|Harita dili|^\?$/ }).first().click();
+  await expect(page.getByText('Son tarih (söz)')).toBeVisible();
+  await expect(page.getByText('Son tarihi aşacak')).toBeVisible();
+});

@@ -134,7 +134,16 @@ export function yorungeHaritasi() {
       const kuyruk = a.tSon != null ? el('path', { fill: 'none', stroke: ALARM, 'stroke-width': 3, 'stroke-linecap': 'round', opacity: .85, class: 'kuyruk' }) : null;
       if (kuyruk) kat.kuyruk.appendChild(kuyruk);
       const cent = el('line', { class: 'cent', stroke: '#FFF6E0', 'stroke-width': 1, opacity: 0 }); kat.kuyruk.appendChild(cent);
-      P[a.no] = { a, g, ol, h: halkaOf[a.sahip], ates: ol.querySelector('.ates'), uydular: [...ol.querySelectorAll('.uydu')], kuyruk, cent, x: 0, y: 0, t: 0, sinif: '' };
+      // son tarih izi (14 Kas): gezegen tahmini bitişte durur, son tarih yörüngede çentik. Söz (tarih_sabit) belirgin ve elmaslı,
+      // Devir'in hedeften geriye hesapladığı tarih silik. Tahmin son tarihi aşıyorsa aradaki yay uyarı renginde (asim).
+      let iz = null;
+      if (a.tSon != null) {
+        iz = { g: el('g', { class: 'son-iz' + (a.tarih_sabit ? ' soz' : ''), 'data-no': a.no }), asim: el('path', { class: 'son-asim', fill: 'none', stroke: ALARM, 'stroke-width': 2.2, 'stroke-linecap': 'round', 'stroke-dasharray': '1 4.2' }), pay: el('path', { class: 'son-pay', fill: 'none', stroke: k.renk, 'stroke-width': 1.1, 'stroke-linecap': 'round' }) };
+        iz.g.innerHTML = `<line class="iz-c" y1="-6" y2="6" stroke="#FFF6E0" stroke-linecap="round"/>` + (a.tarih_sabit ? `<path class="iz-e" d="M0,9.5 L2.6,6.9 L0,4.3 L-2.6,6.9Z" fill="#FFF6E0"/>` : '') + `<text class="iz-no" text-anchor="middle">${a.no}</text>`;
+        iz.no = iz.g.querySelector('.iz-no');
+        kat.kuyruk.appendChild(iz.pay); kat.kuyruk.appendChild(iz.asim); kat.kuyruk.appendChild(iz.g);
+      }
+      P[a.no] = { a, g, ol, iz, h: halkaOf[a.sahip], ates: ol.querySelector('.ates'), uydular: [...ol.querySelectorAll('.uydu')], kuyruk, cent, x: 0, y: 0, t: 0, sinif: '' };
       // ortak pay: ortağın yörüngesinde küçük eşkenar dörtgen + radyal köprü
       a.ortak.forEach((ad2) => {
         const h2 = halkaOf[ad2]; if (!h2) return;
@@ -401,6 +410,24 @@ export function yorungeHaritasi() {
       if (p.kuyruk) {
         const gec = an > a.tSon && !['lit', 'ghost', 'ertele', 'tahmin'].includes(s.g);
         if (gec) { const t0 = Math.max(aci(a.tSon - an), -AP); p.kuyruk.setAttribute('d', yay(h, t0, p.t - 8 * p.boy / hiz(h, p.t))); p.kuyruk.style.display = ''; } else p.kuyruk.style.display = 'none';
+      }
+      if (p.iz) {
+        const acik = !['lit', 'ghost', 'ertele', 'tahmin'].includes(s.g), tS = aci(a.tSon - an);
+        const gor = acik && !p.transit && tS > -AP && tS <= AF * 1.02 && an <= a.tSon;
+        p.iz.g.style.display = gor ? '' : 'none'; p.iz.asim.style.display = 'none'; p.iz.pay.style.display = 'none';
+        if (gor) {
+          const [ix, iy] = nokta(h, tS), e = 1e-3, [jx, jy] = nokta(h, tS + e);
+          const dz = Math.atan2(jy - iy, jx - ix) * 180 / Math.PI;
+          p.iz.g.setAttribute('transform', `translate(${f(ix)},${f(iy)}) rotate(${f(dz)})`);
+          p.iz.no.setAttribute('transform', `translate(0,-11.5) rotate(${f(-dz)}) translate(0,2.4)`); // numara yörüngenin dışında, düz okunur
+          const pay = 9 * p.boy / hiz(h, p.t); // gezegenin yarıçapı kadar açı
+          p.iz.g.classList.toggle('ustte', Math.abs(tS - p.t) < pay);
+          // aşım zamandan okunur (gezegen iğneden ötürü itilmiş olabilir): tahmini bitiş son tarihi aşıyorsa
+          const asar = a.tPlan != null && a.tPlan > a.tSon;
+          if (asar && p.t - tS > pay) { p.iz.asim.setAttribute('d', yay(h, tS, p.t - pay)); p.iz.asim.style.display = ''; }
+          else if (!asar && tS - p.t > pay) { p.iz.pay.setAttribute('d', yay(h, p.t + pay, tS)); p.iz.pay.style.display = ''; }
+        }
+        p.iz.g.classList.toggle('asar', gor && a.tPlan != null && a.tPlan > a.tSon); p.iz.g.classList.toggle('ilgili', !!p.ilgili); p.iz.pay.classList.toggle('ilgili', !!p.ilgili);
       }
       // zaman çentiği: gezegen iğneden ötürü itildiyse gerçek anı ince bir çizgiyle işaretlenir
       const itik = Math.abs(p.t - p.t0) * hiz(h, p.t0) > 9 && !p.transit && p.t0 > -h.dockL && p.t0 < AF;

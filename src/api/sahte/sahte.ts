@@ -274,7 +274,9 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'uydu') await halUydu(yaz);
   if (o.hal === 'gecikme') await halGecikme(yaz);
   if (o.hal === 'alt') await halAlt(yaz);
-  if (o.hal?.startsWith('rk8r')) await halRk8rFaz(yaz, T, o.hal);
+  if (o.hal?.startsWith('rk8r')) await halRk8rFaz(yaz, T, o.hal === 'rk8r-iz' ? 'rk8r-g12' : o.hal);
+  // son tarih izi (14 Kas): bir söz (sabit tarih) ve tahmini son tarihini aşan bir iş
+  if (o.hal === 'rk8r-iz') { const ak: any = T.akis.find((x) => x.kisa_kod === 'RK8R'); const ad = (no: number): any => T.adim.find((x) => x.akis_id === ak.id && x.no === no); Object.assign(ad(14), { tarih_sabit: true }); Object.assign(ad(10), { son_tarih: '2026-11-22' }); }
   if (o.hal && HAL_SAAT[o.hal]) saat = Date.parse(HAL_SAAT[o.hal]);
 
   return {
@@ -319,7 +321,7 @@ export const sahteSohbet: SohbetFn = async ({ system, gecmis, calistir }) => {
 
 /** Sahte kipte Emre'nin bağlantısı: /l/k7Q2emreTestBank00wP9 */
 export const EMRE_BAGLANTI = 'k7Q2emreTestBank00wP9';
-const HAL_SAAT: Record<string, string> = { nm8r: '2026-11-03T12:51:00+03:00', 'nm8r-hedef': '2026-11-03T12:51:00+03:00', karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00', rk8r: '2026-11-09T16:20:00+03:00', 'rk8r-g4': '2026-11-13T11:00:00+03:00', 'rk8r-g12': '2026-11-21T11:00:00+03:00', 'rk8r-gec': '2026-11-25T11:00:00+03:00', 'rk8r-son': '2026-12-02T11:00:00+03:00' };
+const HAL_SAAT: Record<string, string> = { nm8r: '2026-11-03T12:51:00+03:00', 'nm8r-hedef': '2026-11-03T12:51:00+03:00', karar: '2026-11-07T12:00:00+03:00', uydu: '2026-11-04T12:00:00+03:00', gecikme: '2026-11-04T12:00:00+03:00', alt: '2026-10-14T10:00:00+03:00', rk8r: '2026-11-09T16:20:00+03:00', 'rk8r-g4': '2026-11-13T11:00:00+03:00', 'rk8r-g12': '2026-11-21T11:00:00+03:00', 'rk8r-iz': '2026-11-21T11:00:00+03:00', 'rk8r-gec': '2026-11-25T11:00:00+03:00', 'rk8r-son': '2026-12-02T11:00:00+03:00' };
 type Yaz = (an: string, yol: string, govde: unknown) => Promise<any>;
 const AJAN = { kim_tip: 'agent', arac: 'Claude' };
 
