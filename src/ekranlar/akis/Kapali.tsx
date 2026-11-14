@@ -8,7 +8,7 @@ import { DosyaGlif, CopIkon } from '../../bilesen/DosyaSatiri';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { akisModeli, gunAy, saat, yolCiz, zamanCubugu, GUN } from '../../cizim/yol.js';
-import { f, pill } from '../../cizim/ortak.js';
+import { miniYorunge } from '../../cizim/yorunge/mini';
 import { akisAdi, genislik, ikiSatir, ozelEk, sayiIyelik } from '../../metin/turkce';
 import { simdi } from '../../api/ortam';
 import { git } from '../../yonlendirme';
@@ -37,14 +37,14 @@ export function KapaliGalaksi({ d, kod, sahipMi, sahip }: { d: any; kod: string;
   const [ders, setDers] = useState(false);
   const [silindi, setSilindi] = useState<number | null>(null);
   const ad = akisAdi(d.akis);
+  // zaman sürgüsünün ölçeği eski modelden (kuruluş, hedef, kapanış); çizim haritanın dili (E4, 14 Kas)
+  const G = useMemo(() => yolCiz(M, { cx: 195, cy: 330, R: 150, ps: .8, allLit: true, ships: false, kuleEtiket: false, x: kap, now: Math.max(kap, simdi()) }).G, [M, kap]);
   const cizim = useMemo(() => {
-    const Y = yolCiz(M, { cx: 195, cy: 330, R: 150, ps: .8, allLit: X >= kap, ships: false, kuleEtiket: false, x: X, now: Math.max(kap, simdi()) });
-    let s = `<circle cx="195" cy="330" r="280" fill="url(#bloom)" opacity=".9"/>` + Y.svg;
-    const k = Y.G.kule;
-    if (k && X >= kap) s += `<circle cx="${f(k.x)}" cy="${f(k.y)}" r="16" fill="url(#glowGold)"/>` + pill(k.x - 10, k.y + 34, `Kapandı ${gunAy(kap)}`, { fs: 11, fw: 750, bg: '#FFC9A3', bgo: 1, col: '#2A1D4F' });
-    const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, Y.G, X, { now: kap, oynuyor, etiket: X >= kap ? `Kapandı · ${gunAy(kap)} ${saat(kap)}` : `${gunAy(X)} ${saat(X)}` });
+    let s = `<circle cx="195" cy="330" r="280" fill="url(#bloom)" opacity=".9"/>`;
+    try { s += miniYorunge(d, sahip, { cx: 195, cy: 330, R: 150, now: X, ayrinti: true }).svg; } catch (e) { console.warn('Kapanmış akış çizilemedi:', kod, e); }
+    const Z = zamanCubugu(SURGU.x, SURGU.y, SURGU.w, G, X, { now: kap, oynuyor, etiket: X >= kap ? `Kapandı · ${gunAy(kap)} ${saat(kap)}` : `${gunAy(X)} ${saat(X)}` });
     return { svg: s + Z.svg, Z };
-  }, [M, X, kap, oynuyor]);
+  }, [d, sahip, kod, G, X, kap, oynuyor]);
   // oynat: kuruluştan kapanışa en az 4 sn (§7.3)
   useEffect(() => {
     if (!oynuyor) return;

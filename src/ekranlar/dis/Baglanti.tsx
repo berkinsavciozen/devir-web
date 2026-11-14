@@ -10,8 +10,11 @@ import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { KararSeridi } from '../../bilesen/KararSeridi';
 import { Ikon } from '../../bilesen/Svg';
 import { iconCloud, logoIsaret } from '../../cizim/ekran';
-import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
-import { C, f, planet, rng, ship, sparkle } from '../../cizim/ortak.js';
+import { gunAy } from '../../cizim/yol.js';
+import { kisiRengi } from '../../cizim/hamle';
+import { miniYorunge } from '../../cizim/yorunge/mini';
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
+import { f, rng, sparkle } from '../../cizim/ortak.js';
 import { adimAdi, adimEtiketi, doluSatir, gunAyUzun, ozelEk, tarihEk } from '../../metin/turkce';
 import { Segment } from '../akis/Adim';
 import { git } from '../../yonlendirme';
@@ -71,8 +74,8 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
   const cizim = useMemo(() => {
     if (!v?.harita || !v.kisi) return '';
     const h = v.harita, detay = { akis: { olusturuldu: h.olusturuldu, hedef_tarih: h.hedef_tarih || v.akis.hedef_tarih, kapandi_at: h.kapandi_at }, kritik_yol: h.kritik_yol, adimlar: h.adimlar, olaylar: [] };
-    const etiket = a && !BITTI(a.durum) ? [[a.no, adimEtiketi(a), 0, 26, '#FFE6B0', '#FFD27A']] : [];
-    try { return yolCiz(akisModeli(detay), { cx: 195, cy: 302, R: 122, ps: .7, now: NOW, focus: v.kisi, sis: true, ip: false, fener: false, kuleEtiket: false, labels: etiket }).svg; } catch { return ''; }
+    // E4 (14 Kas): haritanın dili; dış katılımcının yörüngesi ve işleri belirgin, diğerleri sisli
+    try { return miniYorunge({ ...detay, sahipler: [] }, v.kisi, { cx: 195, cy: 312, R: 108, now: NOW, ayrinti: true, odak: v.kisi, secili: a && !BITTI(a.durum) ? a.no : null }).svg; } catch { return ''; }
   }, [v, a, NOW]);
 
   if (q.isPending) return <Sahne gok={GOK_F1} etiket="Devir"><UstSatir /></Sahne>;
@@ -92,11 +95,11 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
   let svg = cizim;
   if (a) {
     svg += `<rect x="16" y="${kart}" width="358" height="332" rx="28" fill="url(#sheet)" stroke="#FFC9A3" stroke-opacity=".35"/>`;
-    svg += planet(62, kart + 52, 20, BITTI(a.durum) ? 'lit' : a.durum === 'engelli' ? 'block' : 'wait', { waitRings: 2 });
+    svg += isSimge(a, 62, kart + 52, 20);
   }
   if (sonraki) {
     svg += `<rect x="16" y="774" width="358" height="46" rx="23" fill="#061A24" fill-opacity=".7" stroke="#FFFFFF" stroke-opacity=".08"/>`;
-    svg += planet(42, 797, 7, 'dark', { life: false }) + `<circle cx="58" cy="797" r="4" fill="#2A2452" stroke="#8E80D6"/><circle cx="70" cy="797" r="4" fill="#2A2452" stroke="#8E80D6"/>`;
+    svg += isSimge(sonraki, 42, 797, 9) + `<circle cx="60" cy="797" r="3" fill="#A9C3D6" opacity=".45"/><circle cx="71" cy="797" r="3" fill="#A9C3D6" opacity=".45"/>`;
     svg += `<path d="M352,791 L358,797 L352,803" stroke="#B9A6F2" stroke-width="1.7" fill="none" stroke-linecap="round"/>`;
   }
   const alt = a ? (BITTI(a.durum) ? `${a.durum_etiket || 'Bitti'}${a.durum_at ? ' · ' + gunAy(Date.parse(a.durum_at)) : ''}`
@@ -116,7 +119,7 @@ export function Baglanti({ token, onizleme }: { token: string; onizleme?: { id: 
           <Metin y={kart + 70} x={100} fs={12.5} lh={16} renk="ink3" className="tek-satir" style={{ right: 32 }}>{alt}</Metin>
           {ey.includes('basladim') && (
             <Dugme yukseklik={56} fs={17} style={{ top: b1, left: 36, right: 36 }} ikonX={74} mesgul={eylem.isPending && eylem.variables?.eylem === 'basladim'} disabled={!!onizleme} onClick={() => eylem.mutate({ eylem: 'basladim' })}
-              ikon={<svg aria-hidden width="40" height="40" viewBox="-20 -20 40 40" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -10, 'dis', '', '#E8738A', .7) }} />}>Başladım</Dugme>
+              ikon={<svg aria-hidden width="40" height="40" viewBox="-20 -20 40 40" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: v.kisi || '?', tip: 'dis' }, 0, 0, .7) }} />}>Başladım</Dugme>
           )}
           {ey.includes('tamam') && (
             <Dugme tur="ikincil" ton="altin" yukseklik={52} fs={16} style={{ top: ey.includes('basladim') ? b2 : b1, left: 36, right: 36 }} ikonX={84} onClick={() => ac('teslim')} disabled={!!onizleme}
@@ -251,10 +254,10 @@ function Tesekkur({ v, no, kapat, bak }: { v: any; no: number; kapat: () => void
     const rr = rng(5);
     for (let i = 0; i < 28; i++) { const t = rr() * Math.PI * 2, d = 70 + rr() * 90, L = 8 + rr() * 22; s += `<line x1="${f(195 + Math.cos(t) * d)}" y1="${f(270 + Math.sin(t) * d)}" x2="${f(195 + Math.cos(t) * (d + L))}" y2="${f(270 + Math.sin(t) * (d + L))}" stroke="#FFE7B8" stroke-width="${f(1 + rr())}" stroke-linecap="round" opacity="${f(.4 + rr() * .5)}"/>`; }
     for (let i = 0; i < 8; i++) s += sparkle(195 + Math.cos(i * .8) * (110 + i * 6), 270 + Math.sin(i * .8) * (90 + i * 5), 4 + (i % 3) * 2, '#FFF1D6', 1);
-    s += `<g class="yanma">${planet(195, 270, 52, 'lit', { ring: true })}</g>` + ship(110, 330, -18, 'dis', '', C.peach, 1.2);
-    if (sonraki) s += `<rect x="16" y="528" width="358" height="118" rx="22" fill="#061A24" fill-opacity=".72" stroke="#FFC9A3" stroke-opacity=".3"/>` + planet(54, 600, 15, 'dark', { life: false });
+    s += `<g class="yanma">${isSimge(a || { no: '' }, 195, 270, 46, { gorunum: 'lit', renk: kisiRengi(v.kisi || '?', { tip: 'dis' }) })}</g>` + kisiSimge({ ad: v.kisi || '?', tip: 'dis' }, 110, 336, 1.3);
+    if (sonraki) s += `<rect x="16" y="528" width="358" height="118" rx="22" fill="#061A24" fill-opacity=".72" stroke="#FFC9A3" stroke-opacity=".3"/>` + isSimge(sonraki, 54, 600, 15);
     return s;
-  }, [sonraki]);
+  }, [sonraki, a, v.kisi]);
   const ilk = kisiAdi(v.kisi).split(' ')[0];
   const sahip = v.akis?.sahip;
   const gelir = sonraki ? sirasiGelir(v.harita, sonraki.no) : null;
@@ -280,7 +283,7 @@ export function GecersizBaglanti({ ag, suresi, yeniden }: { ag?: boolean; suresi
   const cizim = useMemo(() => {
     let s = `<rect width="390" height="844" fill="#020B10" opacity=".35"/><circle cx="195" cy="300" r="110" fill="url(#glowLilac)" opacity=".5"/>`;
     for (let i = 0; i < 9; i++) { const a0 = i * 40 + 6, a1 = a0 + 16, r = 92, p = (t: number) => [195 + Math.cos(t * Math.PI / 180) * r, 300 + Math.sin(t * Math.PI / 180) * r]; const [x0, y0] = p(a0), [x1, y1] = p(a1); s += `<path d="M${f(x0)},${f(y0)} A${r},${r} 0 0 1 ${f(x1)},${f(y1)}" fill="none" stroke="#8E80D6" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>`; }
-    s += planet(195, 300, 26, 'dark', { life: false }) + `<g opacity=".7">${ship(292, 236, 14, 'dis', '', '#B9A6F2', 1)}</g>`;
+    s += isSimge(null, 195, 300, 26, { gorunum: 'dark', renk: '#8E80D6', numarasiz: true }) + `<g opacity=".7">${kisiSimge({ ad: '?', tip: 'dis', renk: '#B9A6F2' }, 292, 236, 1.1)}</g>`;
     return s;
   }, []);
   return (
