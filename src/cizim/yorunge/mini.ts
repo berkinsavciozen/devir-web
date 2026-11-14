@@ -85,3 +85,19 @@ export function miniYorunge(d: any, ben: string, o: MiniSecenek): MiniCizim {
   }
   return { svg: `<g class="mini-yorunge">${halka}${adim}${ust}</g>`, G: { gezegen }, radOf: () => pr, gemiler };
 }
+
+/** Henüz kurulmamış akış (taslak, boş evren): kesik yörüngeler ve karanlık n iş; kimse yok, iğne bugün. */
+export function bosYorunge(cx: number, cy: number, R: number, n: number, o: { halka?: number; ry?: number } = {}): string {
+  const hn = o.halka ?? 3, ry = o.ry ?? 1;
+  let s = '';
+  for (let i = 0; i < hn; i++) {
+    const r = R * (.42 + .5 * (hn > 1 ? i / (hn - 1) : 1));
+    s += `<ellipse cx="${f(cx)}" cy="${f(cy)}" rx="${f(r)}" ry="${f(r * ry)}" fill="none" stroke="#D9CCFF" stroke-width="${f(Math.max(.6, R * .012))}" stroke-dasharray="${f(R * .03)} ${f(R * .05)}" opacity=".5"/>`;
+  }
+  s += `<line x1="${f(cx)}" y1="${f(cy - R * .3 * ry)}" x2="${f(cx)}" y2="${f(cy - R * 1.02 * ry)}" stroke="#FFB59A" stroke-width="${f(Math.max(.6, R * .015))}" stroke-linecap="round" opacity=".6"/>`;
+  for (let j = 0; j < n; j++) {
+    const i = j % hn, r = R * (.42 + .5 * (hn > 1 ? i / (hn - 1) : 1)), a = (20 + (j / Math.max(1, n - 1)) * 300) * RAD;
+    s += `<circle cx="${f(cx + r * Math.sin(a))}" cy="${f(cy - r * ry * Math.cos(a))}" r="${f(Math.max(1.4, R * .035))}" fill="${DURUM_RENK.dark}" opacity=".55"/>`;
+  }
+  return `<g class="bos-yorunge">${s}</g>`;
+}

@@ -1,3 +1,4 @@
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { useEffect, useState, type FormEvent } from 'react';
 import { api, ApiHatasi } from '../../api/istemci';
 import { kimlik } from '../../api/kimlik';
@@ -7,7 +8,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { Ikon } from '../../bilesen/Svg';
 import { anahtarIkon, bilgiIkon, zarf } from '../../cizim/ekran';
-import { planet, ship, sparkle, tower, C } from '../../cizim/ortak.js';
+import { sparkle, tower } from '../../cizim/ortak.js';
 
 const SON_EPOSTA = 'devir:son-eposta';
 export const sonEposta = {
@@ -20,8 +21,8 @@ const BEKLEME = 60;
 // A1 süsleri (son-ekranlar-1.js → A1)
 const A1_CIZIM =
   `<ellipse cx="195" cy="300" rx="190" ry="170" fill="url(#bloom)" opacity=".55"/>` +
-  planet(78, 200, 13, 'lit', { life: false }) + planet(318, 236, 10, 'dark', { life: false }) + planet(300, 150, 7, 'wait', { waitRings: 1 }) +
-  ship(96, 330, -12, 'insan', 'B', C.peach, .9) + ship(296, 352, 8, 'agent', 'C', C.lilac, .85) +
+  isSimge(null, 78, 200, 13, { gorunum: 'lit', renk: '#F2789F', numarasiz: true }) + isSimge(null, 318, 236, 10, { gorunum: 'dark', renk: '#7D8CFF', numarasiz: true }) + isSimge(null, 300, 150, 8, { gorunum: 'wait', renk: '#F2789F', numarasiz: true }) +
+  kisiSimge({ ad: 'B', tip: 'insan', renk: '#F2789F' }, 96, 330, 1) + kisiSimge({ ad: 'C', tip: 'agent', renk: '#B9A6F2' }, 296, 352, .95) +
   tower(195, 372, 1.45, true) +
   `<path d="M120,382 Q195,400 270,382" stroke="#FFC9A3" stroke-opacity=".35" fill="none"/>` +
   `<line x1="40" y1="700" x2="160" y2="700" stroke="#4B4380"/><line x1="230" y1="700" x2="350" y2="700" stroke="#4B4380"/>`;
@@ -30,7 +31,7 @@ const A1_CIZIM =
 const A1B_CIZIM =
   `<ellipse cx="195" cy="280" rx="190" ry="150" fill="url(#bloom)" opacity=".5"/>` +
   `<path d="M40,360 Q110,250 195,282" fill="none" stroke="#FFD27A" stroke-width="1.6" stroke-dasharray="2 6" opacity=".7"/>` +
-  ship(52, 372, -40, 'insan', 'B', C.peach, .9, { flame: false }) +
+  kisiSimge({ ad: 'B', tip: 'insan', renk: '#F2789F' }, 52, 372, 1) +
   zarf(200, 276, 1.15) + sparkle(256, 232, 7, '#FFF1D6', 1) + sparkle(140, 222, 5, '#FFF1D6', 1) + sparkle(270, 320, 4, '#FFE7A8', 1);
 
 /** E-posta alanı: etiket üstte (taban y − 8), alan 48 px. */
