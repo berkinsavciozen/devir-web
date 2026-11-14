@@ -13,7 +13,8 @@ import { useBoyut } from '../../bilesen/Gok';
 import { KabukPanel, masaustu, PANEL_EN, YuzenGezinme, type KabukSekme } from '../../bilesen/Kabuk';
 import { useVurgu, vurgula } from '../../bilesen/vurgu';
 import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, hapEni, MERKEZ_AC, MERKEZ_KAPA, usturlap } from '../../cizim/ekran';
-import { akisModeli, gunAy, yolCiz } from '../../cizim/yol.js';
+import { gunAy } from '../../cizim/yol.js';
+import { miniYorunge } from '../../cizim/yorunge/mini';
 import { C, pill, ship } from '../../cizim/ortak.js';
 import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
@@ -81,12 +82,12 @@ export function useDetaylarDurum(kodlar: string[]) {
   return { d, eksik, hata, yeniden };
 }
 
-/** Küçük galaksi: aynı yol geometrisinin küçük çizimi (§4.13). */
+/** Küçük akış resmi: haritanın küçültülmüşü (E1, cizim/yorunge/mini). */
 export function kucukGalaksi(d: any, ben: string, x: number, y: number, r: number, pr: number, now: number) {
   const bos = `<circle cx="${x}" cy="${y}" r="${r * .5}" fill="url(#glowLilac)" opacity=".5"/>`;
   if (!cizilir(d)) return bos;
   // tek akışın beklenmedik verisi bütün evreni düşürmesin: o galaksi yer tutucu olarak kalır
-  try { return yolCiz(akisModeli(d, { sahip: ben }), { lod: 'kucuk', cx: x, cy: y, R: r, now, pr }).svg; } catch (e) { console.warn('Galaksi çizilemedi:', d?.akis?.kisa_kod, e); return bos; }
+  try { return miniYorunge(d, ben, { cx: x, cy: y, R: r, now, pr }).svg; } catch (e) { console.warn('Galaksi çizilemedi:', d?.akis?.kisa_kod, e); return bos; }
 }
 
 /** Adımsız akış (kurulumu yarıda kalmış) çizilemez; evrende yer tutucu olarak durur. */
@@ -141,7 +142,7 @@ function useEvrenGezinme(b: Bolge, cizim: { svg: string; konum: Record<string, G
       // küçük çizim yarıçapı r; ayrıntılı çizim kilit parantezinin içini doldurur (r × 1.35)
       const R = e.r * 1.35;
       if (!g || !cizilir(detay[kod]) || R < 64 || !icerde(e.x, e.y, R)) return kucukler[kod] || '';
-      try { ayrinti.push({ kod, Y: yolCiz(akisModeli(detay[kod], { sahip: kisi }), { cx: e.x, cy: e.y, R, ps: Math.max(.36, Math.min(.78, R * .005)), now, x: now, labels: [], shipSc: .9, minR: 6.5, kuleEtiket: false }) }); } catch (er) { console.warn('Galaksi çizilemedi:', kod, er); return kucukler[kod] || ''; }
+      try { ayrinti.push({ kod, Y: miniYorunge(detay[kod], kisi, { cx: e.x, cy: e.y, R, now, ayrinti: true }) }); } catch (er) { console.warn('Galaksi çizilemedi:', kod, er); return kucukler[kod] || ''; }
       return '';
     });
     // merkez ışığı (K6): konumu ölçeklenir, boyu sabit kalır
