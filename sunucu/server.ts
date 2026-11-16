@@ -4,9 +4,9 @@ import type { GomFn } from "./bellek.ts";
 import { apiYonlendir, baglantiV, baglantiEylem, baglantiDosya, ApiHata } from "./api.ts";
 import { oturumCtx, oturumYonlendir, ekipYonlendir, acikKayit, referansBilgisi, beklemeYonlendir, agentBaglantisi, type KimlikFn, type Posta } from "./hesap.ts";
 
-export const SURUM = "0.37.0";
+export const SURUM = "0.38.0";
 /** Bu kodun beklediği şema: son migration'ın adı (N-8). Canlı şema `devir_sema()` ile okunur, /api/v1/durum ikisini karşılaştırır. */
-export const SEMA = "20261106160000_s034_agent_rutin";
+export const SEMA = "20261116120000_s038_rutin_claude_ad";
 async function semaDurumu(db: DB) {
   // bellek DB'si (testler, sahte kip) şema tutmaz: uyum bilinmez (null). Canlıda işlev yoksa migration uygulanmamıştır.
   if (!db.rpc) return { beklenen: SEMA, canli: null, uyumlu: null };

@@ -1,5 +1,5 @@
 // 0.30.0 (4 Kas, AI yapsın test bulguları): planlama düzeltmeleri, agent = kişinin desteği, varsayılan AI yapsın, rutin ↔ agent, AI olayları.
-import { callTool, rutinSec, otoToplu, aiGecmisi, agentlarV } from "../core.ts";
+import { callTool, rutinSec, otoToplu, aiGecmisi, agentlarV, rutinSagligi } from "../core.ts";
 import { apiYonlendir } from "../api.ts";
 
 let idc = 1;
@@ -140,6 +140,34 @@ const hata = async (f: () => Promise<unknown>) => { try { await f(); return ""; 
   ok("rutin adı değişir", ren.tetik.ad === "Berkin'in asistanı");
   const zm: any = await apiYonlendir(ctx(), "GET", ["tetikler"], new URLSearchParams("agent=Berkin'in Claude'u"), null, { fn: "", link: "" });
   ok("rutin istemi agent adını taşır", /agent: "Berkin'in Claude'u"/.test(zm.zamanli_metni), zm.zamanli_metni);
+
+  // 0.38.0 (16 Kas, B1/B5/B6/B8): rutin sağlığı tek kural; zamanlanmış rutin önceden kurulur; kaldırılan rutin görünür ve açılır
+  const G = 864e5, A = { fn: "", link: "" }, now = NOW;
+  ok("0.38.0: sağlık kuralı", rutinSagligi(null, now) === "yok" && rutinSagligi({ url: "https://x/fire" }, now) === "canli" && rutinSagligi({ url: "https://x/fire", son_hata: "500" }, now) === "hata"
+    && rutinSagligi({ url: "zamanli", son_tetik_at: null }, now) === "bekleniyor" && rutinSagligi({ url: "zamanli", son_tetik_at: new Date(now - G).toISOString() }, now) === "canli"
+    && rutinSagligi({ url: "zamanli", son_tetik_at: new Date(now - 4 * G).toISOString() }, now) === "sessiz" && rutinSagligi({ url: "zamanli", aktif: false }, now) === "kapali");
+  const on: any = await apiYonlendir(ctx(), "POST", ["tetikler"], new URLSearchParams(), { tur: "zamanli", agentlar: ["Test agent'ı"], claude_ad: "Devir test (saatlik)" }, A);
+  ok("0.38.0: zamanlanmış rutin ön kaydı (ad agent'tan, sağlık bekleniyor, Claude adı)", on.tetik.ad === "Test agent'ı" && on.tetik.saglik === "bekleniyor" && on.tetik.claude_ad === "Devir test (saatlik)" && /agent: "Test agent'ı"/.test(on.zamanli_metni), on);
+  await callTool("devir_ai_isler", { agent: "Test agent'ı" }, agentCtx());
+  const tsat = T.agent_tetik.filter((x) => x.ad === "Test agent'ı");
+  ok("0.38.0: ilk uğrama aynı satırı günceller", tsat.length === 1 && !!tsat[0].son_tetik_at && tsat[0].claude_ad === "Devir test (saatlik)", tsat);
+  tsat[0].son_tetik_at = new Date(NOW - 4 * G).toISOString();
+  let av: any = await agentlarV(ctx());
+  ok("0.38.0: 3 günden uzun uğramayan rutin sessiz", av.rutinler.find((x: any) => x.id === tsat[0].id)?.saglik === "sessiz" && av.sessiz_gun === 3, av.rutinler);
+  const bk = av.agentlar.find((x: any) => x.ad === "Berkin'in Claude'u");
+  ok("0.38.0: agent'ta rutin_durum, rutin_ad, rutin_son", bk && typeof bk.rutin_durum === "string" && "rutin_ad" in bk && "rutin_son" in bk && "arac" in bk, bk);
+  const yk: any = await apiYonlendir(ctx(), "POST", ["tetikler", tsat[0].id, "ad"], new URLSearchParams(), { claude_ad: "Devir araştırma" }, A);
+  ok("0.38.0: Claude adı ayrı yazılır, Devir adı değişmez", yk.tetik.claude_ad === "Devir araştırma" && yk.tetik.ad === "Test agent'ı", yk);
+  await apiYonlendir(ctx(), "POST", ["tetikler", tsat[0].id, "kaldir"], new URLSearchParams(), {}, A);
+  const hp: any = await apiYonlendir(ctx(), "GET", ["tetikler"], new URLSearchParams("hepsi=1"), null, A);
+  const ak0: any = await apiYonlendir(ctx(), "GET", ["tetikler"], new URLSearchParams(), null, A);
+  av = await agentlarV(ctx());
+  ok("0.38.0: kaldırılan rutin ?hepsi=1 ve kapali_rutinler'de", hp.tetikler.some((x: any) => x.id === tsat[0].id && x.aktif === false && x.saglik === "kapali") && !ak0.tetikler.some((x: any) => x.id === tsat[0].id) && av.kapali_rutinler.some((x: any) => x.id === tsat[0].id));
+  const ac: any = await apiYonlendir(ctx(), "POST", ["tetikler", tsat[0].id, "ac"], new URLSearchParams(), {}, A);
+  ok("0.38.0: kaldırılan zamanlanmış rutin yeniden açılır", ac.tetik.aktif === true && T.agent_tetik.find((x) => x.id === tsat[0].id).aktif === true, ac);
+  const dv: any = await apiYonlendir(ctx(), "GET", ["akis", ak], new URLSearchParams(), null, A);
+  const agAdim = dv.adimlar.filter((x: any) => x.sahip_tip === "agent" && !["tamam", "atlandi"].includes(x.durum));
+  ok("0.38.0: açık agent adımında rutin_durum ve rutin_var aynı kuraldan", agAdim.length > 0 && agAdim.every((x: any) => typeof x.rutin_durum === "string" && x.rutin_var === (x.rutin_durum === "canli" || x.rutin_durum === "hata")), agAdim.map((x: any) => [x.no, x.rutin_var, x.rutin_durum]));
 
   // ai_yapsin: false
   r = await callTool("devir_tasla", { cumle: "Moda şubesini açmam lazım", baglam: { varlik: "Moda şube", iliski: "kendi" } }, ctx());
