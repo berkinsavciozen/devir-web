@@ -618,7 +618,7 @@ export const otoMetni = (akis: any, s: any, taban?: string) => [
   `2) devir_adim_guncelle ile durum=suruyor yaz, işi yap.`,
   `3) Ürettiğini devir_adim_guncelle cikti alanına yaz (metnin tamamı icerik'e). Durumu tamam yapma: adım sahibine bakılacak olarak gider.`,
   `4) Yapamıyorsan durum=engelli ve engel ile nedenini yaz. Karar gerekiyorsa kararı verme, seçenekleri çıktı olarak yaz.`,
-  `5) İnternetten doğrulayamadığın bilgi kaldıysa (fiyat, saat, yerinde bakılacak şey) uydurma; her birini dogrulama listesine kısa bir iş olarak yaz. Devir bunları adım sahibine alt görev olarak açar.`,
+  `5) İnternetten doğrulayamadığın bilgi kaldıysa (fiyat, saat, yerinde bakılacak şey) uydurma; her birini dogrulama listesine kısa bir iş olarak yaz. Devir bunları adım sahibine alt görev olarak açar. Her maddeyi tek başına anlaşılır bir cümleyle yaz; ayrıntıyı { ad, aciklama } ile ver. Bu adım bittikten sonra yapılabilecek işlere (ör. geçişten sonra test, eski aboneliği kapat) sonra: true ver. Kullanıcının vereceği bir karar (ödeme, plan seçimi) dogrulama değildir: seçenekleri çıktıya, beklediğini engel'e yaz.`,
   // 0.33.0 (P4): reddedilen ya da yorumla geri gönderilen işte önceki deneme ve geri bildirim talimata girer
   ...geriBildirimSatirlari(akis?.baglam?.inceleme?.[String(s.no)]),
   ...(taban ? [`Devir: ${taban}`] : []),
@@ -1133,7 +1133,7 @@ export const TOOLS = [
         karar: { type: "object", description: "Karar adımında seçenekler ve önerin: { secenekler: [{ ad, alt (ör. 'Rize/Hemşin · çay'), etiket (ör. 'faturalı'), uyari (teyit bekliyorsa true) }], oneri: { secim: [seçilen adlar], ozet (ör. '5'ini de kabul et'), gerekce } }. Kararı kullanıcı verir.", properties: { tur: { type: "string", description: "Seçeneklerin ne olduğu, tekil (ör. çiftçi, teklif)." }, secenekler: { type: "array", items: { anyOf: [{ type: "string" }, { type: "object", properties: { ad: { type: "string" }, alt: { type: "string" }, etiket: { type: "string" }, uyari: { type: "boolean" } }, required: ["ad"] }] } }, oneri: { type: "object", properties: { secim: { type: "array", items: { type: "string" } }, ozet: { type: "string" }, gerekce: { type: "string" } } } } },
         karar_secimi: { type: "array", items: { type: "string" }, description: "Kullanıcının seçtiği seçenekler. Agent olarak seçimi kaydetmek için devir_karar_ver'i kullan." },
         engel_kisa: { type: "string", description: "durum=engelli ise beklenen şeyin 1-3 kelimelik kısa adı, belirtme hâlinde (ör. 'kapak fotoğraflarını'); ana ekranın cümlesinde kullanılır." },
-        dogrulama: { type: "array", items: { type: "string" }, description: "Agent: internetten doğrulayamadığın, insanın bakması gereken bilgiler (ör. \"Rakiplerin hafta sonu saatleri\"). Her biri adımın sahibine (agent'ın sahibine) kısa bir alt görev olarak açılır." },
+        dogrulama: { type: "array", items: { anyOf: [{ type: "string" }, { type: "object", properties: { ad: { type: "string", description: "Kişinin yapacağı iş, kısa bir cümle (ör. \"Rakiplerin hafta sonu saatlerine bak\")." }, kisa_ad: { type: "string", description: "En çok 40 karakter, nesne + fiil." }, aciklama: { type: "string", description: "Ayrıntı: nereye bakılacak, neye göre karar verilecek." }, kriter: { type: "string" }, sonra: { type: "boolean", description: "true: bu iş ancak bu adım bittikten sonra yapılabilir (ör. geçişten sonra test); alt görev değil, bu adımı bekleyen yeni adım olarak açılır." } }, required: ["ad"] }] }, description: "Agent: internetten doğrulayamadığın, insanın bakması gereken bilgiler (ör. \"Rakiplerin hafta sonu saatleri\"). Her biri adımın sahibine (agent'ın sahibine) kısa bir alt görev olarak açılır. Karar gerekiyorsa buraya yazma, seçenekleri çıktıya ve engel'e yaz; adım bittikten sonra yapılacak işlere sonra=true ver." },
         cikti: {
           description: "Bu adımda üretilen iş. Nesne ver: { ad, ozet (1-3 satır, her zaman), icerik (metin çıktısının tamamı, markdown: mesaj, teklif, brif…), url ve kaynak (Confluence, Google Docs, Instagram… dış bir araçtaysa), durum (taslak|onaylandi|yayinda), paylasim (ekip|dis: dış katılımcı görebilsin mi) }. Aynı ad tekrar yazılırsa yeni sürüm olur. Liste de verebilirsin.",
           anyOf: [
@@ -2675,22 +2675,50 @@ async function altGorevGruplar(a: any, ctx: Ctx) {
   return out.join("\n\n");
 }
 
-/** C16 (4 Kas, 0.30.0): agent'ın "insan doğrulasın" dediği bilgiler adımın altında kişiye alt görev olarak açılır. */
+/** C16 (4 Kas, 0.30.0): agent'ın "insan doğrulasın" dediği bilgiler adımın altında kişiye alt görev olarak açılır.
+ * 0.37.0 (16 Kas, MZG2/25): ad "Doğrula:" öneki almaz ve kesilmez (uzun metin açıklamaya), kısa ad metnin kendisinden çıkar;
+ * madde nesne olabilir ({ ad, kisa_ad, aciklama, kriter, sonra }); sonra=true madde alt görev değil, bu adımı bekleyen yeni adım olur;
+ * üst adımın tarihi geçmişse alt görev doğar doğmaz gecikmiş görünmesin diye yarına planlanır. */
+export function dogrulamaMaddesi(x: any): { ad: string; aciklama: string | null; kisa_ad: string | null; kriter: string | null; sonra: boolean } | null {
+  const o = x && typeof x === "object" ? x : { ad: x };
+  const metin = String(o.ad || "").replace(/\s+/g, " ").trim().replace(/^doğrula\s*[:\-–—]\s*/i, "").trim();
+  if (!metin) return null;
+  const harf = (t: string) => t ? t[0].toLocaleUpperCase("tr") + t.slice(1) : t;
+  let ad = metin;
+  if (ad.length > 90) {
+    // önce ilk cümle/yan cümle, sığmazsa sözcük sınırında kes; tam metin açıklamaya gider
+    const ilk = metin.split(/(?<=[.;!?])\s+|\s+\(|;\s*|:\s+/)[0].replace(/[,;:.]+$/, "").trim();
+    ad = ilk.length >= 12 && ilk.length <= 90 ? ilk : metin.slice(0, 88).replace(/\s+\S*$/, "").replace(/[,;:.]+$/, "").trim() + "…";
+  }
+  const ek = o.aciklama ? String(o.aciklama).trim() : "";
+  const aciklama = [ad !== metin ? metin : "", ek].filter(Boolean).join("\n\n") || null;
+  return { ad: harf(ad), aciklama, kisa_ad: kisaAdGecerli(o.kisa_ad) ? String(o.kisa_ad).trim() : null, kriter: o.kriter ? String(o.kriter).trim() || null : null, sonra: o.sonra === true };
+}
 async function dogrulamaliGuncelle(a: any, ctx: Ctx) {
-  const d: string[] = (Array.isArray(a.dogrulama) ? a.dogrulama : a.dogrulama ? [a.dogrulama] : []).map((x: any) => String(x || "").trim()).filter(Boolean).slice(0, 10);
+  const d = (Array.isArray(a.dogrulama) ? a.dogrulama : a.dogrulama ? [a.dogrulama] : []).map(dogrulamaMaddesi).filter(Boolean).slice(0, 10) as NonNullable<ReturnType<typeof dogrulamaMaddesi>>[];
   const { dogrulama: _d, ...geri } = a;
-  const r = await adimGuncelle(geri, ctx);
-  if (!d.length) return r;
+  if (!d.length) return adimGuncelle(geri, ctx);
+  // yalnız doğrulama maddesi de verilebilir (adımda başka değişiklik yoksa)
+  const r = await adimGuncelle(geri, ctx).catch((e: any) => { if (/^Güncellenecek bir şey yok/.test(String(e?.message))) return `Adım ${a.no}: doğrulama maddeleri`; throw e; });
   const akis = await getAkis(ctx, a.akis);
   const { steps } = await loadFlow(ctx, akis);
   const s = steps.find((x: any) => x.no === Number(a.no));
   if (!s || s.ust_adim != null || DONE(s)) return `${r}\nDoğrulama notları alt görev olarak açılamadı (adım alt görev ya da kapalı); çıktıya yaz.`;
   const kisi = s.sahip_tip === "agent" ? s.agent_sahibi || ctx.key?.kisi : s.sahip;
-  const mevcut = new Set(altlariOf(steps, s.no).map((x: any) => norm(x.ad)));
-  const liste = d.map((x) => `Doğrula: ${x}`.slice(0, 90)).filter((x) => !mevcut.has(norm(x)));
-  if (!liste.length) return r;
-  const ek = await altGorevEkle({ akis: a.akis, adim: s.no, arac: a.arac, alt_gorevler: liste.map((ad) => ({ ad, sahip: kisi, sahip_tip: "insan", sure_tahmin_gun: 0.5, karar_gerekli: false, cikti_bekleniyor: false, kriter: "Bilgi doğrulandı ya da düzeltildi" })) }, ctx);
-  return `${r}\n${ek}`;
+  const mevcut = new Set(steps.map((x: any) => norm(x.ad)));
+  const yeniler = d.filter((x) => !mevcut.has(norm(x.ad)) && !mevcut.has(norm(`Doğrula: ${x.ad}`.slice(0, 90))));
+  if (!yeniler.length) return r;
+  const yarin = numDay(dayNum(todayIst(ctx.now)) + 1);
+  const son = s.son_tarih && s.son_tarih < yarin ? yarin : undefined;
+  const out = [r];
+  const simdi = yeniler.filter((x) => !x.sonra), sonra = yeniler.filter((x) => x.sonra);
+  if (simdi.length) out.push(await altGorevEkle({ akis: a.akis, adim: s.no, arac: a.arac, alt_gorevler: simdi.map((x) => ({ ad: x.ad, aciklama: x.aciklama, kisa_ad: x.kisa_ad, sahip: kisi, sahip_tip: "insan", sure_tahmin_gun: 0.5, karar_gerekli: false, cikti_bekleniyor: false, kriter: x.kriter || "Bilgi doğrulandı ya da düzeltildi", ...(son ? { son_tarih: son } : {}) })) }, ctx));
+  for (const x of sonra) {
+    try {
+      out.push(await adimEkle({ akis: a.akis, ad: x.ad, aciklama: x.aciklama, kisa_ad: x.kisa_ad, sahip: kisi, sahip_tip: "insan", sure_tahmin_gun: 0.5, karar_gerekli: false, cikti_bekleniyor: false, kriter: x.kriter || `${x.ad} tamam`, bagimli: [s.no], arac: a.arac, neden: `${s.no}. adımın agent'ı bu işi adım bittikten sonra kişiye bıraktı.` }, ctx));
+    } catch (e: any) { out.push(`✗ "${x.ad}" eklenemedi: ${e?.message || e}`); }
+  }
+  return out.join("\n");
 }
 async function altGorevEkle(a: any, ctx: Ctx) {
   needTeam(ctx, "Alt görev eklemeyi");

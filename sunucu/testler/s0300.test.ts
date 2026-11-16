@@ -87,7 +87,23 @@ const hata = async (f: () => Promise<unknown>) => { try { await f(); return ""; 
   const s1b = adimOf(ak, s1.no);
   ok("çıktı → bakılacak", s1b.oto_durum === "bakilacak", s1b.oto_durum);
   const alt = adimlar(ak).filter((x) => x.ust_adim === s1.no);
-  ok("C16: doğrulama notları Berkin'e alt görev", alt.length === 2 && alt.every((x) => x.sahip === "Berkin" && x.sahip_tip === "insan" && /^Doğrula: /.test(x.ad)), alt.map((x) => [x.ad, x.sahip]));
+  ok("C16: doğrulama notları Berkin'e alt görev", alt.length === 2 && alt.every((x) => x.sahip === "Berkin" && x.sahip_tip === "insan" && ["Hafta sonu çalışma saatleri", "Filtre kahve fiyatı"].includes(x.ad)), alt.map((x) => [x.ad, x.sahip]));
+  {
+    // 0.37.0 (MZG2/25): uzun madde kesilmez, açıklamaya gider; kısa ad "Doğrula" olmaz; sonra=true adımı bekleyen yeni adım olur
+    const uzun = "Doğrula: Geçişten sonra Enpara, Akbank, Yapı Kredi, İş Bankası ve Garanti BBVA'dan birer gerçek ekstre PDF'i yükleyip işlemlerin tarih, tutar ve kategoriyle doğru çıktığını kontrol et";
+    r = await callTool("devir_adim_guncelle", { akis: ak, no: s1.no, dogrulama: ["Doğrula: Lovable'da kredi ekle ya da planı yükselt", { ad: uzun, sonra: true }, { ad: "Anthropic harcama limitini kontrol et", kisa_ad: "Harcama limitine bak" }] }, agentCtx());
+    const L2 = adimlar(ak);
+    const alt2 = L2.filter((x) => x.ust_adim === s1.no);
+    const kad = akisOf(ak).baglam.kisa_adlar || {};
+    ok("0.37.0: önek atılır, ad cümledir", alt2.some((x) => x.ad === "Lovable'da kredi ekle ya da planı yükselt"), alt2.map((x) => x.ad));
+    ok("0.37.0: kısa ad metinden (Doğrula değil)", alt2.every((x) => kad[String(x.no)] && !/^Doğrula/.test(kad[String(x.no)])), alt2.map((x) => kad[String(x.no)]));
+    ok("0.37.0: istenen kısa ad yazılır", alt2.some((x) => kad[String(x.no)] === "Harcama limitine bak"), kad);
+    const sonra = L2.find((x) => x.ust_adim == null && /Enpara/.test(x.aciklama || ""));
+    ok("0.37.0: sonra=true → üst adımı bekleyen yeni adım", !!sonra && sonra.bagimli.includes(s1.no) && sonra.sahip === "Berkin" && sonra.durum === "sirada", sonra);
+    ok("0.37.0: uzun metin kesilmez, tamamı açıklamada", !!sonra && sonra.ad.length <= 90 && !/ g$/.test(sonra.ad) && sonra.aciklama.includes("kategoriyle doğru çıktığını kontrol et"), sonra && [sonra.ad, sonra.aciklama]);
+    r = await callTool("devir_adim_guncelle", { akis: ak, no: s1.no, dogrulama: ["Lovable'da kredi ekle ya da planı yükselt"] }, agentCtx());
+    ok("0.37.0: aynı madde ikinci kez açılmaz", adimlar(ak).filter((x) => x.ad === "Lovable'da kredi ekle ya da planı yükselt").length === 1);
+  }
   const ev = T.olay.filter((e) => e.akis_id === akisOf(ak).id && e.adim_no === s1.no);
   ok("B8: AI yaptı olayı düşer", ev.some((e) => e.veri?.tur === "oto_bakilacak" && /AI yaptı/.test(e.ozet)), ev.map((e) => e.veri?.tur));
   const g = await aiGecmisi(ctx(), ak, s1.no);

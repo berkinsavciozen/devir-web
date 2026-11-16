@@ -31,7 +31,7 @@ const belirtme = (w: string) => w.length > 3 && /[ıiuü]$/i.test(w) && !ASKIDA.
 const ayrilma = (w: string) => /('?(d|t)[ae]n|'?y?l[ae]|'?(d|t)[ae])$/i.test(w) && w.length > 3;
 const yonelme = (w: string) => /('?(y|n)?[ae])$/i.test(w) && w.length > 3 && !belirtme(w);
 // i/ı/u/ü ile biten yalın adlar (iyelik sanılmasın)
-const YALIN = new Set(["koşu", "bilgi", "yetki", "müşteri", "ölçü", "örtü", "kayıtlı", "süreli"]);
+const YALIN = new Set(["koşu", "kredi", "bilgi", "yetki", "müşteri", "ölçü", "örtü", "kayıtlı", "süreli"]);
 // tamlama öğesindeki iyelik: fiyatı → fiyat, sözleşmesi → sözleşme, kartı → kart; tedarikçi, koşu yalın kalır
 const iyeliksiz = (w: string) => YALIN.has(kucuk(w)) || /[cç][ıiuü]$/i.test(w) ? w : w.replace(/(?<=[aeıioöuü])s[ıiuü]$|(?<=[^aeıioöuü'])[ıiuü]$/i, "").replace(/ğ$/, "k");
 
