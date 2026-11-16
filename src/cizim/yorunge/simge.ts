@@ -15,6 +15,13 @@ export function kisiSimge(k: SimgeKisi, x = 0, y = 0, olcek = 1): string {
   return sar(arac({ ad: k.ad || '?', tip, sahibi: k.sahibi || null, renk }, { durum: 'notr', acik: [], hamleler: [] }, {}).svg, x, y, olcek);
 }
 
+/** Durumlu araç: pencere haritadaki kişi durumunu gösterir (ör. agent satırlarında ai_calisiyor, ai_hata). */
+export function aracSimge(k: SimgeKisi, durum: string, x = 0, y = 0, olcek = 1): string {
+  const tip = k.tip === 'agent' ? 'agent' : k.tip === 'dis' ? 'dis' : 'insan';
+  const renk = k.renk || kisiRengi(k.ad, { tip, sahibi: k.sahibi });
+  return sar(arac({ ad: k.ad || '?', tip, sahibi: k.sahibi || null, renk }, { durum, acik: [], hamleler: [], gecGun: 0 }, {}).svg, x, y, olcek);
+}
+
 /** Adımın haritadaki görünüş sınıfı ve ışığı. */
 export function isGorunum(a: any): { g: string; isik: number } {
   const d = a?.durum;
@@ -28,11 +35,11 @@ export function isGorunum(a: any): { g: string; isik: number } {
 }
 
 /** Gezegen = iş: halka sahibinin renginde, ışık durumu söyler, içinde numarası. Yarıçap 8 (halkalarla ~13); r istenen yarıçap. */
-export function isSimge(a: any, x = 0, y = 0, r = 8, o: { renk?: string; renkler?: Record<string, string>; gorunum?: string; numarasiz?: boolean } = {}): string {
+export function isSimge(a: any, x = 0, y = 0, r = 8, o: { renk?: string; renkler?: Record<string, string>; gorunum?: string; numarasiz?: boolean; ek?: Record<string, unknown> } = {}): string {
   const G = o.gorunum ? { g: o.gorunum, isik: o.gorunum === 'lit' ? 1 : o.gorunum === 'run' ? .45 : 0 } : isGorunum(a);
   const renk = o.renk || (a?.sahip ? kisiRengi(a.sahip, { tip: a.sahip_tip, sahibi: a.agent_sahibi, renkler: o.renkler }) : '#A9C3D6');
   const acik = !['lit', 'ghost', 'ertele'].includes(G.g);
-  let ic = gezegen({ no: o.numarasiz || a?.no == null ? '' : a.no }, { renk, karar: !!a?.karar_adimi && acik, kritik: !!a?.kritik && acik }) as string;
+  let ic = gezegen({ no: o.numarasiz || a?.no == null ? '' : a.no }, { renk, karar: !!a?.karar_adimi && acik, kritik: !!a?.kritik && acik, ...o.ek }) as string;
   ic = ic.replace('class="ates" r="0"', `class="ates" r="${f(7.4 * Math.sqrt(G.isik))}"`);
   return sar(`<g class="gz g-${G.g}"><g class="ol">${ic}</g></g>`, x, y, r / 8, ' kd1');
 }

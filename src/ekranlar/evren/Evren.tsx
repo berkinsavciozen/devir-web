@@ -1,3 +1,4 @@
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { taslakAdresi } from '../yeni/Taslak';
 import { akisUfku, hedefsiz } from '../../api/ufuk';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -15,7 +16,7 @@ import { useVurgu, vurgula } from '../../bilesen/vurgu';
 import { CERCEVE, CERCEVE_HAP, cerceve, evrenOlcek, hapEni, MERKEZ_AC, MERKEZ_KAPA, usturlap } from '../../cizim/ekran';
 import { gunAy } from '../../cizim/yol.js';
 import { miniYorunge } from '../../cizim/yorunge/mini';
-import { C, pill, ship } from '../../cizim/ortak.js';
+import { C, pill } from '../../cizim/ortak.js';
 import { akisAdi, yaziTipleriHazir } from '../../metin/turkce';
 import { arama, git } from '../../yonlendirme';
 import { turGorulmeli } from '../../bilesen/Tur';
@@ -589,7 +590,7 @@ function EvrenGenis({ W, H, kisi, avatar, cizim, kartlar, kapanan, detay, taslak
   return (
     <GenisSahne gok={{ tohum: 121, yildiz: 330, parilti: 14 }} w={W} h={H} cizim={svg} etiket="Evren">
       <button type="button" className="avatar-dugme genis-geri" style={{ left: 34, top: 36 }} onClick={avatar} aria-label={`${kisi} · hesap ve çalışma alanı`}>
-        <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -20, 'insan', (kisi[0] || '?').toLocaleUpperCase('tr'), C.peach, 1.1, { flame: false }) }} />
+        <svg aria-hidden width="44" height="44" viewBox="-22 -22 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: kisi || '?', tip: 'insan' }, 0, 0, .95) }} />
       </button>
       <Metin y={64} x={80} fs={17} agirlik={650} style={{ right: 'auto', pointerEvents: 'none' }}>{kisi}</Metin>
       <div style={{ display: 'contents' }} onWheel={tasma ? (e) => kaydir(e.deltaY) : undefined}

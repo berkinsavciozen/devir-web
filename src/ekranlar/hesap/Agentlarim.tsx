@@ -1,3 +1,4 @@
+import { aracSimge } from '../../cizim/yorunge/simge';
 import { useState } from 'react';
 import { UYGULAMALAR, type Uygulama } from '../evren/ClaudeaBagla';
 import { useMutation, useQuery } from '@tanstack/react-query';
@@ -5,7 +6,6 @@ import { api } from '../../api/istemci';
 import { sorguIstemcisi } from '../../api/sorgular';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Dugme } from '../../bilesen/Dugme';
-import { destekGemisi } from '../../cizim/ortak.js';
 import { PALET, paletRengi } from '../../cizim/hamle';
 import { gunAy, saat } from '../../cizim/yol.js';
 import { git } from '../../yonlendirme';
@@ -54,9 +54,9 @@ export function agentCumlesi(a: Agent, genelVar: boolean, kisa = false): string 
   return `${a.sirada ? `${a.sirada} iş sırada` : a.acik_is ? `${a.acik_is} açık iş` : 'Boşta'} · ${rutin}`;
 }
 
-/** Satırın simgesi: agent'ın destek gemisi; durum rengiyle */
-export const agentIkonu = (a: Pick<Agent, 'durum' | 'bakilacak'>, x = 26, y = 30, sc = 1) =>
-  destekGemisi(x, y, 1, -.35, a.bakilacak.length ? '#5FE3F0' : a.durum === 'hata' ? '#FF9A8A' : a.durum === 'calisiyor' ? '#9EE6CF' : '#FFC9A3', sc);
+/** Satırın simgesi: haritadaki agent aracı (sahibinin açık tonu); pencere durumu söyler (E2, 14 Kas). */
+export const agentIkonu = (a: Pick<Agent, 'ad' | 'durum' | 'bakilacak'> & { renk?: string | null }, x = 26, y = 30, sc = 1, sahibi?: string) =>
+  aracSimge({ ad: a.ad, tip: 'agent', sahibi: sahibi || null, renk: a.renk || undefined }, a.bakilacak.length ? 'ai_onay' : a.durum === 'hata' ? 'ai_hata' : a.durum === 'calisiyor' ? 'ai_calisiyor' : 'notr', x, y, sc * .72);
 
 /** Agent detayı (alt sayfa). kip "yonetim": rutin bağla, adlandır, kaldır, kur; kip "is": yalnız iş. */
 export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }: {
@@ -119,7 +119,7 @@ export function AgentDetay({ a, veri, kip, baglanti, kapat, kurAc, rutinKaldir }
     <AltSayfa acik kapat={kapat} baslik={a.ad} yukseklik="yuksek">
       <div className="ai-etkinlik agent-detay">
         <div className="ag-ust">
-          <svg aria-hidden width="44" height="44" viewBox="4 0 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: agentIkonu(a, 26, 24, 1.3) }} />
+          <svg aria-hidden width="44" height="44" viewBox="4 0 44 44" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: agentIkonu(a, 26, 24, 1.3, veri.kisi) }} />
           <h2 className="ai-etkinlik-baslik">{a.ad}</h2>
         </div>
         <p className="gd-satir">{agentCumlesi(a, !!veri.genel_rutin)}.</p>

@@ -11,7 +11,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { gunAy, saat } from '../../cizim/yol.js';
 import { kopyaIkon, tikIkon } from '../../cizim/ekran';
-import { ship } from '../../cizim/ortak.js';
+import { kisiSimge } from '../../cizim/yorunge/simge';
 import { Segment } from '../akis/Adim';
 import { arama, git } from '../../yonlendirme';
 import type { Ben } from '../../api/turler';
@@ -110,7 +110,7 @@ export function Ayarlar() {
   const L: any[] = [...(an.data?.anahtarlar || [])].sort((a, b) => sira(a) - sira(b) || String(a.olusturuldu).localeCompare(String(b.olusturuldu)));
   const son = [...L.map((k) => k.son_kullanim), ben?.mcp_son_kullanim].filter(Boolean).sort().pop() as string | undefined;
   const sayi = ekipSayilari(uy.data?.uyeler || [], uy.data?.davetler || [], an.data?.anahtarlar);
-  const ikili = ship(38 - 20, 337 - 304, -12, 'insan', 'S', '#9EE6CF', .62, { flame: false }) + ship(52 - 20, 344 - 304, 0, 'dis', '', '#F2B8D8', .6);
+  const ikili = kisiSimge({ ad: 'S', tip: 'insan' }, 18, 24, .62) + kisiSimge({ ad: 'D', tip: 'dis' }, 34, 42, .62);
   // agent satırları: sunucunun bağlantı listesi; eski sunucuda OAuth izinleri
   const AG: { id: string; ad: string; istemci?: string; alt: string; eski?: boolean }[] = ag.data
     ? (ag.data.agentlar || []).map((a: any) => ({ id: a.id, ad: a.ad, istemci: a.istemci, alt: agentAlt(a) }))
@@ -180,7 +180,7 @@ export function Ayarlar() {
         {tek && <>
           <h3 className="bolum-baslik" style={{ top: agY - 12 }}>AGENT’LARIM</h3>
           {AA.length ? AA.map((a, i) => (
-            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a)} ust={a.ad} alt={agentCumlesi(a, false, true)} onClick={() => setAgentAc(a.ad)} />
+            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a, 26, 30, 1, aa.data?.kisi)} ust={a.ad} alt={agentCumlesi(a, false, true)} onClick={() => setAgentAc(a.ad)} />
           )) : <Metin y={agY + 40} x={22} fs={13} lh={17} renk="ink3" style={{ right: 22 }}>Henüz agent yok. Bir görevin sahibi agent olunca burada görünür.</Metin>}
           <h3 className="bolum-baslik" style={{ top: rtY! - 12 }}>RUTİNLERİM · AI YAPSIN</h3>
           {RL.map((t, i) => (
@@ -193,7 +193,7 @@ export function Ayarlar() {
         {tkY != null && <>
           <h3 className="bolum-baslik" style={{ top: tkY - 12 }}>AI YAPSIN · CLAUDE RUTİNLERİ</h3>
           {TK.map((t, i) => (
-            <SatirKart key={t.id} y={tkY + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (t.ad[0] || 'C').toLocaleUpperCase('tr'), '#B9A6F2', .62, { flame: false })} ust={t.ad}
+            <SatirKart key={t.id} y={tkY + 14 + i * 68} h={60} ikon={kisiSimge({ ad: t.ad, tip: 'agent' }, 26, 30, .8)} ust={t.ad}
               alt={t.son_hata ? `Son deneme başarısız · ${t.son_hata}` : t.son_tetik_at ? `${t.tur === 'zamanli' ? 'Zamanlanmış · son uğradı' : 'API tetiği · son çalışma'} ${gunAy(Date.parse(t.son_tetik_at))} ${saat(Date.parse(t.son_tetik_at))}` : 'Henüz çalışmadı'}
               sag={<button type="button" className="satir-eylem mercan" onClick={() => setRutinKaldir(t)} aria-label={`${t.ad} rutinini kaldır`}>Kaldır</button>} />
           ))}
@@ -212,7 +212,7 @@ export function Ayarlar() {
         {baslik('kisiler', <button type="button" className="ayar-yardim" style={{ top: bY.kisiler - 34 }} aria-label="Roller ve yetkiler" onClick={() => setRoller(true)}>?</button>)}
         {sahip ? <>
           <SatirKart y={bY.kisiler + 14} h={66} ikon={ikili} ust="Üyeler ve davetler" alt={uy.isPending ? '…' : ekipOzeti(sayi)} onClick={() => git('/ayarlar/ekip')} />
-          <SatirKart y={bY.kisiler + 14 + 74} h={66} ikon={ship(26, 35, 0, 'dis', '', '#F2B8D8', .62)} ust="Dış katılımcılar" alt={kt.isPending ? '…' : disSayi} onClick={() => git('/ayarlar/ekip?bolum=dis')} />
+          <SatirKart y={bY.kisiler + 14 + 74} h={66} ikon={kisiSimge({ ad: 'D', tip: 'dis' }, 26, 33, .8)} ust="Dış katılımcılar" alt={kt.isPending ? '…' : disSayi} onClick={() => git('/ayarlar/ekip?bolum=dis')} />
         </> : <SatirKart y={bY.kisiler + 14} h={66} ikon={kisiGemi(ben?.kisi || '', ben?.rol || 'ekip', false, 26, 33, .82)} ust={`Rolün: ${rolAdi(ben?.rol || '')}`}
           alt={ben?.rol === 'ekip' && akisErisimi(ben?.kapsam) ? `${akisErisimi(ben?.kapsam)!.length} akışı görürsün` : dis ? 'Yalnız kendi adımlarını görürsün' : 'Ekibi alanın sahibi yönetir'} />}
 
@@ -228,7 +228,7 @@ export function Ayarlar() {
 
         {baslik('baglantilar')}
         {AG.map((a, i) => (
-          <SatirKart key={a.id} y={bY.baglantilar + 14 + i * 68} h={60} ikon={ship(26, 30, -12, 'agent', (a.ad[0] || 'C').toLocaleUpperCase('tr'), '#FFC9A3', .62, { flame: false })} ust={a.ad} alt={a.alt}
+          <SatirKart key={a.id} y={bY.baglantilar + 14 + i * 68} h={60} ikon={kisiSimge({ ad: a.ad, tip: 'agent' }, 26, 30, .8)} ust={a.ad} alt={a.alt}
             sag={<button type="button" className="satir-eylem mercan" onClick={() => setKaldir(a)} aria-label={`${a.ad} bağlantısını kaldır`}>Kaldır</button>} />
         ))}
         <SatirKart y={bY.baglantilar + 14 + AG.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#FFD27A" stroke-width="2" stroke-linecap="round"/>')}

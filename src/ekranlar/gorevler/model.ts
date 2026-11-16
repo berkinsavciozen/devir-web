@@ -95,7 +95,10 @@ export function gorevHaritasi(G: any[], o: { kisiBasina: boolean; now: number; x
   const X = (t: number) => x0 + ((t - t0) / (t1 - t0)) * (x1 - x0);
   const seritler = sirali.map((k, i) => {
     const a = G.find((g) => anahtar(g) === k);
-    return { ad: o.kisiBasina ? k : a.akis_kisa_ad || a.akis_baslik, tip: (o.kisiBasina ? 'kisi' : 'akis') as 'kisi' | 'akis', sahipTip: o.kisiBasina ? a.sahip_tip : undefined, y: y0 + S / 2 + i * S };
+    // kişinin türü: bir akışta dış katılımcı olan ekip üyesi ekip üyesi olarak çizilir (E2, 14 Kas: Berkin disk görünüyordu)
+    const tipler = new Set(G.filter((g) => anahtar(g) === k).map((g) => g.sahip_tip));
+    const sahipTip = tipler.has('agent') ? 'agent' : tipler.has('insan') || !tipler.has('dis') ? 'insan' : 'dis';
+    return { ad: o.kisiBasina ? k : a.akis_kisa_ad || a.akis_baslik, tip: (o.kisiBasina ? 'kisi' : 'akis') as 'kisi' | 'akis', sahipTip: o.kisiBasina ? sahipTip : undefined, y: y0 + S / 2 + i * S };
   });
   const noktalar: HNokta[] = [];
   G.forEach((a, i) => {
