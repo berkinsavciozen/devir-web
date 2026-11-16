@@ -211,8 +211,14 @@ export function otoDurumCumlesi(a: any, o: { ben: string; tetikYok: boolean; sor
   }
   if (b === 'sürüyor') return `${ag} üzerinde çalışıyor.`;
   if (rutinYok(a, o.tetikYok)) {
-    // H5: başkasının agent'ı; rutini sahibi kurar
+    // H5: başkasının agent'ı; rutini sahibi kurar. 0.38.0: rutin var ama uğramıyorsa (sessiz) ya da hiç çalışmadıysa onu söyler
     const sahibi = a.agent_sahibi && a.agent_sahibi !== o.ben ? o.kisa(a.agent_sahibi) : null;
+    const r = a.rutin_claude_ad || a.rutin_ad;
+    if (a.rutin_durum === 'sessiz' && r) {
+      const t = a.rutin_son ? Date.parse(a.rutin_son) : NaN;
+      return `${r} rutini 3 günden uzun süredir Devir’e uğramıyor${Number.isFinite(t) ? ` (son: ${o.zaman(t)})` : ''}; ${ag} kendiliğinden başlamaz. ${sahibi ? `${sahibi} Claude’da rutinin açık olduğuna baksın.` : 'Claude’da rutinin açık olduğuna bak.'}`;
+    }
+    if (a.rutin_durum === 'bekleniyor' && r) return `${r} rutini Devir’de kurulu ama Claude’da henüz hiç çalışmadı; çalışınca ${ag} başlayacak.`;
     return sahibi ? `${sahibi} Claude rutinini kurunca ${ag} başlayacak; o zamana kadar kendiliğinden başlamaz.` : `AI yapsın açık ama Claude rutinin kurulu değil; kurunca ${ag} başlayacak.`;
   }
   return `Hazır; ${ag} bir sonraki taramada başlayacak.`;
@@ -243,3 +249,11 @@ export function aiArdilCumlesi(a: any, adimlar: any[], ben: string, kisa: (ad: s
     ? `Bu görevin çıktısı eklenip bitince ${ne} kendiliğinden başlayacak (AI yapsın); çıktısız bitirilirse AI başlamaz.`
     : `Bu görev bitince ${ne} kendiliğinden başlayacak (AI yapsın).`;
 }
+
+/**
+ * 16 Kas (W2): rutin işi "kur" ya da "rutine bak" düğmeleri agent'ın kartına gider (/ayarlar/ai?agent=…). Rutin hiç yoksa
+ * kurulum da açılır; sessiz ya da bekleyen rutinde kart, Claude'da aç düğmesiyle açılır.
+ */
+export const rutinAdresi = (a: any) => `/ayarlar/ai?agent=${encodeURIComponent(String(a?.sahip || ''))}${!a?.rutin_durum || a.rutin_durum === 'yok' ? '&kur=ai' : ''}`;
+/** Rutin satırının düğme adı: rutin yoksa kurulum, varsa rutine bakılır. */
+export const rutinDugmesi = (a: any) => (!a?.rutin_durum || a.rutin_durum === 'yok' ? 'Kurulumu aç' : 'Rutine bak');

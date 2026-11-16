@@ -9,7 +9,7 @@ import { ship } from '../../cizim/ortak.js';
 import { gunAy, kisaAd } from '../../cizim/yol.js';
 import { ozelEk, tarihEk } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
-import { duzeltIstemi, eylemAdi, EYLEM_AD, hatirlatilan, hatirlatmaNotu, RED_NEDENLERI, type Eylem, type EylemPlani } from './eylemler';
+import { duzeltIstemi, eylemAdi, EYLEM_AD, hatirlatilan, hatirlatmaNotu, RED_NEDENLERI, rutinAdresi, type Eylem, type EylemPlani } from './eylemler';
 import { sohbetLinki, useSohbet } from './sohbet';
 
 /**
@@ -96,7 +96,7 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
       case 'tarih_degistir': setEngelAc(false); setTarih((a.son_tarih || '').slice(0, 10)); return setTarihAc((x) => !x);
       case 'engel_kaldir': case 'yeniden_ac': return yaz.mutate({ durum: 'hazir' });
       case 'oto_ac': return yaz.mutate({ oto: true });
-      case 'oto_kur': return git('/ayarlar?bolum=ben&kur=ai');
+      case 'oto_kur': return git(rutinAdresi(a));
       case 'oto_kapat': case 'kendim_yapacagim': return yaz.mutate({ oto: false });
       // yeniden dene: deneme sayısı sıfırlanır (AI yapsın kapatılıp açılır), görev hazıra döner ve rutin yeniden çağrılır
       case 'yeniden_dene': return yaz.mutate(a.oto_durum === 'hata' ? { durum: 'hazir', oto: true } : [{ oto: false }, { durum: 'hazir', oto: true }]);

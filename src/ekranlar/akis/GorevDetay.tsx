@@ -12,7 +12,7 @@ import { arama, git } from '../../yonlendirme';
 import { AdimGecmis, Ciktilar, isPayi, sureKisa, takvimIhlali, tuttuklari } from './Adim';
 import { BaglantiSatiri } from './BaglantiGonder';
 import { EylemCubugu } from './EylemCubugu';
-import { aiArdilCumlesi, ajanMi, BITTI, ciktiCumlesi, eylemPlani, otoDurumCumlesi, otoUygun, sonHatirlatma } from './eylemler';
+import { aiArdilCumlesi, ajanMi, BITTI, ciktiCumlesi, eylemPlani, otoDurumCumlesi, otoUygun, rutinAdresi, rutinDugmesi, sonHatirlatma } from './eylemler';
 import { useSohbet } from './sohbet';
 import { useAkis } from './Galaksi';
 import { KararBolumu } from './Karar';
@@ -330,7 +330,7 @@ function GorevIci({ kod, no, ben, kapat, secAlt }: { kod: string; no: number; be
         <p className="gd-satir" role="status">{otoSatiri(A)}</p>
         {A.oto && <label className="gd-oto-sec"><input type="checkbox" checked={!!A.oto_tarih_bekle} disabled={otoYaz.isPending} onChange={(e) => otoYaz.mutate({ oto_tarih_bekle: e.target.checked })} /><span>Planlanan başlangıç gününü beklesin</span></label>}
         {claudeYok && tetikYok && <p className="gd-satir">AI yapsın şimdilik yalnız Claude’la çalışır; sende {U.ad} bağlı. Kendiliğinden yapılsın istersen Claude’u da bağlayıp rutini kur, o zamana kadar {U.da} açıp birlikte yap. <button type="button" className="metin-baglanti" onClick={() => git('/bagla?uygulama=claude')}>Claude’u bağla</button></p>}
-        {A.oto && !BITTI(A.durum) && rutinYok(A, tetikYok) && (!A.agent_sahibi || A.agent_sahibi === ben) && !claudeYok && <p className="gd-satir">Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz. <button type="button" className="metin-baglanti" onClick={() => git('/ayarlar?bolum=ben&kur=ai')}>Kurulumu aç</button></p>}
+        {A.oto && !BITTI(A.durum) && rutinYok(A, tetikYok) && (!A.agent_sahibi || A.agent_sahibi === ben) && !claudeYok && <p className="gd-satir">{A.rutin_durum === 'sessiz' ? 'Rutin 3 günden uzun süredir Devir’e uğramıyor; görev kendiliğinden başlamaz.' : A.rutin_durum === 'bekleniyor' ? 'Rutin Devir’de kurulu ama Claude’da henüz hiç çalışmadı.' : 'Henüz Claude rutinini kurmadın; görev hazır olunca kendiliğinden başlamaz.'} <button type="button" className="metin-baglanti" onClick={() => git(rutinAdresi(A))}>{rutinDugmesi(A)}</button></p>}
         {otoYaz.isError && <p className="canli-hata-satir" role="alert">{(otoYaz.error as Error).message}</p>}
       </Bolum>}
 
