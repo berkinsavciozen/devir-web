@@ -7,13 +7,14 @@ import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { akisModeli, yolCiz } from '../../cizim/yol.js';
+import { miniYorunge } from '../../cizim/yorunge/mini';
+import { isSimge } from '../../cizim/yorunge/simge';
 import { akisAdi, doluSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { useAkis } from './Galaksi';
 import { acikDallar, dalHaric, soruKatmani } from './soru';
 
-const GEO = { cx: 195, cy: 212, R: 120, ps: .7 };
+const GEO = { cx: 195, cy: 212, R: 115, ps: .7 };
 
 /** E3 · Cevapla: açık soru, seçenek kartları (ya da tarih), "Cevapla", "Henüz bilmiyorum" (§5 E3). */
 export function Cevapla({ kod, soru, ben }: { kod: string; soru: string; ben: string }) {
@@ -26,9 +27,14 @@ export function Cevapla({ kod, soru, ben }: { kod: string; soru: string; ben: st
   const secili = sec ?? dal?.kollar[0]?.deger ?? null;
   const arka = useMemo(() => {
     if (!d) return '';
-    const M = akisModeli(d, { sahip: ben, haric: dalHaric(d) });
-    const Y = yolCiz(M, { ...GEO, now: NOW, kuleEtiket: false, labels: [] });
-    const K = soruKatmani(d, M, Y, { ...GEO, now: NOW }, { sec: dal ? secili : undefined, hap: false });
+    // arka: haritanın küçüğü; açık dalın adımları ana resimde yok, her kol kendi yerinde ikiz olarak durur
+    const ciz = (haric: number[]) => miniYorunge({ ...d, adimlar: d.adimlar.filter((a: any) => !haric.includes(a.no)) }, ben, { ...GEO, now: NOW, ayrinti: true });
+    const Y = ciz(dalHaric(d));
+    const K = soruKatmani(d, null, Y, { ...GEO, now: NOW }, {
+      sec: dal ? secili : undefined, hap: false,
+      konum: (haric) => ciz(haric).G.gezegen,
+      gezegen: (no, x, y, sec) => { const a = d.adimlar.find((z: any) => z.no === no); return a ? isSimge(a, x, y, 10, { gorunum: sec ? 'wait' : 'dark' }) : ''; },
+    });
     return `<g opacity=".55">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".3"/>` + K.svg;
   }, [d, ben, NOW, secili, dal]);
   const geri = () => (history.length > 1 ? history.back() : git(`/akis/${encodeURIComponent(kod)}`));

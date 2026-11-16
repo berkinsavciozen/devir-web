@@ -2,7 +2,7 @@
 // Her kişi bir halka (kişinin renginde; agent ince), adımlar sahibinin halkasında durum renginde nokta,
 // iğne tepede (bugün), gelecek saat yönünde, geçmiş solda. Bakanın aracı iğnede, onu bekleyen iş halkalı.
 import { kur, durumAn } from './index';
-import { isSimge, kisiSimge } from './simge';
+import { isGorunum, isSimge, kisiSimge } from './simge';
 
 const GUN = 864e5, RAD = Math.PI / 180;
 const AF = 150 * RAD, AP = 120 * RAD, DOK = 14 * RAD;
@@ -14,7 +14,7 @@ export const DURUM_RENK: Record<string, string> = { lit: '#6EE39A', tahmin: '#6E
 export type MiniSecenek = { cx: number; cy: number; R: number; now: number; pr?: number; ayrinti?: boolean;
   /** yalnız bu kişinin yörüngesi ve işleri belirgin (dış katılımcı sayfası); diğerleri sisli */ odak?: string;
   /** işaretli iş (halka) */ secili?: number | null };
-export type MiniCizim = { svg: string; G: { gezegen: Record<number, { no: number; x: number; y: number }> }; radOf: (no: number) => number; gemiler: { ad: string; x: number; y: number }[] };
+export type MiniCizim = { svg: string; G: { cx: number; cy: number; R: number; gezegen: Record<number, { no: number; x: number; y: number }> }; radOf: (no: number) => number; gemiler: { ad: string; x: number; y: number }[] };
 
 const hamVeri = (d: any, simdi: number) => ({ simdi: new Date(simdi).toISOString(), akis: { ...d.akis, bitis: d.bitis || d.akis?.bitis, kritik_yol: d.kritik_yol || d.akis?.kritik_yol || [], adimlar: d.adimlar || [], sahipler: d.sahipler || [], katilimcilar: d.katilimcilar || [], olaylar: d.olaylar || [] } });
 
@@ -83,7 +83,7 @@ export function miniYorunge(d: any, ben: string, o: MiniSecenek): MiniCizim {
     if (!buyuk && R < 22) { ust += `<circle cx="${f(x)}" cy="${f(y)}" r="${f(Math.max(1.6, pr * 1.1))}" fill="${k.renk}" stroke="#FFF6E0" stroke-width=".6"/>`; continue; }
     ust += kisiSimge(k, x, y, o.odak ? .75 : buyuk ? Math.min(.7, R * .0032) : Math.min(.8, R * .5 / 44));
   }
-  return { svg: `<g class="mini-yorunge">${halka}${adim}${ust}</g>`, G: { gezegen }, radOf: () => pr, gemiler };
+  return { svg: `<g class="mini-yorunge">${halka}${adim}${ust}</g>`, G: { cx, cy, R, gezegen }, radOf: () => pr, gemiler };
 }
 
 /** Henüz kurulmamış akış (taslak, boş evren): kesik yörüngeler ve karanlık n iş; kimse yok, iğne bugün. */
@@ -100,4 +100,28 @@ export function bosYorunge(cx: number, cy: number, R: number, n: number, o: { ha
     s += `<circle cx="${f(cx + r * Math.sin(a))}" cy="${f(cy - r * ry * Math.cos(a))}" r="${f(Math.max(1.4, R * .035))}" fill="${DURUM_RENK.dark}" opacity=".55"/>`;
   }
   return `<g class="bos-yorunge">${s}</g>`;
+}
+
+/** Adım durumundan haritanın durum sınıfı (lit, run, wait, block, ghost, ertele, dark). */
+export const durumG = (d?: string | null) => isGorunum({ durum: d }).g;
+
+/** Kalemli (tekrarlanan) işin uyduları, haritanın dilinde: kesik krem yörünge, biten kadar yeşil yay, kalem başına durum renginde uydu. */
+export function kalemUydulari(x: number, y: number, r: number, kalemler: { ad: string; durum: string }[], o: { ara?: number; ur?: number } = {}): string {
+  const n = kalemler.length, orR = r + (o.ara ?? 14), ur = o.ur ?? 4.4;
+  let s = `<circle cx="${f(x)}" cy="${f(y)}" r="${f(orR)}" fill="none" stroke="#FFF6E0" stroke-width="1" stroke-dasharray="1.5 3.5" opacity=".55"/>`;
+  if (!n) return s;
+  const sayilan = kalemler.filter((k) => !['atlandi', 'ertelendi'].includes(k.durum));
+  const tamam = sayilan.filter((k) => k.durum === 'tamam').length;
+  if (tamam && sayilan.length) {
+    const a1 = -90 + tamam / sayilan.length * 360, p = (a: number) => [x + Math.cos(a * RAD) * orR, y + Math.sin(a * RAD) * orR];
+    const [x0, y0] = p(-90), [x1, y1] = p(Math.min(a1, 269.9));
+    s += `<path d="M${f(x0)},${f(y0)} A${f(orR)},${f(orR)} 0 ${a1 + 90 > 180 ? 1 : 0} 1 ${f(x1)},${f(y1)}" fill="none" stroke="${DURUM_RENK.lit}" stroke-width="2" stroke-linecap="round" opacity=".9"/>`;
+  }
+  kalemler.forEach((k, i) => {
+    const a = (-90 + (i + .5) / n * 360) * RAD, mx = x + Math.cos(a) * orR, my = y + Math.sin(a) * orR, g = durumG(k.durum);
+    if (g === 'ghost' || g === 'ertele') { s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(ur * .8)}" fill="none" stroke="${DURUM_RENK.dark}" stroke-width=".9" stroke-dasharray="1.5 1.5" opacity=".7"/>`; return; }
+    if (g === 'block') s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(ur * 1.9)}" fill="${DURUM_RENK.block}" opacity=".28"/>`;
+    s += `<circle cx="${f(mx)}" cy="${f(my)}" r="${f(ur)}" fill="${DURUM_RENK[g]}" opacity="${g === 'dark' ? .6 : 1}" stroke="#08222E" stroke-width=".8"/>`;
+  });
+  return `<g class="kalem-uydulari">${s}</g>`;
 }

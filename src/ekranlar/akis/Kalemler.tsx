@@ -3,8 +3,8 @@ import { simdi } from '../../api/ortam';
 import { AltSayfa } from '../../bilesen/AltSayfa';
 import { Baslik } from '../../bilesen/Baslik';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { akisModeli, uydular, yolCiz } from '../../cizim/yol.js';
-import { planet } from '../../cizim/ortak.js';
+import { DURUM_RENK, durumG, kalemUydulari, miniYorunge } from '../../cizim/yorunge/mini';
+import { isSimge } from '../../cizim/yorunge/simge';
 import { adimAdi, akisAdi, ek } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
 import { useAkis } from './Galaksi';
@@ -41,10 +41,11 @@ export function Kalemler({ kod, no, ben }: { kod: string; no: number; ben: strin
   const g = d?.tekrar?.find((x: any) => (x.adimlar || []).includes(no));
   const arka = useMemo(() => {
     if (!d) return '';
-    const Y = yolCiz(akisModeli(d, { sahip: ben }), { cx: 195, cy: 160, R: 105, ps: .62, now: NOW, kuleEtiket: false, labels: [] });
+    // arka: haritanın küçüğü; kalemli iş öne çıkar, kalemler onun uyduları
+    const Y = miniYorunge(d, ben, { cx: 195, cy: 182, R: 78, now: NOW, ayrinti: true });
     let s = `<g opacity=".5">${Y.svg}</g><rect width="390" height="844" fill="#020B10" opacity=".35"/>`;
-    const p = Y.G.gezegen[no];
-    if (p && g) s += planet(p.x, p.y, 13, 'wait', { waitRings: 2 }) + uydular(p.x, p.y, 13, g.kalemler.map((k: any) => ({ ad: k.ad, durum: k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada' })), .9);
+    const p = Y.G.gezegen[no], a = d.adimlar.find((x: any) => x.no === no);
+    if (p && a && g) s += isSimge(a, p.x, p.y, 11) + kalemUydulari(p.x, p.y, 11, g.kalemler.map((k: any) => ({ ad: k.ad, durum: k.adimlar?.find((x: any) => x.ust_no === no)?.durum || 'sirada' })));
     return s;
   }, [d, no, ben, NOW, g]);
   if (!d) return <Sahne gok={{ tohum: 51, yildiz: 260 }} etiket="Kalemler" />;
@@ -86,11 +87,15 @@ export function Kalemler({ kod, no, ben }: { kod: string; no: number; ben: strin
                       {asamalar.map((n, j) => {
                         const dur = k.adimlar?.find((x: any) => x.ust_no === n)?.durum || 'sirada', bx = 40 + j * 22;
                         const cur = j === idx && !k.bitti;
-                        const cizgi = j ? <line x1={bx - 16} y1={0} x2={bx - 6} y2={0} stroke={BITTI(dur) || cur ? '#FFD27A' : '#4B4380'} strokeWidth={1.4} /> : null;
-                        const top = BITTI(dur) ? <circle cx={bx} r={5} fill="url(#pLit2)" />
-                          : dur === 'engelli' ? <><circle cx={bx} r={5} fill="url(#pBlock)" /><path d={`M${bx - 3},-3 L${bx + 3},3`} stroke="#08222E" strokeWidth={1.5} /></>
-                          : dur === 'suruyor' || dur === 'hazir' ? <><circle cx={bx} r={7.5} fill="none" stroke="#FFD27A" strokeWidth={1} strokeDasharray="2 1.6" /><circle cx={bx} r={4.5} fill="#2A2452" /><path d={`M${bx},-4.5 A4.5,4.5 0 0 1 ${bx},4.5Z`} fill="#FFE29A" /></>
-                          : <circle cx={bx} r={4.5} fill="#08222E" stroke="#B9A6F2" strokeWidth={1.1} />;
+                        const G = durumG(dur), renk = DURUM_RENK[G];
+                        const cizgi = j ? <line x1={bx - 16} y1={0} x2={bx - 6} y2={0} stroke={BITTI(dur) || cur ? DURUM_RENK.lit : '#3A5566'} strokeWidth={1.4} /> : null;
+                        const top = <>
+                          {cur && <circle cx={bx} r={7.5} fill="none" stroke="#FFB59A" strokeWidth={1.2} />}
+                          {G === 'block' && <circle cx={bx} r={7.5} fill={renk} opacity={.28} />}
+                          {G === 'ghost' || G === 'ertele'
+                            ? <circle cx={bx} r={4} fill="none" stroke={renk} strokeWidth={1} strokeDasharray="1.5 1.5" />
+                            : <circle cx={bx} r={4.6} fill={renk} opacity={G === 'dark' ? .55 : 1} stroke="#08222E" strokeWidth={.8} />}
+                        </>;
                         return <g key={n}>{cizgi}{top}</g>;
                       })}
                     </svg>

@@ -61,18 +61,24 @@ export interface SoruHedef { x: number; y: number; r: number; soru: string; etik
  * tarihi bilinmeyen adımın kesik yörüngesi, ipi ve "Tarih bekliyor" hapı.
  * o.sec: seçili kolun değeri (E3), o.hap: etiket hapları (E2'de var, E3'te yok).
  */
-export function soruKatmani(d: any, M: Model, Y: any, geo: { cx: number; cy: number; R: number; ps: number; now: number }, o: { sec?: string | null; hap?: boolean; yuzer?: boolean } = {}) {
+export function soruKatmani(d: any, M: Model | null, Y: any, geo: { cx: number; cy: number; R: number; ps: number; now: number }, o: { sec?: string | null; hap?: boolean; yuzer?: boolean; konum?: (haric: number[]) => Record<number, { x: number; y: number }>; gezegen?: (no: number, x: number, y: number, sec: boolean | undefined) => string } = {}) {
   let s = '';
   const hedefler: SoruHedef[] = [];
   const G = Y.G, haricAna = dalHaric(d);
   const doluMu = (x: number, y: number, r: number) => Object.values<any>(G.gezegen).some((g) => Math.hypot(g.x - x, g.y - y) < r + (g.r || 10));
   for (const dal of acikDallar(d)) {
     const pts = dal.kollar.map((k) => {
-      const Gk = yolCiz(M, { ...geo, x: geo.now, haric: haricAna.filter((n) => n !== k.no), labels: [], kuleEtiket: false }).G;
-      const g = Gk.gezegen[k.no];
+      const haric = haricAna.filter((n) => n !== k.no);
+      const g = o.konum ? o.konum(haric)[k.no] : yolCiz(M as Model, { ...geo, x: geo.now, haric, labels: [], kuleEtiket: false }).G.gezegen[k.no];
       return g ? { k, p: [g.x, g.y] as [number, number] } : null;
     }).filter(Boolean) as { k: Dal['kollar'][0]; p: [number, number] }[];
     if (!pts.length) continue;
+    // küçük haritada kollar çoğu zaman aynı yere düşer: yörünge boyunca yan yana aç
+    if (o.konum && pts.length > 1 && Math.max(...pts.flatMap((a) => pts.map((b) => Math.hypot(a.p[0] - b.p[0], a.p[1] - b.p[1])))) < 30) {
+      const mx = pts.reduce((a, q) => a + q.p[0], 0) / pts.length, my = pts.reduce((a, q) => a + q.p[1], 0) / pts.length;
+      const r = Math.hypot(mx - G.cx, my - G.cy) || 1, t0 = Math.atan2(my - G.cy, mx - G.cx), adim = 30 / r;
+      pts.forEach((q, i) => { const t = t0 + (i - (pts.length - 1) / 2) * adim; q.p = [G.cx + r * Math.cos(t), G.cy + r * Math.sin(t)]; });
+    }
     const m = [pts.reduce((a, q) => a + q.p[0], 0) / pts.length, pts.reduce((a, q) => a + q.p[1], 0) / pts.length];
     const q = [m[0] + (G.cx - m[0]) * .25, m[1] + (G.cy - m[1]) * .25];
     for (const { p } of pts) {
@@ -81,7 +87,7 @@ export function soruKatmani(d: any, M: Model, Y: any, geo: { cx: number; cy: num
     }
     for (const { k, p } of pts) {
       const sec = o.sec == null ? undefined : o.sec === k.deger;
-      s += `<g opacity="${sec === false ? .28 : sec ? 1 : .62}">` + planet(p[0], p[1], 11, sec ? 'wait' : 'dark', { life: false, waitRings: 1 }) + `<circle cx="${f(p[0])}" cy="${f(p[1])}" r="16" fill="none" stroke="#D9CCFF" stroke-width="1.2" stroke-dasharray="2 3"/></g>`;
+      s += `<g opacity="${sec === false ? .28 : sec ? 1 : .62}">` + (o.gezegen ? o.gezegen(k.no, p[0], p[1], sec) : planet(p[0], p[1], 11, sec ? 'wait' : 'dark', { life: false, waitRings: 1 })) + `<circle cx="${f(p[0])}" cy="${f(p[1])}" r="16" fill="none" stroke="#D9CCFF" stroke-width="1.2" stroke-dasharray="2 3"/></g>`;
       s += `<g transform="translate(${f(p[0] + 13)},${f(p[1] - 13)})"><circle r="8" fill="#FFF1DC" stroke="#2A1D4F"/><text y="3.8" text-anchor="middle" font-family="Bricolage" font-weight="800" font-size="10.5" fill="#2A1D4F">${k.harf}</text></g>`;
       hedefler.push({ x: p[0], y: p[1], r: 22, soru: dal.kod, etiket: `${k.harf} dalı: ${k.etiket}. ${k.sonuc}.` });
     }
@@ -114,7 +120,7 @@ export function soruKatmani(d: any, M: Model, Y: any, geo: { cx: number; cy: num
       const [x0, y0] = p(a0), [x1, y1] = p(a1);
       s += `<path d="M${f(x0)},${f(y0)} A${r},${r} 0 0 1 ${f(x1)},${f(y1)}" fill="none" stroke="#FFD27A" stroke-width="1.6" stroke-linecap="round"/>`;
     }
-    s += planet(fx, fy, 12, 'dark', { life: false }) + soruRozet(fx + 14, fy - 14, .9);
+    s += (o.gezegen ? o.gezegen(a.no, fx, fy, undefined) : planet(fx, fy, 12, 'dark', { life: false })) + soruRozet(fx + 14, fy - 14, .9);
     if (o.hap !== false) {
       const w = Math.round('Tarih bekliyor'.length * 11 * .56 + 14);
       s += pill(Math.min(Math.max(fx - 18, w / 2 + 8), 390 - w / 2 - 8), fy + 40, 'Tarih bekliyor', { fs: 11, fw: 700, stroke: '#FFD27A', col: '#FFE6B0' });
