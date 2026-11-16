@@ -80,3 +80,13 @@ test('W3 · kurulum: her adım ne göreceğini söyler; eski ?kur=ai adresi sayf
   await expect(k.getByRole('checkbox', { name: 'Yayın yazarı' })).toBeChecked();
   await expect(k.getByRole('checkbox', { name: /Tüm agent’larım/ })).not.toBeChecked();
 });
+
+test('16 Kas W2 · sessiz rutinli görev bunu söyler; "Rutine bak" agent kartına gider', async ({ page }) => {
+  await ac(page, '/akis/RTD5/adim/9?senaryo=berkin&hal=ai2');
+  await expect(page.locator('.gd-cumle')).toContainText('Devir araştırma (saatlik) rutini 3 günden uzun süredir Devir’e uğramıyor');
+  await page.getByRole('button', { name: 'Rutine bak' }).first().click();
+  await expect(page).toHaveURL(/\/ayarlar\/ai\?agent=Ara%C5%9Ft%C4%B1rmac%C4%B1$/);
+  await expect(page.locator('.ai-kart.hedef')).toContainText('Araştırmacı');
+  await expect(page.getByRole('dialog', { name: 'AI yapsın kurulumu' })).toHaveCount(0);
+  await cek(page, 'W2-rutine-bak');
+});

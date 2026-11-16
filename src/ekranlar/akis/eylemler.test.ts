@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aiArdilCumlesi, ciktiCumlesi, eylemAdi, eylemPlani, hatirlatmaNotu, otoDurumCumlesi, sonHatirlatma } from './eylemler';
+import { aiArdilCumlesi, ciktiCumlesi, eylemAdi, eylemPlani, hatirlatmaNotu, otoDurumCumlesi, rutinAdresi, rutinDugmesi, sonHatirlatma } from './eylemler';
 
 const ben = 'Berkin';
 const L = { claude: 'https://claude.ai/new?q=x' };
@@ -83,6 +83,15 @@ describe('W1 cümleler', () => {
     const k = { ...o, ben: 'Ece', kisa: (x: string) => (x === ben ? 'Berkin' : 'Claude') };
     expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false }, k)).toBe('Berkin Claude rutinini kurunca Claude başlayacak; o zamana kadar kendiliğinden başlamaz.');
     expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false }, o)).toBe('AI yapsın açık ama Claude rutinin kurulu değil; kurunca Claude başlayacak.');
+    // 0.38.0: rutin var ama uğramıyor ya da hiç çalışmadı
+    expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false, rutin_durum: 'sessiz', rutin_ad: 'Berkin’in Claude’u', rutin_son: '2026-11-09T13:17:00Z' }, o)).toMatch(/^Berkin’in Claude’u rutini 3 günden uzun süredir Devir’e uğramıyor \(son: .+\); Claude kendiliğinden başlamaz\. Claude’da rutinin açık olduğuna bak\.$/);
+    expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: false, rutin_durum: 'bekleniyor', rutin_ad: 'X', rutin_claude_ad: 'Devir saatlik' }, o)).toBe('Devir saatlik rutini Devir’de kurulu ama Claude’da henüz hiç çalışmadı; çalışınca Claude başlayacak.');
+  });
+  it('W2: rutin düğmesi agent kartına gider; rutin yoksa kurulum da açılır', () => {
+    expect(rutinAdresi({ sahip: 'Berkin’in Claude’u', rutin_durum: 'sessiz' })).toBe(`/ayarlar/ai?agent=${encodeURIComponent('Berkin’in Claude’u')}`);
+    expect(rutinAdresi({ sahip: 'Ajan', rutin_durum: 'yok' })).toBe('/ayarlar/ai?agent=Ajan&kur=ai');
+    expect(rutinDugmesi({ rutin_durum: 'sessiz' })).toBe('Rutine bak');
+    expect(rutinDugmesi({})).toBe('Kurulumu aç');
     expect(otoDurumCumlesi({ ...agent, durum: 'hazir', oto: true, rutin_var: true }, { ...o, tetikYok: true })).toBe('Hazır; Claude bir sonraki taramada başlayacak.');
   });
   it('H5: sunucu rutin var diyorsa kendi işinde "kur" yok', () => {

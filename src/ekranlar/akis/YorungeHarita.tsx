@@ -1,6 +1,7 @@
 import { useState, useEffect, useImperativeHandle, useMemo, useRef, forwardRef } from 'react';
 import { hareketAz } from '../../ayar/hareket';
 import { adimAdi } from '../../metin/turkce';
+import { git } from '../../yonlendirme';
 import { anYaz, arac, durumAn, durumRenk, kur, KISI_DURUM_AD, yorungeHaritasi, type YorungeOrnegi } from '../../cizim/yorunge/index.js';
 
 /**
@@ -207,7 +208,8 @@ export const YorungeHarita = forwardRef<YorungeTutamak, Oz>(function YorungeHari
           {(kd.hamleler || []).length > 0 && <div className="ky-kk-hamle" role="group" aria-label="Bekleyen hamleler">
             {(kd.hamleler as any[]).slice(0, 4).map((hm) => <button key={hm.tur + hm.no} type="button" className="ky-kk-h" onClick={() => isAc(hm.no)}><b>{hm.etiket}</b><span>{hm.no}. {adimAdi(M.byNo[hm.no])}</span></button>)}
           </div>}
-          {(kd.rutinsiz || []).length > 0 && <small className="ky-kk-not">{(kd.rutinsiz || []).length} işte AI yapsın kurulmamış</small>}
+          {/* W2 (16 Kas): rutinsiz AI işi agent'ın kartına götürür (rutin yok, sessiz ya da hiç çalışmamış) */}
+          {(kd.rutinsiz || []).length > 0 && <small className="ky-kk-not">{(kd.rutinsiz || []).length} AI işini alacak rutin çalışmıyor. {k.tip === 'agent' && <button type="button" className="metin-baglanti" onClick={() => git(`/ayarlar/ai?agent=${encodeURIComponent(k.ad)}`)}>Rutine bak</button>}</small>}
         </section>
       );
     })()}
