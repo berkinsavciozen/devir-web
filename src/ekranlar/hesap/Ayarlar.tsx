@@ -153,15 +153,17 @@ export function Ayarlar() {
 
   // adresle gelinen grup (?bolum=ben, eski ?sekme=hesap): ilk çizimden sonra oraya kayar
   const hedef = hedefGrup();
-  const kaydi = useRef(false);
+  const kaydi = useRef(0);
   useEffect(() => {
-    if (!hedef || hedef === 'ben' || kaydi.current || !ben) return;
-    // grup veri gelince çizilebilir (Devir'i öner): başlık yoksa bir sonraki çizimde yeniden dener
+    if (!hedef || hedef === 'ben' || !ben) return;
+    // grup veri gelince çizilebilir (Devir'i öner): başlık yoksa bir sonraki çizimde yeniden dener. Üstteki gruplar veri
+    // geldikçe uzar ve başlık aşağı kayar; ilk kaydırmadan sonraki 3 sn içinde gelen veride yeniden kaydırılır
+    if (kaydi.current && Date.now() - kaydi.current > 3000) return;
     const el = document.getElementById(`ayar-${hedef}`);
     if (!el) return;
-    kaydi.current = true;
+    if (!kaydi.current) kaydi.current = Date.now();
     el.scrollIntoView({ block: 'start' });
-  }, [hedef, ben, an.data, uy.data, rf.data, ag.data, ku.data, aa.data]);
+  }, [hedef, ben, an.data, uy.data, rf.data, ag.data, ku.data, aa.data, tk.data, kt.data, bk.data, pol.data, h]);
 
   const baslik = (b: Bolum, ek?: ReactNode) => <>
     <h2 id={`ayar-${b}`} className="bolum-baslik ayar-grup" style={{ top: bY[b] - 12 }}>{BASLIK[b]}</h2>{ek}
