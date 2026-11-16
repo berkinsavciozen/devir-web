@@ -1,7 +1,7 @@
 // Devir JSON uçları (Faz 2 arayüzü için). Tasarımdan bağımsız: veri, türetilmiş ölçüler ve otomatik özet cümleleri.
 // Okuma doğrudan çekirdekteki timeline/plan/metrics ile; yazma MCP araçlarıyla aynı mantıktan (callTool) geçer.
 import {
-  callTool, TOOLS, otoToplu, rutinOkuyucu, aiGecmisi, agentlarV, agentOtoAc, agentKaldir, renkYaz, rutinKapsami, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
+  callTool, TOOLS, otoToplu, rutinBulucu, rutinOzeti, rutinSagligi, ZAMANLI_AD, aiGecmisi, agentlarV, agentOtoAc, agentKaldir, renkYaz, rutinKapsami, type DB, type Ctx, DONE, acikOnculler, ilerlemeSay, LBL, HOUR, fmtD, fmtMs, norm, adEslesir, DevirHata, kimlikBagla, kisiCoz, kisiAl, kisiAlani, olayYaz, yedekMotor, motorAdi, isDis, stepInScope, flowInScope, akisKapsami, metrics, getAkis, loadFlow,
   kararlar, ciktilar, acikIsler, fixStep, kararAdimi, otoBekledigi, alanDoldur, altGruplar, altAdimi, chatLinks, todayIst, eod, katilimciAc, taslakPayi,
 } from "./core.ts";
 import { aiKullanimi, aylikSinir, kullanimYaz } from "./islem.ts";
@@ -26,7 +26,7 @@ const durKisa = (ms: number) => { const h = ms / HOUR; if (h < 1) return `${Math
 const yaz = (p: Parca[]) => p.map((x) => x.metin).join("");
 
 // ---------- görünümler ----------
-const tetikV = (t: any) => ({ id: t.id, ad: t.ad, tur: t.url === "zamanli" ? "zamanli" : "api", url: String(t.url || "").replace(/routines\/([A-Za-z0-9_-]{4})[A-Za-z0-9_-]*\//, "routines/$1…/"), son_tetik_at: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: Array.isArray(t.agentlar) ? t.agentlar : null });
+const tetikV = (t: any, now = Date.now()) => ({ id: t.id, ad: t.ad, claude_ad: t.claude_ad || null, aktif: t.aktif !== false, saglik: rutinSagligi(t, now), tur: t.url === "zamanli" ? "zamanli" : "api", url: String(t.url || "").replace(/routines\/([A-Za-z0-9_-]{4})[A-Za-z0-9_-]*\//, "routines/$1…/"), son_tetik_at: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: Array.isArray(t.agentlar) ? t.agentlar : null });
 /** 0.34.0 (K1): rutinin kapsamı; null = tüm agent'larım, dizi = seçilen agent adları (tekil, en çok 20). */
 const agentListesi = (v: unknown): string[] | null => (v == null || v === "tumu" ? null : Array.isArray(v) ? [...new Map(v.map((x) => String(x || "").trim().slice(0, 80)).filter(Boolean).map((x) => [norm(x), x])).values()].slice(0, 20) : (() => { throw new ApiHata(400, "agentlar bir ad listesi ya da null (tüm agent'larım) olmalı."); })());
 /** Zamanlanmış rutinin istemi (0.29.1, varsayılan yol): jetonsuz; rutin saatte bir kendi işlerini Devir'den çeker. */
@@ -67,11 +67,20 @@ function adimV(akis: any, s: any, m: any, steps: any[], opts: { dis?: boolean } 
   return v;
 }
 
-/** H5 (0.36.0): agent adımlarına rutin_var (true/false; agent değilse ya da bittiyse null). Dış katılımcıya yazılmaz. */
+/**
+ * H5 (0.36.0): agent adımlarına rutin_var (true/false; agent değilse ya da bittiyse null). Dış katılımcıya yazılmaz.
+ * 0.38.0 (B1, B2): aynı tek kuraldan rutin_durum (canli/sessiz/hata/bekleniyor/yok), rutin_ad ve rutin_son da yazılır;
+ * web "X rutini 9 Kas'tan beri uğramadı" der.
+ */
 async function rutinEkle(ctx: Ctx, steps: any[], V: any[], dis: boolean) {
   if (dis) return V;
-  const oku = rutinOkuyucu(ctx);
-  await Promise.all(steps.map(async (s, i) => { V[i].rutin_var = await oku(s); }));
+  const bul = rutinBulucu(ctx);
+  await Promise.all(steps.map(async (s, i) => {
+    const t = await bul(s);
+    if (t === undefined) { V[i].rutin_var = null; return; }
+    const o = rutinOzeti(t, ctx.now);
+    Object.assign(V[i], { rutin_var: !!t && (t.url !== "zamanli" || o.rutin_durum === "canli"), ...o });
+  }));
   return V;
 }
 
@@ -518,7 +527,32 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
   // AI yapsın (0.29.0): kişinin Claude rutin tetikleri. Jeton şifreli saklanır, bir daha gösterilmez.
   if (r0 === "tetikler" && !r1 && method === "GET") {
     const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi) }, "created_at").catch(() => []);
-    return { tetikler: L.filter((t: any) => t.aktif).map(tetikV), rutin_metni: RUTIN_METNI, zamanli_metni: zamanliMetni(q.get("agent")) };
+    // B8 (0.38.0): ?hepsi=1 kaldırılmış rutinleri de döner (katlı listede yeniden açmak için)
+    const hepsi = q.get("hepsi") === "1";
+    return { tetikler: L.filter((t: any) => hepsi || t.aktif).map((t: any) => tetikV(t, ctx.now)), rutin_metni: RUTIN_METNI, zamanli_metni: zamanliMetni(q.get("agent")) };
+  }
+  // B6 (0.38.0): zamanlanmış rutin Devir'de önceden kurulur (Claude'daki ad ve kapsamla); Claude'daki rutin ilk uğradığında
+  // aynı satırı (adı istemdeki agent adı) günceller. Uğrayana kadar sağlığı "bekleniyor".
+  if (r0 === "tetikler" && !r1 && method === "POST" && b.tur === "zamanli") {
+    oturumMu(ctx);
+    if (ctx.key.rol === "dis") throw new ApiHata(403, "Rutin yalnız ekip üyelerine açık.");
+    const agentlar = "agentlar" in b ? agentListesi(b.agentlar) : null;
+    const ad = String(b.ad || "").trim().slice(0, 60) || (agentlar?.length === 1 ? agentlar[0] : ZAMANLI_AD);
+    const claude_ad = String(b.claude_ad || "").trim().slice(0, 80) || null;
+    const L = await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi) }, "created_at");
+    const var0 = L.find((t: any) => t.url === "zamanli" && norm(t.ad) === norm(ad));
+    const alan: any = { ad, url: "zamanli", jeton: "", aktif: true, agentlar, ...(claude_ad ? { claude_ad } : {}) };
+    if (var0) await ctx.db.update("agent_tetik", { id: var0.id }, alan);
+    const [t] = var0 ? [{ ...var0, ...alan }] : await ctx.db.insert("agent_tetik", [{ ws_id: ctx.ws.id, uye_id: ctx.key.uye_id || null, kisi: ctx.key.kisi, kisi_norm: norm(ctx.key.kisi), son_tetik_at: null, son_hata: null, ...alan }]);
+    return { tetik: tetikV(t, ctx.now), zamanli_metni: zamanliMetni(ad === ZAMANLI_AD ? null : ad), not: `${ad} rutini Devir'de kuruldu; Claude'daki rutin ilk çalıştığında canlı görünür.` };
+  }
+  if (r0 === "tetikler" && r1 && r2 === "ac" && method === "POST") {
+    oturumMu(ctx);
+    const t = await ctx.db.one("agent_tetik", { id: r1, ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi) });
+    if (!t) throw new ApiHata(404, "Rutin yok.");
+    if (t.url !== "zamanli") throw new ApiHata(400, "Anında rutinin jetonu kaldırırken silindi; yeniden açmak için tetiği yeniden ekle.");
+    await ctx.db.update("agent_tetik", { id: t.id }, { aktif: true });
+    return { tetik: tetikV({ ...t, aktif: true }, ctx.now), not: `${t.ad} yeniden açıldı. Claude'daki rutin de çalışıyorsa işleri alır.` };
   }
   if (r0 === "tetikler" && !r1 && method === "POST") {
     oturumMu(ctx);
@@ -565,6 +599,12 @@ export async function apiYonlendir(ctx: Ctx, method: string, yol: string[], q: U
     oturumMu(ctx);
     const t = await ctx.db.one("agent_tetik", { id: r1, ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi) });
     if (!t || !t.aktif) throw new ApiHata(404, "Rutin yok.");
+    // K4 (0.38.0): Claude'daki adı ayrı yazılır (yalnız gösterim)
+    if ("claude_ad" in b && !b.ad) {
+      const claude_ad = String(b.claude_ad || "").trim().slice(0, 80) || null;
+      await ctx.db.update("agent_tetik", { id: t.id }, { claude_ad });
+      return { tetik: tetikV({ ...t, claude_ad }, ctx.now), not: claude_ad ? `Claude'daki adı ${claude_ad} olarak yazıldı.` : "Claude'daki adı silindi." };
+    }
     const ad = String(b.ad || "").trim().slice(0, 60);
     if (!ad) throw new ApiHata(400, "ad gerekli: bu rutinin işini yaptığı agent'ın adı (ör. 'Berkin'in Claude'u').");
     const cak = (await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: norm(ctx.key.kisi), aktif: true }, "created_at")).find((x: any) => x.id !== t.id && norm(x.ad) === norm(ad));

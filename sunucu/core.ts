@@ -675,22 +675,48 @@ export async function rutinVar(ctx: Ctx, kisi: string | null, agentAd?: string |
   const t = rutinSec(await kisiRutinleri(ctx, kisi), agentAd, await kisiAgentAdlari(ctx, kisi));
   return rutinCanli(t, ctx.now);
 }
-/** Rutin işi alır mı: API tetiği her zaman, zamanlanmış rutin son 3 günde Devir'e uğradıysa. */
-const rutinCanli = (t: any, now: number) => !!t && (t.url !== ZAMANLI || (!!t.son_tetik_at && now - Date.parse(t.son_tetik_at) < 3 * 864e5));
+/** Zamanlanmış rutinin "sessiz" sayıldığı süre (K2, 16 Kas: her yerde aynı kural). */
+export const SESSIZ_SURE = 3 * 864e5;
+export type RutinSagligi = "canli" | "sessiz" | "hata" | "bekleniyor" | "kapali" | "yok";
+/**
+ * 0.38.0 (B1): rutinin sağlığı için tek kural; agent listesi, adımın rutin_var'ı ve rutin listesi bunu kullanır.
+ * canli: API tetiği (son denemesi hatasız) ya da son 3 günde Devir'e uğramış zamanlanmış rutin. sessiz: zamanlanmış rutin
+ * 3 günden uzun süredir uğramadı. hata: API tetiğinin son denemesi hata verdi. bekleniyor: Devir'de kuruldu ama Claude'daki
+ * rutin henüz hiç uğramadı. kapali: kaldırıldı. yok: rutin yok.
+ */
+export function rutinSagligi(t: any, now: number): RutinSagligi {
+  if (!t) return "yok";
+  if (t.aktif === false) return "kapali";
+  if (t.url !== ZAMANLI) return t.son_hata ? "hata" : "canli";
+  if (!t.son_tetik_at) return "bekleniyor";
+  return now - Date.parse(t.son_tetik_at) < SESSIZ_SURE ? "canli" : "sessiz";
+}
+/** Rutin işi alır mı: API tetiği her zaman (hata verse de Devir yeniden dener), zamanlanmış rutin canlıysa. */
+const rutinCanli = (t: any, now: number) => !!t && (t.url !== ZAMANLI || rutinSagligi(t, now) === "canli");
+/** Adımda ve agent'ta gösterilen rutin özeti (0.38.0). */
+export const rutinOzeti = (t: any, now: number) => ({ rutin_durum: rutinSagligi(t, now), rutin_ad: t ? String(t.ad) : null, rutin_claude_ad: t?.claude_ad || null, rutin_son: t?.son_tetik_at || null });
 /**
  * H5 (0.36.0): açık agent adımının işini alacak bir Claude rutini var mı (agent sahibinin rutinleri). Herkes görür: başkasının
  * agent'ında rutin yoksa hamle sahibindedir. Agent olmayan ya da biten adımda null. Rutinler kişi başına bir kez okunur.
  */
 export function rutinOkuyucu(ctx: Ctx) {
-  const kisiler = new Map<string, Promise<{ L: any[]; adlar: string[] }>>();
+  const oku = rutinBulucu(ctx);
   return async (s: any): Promise<boolean | null> => {
-    if (s.sahip_tip !== "agent" || DONE(s)) return null;
+    const r = await oku(s);
+    return r === undefined ? null : rutinCanli(r, ctx.now);
+  };
+}
+/** 0.38.0: açık agent adımının işini alacak rutin satırı (yoksa null); agent olmayan ya da biten adımda undefined. */
+export function rutinBulucu(ctx: Ctx) {
+  const kisiler = new Map<string, Promise<{ L: any[]; adlar: string[] }>>();
+  return async (s: any): Promise<any | null | undefined> => {
+    if (s.sahip_tip !== "agent" || DONE(s)) return undefined;
     const kisi = String(s.agent_sahibi || "").trim();
-    if (!kisi) return false;
+    if (!kisi) return null;
     const k = norm(kisi);
     if (!kisiler.has(k)) kisiler.set(k, Promise.all([kisiRutinleri(ctx, kisi), kisiAgentAdlari(ctx, kisi)]).then(([L, adlar]) => ({ L, adlar })));
     const { L, adlar } = await kisiler.get(k)!;
-    return rutinCanli(rutinSec(L, s.sahip, adlar), ctx.now);
+    return rutinSec(L, s.sahip, adlar);
   };
 }
 /** Zamanlanmış rutin satırının url işareti: jetonsuz, Devir tetiklemez; rutin kendisi saatte bir devir_ai_isler'i çağırır. */
@@ -3483,7 +3509,7 @@ export async function agentlarV(ctx: Ctx) {
   const adlar = tekil([...adimAdlari, ...secili, ...eskiAd, ...kayit.filter((k: any) => !k.gizli_at).map((k: any) => String(k.ad))])
     .filter((ad) => !kayitOf(ad)?.gizli_at || benim.some((x: any) => norm(x.sahip) === norm(ad) && !DONE(x)));
   const isV = (x: any) => ({ akis: kodOf.get(x.akis_id)?.kisa_kod, akis_ad: kodOf.get(x.akis_id) ? akisKisaAdi(kodOf.get(x.akis_id)) : null, no: x.no, ad: x.ad, durum: x.durum, oto_durum: x.oto_durum || null });
-  const rutinV = (t: any) => ({ id: t.id, ad: t.ad, tur: t.url === ZAMANLI ? "zamanli" : "api", son_calisma: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: rutinKapsami(t, adlar) });
+  const rutinV = (t: any) => ({ id: t.id, ad: t.ad, claude_ad: t.claude_ad || null, tur: t.url === ZAMANLI ? "zamanli" : "api", son_calisma: t.son_tetik_at || null, son_hata: t.son_hata || null, agentlar: rutinKapsami(t, adlar), saglik: rutinSagligi(t, ctx.now) });
   const agentlar = adlar.map((ad) => {
     const isler = benim.filter((x: any) => norm(x.sahip) === norm(ad));
     const sec = rutinSec(rutinler, ad, adlar);
@@ -3491,9 +3517,11 @@ export async function agentlarV(ctx: Ctx) {
     const r = rutinler.filter((t: any) => { const k = rutinKapsami(t, adlar); return t.id === sec?.id || (k ? k.some((x) => norm(x) === norm(ad)) : false); });
     const sonEv = ev.filter((e: any) => isler.some((x: any) => x.akis_id === e.akis_id && x.no === e.adim_no) && (AI_TUR.has(e.veri?.tur) || e.kim_tip === "agent")).pop();
     const calisiyor = isler.filter((x: any) => x.oto_durum === "tetiklendi" || (x.durum === "suruyor" && x.oto && !x.oto_durum));
+    // B9 (0.38.0): agent'ın uygulaması addan tahmin edilmez; agent'ın son yazdığı olaydaki araç
+    const aracEv = ev.filter((e: any) => e.kim_tip === "agent" && norm(e.kim || "") === norm(ad) && e.arac).pop();
     const hata = isler.filter((x: any) => x.oto_durum === "hata" || (r.length && r.every((t: any) => t.son_hata)));
     return {
-      ad, renk: kayitOf(ad)?.renk || null, rutinler: r.map(rutinV), isleyen_rutin: sec ? sec.id : null,
+      ad, renk: kayitOf(ad)?.renk || null, rutinler: r.map(rutinV), isleyen_rutin: sec ? sec.id : null, ...rutinOzeti(sec, ctx.now), arac: aracEv?.arac || null,
       durum: hata.length ? "hata" : calisiyor.length ? "calisiyor" : "bosta",
       simdi: calisiyor.slice(0, 3).map(isV),
       sirada: isler.filter((x: any) => x.oto && !DONE(x) && !x.oto_durum).length,
@@ -3504,7 +3532,9 @@ export async function agentlarV(ctx: Ctx) {
     };
   });
   const genel = rutinler.find((t: any) => t.url === ZAMANLI && norm(t.ad) === norm(ZAMANLI_AD));
-  return { kisi, agentlar, rutinler: rutinler.map(rutinV), genel_rutin: genel ? { id: genel.id, son_calisma: genel.son_tetik_at || null } : null };
+  // B8 (0.38.0): kaldırılmış rutinler katlı listede görünür, yeniden açılabilir
+  const kapali = ((await ctx.db.many("agent_tetik", { ws_id: ctx.ws.id, kisi_norm: nk, aktif: false }, "created_at").catch(() => [])) as any[]).map(rutinV);
+  return { kisi, agentlar, rutinler: rutinler.map(rutinV), kapali_rutinler: kapali, sessiz_gun: SESSIZ_SURE / 864e5, genel_rutin: genel ? { id: genel.id, son_calisma: genel.son_tetik_at || null } : null };
 }
 /**
  * 0.34.0 (K3): rutin bir agent'a bağlanınca (ya da "tüm agent'larım" kurulunca) o agent'ların açık adımlarında AI yapsın açılır.
