@@ -7,7 +7,7 @@ import { rutinYok } from '../../cizim/hamle';
  */
 export type Eylem =
   | 'bitti' | 'cikti_ekle' | 'ciktisiz_bitir' | 'claude' | 'claude_basla' | 'claude_dusun' | 'basladim' | 'karar_ver' | 'engel_bildir' | 'engel_kaldir'
-  | 'oto_ac' | 'oto_kur' | 'oto_kapat' | 'kendim_bitir' | 'oturum' | 'onayla' | 'geri_gonder' | 'reddet' | 'duzelt' | 'kendim_yapacagim'
+  | 'oto_ac' | 'oto_kur' | 'oto_kapat' | 'kendim_bitir' | 'erken_bitir' | 'oturum' | 'onayla' | 'geri_gonder' | 'reddet' | 'duzelt' | 'kendim_yapacagim'
   | 'yeniden_dene' | 'yeniden_ac' | 'baglanti' | 'onizle' | 'hatirlat' | 'tarih_degistir';
 
 /** Sunucudaki INCELEME_TUR_SINIRI ile aynı (sunucu/yurutme.ts). */
@@ -99,8 +99,10 @@ export function eylemPlani({ a, ben, acikAlt, tetikYok: yerelTetikYok, akisSahib
     if (a.durum === 'engelli') return yap('engel_kaldir', claude && 'claude_dusun', [tarih]);
     return yap('karar_ver', claude && 'claude_dusun', ['engel_bildir', tarih]);
   }
-  // 1: sırada (öncüller bitmedi): hazırlık için Claude; engel önceden bildirilir, tarih kaydırılır (1. satır önerisi)
-  if (a.durum === 'sirada') return yap(null, claude, ['engel_bildir', tarih]);
+  // 1: sırada (öncüller bitmedi): hazırlık için Claude; engel önceden bildirilir, tarih kaydırılır (1. satır önerisi).
+  // 16 Kas (Berkin): bu ekranın işi kişinin "yaptım" ya da "engel var" demesi; öncüller bitmeden yapılan iş "Yaptım, bitir"
+  // ile kapanır (sunucuya zorla + not gider), hazırlık sohbeti ⋯ içine iner
+  if (a.durum === 'sirada') return yap(null, 'erken_bitir', [claude, 'engel_bildir', tarih]);
   // 5: engelli
   if (a.durum === 'engelli') return yap('engel_kaldir', claude, [tarih]);
   // 2–4: hazır ya da sürüyor. Sırası gelmiş ama başlanmamış işte ikincil "Başladım" (karar 1); Claude bağlantısı varsa
@@ -144,6 +146,7 @@ export const EYLEM_AD: Record<Eylem, string> = {
   oto_kur: 'AI yapsın’ı kur',
   oto_kapat: 'AI yapsın’ı kapat',
   kendim_bitir: 'Kendim yaptım, bitir',
+  erken_bitir: 'Yaptım, bitir',
   oturum: 'Claude oturumunu aç',
   onayla: 'Onayla, bitir',
   geri_gonder: 'Yorumla geri gönder',

@@ -76,6 +76,8 @@ export function EylemCubugu({ a, kod, plan, ciktiEkle, baglantiAc, kararAc, chil
     setMenuAcik(false); setBilgi(null);
     switch (e) {
       case 'bitti': case 'kendim_bitir': case 'onayla': return yaz.mutate({ durum: 'tamam' });
+      // 16 Kas: sırası gelmeden yapılan iş; öncüller bitmediği için zorla, nedeni olay kaydına
+      case 'erken_bitir': return yaz.mutate({ durum: 'tamam', zorla: true, not: 'Sırası gelmeden yapıldı' });
       case 'ciktisiz_bitir': return yaz.mutate({ durum: 'tamam', not: 'Çıktısız bitirildi' });
       case 'cikti_ekle': return ciktiEkle();
       case 'claude': case 'claude_dusun': return sohbetAc();

@@ -8,7 +8,7 @@ const insan = { sahip: ben, sahip_tip: 'insan', ad: 'Rakip listesini çıkar' };
 const agent = { sahip: 'Berkin’in Claude’u', sahip_tip: 'agent', agent_sahibi: ben, ad: 'Rakip tablosunu hazırla' };
 
 describe('W1 düğme matrisi', () => {
-  it('1 · senin işin, sırada: Claude (hazırlık); ⋯ Engel bildir, Tarihi değiştir', () => expect(p({ ...insan, durum: 'sirada' })).toEqual({ ana: null, ikincil: 'claude', menu: ['engel_bildir', 'tarih_degistir'] }));
+  it('1 · senin işin, sırada: Yaptım bitir; ⋯ Claude, Engel bildir, Tarihi değiştir', () => expect(p({ ...insan, durum: 'sirada' })).toEqual({ ana: null, ikincil: 'erken_bitir', menu: ['claude', 'engel_bildir', 'tarih_degistir'] }));
   it('2 · çıktı beklenmiyor: Bitti, Claude’da başla, ⋯ Başladım, Engel bildir', () => expect(p({ ...insan, durum: 'hazir', cikti_bekleniyor: false })).toEqual({ ana: 'bitti', ikincil: 'claude_basla', menu: ['basladim', 'engel_bildir', 'tarih_degistir'] }));
   it('2b · karar 1: Claude bağlantısı yoksa ikincil Başladım; sürüyorken Başladım yok', () => {
     expect(eylemPlani({ a: { ...insan, durum: 'hazir', cikti_bekleniyor: false }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: 'bitti', ikincil: 'basladim', menu: ['engel_bildir', 'tarih_degistir'] });
@@ -65,8 +65,8 @@ describe('W1 düğme matrisi', () => {
   });
   it('dışarıya gönderen agent işi AI yapsın olmaz; kişi kendisi bitirir', () => expect(p({ ...agent, ad: 'Teklifi müşteriye gönder', durum: 'hazir' }).ana).toBe('bitti'));
   it('"Gönderi" gönderme sayılmaz', () => expect(p({ ...agent, ad: 'Gönderi 3’ü hazırla', durum: 'hazir' }).ana).toBe('oto_ac'));
-  it('Claude bağlantısı yoksa Claude düğmesi yok', () => expect(eylemPlani({ a: { ...insan, durum: 'sirada' }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: null, ikincil: null, menu: ['engel_bildir', 'tarih_degistir'] }));
-  it('alt görevde Tarihi değiştir yok (tarih satırı kendi alanında)', () => expect(p({ ...insan, durum: 'sirada' }, { alt: true }).menu).toEqual(['engel_bildir']));
+  it('Claude bağlantısı yoksa Claude düğmesi yok', () => expect(eylemPlani({ a: { ...insan, durum: 'sirada' }, ben, acikAlt: 0, tetikYok: false })).toEqual({ ana: null, ikincil: 'erken_bitir', menu: ['engel_bildir', 'tarih_degistir'] }));
+  it('alt görevde Tarihi değiştir yok (tarih satırı kendi alanında)', () => expect(p({ ...insan, durum: 'sirada' }, { alt: true }).menu).toEqual(['claude', 'engel_bildir']));
 });
 
 describe('W1 cümleler', () => {
