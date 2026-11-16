@@ -357,6 +357,13 @@ export function yorungeHaritasi() {
     const { M, P, A, R } = H;
     H.an = an; H.D = D;
     olcek(an);
+    // 0) alt görevler (16 Kas): üst görev haritadaysa alt görev gezegeni yalnız üst görev (ya da kendisi, kardeşi) seçilince,
+    // ya da sahibinin kişi şeridi seçilince görünür; yoksa üst görevin uyduları onu temsil eder
+    const secA = H.sec != null ? M.byNo[H.sec] : null;
+    for (const no in P) {
+      const a = P[no].a;
+      P[no].gizli = !!(a.ust_adim && P[a.ust_adim]) && !(secA && (secA.no === a.no || secA.no === a.ust_adim || secA.ust_adim === a.ust_adim)) && H.secKisi !== a.sahip;
+    }
     // 1) gezegen açıları
     const halkaItem = new Map(R.map((h) => [h, []]));
     for (const no in P) {
@@ -376,7 +383,7 @@ export function yorungeHaritasi() {
       const q = nokta(h, t), qi = h.ic ? nokta(h.ic, t) : null, qo = nokta(h.dis, t);
       const gap = Math.min(qi ? Math.hypot(q[0] - qi[0], q[1] - qi[1]) : 99, Math.hypot(q[0] - qo[0], q[1] - qo[1]));
       p.boy = Math.min(p.boy, gap * .46 / 8);
-      if (!transit) halkaItem.get(h).push(p);
+      if (!transit && !p.gizli) halkaItem.get(h).push(p);
     }
     // 2) çakışma süpürmesi (her yörüngede, sürekli: max/min bileşimi)
     for (const [h, list] of halkaItem) {
@@ -394,7 +401,7 @@ export function yorungeHaritasi() {
     }
     // 2b) yakın plan adları: aynı yörüngede komşusuna binecek ad susar (yakınlaşma ölçeği 2,4 referans; zoom'da hesap yok)
     { const ik2 = Math.pow(2.4, -.6), byH = new Map();
-      for (const no in P) { const p = P[no]; if (!byH.has(p.h)) byH.set(p.h, []); byH.get(p.h).push(p); }
+      for (const no in P) { const p = P[no]; if (p.gizli) continue; if (!byH.has(p.h)) byH.set(p.h, []); byH.get(p.h).push(p); }
       for (const [h, L] of byH) { L.sort((a, b) => a.t - b.t); L.forEach((p, j) => { p.sikis = false; if (!j) return; const q = L[j - 1], w = (Math.min(14, (p.a.kisa_ad || p.a.ad).length) + Math.min(14, (q.a.kisa_ad || q.a.ad).length)) * 5.6 * ik2 / 2 + 4; const [x1, y1] = nokta(h, q.t), [x2, y2] = nokta(h, p.t); if (Math.hypot(x2 - x1, y2 - y1) < w && H.sec !== p.a.no) p.sikis = true; }); } }
     // 3) DOM öznitelikleri
     for (const no in P) {
@@ -402,6 +409,9 @@ export function yorungeHaritasi() {
       const [x, y] = nokta(h, p.t); p.x = x; p.y = y;
       p.g.setAttribute('transform', `translate(${f(x)},${f(y)}) scale(${f(p.boy)})`);
       p.g.style.opacity = p.transit ? .9 : (p.op ?? 1);
+      p.g.style.display = p.gizli ? 'none' : '';
+      if (p.gizli) { if (p.kuyruk) p.kuyruk.style.display = 'none'; if (p.iz) { p.iz.g.style.display = 'none'; p.iz.asim.style.display = 'none'; p.iz.pay.style.display = 'none'; } p.cent.setAttribute('opacity', 0); (p.paylar || []).forEach((y2) => { y2.g.style.display = 'none'; y2.kopru.style.display = 'none'; }); continue; }
+      (p.paylar || []).forEach((y2) => { y2.g.style.display = ''; y2.kopru.style.display = ''; });
       const sinif = 'gz g-' + s.g + (a.tSon != null && an > a.tSon && !['lit', 'ghost', 'ertele', 'tahmin'].includes(s.g) ? ' gec' : '') + (M.kritik.has(a.no) ? ' kritik' : '') + (H.sec === a.no ? ' secili' : '') + (p.ilgili ? ' ilgili' : '') + (p.v ? ' v' : '') + (p.sikis ? ' sikis' : '');
       if (sinif !== p.sinif) { p.g.setAttribute('class', sinif); p.sinif = sinif; p.g.dataset.g = s.g; }
       p.ates.setAttribute('r', f(7.4 * Math.sqrt(s.isik)));
@@ -581,7 +591,7 @@ export function yorungeHaritasi() {
     // kritik yol: açık kritik işler zaman sırasıyla, akış yönünde yumuşak ray (geri dönüş yok, zikzak yok)
     const kr = H.kritik || (H.sec != null && M.kritik.has(H.sec));
     if (kr) {
-      const seri = M.kritikSira.filter((n) => P[n] && !['lit', 'ghost', 'ertele'].includes(H.D.S[n].g)).map((n) => P[n]).sort((a, b) => a.t - b.t); // açıya (zamana) göre: ray yalnız saat yönünde ilerler, geri dönmez
+      const seri = M.kritikSira.filter((n) => P[n] && !P[n].gizli && !['lit', 'ghost', 'ertele'].includes(H.D.S[n].g)).map((n) => P[n]).sort((a, b) => a.t - b.t); // açıya (zamana) göre: ray yalnız saat yönünde ilerler, geri dönmez
       let d = '';
       // ray metro hattı gibi: önceki işin yörüngesinde zamanla ilerler, sonra sıradaki işin yörüngesine kısa ve yumuşak bir geçişle atlar
       seri.forEach((q, j) => {
@@ -595,7 +605,7 @@ export function yorungeHaritasi() {
       H.kritikYol.querySelectorAll('path').forEach((x) => x.setAttribute('d', d)); H.kritikYol.style.display = '';
     } else H.kritikYol.style.display = 'none';
     const parca = [];
-    const kopru = (from, to, cls) => { const p = P[from], q = P[to]; if (!p || !q) return; const bitti = BITIK.includes(H.D.S[from].g); parca.push(`<path class="kopru ${cls}${bitti ? ' bitti' : ''}" d="${kopruYol(p, q)}" stroke="${p.h.k.renk}" marker-end="url(#ky-ok)"/>`); };
+    const kopru = (from, to, cls) => { const p = P[from], q = P[to]; if (!p || !q || p.gizli || q.gizli) return; const bitti = BITIK.includes(H.D.S[from].g); parca.push(`<path class="kopru ${cls}${bitti ? ' bitti' : ''}" d="${kopruYol(p, q)}" stroke="${p.h.k.renk}" marker-end="url(#ky-ok)"/>`); };
     if (H.sec != null && P[H.sec]) {
       const a = P[H.sec].a;
       (a.bagimli || []).forEach((n) => kopru(n, a.no, 'gelen'));

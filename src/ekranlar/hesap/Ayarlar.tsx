@@ -156,16 +156,25 @@ export function Ayarlar() {
 
   // adresle gelinen grup (?bolum=ben, eski ?sekme=hesap): ilk çizimden sonra oraya kayar
   const hedef = hedefGrup();
-  const kaydi = useRef(0);
+  const birakti = useRef(false);
+  // kişi kendisi kaydırınca (tekerlek, dokunuş, tuş) sayfa artık başlığa geri çekilmez
   useEffect(() => {
-    if (!hedef || hedef === 'ben' || !ben) return;
+    const bir = () => { birakti.current = true; };
+    const olaylar = ['wheel', 'touchstart', 'keydown', 'mousedown'] as const;
+    olaylar.forEach(o => window.addEventListener(o, bir, { passive: true }));
+    return () => olaylar.forEach(o => window.removeEventListener(o, bir));
+  }, []);
+  useEffect(() => {
+    if (!hedef || hedef === 'ben' || !ben || birakti.current) return;
     // grup veri gelince çizilebilir (Devir'i öner): başlık yoksa bir sonraki çizimde yeniden dener. Üstteki gruplar veri
-    // geldikçe uzar ve başlık aşağı kayar; ilk kaydırmadan sonraki 3 sn içinde gelen veride yeniden kaydırılır
-    if (kaydi.current && Date.now() - kaydi.current > 3000) return;
-    const el = document.getElementById(`ayar-${hedef}`);
-    if (!el) return;
-    if (!kaydi.current) kaydi.current = Date.now();
-    el.scrollIntoView({ block: 'start' });
+    // geldikçe uzar ve başlık aşağı kayar; kişi kendisi kaydırana dek gelen her veride yeniden kaydırılır (süre sınırı
+    // yavaş bağlantıda yetmiyordu)
+    const kay = () => { if (birakti.current) return; document.getElementById(`ayar-${hedef}`)?.scrollIntoView({ block: 'start' }); };
+    kay();
+    // sayfanın yüksekliği veri değişmeden de büyüyebilir (ölçülen kutular); boy değiştikçe yeniden kaydır
+    const ro = new ResizeObserver(kay);
+    ro.observe(document.body);
+    return () => ro.disconnect();
   }, [hedef, ben, an.data, uy.data, rf.data, ag.data, ku.data, aa.data, tk.data, kt.data, bk.data, pol.data, h]);
 
   const baslik = (b: Bolum, ek?: ReactNode) => <>

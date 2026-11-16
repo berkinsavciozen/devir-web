@@ -127,7 +127,7 @@ export function yorungeLejanti(M: YorungeModel, D: YorungeDurum): YorungeSatiri[
   ek(say(A, (a) => M.kritik.has(a.no) && acikIs(a)), `<path d="M4,30 Q22,6 40,24" fill="none" stroke="#FFF6E0" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/>`, 'Kritik yol', 'Gecikirse hedef tarih kayar', 'kritik');
   ek(say(A, (a) => !!a.karar_adimi && acikIs(a)), bayrak(22, 22, .9), 'Karar', 'Karar bekleyen iş', 'karar', 'karar');
   ek(say(A, (a) => (a.ortak || []).length > 0), is(22, 22, 9, 'dark', { ek: { ortakRenk: O } }), 'Ortak görev', 'Halka kişilerin renginde bölünür', 'ortak');
-  ek(say(A, (a) => (a.altlar || []).length > 0), is(22, 22, 9, 'dark', { ek: { altlar: [{ no: 1, bitti: true }, { no: 2 }] } }), 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler', 'alt');
+  ek(say(A, (a) => (a.altlar || []).length > 0), is(22, 22, 9, 'dark', { ek: { altlar: [{ no: 1, bitti: true }, { no: 2 }] } }), 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler; işe dokununca alt görevler sahiplerinin yörüngesinde açılır', 'alt');
   ek(say(A, (a) => a.rutin_var === false && acikIs(a)), is(22, 22, 9, 'dark', { renk: acik(SEN), ek: { rutinsiz: true } }), 'Rutini olmayan AI işi', 'AI yapsın açık ama işi alacak rutin yok', 'rutin');
   // son tarih izi (14 Kas): gezegen tahmini bitişte durur; son tarih yörüngede numaralı çentik
   const izli = (f: (a: any) => boolean) => A.filter((a) => a.tSon != null && acikIs(a) && D.S[a.no] && M.simdi <= a.tSon && f(a)), nos = (l: any[]) => 'nos:' + l.map((a) => a.no).join(',');
@@ -152,7 +152,7 @@ export function tumYorungeSatirlari(): YorungeSatiri[] {
   y(`<path d="M4,30 Q22,6 40,24" fill="none" stroke="#FFF6E0" stroke-width="1.4" stroke-dasharray="1 4" stroke-linecap="round"/>`, 'Kritik yol', 'Gecikirse hedef tarih kayar');
   y(bayrak(22, 22, .9), 'Karar', 'Karar bekleyen iş');
   y(is(22, 22, 9, 'dark', { ek: { ortakRenk: O } }), 'Ortak görev', 'Halka kişilerin renginde bölünür');
-  y(is(22, 22, 9, 'dark', { ek: { altlar: [{ no: 1, bitti: true }, { no: 2 }] } }), 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler');
+  y(is(22, 22, 9, 'dark', { ek: { altlar: [{ no: 1, bitti: true }, { no: 2 }] } }), 'Alt görevli iş', 'Çevresindeki küçük noktalar alt görevler; işe dokununca alt görevler sahiplerinin yörüngesinde açılır');
   y(is(22, 22, 9, 'dark', { renk: acik(SEN), ek: { rutinsiz: true } }), 'Rutini olmayan AI işi', 'AI yapsın açık ama işi alacak rutin yok');
   y(cizgi + `<path d="M24,10 L27,20" stroke="#FFF6E0" stroke-width="1.5" stroke-linecap="round" opacity=".62"/>`, 'Son tarih (planlanan)', 'İnce çentik: Devir’in hedeften geriye hesapladığı en geç gün. İş, tahmini bitişinde durur');
   y(cizgi + `<path d="M24,9 L27,21" stroke="#FFF6E0" stroke-width="2.4" stroke-linecap="round"/><path d="M28.4,22.6 l2.6,2.6 l-2.6,2.6 l-2.6,-2.6Z" fill="#FFF6E0"/>`, 'Son tarih (söz)', 'Kalın çentik ve elmas: elle konmuş, kaymayan tarih');
