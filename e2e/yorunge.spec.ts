@@ -276,3 +276,17 @@ test('son tarih izi: gezegen tahmini bitişte kalır; son tarih yörüngede numa
   await expect(page.getByText('Son tarih (söz)')).toBeVisible();
   await expect(page.getByText('Son tarihi aşacak')).toBeVisible();
 });
+
+test('alt görevler (16 Kas): haritada gizli, üst göreve dokununca sahiplerinin yörüngesinde açılır; kardeşi seçilince de açık kalır', async ({ page }) => {
+  const gorunur = (no: number) => page.evaluate((n) => { const e = document.querySelector(`.ky-svg .gz[data-no="${n}"]`) as SVGGElement | null; return !!e && e.style.display !== 'none'; }, no);
+  await ac(page, '/akis/RK8R?senaryo=berkin&hal=rk8r-g12&tanitim=0', 1440, 900);
+  await expect.poll(() => gorunur(8)).toBe(true);
+  for (const n of [16, 17, 18, 19, 20]) expect(await gorunur(n)).toBe(false);
+  await ac(page, '/akis/RK8R/adim/8?senaryo=berkin&hal=rk8r-g12&tanitim=0', 1440, 900);
+  await expect.poll(() => gorunur(19)).toBe(true);
+  for (const n of [18, 20]) expect(await gorunur(n)).toBe(true);
+  for (const n of [16, 17]) expect(await gorunur(n)).toBe(false);
+  await ac(page, '/akis/RK8R/adim/19?senaryo=berkin&hal=rk8r-g12&tanitim=0', 1440, 900);
+  await expect.poll(() => gorunur(18)).toBe(true);
+  expect(await gorunur(16)).toBe(false);
+});
