@@ -35,3 +35,26 @@ test('E4: kapanmış akış yörünge diliyle; sürgü geri alınınca bitmemiş
   await page.mouse.click(b.x + b.width * .05, b.y + b.height / 2);
   await expect.poll(lit).toBeLessThan(n0);
 });
+
+test('E5: kalem listesinde arka haritanın küçüğü; kalemli iş öne çıkar, kalemler durum renginde uydu', async ({ page }) => {
+  await ac(page, '/akis/XPVZ/tekrar/7?senaryo=berkin&hal=uydu');
+  await page.getByText('Hemşin Koop').waitFor();
+  await expect(page.locator('.mini-yorunge')).toHaveCount(1);
+  const u = page.locator('.kalem-uydulari');
+  await expect(u).toHaveCount(1);
+  // beş kalem: ikisi tamam (yeşil), biri engelli (kırmızı)
+  expect(await u.locator('circle[fill="#6EE39A"]').count()).toBe(2);
+  expect(await u.locator('circle[fill="#FF5A5A"][stroke]').count()).toBe(1);
+  // satırdaki aşama izi de aynı renklerde
+  expect(await page.locator('.kalem-iz circle[fill="#FF5A5A"]').count()).toBeGreaterThanOrEqual(1);
+});
+
+test('E5: açık soru sayfasında dallar haritanın küçüğünde yan yana ikiz, seçili kol bekleyen', async ({ page }) => {
+  await ac(page, '/akis/XPVZ/soru/fatura?senaryo=berkin&hal=dal');
+  await page.getByText('Henüz bilmiyorum').waitFor();
+  await expect(page.locator('.mini-yorunge')).toHaveCount(1);
+  // iki kol ikizi haritanın gezegeniyle; biri seçili (bekleyen)
+  const ikiz = page.locator('svg .ky-simge .gz:not(.mini-yorunge *)');
+  await expect(ikiz).toHaveCount(2);
+  await expect(page.locator('svg .ky-simge .gz.g-wait:not(.mini-yorunge *)')).toHaveCount(1);
+});
