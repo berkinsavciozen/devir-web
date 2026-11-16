@@ -36,6 +36,7 @@ import { Gorevler, GorevlerSol } from './ekranlar/gorevler/Gorevler';
 import { IlkTur } from './bilesen/Tur';
 import { Ayarlar } from './ekranlar/hesap/Ayarlar';
 import { Ekip } from './ekranlar/hesap/Ekip';
+import { AiAyarlar } from './ekranlar/hesap/AiAyarlar';
 import { OrnekMenusu } from './bilesen/OrnekMenusu';
 import { DevirAiKok } from './ekranlar/ai/DevirAi';
 import { eslestir, git, useYol, arama } from './yonlendirme';
@@ -87,6 +88,7 @@ function Uygulama({ yol }: { yol: string }) {
   if (yol === '/hesap') return <Yonlen yol="/ayarlar?bolum=ben" />;
   if (yol === '/ayarlar') return panel(<Ayarlar />, 'Ayarlar', { geri: '/' });
   if (yol === '/ayarlar/ekip') return panel(<Ekip />, 'Ayarlar › Ekip');
+  if (yol === '/ayarlar/ai') return panel(<AiAyarlar />, 'Ayarlar › Agent’lar ve AI yapsın');
   const sr = eslestir('/akis/:kod/soru/:soru', yol);
   if (sr) return panel(<Cevapla key={sr.kod + sr.soru} kod={sr.kod} soru={sr.soru} ben={b.kisi || ''} />, 'Akış › Soru');
   const tk = eslestir('/akis/:kod/tekrar/:no', yol);

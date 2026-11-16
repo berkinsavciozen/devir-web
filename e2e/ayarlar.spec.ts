@@ -149,7 +149,7 @@ test('K1-tek-alan: tek çalışma alanı gösterilmez; ikinci alan olunca liste 
 
 test('P7-agentlar: bağlı Claude listede; kaldırılınca çıkar, bağlama rehberi açılır', async ({ page }) => {
   await ac(page, '/ayarlar?senaryo=berkin');
-  await expect(page.getByRole('heading', { name: 'AGENT’LARIM', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Agent’lar ve AI yapsın/ })).toBeVisible();
   await expect(page.locator('.satir-kart', { hasText: 'son kullanım 14 Eki' })).toHaveCount(1);
   await page.getByRole('button', { name: 'Claude bağlantısını kaldır' }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'Kaldır', exact: true }).click();

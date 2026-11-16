@@ -50,7 +50,8 @@ function Adim({ no, baslik, bitti, children }: { no: number; baslik: string; bit
 export function RutinKur({ mcpAdres, mcpBagli, agent = null, kapat }: { mcpAdres: string; mcpBagli: boolean; agent?: string | null; kapat: () => void }) {
   const tk = useQuery({ queryKey: ['tetikler', agent], queryFn: () => api.get<any>(`/tetikler${agent ? `?agent=${encodeURIComponent(agent)}` : ''}`), refetchInterval: 10_000, retry: false });
   const L: any[] = tk.data?.tetikler || [];
-  const zamanli = L.find((t) => t.tur === 'zamanli');
+  // 0.38.0: agent için kurulan zamanlanmış rutin (Devir'de önceden kaydedilmiş olabilir; son_tetik_at boşsa henüz uğramadı)
+  const zamanli = (agent && L.find((t) => t.tur === 'zamanli' && t.ad.toLocaleLowerCase('tr') === agent.toLocaleLowerCase('tr'))) || L.find((t) => t.tur === 'zamanli' && t.son_tetik_at) || L.find((t) => t.tur === 'zamanli');
   const apiTetik = L.filter((t) => t.tur !== 'zamanli');
   const rutinVar = !!(zamanli?.son_tetik_at || apiTetik.length);
   const [yol, setYol] = useState<'zamanli' | 'api'>('zamanli');
@@ -64,6 +65,12 @@ export function RutinKur({ mcpAdres, mcpBagli, agent = null, kapat }: { mcpAdres
   const [jeton, setJeton] = useState('');
   const m = useMutation({ mutationFn: () => api.post<any>('/tetikler', { ad: ad.trim(), url: url.trim(), jeton: jeton.trim(), agentlar: secili }), onSuccess: () => { for (const k of [['tetikler'], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); } });
   const son = zamanli?.son_tetik_at ? Date.parse(zamanli.son_tetik_at) : null;
+  // B6/K4 (0.38.0): zamanlanmış rutin Devir'de önceden kaydedilir (Claude'daki adıyla); ilk uğrayışta aynı satır canlanır
+  const [claudeAd, setClaudeAd] = useState('');
+  const onKayit = useMutation({
+    mutationFn: () => api.post<any>('/tetikler', { tur: 'zamanli', agentlar: agent ? [agent] : secili, ...(agent ? { ad: agent } : {}), claude_ad: claudeAd.trim() || null }),
+    onSuccess: () => { for (const k of [['tetikler'], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: k }); },
+  });
   const rutinAdi = agent || 'Devir AI yapsın';
   return (
     <AltSayfa acik kapat={kapat} baslik="AI yapsın kurulumu" yukseklik={60} duraklar={['yuksek']}>
@@ -101,6 +108,12 @@ export function RutinKur({ mcpAdres, mcpBagli, agent = null, kapat }: { mcpAdres
                 <Is gor={<>birkaç dakika içinde aşağıdaki 3. adım yeşil olur.</>}><b>Kaydet</b>’e, sonra bir kez <b>Şimdi çalıştır</b>’a bas.</Is>
               </ol>
               <a className="rk-git" href={CLAUDE_RUTINLER} target="_blank" rel="noopener noreferrer">Claude rutinlerini aç</a>
+              {onKayit.data ? <p className="rk-tamam">{onKayit.data.not}</p> : <form className="rk-api" onSubmit={(e) => { e.preventDefault(); onKayit.mutate(); }}>
+                <label><span className="alan-etiket">Claude’da verdiğin ad (isteğe bağlı; Devir’de böyle görünür)</span><input className="alan" value={claudeAd} maxLength={80} onChange={(e) => setClaudeAd(e.target.value)} placeholder={rutinAdi} /></label>
+                <Dugme type="submit" tur="ikincil" ton="lila" yukseklik={44} fs={15} mesgul={onKayit.isPending}>Devir’de kaydet</Dugme>
+                <small className="rk-not">Kaydedince rutin Devir’de “ilk çalışma bekleniyor” olarak görünür; Claude’daki rutin ilk uğradığında canlı olur.</small>
+                {onKayit.isError && <p className="rk-hata" role="alert">{(onKayit.error as Error).message}</p>}
+              </form>}
             </> : m.data ? <p className="rk-tamam">{m.data.not}</p> : <form className="rk-api" onSubmit={(e) => { e.preventDefault(); if (ad.trim() && url.trim() && jeton.trim()) m.mutate(); }}>
               <ol className="rk-alt">
                 <Is gor={<>boş bir rutin formu; API tetiği yalnız web’de eklenir.</>}>Bilgisayardan Claude rutinleri sayfasını açıp <b>Yeni rutin</b>’e bas.</Is>

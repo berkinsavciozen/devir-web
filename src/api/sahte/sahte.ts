@@ -218,7 +218,7 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
   if (o.hal === 'nm8r' || o.hal === 'nm8r-hedef') halNm8r(T, o.hal === 'nm8r-hedef' ? '2027-05-26' : null);
   if (o.hal?.startsWith('rk8r')) halRk8r(T);
   // 3 Kas · AI yapsın (0.29.0): Berkin'in bir Claude rutini; RTD5'te biri bakılacak, biri öncül bekleyen iki AI yapsın görevi
-  const rtdAi = (o.hal === 'ai' || o.hal === 'w1' || o.hal === 'w3') && senaryo === 'berkin' ? T.akis.find((x) => x.kisa_kod === 'RTD5') : undefined;
+  const rtdAi = (o.hal === 'ai' || o.hal === 'w1' || o.hal === 'w3' || o.hal === 'ai2') && senaryo === 'berkin' ? T.akis.find((x) => x.kisa_kod === 'RTD5') : undefined;
   if (rtdAi) {
     const rtd = rtdAi;
     T.agent_tetik = [{ id: 'sahte-tetik-1', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Berkin’in Claude’u', url: 'https://api.anthropic.com/v1/claude_code/routines/trig_sahte/fire', jeton: 'sahte', aktif: true, son_tetik_at: '2026-10-14T06:30:00Z', son_hata: null, created_at: '2026-10-12T09:00:00Z', agentlar: ['Berkin’in Claude’u'] }];
@@ -231,6 +231,20 @@ export async function sahteSunucu(senaryo: Senaryo = 'berkin', o: { webAdresi?: 
         { id: 'sahte-tetik-2', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Zamanlanmış rutin', url: 'zamanli', jeton: null, aktif: true, son_tetik_at: '2026-10-14T09:00:00Z', son_hata: null, created_at: '2026-10-13T09:00:00Z', agentlar: null },
         { id: 'sahte-tetik-3', ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad: 'Araştırma rutini', url: 'https://api.anthropic.com/v1/claude_code/routines/trig_sahte2/fire', jeton: 'sahte', aktif: true, son_tetik_at: null, son_hata: null, created_at: '2026-10-13T10:00:00Z', agentlar: null },
       );
+    }
+    // 16 Kas (0.38.0) · AI ayarları tek sayfa: canlı anında rutin, sessiz zamanlanmış rutin (5 gündür uğramadı), Devir'de kurulmuş
+    // ama hiç uğramamış rutin, kaldırılmış rutin; üç agent
+    if (o.hal === 'ai2') {
+      const z = (id: string, ad: string, ek: any) => ({ id, ws_id: BERKIN_ALAN, kisi: 'Berkin', kisi_norm: 'berkin', ad, url: 'zamanli', jeton: '', aktif: true, son_hata: null, created_at: '2026-10-08T09:00:00Z', ...ek });
+      Object.assign(T.agent_tetik[0], { claude_ad: 'Devir · anında işler' });
+      T.agent_tetik.push(
+        z('sahte-tetik-4', 'Araştırmacı', { agentlar: ['Araştırmacı'], son_tetik_at: '2026-10-09T13:17:00Z', claude_ad: 'Devir araştırma (saatlik)' }),
+        z('sahte-tetik-5', 'Yayın yazarı', { agentlar: ['Yayın yazarı'], son_tetik_at: null }),
+        z('sahte-tetik-6', 'Zamanlanmış rutin', { agentlar: null, aktif: false, son_tetik_at: '2026-10-02T08:00:00Z' }),
+      );
+      const s3 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 3)!, s9 = T.adim.find((x) => x.akis_id === rtd.id && x.no === 9)!;
+      Object.assign(s9, { sahip: 'Araştırmacı', sahip_tip: 'agent', agent_sahibi: 'Berkin', ad: 'Rakip uygulamaların fiyatlarını topla', oto: true, durum: 'hazir' });
+      Object.assign(s3, { sahip: 'Yayın yazarı', sahip_tip: 'agent', agent_sahibi: 'Berkin', ad: 'Mağaza açıklamasını yaz', oto: false });
     }
     // W1 (4 Kas) · düğme matrisi halleri: çıktı beklenen insan işi, AI kapalı agent işi, AI'ın yapamadığı iş
     if (o.hal === 'w1') {
