@@ -1,10 +1,11 @@
+import { isSimge } from '../../cizim/yorunge/simge';
 import { useEffect, useState } from 'react';
 import { kimlik, type OauthAyrinti } from '../../api/kimlik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { Ikon } from '../../bilesen/Svg';
 import { bilgiIkon } from '../../cizim/ekran';
-import { planet, tower } from '../../cizim/ortak.js';
+import { tower } from '../../cizim/ortak.js';
 import { arama, git } from '../../yonlendirme';
 import { Giris } from './Giris';
 
@@ -13,7 +14,7 @@ const CIZIM =
   `<ellipse cx="195" cy="300" rx="190" ry="150" fill="url(#bloom)" opacity=".45"/>` +
   `<path d="M120,300 C160,250 230,250 270,300" fill="none" stroke="#B9A6F2" stroke-width="1.6" stroke-dasharray="3 6" opacity=".8"/>` +
   `<circle cx="120" cy="300" r="40" fill="url(#glowGold)" opacity=".7"/>` + tower(120, 330, 1, true) +
-  `<circle cx="270" cy="300" r="40" fill="url(#glowLilac)" opacity=".7"/>` + planet(270, 300, 22, 'lit', { life: false });
+  `<circle cx="270" cy="300" r="40" fill="url(#glowLilac)" opacity=".7"/>` + isSimge(null, 270, 300, 22, { gorunum: 'lit', renk: '#B9A6F2', numarasiz: true });
 
 type Hal = { tur: 'yukleniyor' } | { tur: 'giris' } | { tur: 'onay'; a: Extract<OauthAyrinti, { tur: 'onay' }> } | { tur: 'gidiyor'; onay: boolean } | { tur: 'hata'; mesaj: string };
 const alanAdi = (u: string | null) => { try { return u ? new URL(u).host : null; } catch { return null; } };

@@ -1,3 +1,4 @@
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { useMemo, useState } from 'react';
 import { useBoyut } from '../../bilesen/Gok';
 import { PANEL_EN } from '../../bilesen/Kabuk';
@@ -8,7 +9,6 @@ import { simdi } from '../../api/ortam';
 import { Baslik } from '../../bilesen/Baslik';
 import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
-import { planet, ship } from '../../cizim/ortak.js';
 import { gunAy } from '../../cizim/yol.js';
 import { sarSatir } from '../../metin/turkce';
 import { git } from '../../yonlendirme';
@@ -28,12 +28,11 @@ const enc = encodeURIComponent;
 
 const rolGemisi = (r: TRol, x: number, y: number, eksik: boolean) => eksik
   ? `<g transform="translate(${x},${y})"><circle r="11" fill="#08222E" stroke="${MERCAN}" stroke-dasharray="2 3" stroke-width="1.3"/><text y="4.5" text-anchor="middle" font-family="Bricolage" font-size="12" font-weight="700" fill="${MERCAN}">?</text></g>`
-  : r.tip === 'dis' ? ship(x, y + 1, 0, 'dis', '', '#F2B8D8', .5)
-    : ship(x, y, -12, r.tip === 'agent' ? 'agent' : 'insan', (rolAdi(r)[0] || '?').toLocaleUpperCase('tr'), r.tip === 'agent' ? '#B9A6F2' : '#FFC9A3', .5, { flame: false });
+  : kisiSimge({ ad: rolAdi(r) || '?', tip: r.tip === 'agent' ? 'agent' : r.tip === 'dis' ? 'dis' : 'insan' }, x, y, .55);
 
 function taslakGezegeni(n: TNokta, r: number, sec: boolean) {
   // W3 (B8): cevabı beklenen soruya bağlı adım henüz yok: gövdesiz, yalnız kesik halka ve "?"
-  let s = n.soru ? `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="#B9A6F2" fill-opacity=".05"/>` : `<g opacity=".85">${planet(n.x, n.y, r, 'dark', { life: false })}</g>`;
+  let s = n.soru ? `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r}" fill="#B9A6F2" fill-opacity=".05"/>` : `<g opacity=".85">${isSimge(null, n.x, n.y, r, { gorunum: 'dark', renk: '#D9CCFF', numarasiz: true })}</g>`;
   s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 3}" fill="none" stroke="${n.gec ? MERCAN : '#D9CCFF'}" stroke-width="${n.gec ? 1.6 : 1.1}" stroke-dasharray="2 3"/>`;
   if (n.soru) s += `<g transform="translate(${(n.x + r * .8).toFixed(1)},${(n.y - r * .8).toFixed(1)})"><circle r="6" fill="${ALTIN}" stroke="#2A1D4F" stroke-width=".8"/><text y="3.4" text-anchor="middle" font-family="Bricolage" font-size="9" font-weight="800" fill="#2A1D4F">?</text></g>`;
   if (sec) s += `<circle cx="${n.x.toFixed(1)}" cy="${n.y.toFixed(1)}" r="${r + 8}" fill="none" stroke="#FFF3E8" stroke-width="1.5" opacity=".7"/>`;

@@ -1,3 +1,4 @@
+import { bosYorunge } from '../../cizim/yorunge/mini';
 import { kisiSimge } from '../../cizim/yorunge/simge';
 import type { ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -9,7 +10,7 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { UstDugmeler } from '../../bilesen/Zil';
 import { evrenHalkasi } from '../../cizim/ekran';
-import { galaxy, ship, sparkle, C } from '../../cizim/ortak.js';
+import { sparkle } from '../../cizim/ortak.js';
 import { simdi } from '../../api/ortam';
 import { git } from '../../yonlendirme';
 
@@ -18,7 +19,7 @@ function a2Cizim() {
   // tek karanlık bulutsu: ilk iş burada doğacak
   s += `<circle cx="195" cy="380" r="70" fill="url(#glowLilac)" opacity=".9"/>`;
   s += `<ellipse cx="195" cy="380" rx="44" ry="32" fill="#B9A6F2" fill-opacity=".08" stroke="#D9CCFF" stroke-width="1.2" stroke-dasharray="2 5" transform="rotate(-14 195 380)"/>`;
-  s += galaxy(195, 380, Array.from({ length: 5 }, () => ({ state: 'dark' })), { scale: .7, seed: 3, rot: -14, pr: 2.6 });
+  s += bosYorunge(195, 380, 52, 5, { ry: .75 });
   s += sparkle(195, 380, 9, '#FFF1D6', 1);
   return s;
 }
@@ -85,7 +86,7 @@ export function BosEvren({ ad, avatar }: { ad: string; avatar?: () => void }) {
   );
 }
 
-const UygGemi = ({ uyg }: { uyg: Uygulama }) => <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: ship(0, 0, -12, 'agent', UYGULAMALAR[uyg].ad[0], C.lilac, .7, { flame: false }) }} />;
+const UygGemi = ({ uyg }: { uyg: Uygulama }) => <svg aria-hidden width="40" height="30" viewBox="-20 -15 40 30" style={{ overflow: 'visible' }} dangerouslySetInnerHTML={{ __html: kisiSimge({ ad: UYGULAMALAR[uyg].ad, tip: 'agent', renk: '#B9A6F2' }, 0, 0, .75) }} />;
 
 const genisDugme = { position: 'relative', flex: 1, left: 'auto', right: 'auto', top: 'auto' } as const;
 

@@ -1,3 +1,4 @@
+import { isSimge, kisiSimge } from '../../cizim/yorunge/simge';
 import { useState, type FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, ApiHatasi, alanSecimi, istek } from '../../api/istemci';
@@ -8,7 +9,6 @@ import { Dugme } from '../../bilesen/Dugme';
 import { Kutu, Metin, Sahne } from '../../bilesen/Sahne';
 import { Ikon } from '../../bilesen/Svg';
 import { bilgiIkon, logoIsaret } from '../../cizim/ekran';
-import { planet, ship, C } from '../../cizim/ortak.js';
 import { git } from '../../yonlendirme';
 
 const AY = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -36,7 +36,7 @@ const cikisYap = async () => { await kimlik.cikis(); alanSecimi.koy(null); oturu
 const A4_CIZIM =
   `<circle cx="195" cy="250" r="120" fill="url(#bloom)" opacity=".6"/>` +
   `<path d="M86,300 Q140,226 195,236 Q250,226 304,290" fill="none" stroke="#FFD27A" stroke-width="1.4" stroke-dasharray="2 6" opacity=".7"/>` +
-  planet(195, 236, 34, 'lit', {}) + ship(96, 296, -38, 'insan', 'B', C.peach, 1.05, { flame: false }) + ship(296, 286, 0, 'dis', '', '#F2B8D8', 1.1);
+  isSimge(null, 195, 236, 30, { gorunum: 'lit', renk: '#F2789F', numarasiz: true }) + kisiSimge({ ad: 'B', tip: 'insan', renk: '#F2789F' }, 96, 296, 1.15) + kisiSimge({ ad: 'D', tip: 'dis', renk: '#D8F26B' }, 296, 286, 1.15);
 
 /** A4 · Davet kabulü. POST /kayit {davet, kisi} → katildi → evren. */
 export function DavetKabul({ ben }: { ben: Ben }) {
@@ -110,7 +110,7 @@ export function DavetKabul({ ben }: { ben: Ben }) {
 const A5_CIZIM =
   `<circle cx="195" cy="270" r="110" fill="url(#glowLilac)" opacity=".75"/>` +
   `<ellipse cx="195" cy="270" rx="96" ry="38" fill="none" stroke="#8E80D6" stroke-width="1.4" stroke-dasharray="3 6" transform="rotate(-14 195 270)"/>` +
-  planet(195, 270, 26, 'dark', { life: false }) + ship(108, 300, -20, 'dis', '', '#F2B8D8', .95);
+  isSimge(null, 195, 270, 24, { gorunum: 'dark', renk: '#8E80D6', numarasiz: true }) + kisiSimge({ ad: 'D', tip: 'dis', renk: '#D8F26B' }, 108, 300, 1.05);
 
 const yerelAd = (e?: string) => { const x = (e || '').split('@')[0].split(/[._-]/)[0]; return x ? x[0].toLocaleUpperCase('tr') + x.slice(1) : ''; };
 
