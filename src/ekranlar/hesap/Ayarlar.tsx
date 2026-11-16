@@ -90,7 +90,9 @@ export function Ayarlar() {
   // yeniden adlandırmadan sonra liste tazelenene kadar detay eski agent'la açık kalır
   const sonAgent = useRef<any>(null), agentEski = useRef<string | null>(null);
   const agentAdDegisti = (yeni: string) => { agentEski.current = sonAgent.current?.ad ?? null; setAgentAc(yeni); };
-  const [rutin, setRutin] = useState<boolean | string>(() => arama().get('kur') === 'ai');
+  const [rutin, setRutin] = useState<boolean | string>(false);
+  // 16 Kas: kurulum yeni sayfada açılır (eski /ayarlar?kur=ai bağlantıları)
+  useEffect(() => { const q = arama(); if (q.get('kur') === 'ai') { q.delete('bolum'); git(`/ayarlar/ai?${q.toString()}`, { yerine: true }); } }, []);
   const [rutinKaldir, setRutinKaldir] = useState<any>(null);
   const [iptal, setIptal] = useState<any>(null);
   const [yeni, setYeni] = useState(false);
@@ -130,9 +132,10 @@ export function Ayarlar() {
   // K1 (0.34.0): rutinler agent'lardan ayrı liste; eski sunucuda tetik listesi
   const RL: any[] = tek ? (aa.data!.rutinler || TK.map((t) => ({ id: t.id, ad: t.ad, tur: t.tur, son_calisma: t.son_tetik_at, son_hata: t.son_hata, agentlar: t.agentlar ?? null }))) : [];
   const agY = y + 34;
-  const agSatir = tek ? AA.length : 0;
-  if (tek) y = agY + 14 + Math.max(agSatir, 1) * 68 - 2;
-  const rtY = tek ? y + 34 : null; if (rtY != null) y = rtY + 14 + (RL.length + 1) * 68 - 2;
+  if (tek) y = agY + 14 + 66;
+  // tek satırın özeti: kaç agent, kaç rutin, kaçında sorun (sessiz, hata, ilk çalışma bekleniyor, rutinsiz)
+  const sorun = AA.filter((a: any) => a.rutin_durum && a.rutin_durum !== 'canli').length;
+  const aiOzeti = AA.length || RL.length ? `${AA.length} agent · ${RL.length} rutin${sorun ? ` · ${sorun} agent’ta uyarı` : ''}` : 'Claude’u bağla, rutini kur';
   const tkY = !tek && tk.data ? agY : null; if (tkY != null) y = tkY + 14 + TK.length * 68 + 66;
   const kuY = k ? y + 34 : null; if (kuY != null) y = kuY + 14 + 70;
   bY.kisiler = y + 46; y = bY.kisiler + 14 + (sahip ? 2 * 74 : 66);
@@ -179,19 +182,9 @@ export function Ayarlar() {
 
         {baslik('ben')}
         <HesapIcerik y={bY.ben + 14} ben={ben} cikis={false} />
-        {tek && <>
-          <h3 className="bolum-baslik" style={{ top: agY - 12 }}>AGENT’LARIM</h3>
-          {AA.length ? AA.map((a, i) => (
-            <SatirKart key={a.ad} y={agY + 14 + i * 68} h={60} ikon={agentIkonu(a, 26, 30, 1, aa.data?.kisi)} ust={a.ad} alt={agentCumlesi(a, false, true)} onClick={() => setAgentAc(a.ad)} />
-          )) : <Metin y={agY + 40} x={22} fs={13} lh={17} renk="ink3" style={{ right: 22 }}>Henüz agent yok. Bir görevin sahibi agent olunca burada görünür.</Metin>}
-          <h3 className="bolum-baslik" style={{ top: rtY! - 12 }}>RUTİNLERİM · AI YAPSIN</h3>
-          {RL.map((t, i) => (
-            <SatirKart key={t.id} y={rtY! + 14 + i * 68} h={60} ikon={ozelIkon(t.tur === 'zamanli' ? '<circle r="6" fill="none" stroke="#B9A6F2" stroke-width="1.6"/><path d="M0,-3.5 L0,0 L2.5,1.5" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linecap="round"/>' : '<path d="M1.5,-7 L-4,1 L0,1 L-1.5,7 L4,-1 L0,-1 Z" fill="none" stroke="#B9A6F2" stroke-width="1.4" stroke-linejoin="round"/>')}
-              ust={t.ad} alt={rutinAlt(t, true)} onClick={() => setRutinAc(t.id)} />
-          ))}
-          <SatirKart y={rtY! + 14 + RL.length * 68} h={60} ikon={ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
-            ust={RL.length ? 'Yeni rutin kur' : 'AI yapsın’ı kur'} alt={RL.length ? 'Hangi agent’lar için çalışacağını seçersin' : 'İki adım, bir kez: Claude’u bağla, rutini kur'} onClick={() => setRutin(true)} />
-        </>}
+        {/* 16 Kas (tek sayfa, K1/K3): agent'lar, rutinler ve bağları kendi sayfasında; burada tek satır ve sorun sayısı */}
+        {tek && <SatirKart y={agY + 14} h={66} ikon={AA[0] ? agentIkonu(AA[0], 26, 33, 1, aa.data?.kisi) : ozelIkon('<path d="M0,-6 L0,6 M-6,0 L6,0" stroke="#B9A6F2" stroke-width="2" stroke-linecap="round"/>')}
+          ust="Agent’lar ve AI yapsın" alt={aiOzeti} onClick={() => git('/ayarlar/ai')} />}
         {tkY != null && <>
           <h3 className="bolum-baslik" style={{ top: tkY - 12 }}>AI YAPSIN · CLAUDE RUTİNLERİ</h3>
           {TK.map((t, i) => (
@@ -402,7 +395,7 @@ function AgentKaldir({ a, kapat }: { a: { id: string; ad: string; istemci?: stri
   );
 }
 
-function RutinKaldir({ t, kapat }: { t: { id: string; ad: string }; kapat: () => void }) {
+export function RutinKaldir({ t, kapat }: { t: { id: string; ad: string }; kapat: () => void }) {
   const m = useMutation({ mutationFn: () => api.post<any>(`/tetikler/${t.id}/kaldir`, {}), onSuccess: () => { for (const q of [['tetikler'], ['agentlar-ai']]) void sorguIstemcisi.invalidateQueries({ queryKey: q }); kapat(); } });
   const y0 = 560, P = (y: number) => y - (y0 + 28);
   return (

@@ -1402,3 +1402,41 @@ button.karar-seridi:focus-visible, .karar-seridi .ks-adim:focus-visible, .karar-
 .renk-kurali-renkler { margin: 6px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; justify-content: center; font-size: 12px; font-weight: 700; }
 .renk-kurali-renkler span { display: inline-flex; align-items: center; gap: 5px; color: var(--gr); }
 .renk-kurali-renkler i { width: 9px; height: 9px; border-radius: 50%; background: var(--gr); box-shadow: 0 0 6px var(--gr); }
+
+/* 16 Kas · Agent'lar ve AI yapsın (tek sayfa, K1–K4) */
+.ai-sayfa { position: absolute; padding-bottom: 60px; color: var(--renk-metin-ink); }
+.ai-serit ul, .ai-liste { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ai-serit li { display: grid; grid-template-columns: 22px 1fr auto; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--renk-zemin-kart) 85%, transparent); font-size: 14px; line-height: 19px; }
+.ai-serit li > span:first-child { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 12px; }
+.ai-serit li.tamam > span:first-child { background: #3FB98A33; color: #6FE0B0; }
+.ai-serit li.eksik > span:first-child { background: #F2B54A33; color: #F2C66A; }
+.ai-bolum { display: flex; flex-direction: column; gap: 10px; }
+.ai-bolum > .gd-satir { margin: -4px 0 2px; }
+.ai-kart, .ai-rutin { border-radius: 14px; background: color-mix(in srgb, var(--renk-zemin-kart) 80%, #B9A6F2 8%); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.ai-kart.hedef { box-shadow: 0 0 0 2px #F2C66A; }
+.ai-rutin.kapali { opacity: .7; }
+.ai-kart-ust, .ai-rutin-ust { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; background: none; border: 0; padding: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.ai-rutin-ust { grid-template-columns: 1fr auto; cursor: default; }
+.ai-kart-ad { display: grid; gap: 2px; min-width: 0; }
+.ai-kart-ad b { font-size: 15.5px; line-height: 20px; }
+.ai-kart-ad small { font-size: 12.5px; line-height: 17px; color: var(--renk-metin-ink3); overflow-wrap: anywhere; }
+.ai-kart-cumle { margin: 0; font-size: 13.5px; line-height: 18px; color: var(--renk-metin-ink2); }
+.ai-kart-cumle.uyari { color: #F2C66A; }
+.ai-kart-cumle.kotu { color: var(--renk-metin-mercan); }
+.ai-kart-govde { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; border-top: 1px solid #B9A6F222; }
+.ai-secici { display: grid; gap: 6px; font-size: 12px; font-weight: 700; letter-spacing: .4px; color: var(--renk-metin-ink3); }
+.ai-secici select { font-size: 15px; font-weight: 500; letter-spacing: 0; }
+.ai-eylemler { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+.ai-kucuk { position: relative; height: 40px; padding: 0 16px; display: inline-flex; align-items: center; font-size: 14px; text-decoration: none; width: auto; }
+.ai-rozet { font-size: 11.5px; line-height: 15px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.ai-rozet.iyi { background: #3FB98A2E; color: #6FE0B0; }
+.ai-rozet.uyari { background: #F2B54A2E; color: #F2C66A; }
+.ai-rozet.kotu { background: #FF8A782E; color: #FF9F90; }
+.ai-rozet.bekle { background: #6FA8FF2E; color: #9CC2FF; }
+.ai-rozet.sonuk { background: #FFFFFF14; color: var(--renk-metin-ink3); }
+.ai-cipler { display: flex; flex-wrap: wrap; gap: 6px; }
+.ai-cip { font-size: 12px; line-height: 16px; padding: 3px 9px; border-radius: 999px; background: #B9A6F21F; color: var(--renk-metin-ink2); }
+.ai-katli summary { cursor: pointer; font-size: 13.5px; color: var(--renk-metin-ink3); padding: 6px 0; }
+.ai-mcp .kopya-alani { position: relative; left: 0; right: 0; top: 0; }
+.ai-sayfa-ic { display: flex; flex-direction: column; gap: 22px; }
+.ai-sayfa .dugme { position: relative; top: auto; left: auto; right: auto; width: 100%; }

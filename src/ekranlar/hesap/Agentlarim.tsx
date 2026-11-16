@@ -19,12 +19,16 @@ import { AgentIsleri } from './AgentIsleri';
  * (agentlar; null = tüm agent'larım) ve buradan değişir; rutinin adı yalnız etikettir.
  */
 export interface AgentIs { akis: string; akis_ad: string | null; no: number; ad: string; durum: string; oto_durum: string | null }
-export interface AgentRutin { id: string; ad: string; tur: 'zamanli' | 'api'; son_calisma: string | null; son_hata: string | null; /** null = tüm agent'lar */ agentlar?: string[] | null }
+/** 0.38.0: tek sağlık kuralı (sunucu rutinSagligi) */
+export type Saglik = 'canli' | 'sessiz' | 'hata' | 'bekleniyor' | 'kapali' | 'yok';
+export interface AgentRutin { id: string; ad: string; tur: 'zamanli' | 'api'; son_calisma: string | null; son_hata: string | null; /** null = tüm agent'lar */ agentlar?: string[] | null; saglik?: Saglik; /** K4: Claude › Routines'teki adı */ claude_ad?: string | null }
 export interface Agent {
   ad: string; renk?: string | null; isleyen_rutin?: string | null; ai_kapali?: number; rutinler: AgentRutin[]; durum: 'hata' | 'calisiyor' | 'bosta'; simdi: AgentIs[]; sirada: number; bakilacak: AgentIs[]; acik_is: number;
   son_etkinlik: { zaman: string; ozet: string; akis: string; no: number } | null;
+  /** 0.38.0: işi alacak rutinin özeti ve agent'ın uygulaması */
+  rutin_durum?: Saglik; rutin_ad?: string | null; rutin_claude_ad?: string | null; rutin_son?: string | null; arac?: string | null;
 }
-export interface Agentlar { kisi: string; agentlar: Agent[]; rutinler?: AgentRutin[]; genel_rutin: { id: string; son_calisma: string | null } | null }
+export interface Agentlar { kisi: string; agentlar: Agent[]; rutinler?: AgentRutin[]; kapali_rutinler?: AgentRutin[]; sessiz_gun?: number; genel_rutin: { id: string; son_calisma: string | null } | null }
 /** OAuth bağlantısı (Ayarlar'daki /ben/agentlar satırı) */
 export interface Baglanti { id: string; ad: string; istemci?: string; alt: string; eski?: boolean }
 
